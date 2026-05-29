@@ -15,19 +15,24 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.KeyStorageStatus
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -51,6 +56,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
@@ -348,6 +354,47 @@ val OidvciAttestationTest by testSuite {
             }
         }
 
+        test("reject key attestation with algorithm not in custom supportedAlgorithms") {
+            // ProofValidator restricted to ES256 only; ES384 is in DEFAULT_WALLET_ATTESTATION_ALGORITHMS
+            // but must not be accepted here.
+            val restrictedValidator = ProofValidator(
+                supportedAlgorithms = setOf(JwsAlgorithm.Signature.ES256),
+                verifyAttestationProof = { true },
+                requireKeyAttestation = true,
+                publicContext = "https://wallet.a-sit.at/credential-issuer",
+            )
+            val nonce = restrictedValidator.nonce().clientNonce
+
+            val keyAttestation = buildValidKeyAttestation(
+                signerKeyMaterial = it.walletProviderKeyMaterial,
+                attestedKey = it.clientKeyMaterial,
+                nonce = nonce,
+            ).jws.withHeaderAlg(JwsAlgorithm.Signature.RS256)
+
+            val jwtProof = SignJwt<JsonWebToken>(
+                it.clientKeyMaterial,
+                { header: JwsHeader, key: KeyMaterial ->
+                    header.copy(jsonWebKey = key.jsonWebKey, keyAttestation = keyAttestation)
+                }
+            ).invoke(
+                OpenIdConstants.PROOF_JWT_TYPE,
+                JsonWebToken(
+                    audience = "https://wallet.a-sit.at/credential-issuer",
+                    issuedAt = System.now(),
+                    nonce = nonce,
+                ),
+                JsonWebToken.serializer(),
+            ).getOrThrow()
+
+            val params = CredentialRequestParameters(
+                proofs = CredentialRequestProofContainer(jwt = setOf(jwtProof.jws))
+            )
+
+            shouldThrow<OAuth2Exception> {
+                restrictedValidator.validateProofExtractSubjectPublicKeys(params)
+            }.message shouldContain "unsupported key attestation alg"
+        }
+
         test("reject jwt proof with unsupported algorithm") {
             it.issuer = CredentialIssuer(
                 authorizationService = it.authorizationService,
@@ -422,7 +469,32 @@ private suspend fun WalletService.loadTestKeyAttestation(
 
 private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
 
+private suspend fun buildValidKeyAttestation(
+    signerKeyMaterial: KeyMaterial,
+    attestedKey: KeyMaterial,
+    nonce: String,
+) = SignJwt<KeyAttestationJwt>(signerKeyMaterial, JwsHeaderCertOrJwk())(
+    type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
+    payload = KeyAttestationJwt(
+        issuedAt = System.now(),
+        expiration = System.now() + 1.days,
+        attestedKeys = setOf(attestedKey.jsonWebKey),
+        nonce = nonce,
+        keyStorage = setOf("iso_18045_high"),
+        userAuthentication = setOf("iso_18045_high"),
+        certification = "https://example.org/certification/wscd",
+        keyStorageStatus = KeyStorageStatus(
+            status = buildJsonObject {
+                putJsonObject("status_list") {
+                    put("idx", 7)
+                    put("uri", "https://example.org/status/key-storage")
+                }
+            },
+            expiration = System.now() + 31.days,
+        ),
+    ),
+    serializer = KeyAttestationJwt.serializer(),
+).getOrThrow()
+
 private suspend fun JwsCompact.withHeaderAlg(alg: JwsAlgorithm.Signature): JwsCompact =
-    JwsCompact(jwsHeader.copy(algorithm = alg), plainPayload) {
-        signature.rawByteArray
-    }
+    JwsCompact(jwsHeader.copy(algorithm = alg), plainPayload) { byteArrayOf() }

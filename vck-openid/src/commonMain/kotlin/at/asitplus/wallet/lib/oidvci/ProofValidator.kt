@@ -149,7 +149,7 @@ class ProofValidator(
             throw InvalidProof("invalid typ: ${jws.jwsHeader.type}")
         }
         if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            jws.jwsHeader.algorithm !in SimpleAuthorizationService.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
+            jws.jwsHeader.algorithm !in supportedAlgorithms
         ) {
             throw InvalidProof("unsupported key attestation alg: ${jws.jwsHeader.algorithm}")
         }
