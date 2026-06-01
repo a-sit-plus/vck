@@ -61,7 +61,9 @@ internal class AuthorizationRequestValidator(
                 val dcApiRequest = this as RequestParametersFrom.DcApiRequest
                 if (this.parameters.clientId == null)
                     throw InvalidRequest("client_id must be set for DC API signed request")
-                this.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin)
+                if (!this.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin)) {
+                    throw InvalidRequest("calling origin does not match expected_origins")
+                }
             }
 
             is RequestParametersFrom.OpenId4VpDcApiUnsigned -> {
