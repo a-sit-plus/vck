@@ -148,19 +148,19 @@ val AuthenticationRequestParameterFromSerializerTest by testSuite {
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val compactTyped = JwsTyped<AuthenticationRequestParameters>(serializedRequest)
-            val authnRequest = DCAPIWalletRequest.OpenId4VpMultiSigned(
-                request = DCAPIWalletRequest.OpenId4Vp.OpenId4VpRequest.JwsGeneral(
-                    JwsTyped(listOf(compactTyped.jws.toJwsFlattened()))
-                ),
+            val authnRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(compactTyped.jws.toJwsFlattened())),
+                verified = false,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
             )
 
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
-                .shouldBeInstanceOf<RequestParametersFrom.DcApiMultiSigned<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiMultiSigned>()
 
-            val serialized = joseCompliantSerializer.encodeToString(params)
+            val serialized =
+                joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)
             joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }

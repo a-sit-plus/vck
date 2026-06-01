@@ -3,11 +3,11 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dcapi.OpenId4VpResponseMultiSigned
 import at.asitplus.dcapi.OpenId4VpResponseSigned
 import at.asitplus.dcapi.OpenId4VpResponseUnsigned
-import at.asitplus.dcapi.request.DCAPIWalletRequest
-import at.asitplus.dcapi.request.DCAPIWalletRequest.OpenId4Vp.OpenId4VpRequest
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsTyped
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsFlattened
 import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -82,16 +82,17 @@ val OpenId4VpDcApiProtocolTest by testSuite {
             )
             val authnRequest = f.verifierOid4vp.createAuthnRequest(reqOptions)
 
-            val dcApiRequest = DCAPIWalletRequest.OpenId4VpUnsigned(
-                request = OpenId4VpRequest.Unsigned(authnRequest),
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiUnsigned(
+                parameters = authnRequest,
+                jsonString = joseCompliantSerializer.encodeToString(authnRequest),
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
             )
 
             val preparationState = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
-            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.DcApiUnsigned<*>>()
-                .dcApiRequest.callingOrigin shouldBe callingOrigin
+            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiUnsigned>()
+                .callingOrigin shouldBe callingOrigin
 
             val response = f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
 
@@ -107,16 +108,17 @@ val OpenId4VpDcApiProtocolTest by testSuite {
             )
             val signedRequest = f.verifierOid4vp.createAuthnRequestAsSignedRequestObject(reqOptions).getOrThrow()
 
-            val dcApiRequest = DCAPIWalletRequest.OpenId4VpSigned(
-                request = OpenId4VpRequest.JwsCompact(signedRequest),
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
+                jwsTyped = signedRequest,
+                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
             )
 
             val preparationState = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
-            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.DcApiSigned<*>>()
-                .dcApiRequest.callingOrigin shouldBe callingOrigin
+            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiSigned>()
+                .callingOrigin shouldBe callingOrigin
 
             val response = f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
 
@@ -132,18 +134,17 @@ val OpenId4VpDcApiProtocolTest by testSuite {
             )
             val signedRequest = f.verifierOid4vp.createAuthnRequestAsSignedRequestObject(reqOptions).getOrThrow()
 
-            val dcApiRequest = DCAPIWalletRequest.OpenId4VpMultiSigned(
-                request = OpenId4VpRequest.JwsGeneral(
-                    JwsTyped(listOf(signedRequest.jws.toJwsFlattened()))
-                ),
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(signedRequest.jws.toJwsFlattened())),
+                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
             )
 
             val preparationState = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
-            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.DcApiMultiSigned<*>>()
-                .dcApiRequest.callingOrigin shouldBe callingOrigin
+            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiMultiSigned>()
+                .callingOrigin shouldBe callingOrigin
 
             val response = f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
 
@@ -159,10 +160,9 @@ val OpenId4VpDcApiProtocolTest by testSuite {
             )
             val signedRequest = f.verifierOid4vp.createAuthnRequestAsSignedRequestObject(reqOptions).getOrThrow()
 
-            val dcApiRequest = DCAPIWalletRequest.OpenId4VpMultiSigned(
-                request = OpenId4VpRequest.JwsGeneral(
-                    JwsTyped(listOf(signedRequest.jws.toJwsFlattened()))
-                ),
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(signedRequest.jws.toJwsFlattened())),
+                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = "https://evil.example.com",  // does not match expectedOrigins
@@ -181,8 +181,9 @@ val OpenId4VpDcApiProtocolTest by testSuite {
             )
             val signedRequest = f.verifierOid4vp.createAuthnRequestAsSignedRequestObject(reqOptions).getOrThrow()
 
-            val dcApiRequest = DCAPIWalletRequest.OpenId4VpSigned(
-                request = OpenId4VpRequest.JwsCompact(signedRequest),
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
+                jwsTyped = signedRequest,
+                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = "https://evil.example.com",  // does not match expectedOrigins

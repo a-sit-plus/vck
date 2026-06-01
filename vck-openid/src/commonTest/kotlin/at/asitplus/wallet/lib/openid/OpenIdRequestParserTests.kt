@@ -202,10 +202,9 @@ val OpenIdRequestParserTests by testSuite {
 
         "multisigned request from DCAPI" { requestParser ->
             val compactTyped = JwsCompactTyped<AuthenticationRequestParameters>(jws)
-            val input = DCAPIWalletRequest.OpenId4VpMultiSigned(
-                request = OpenId4VpRequest.JwsGeneral(
-                    JwsTyped(listOf(compactTyped.jws.toJwsFlattened()))
-                ),
+            val input = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(compactTyped.jws.toJwsFlattened())),
+                verified = false,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
@@ -213,7 +212,7 @@ val OpenIdRequestParserTests by testSuite {
 
             requestParser.parseRequestParameters(input).getOrThrow().apply {
                 shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.DcApiMultiSigned<*>>()
+                shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiMultiSigned>()
                 parameters.assertParams()
 
                 joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(

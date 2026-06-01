@@ -52,12 +52,11 @@ internal class AuthenticationResponseFactory(
                 buildResponseParametersDcApi(request, response),
             )
 
-            is RequestParametersFrom.OpenId4VpDcApiSigned,
-            is RequestParametersFrom.OpenId4VpDcApiMultiSigned -> OpenId4VpResponseSigned(
+            is RequestParametersFrom.OpenId4VpDcApiSigned -> OpenId4VpResponseSigned(
                 buildResponseParametersDcApi(request, response)
             )
 
-            is RequestParametersFrom.DcApiMultiSigned<*> -> OpenId4VpResponseMultiSigned(
+            is RequestParametersFrom.OpenId4VpDcApiMultiSigned -> OpenId4VpResponseMultiSigned(
                 buildResponseParametersDcApi(request, response)
             )
 

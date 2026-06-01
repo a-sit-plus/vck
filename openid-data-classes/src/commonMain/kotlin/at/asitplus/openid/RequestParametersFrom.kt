@@ -37,6 +37,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     /**
      * Common ancestor for request parameters that are DC-API subtypes
      */
+    @Serializable
     @JsonClassDiscriminator("protocol")
     sealed interface DcApiRequest {
         @SerialName(SerialNames.CREDENTIAL_IDS)
@@ -206,10 +207,10 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     object SerialNames {
         const val TYPE_JWS = "Jws"
         const val TYPE_JSON = "Json"
-        const val TYPE_DCAPI_UNSIGNED = "DcApiUnsigned"
-        const val TYPE_DCAPI_SIGNED = "DcApiSigned"
-        const val TYPE_DCAPI_MULTISIGNED = "DcApiMultiSigned"
-        const val TYPE_DCAPI_ISO_MDOC = "IsoMdoc"
+        const val TYPE_DCAPI_UNSIGNED = ExchangeProtocolIdentifier.OPENID4VP_V1_UNSIGNED
+        const val TYPE_DCAPI_SIGNED = ExchangeProtocolIdentifier.OPENID4VP_V1_SIGNED
+        const val TYPE_DCAPI_MULTISIGNED = ExchangeProtocolIdentifier.OPENID4VP_V1_MULTISIGNED
+        const val TYPE_DCAPI_ISO_MDOC = ExchangeProtocolIdentifier.ORG_ISO_MDOC
         const val TYPE_URI = "Uri"
 
         const val JWS = "jws"

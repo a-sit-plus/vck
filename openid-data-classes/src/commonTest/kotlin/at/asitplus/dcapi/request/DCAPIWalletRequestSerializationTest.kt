@@ -91,8 +91,9 @@ val DCAPIWalletRequestSerializationTest by testSuite {
     test("openid4vp multisigned request can be decoded from external dc api discriminator value") {
         val requestElement: JwsFlattened = testSignedOpenId4VpRequest.data.request.toJwsFlattened()
         val request: JwsGeneralTyped<AuthenticationRequestParameters> = listOf(requestElement).toJwsGeneral().typed()
-        val walletRequest = DCAPIWalletRequest.OpenId4VpMultiSigned(
-            request = OpenId4VpRequest.JwsGeneral(request),
+        val walletRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+            jwsTyped = request,
+            verified = false,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",
             callingOrigin = "https://wallet.a-sit.at"
@@ -100,11 +101,11 @@ val DCAPIWalletRequestSerializationTest by testSuite {
 
         // Encode, then tamper the protocol value to simulate what a real DC API platform payload looks like:
         // verify the decoder can find the class via the spec-defined discriminator string.
-        val canonical = joseCompliantSerializer.encodeToString<DCAPIWalletRequest>(walletRequest)
+        val canonical = joseCompliantSerializer.encodeToString<RequestParametersFrom.DcApiRequest>(walletRequest)
         // After the @SerialName fix the canonical form already contains the correct value, so decoding it
         // is equivalent to decoding a real platform payload.
-        val decoded = joseCompliantSerializer.decodeFromString<DCAPIWalletRequest>(canonical)
-        decoded.shouldBeInstanceOf<DCAPIWalletRequest.OpenId4VpMultiSigned>()
+        val decoded = joseCompliantSerializer.decodeFromString<RequestParametersFrom.DcApiRequest>(canonical)
+        decoded.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiMultiSigned>()
     }
 
     test("iso mdoc request round-trips") {
