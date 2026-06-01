@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
@@ -25,6 +26,7 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.signum.indispensable.requireSupported
 import at.asitplus.signum.indispensable.symmetric.AuthCapability
 import at.asitplus.signum.indispensable.symmetric.KeyType
@@ -54,7 +56,13 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PublishedKeyMaterial
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationStrategy
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
 import kotlin.io.encoding.Base64
 
 
@@ -684,6 +692,60 @@ class VerifyJwsObject(
             (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
         }?.toCryptoPublicKey()?.getOrNull()
 
+}
+
+/**
+ * Verifies a JWS object and additionally validates JAdES-B-B requirements,
+ */
+class VerifyJwsObjectJades(
+    val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+) : VerifyJwsObjectFun {
+
+    @Serializable
+    private data class JadesX5tO(
+        @SerialName("digAlg") val digAlg: String,
+        @SerialName("digVal") val digVal: String
+    )
+
+    override suspend operator fun invoke(jwsObject: JwsSigned<*>): KmmResult<Verifier.Success> = catching {
+        verifyJwsObject(jwsObject).getOrThrow()
+        validateX5tO(jwsObject).getOrThrow()
+        Verifier.Success
+    }
+
+    private fun validateX5tO(jwsObject: JwsSigned<*>): KmmResult<Unit> = catching {
+        val plainInputString = jwsObject.plainSignatureInput.decodeToString()
+        val headerB64 = plainInputString.substringBefore('.')
+
+        val headerJsonStr = headerB64.decodeToByteArray(Base64UrlStrict).decodeToString()
+
+        val rawHeaderJson = joseCompliantSerializer.parseToJsonElement(headerJsonStr).jsonObject
+        val x5tOElement = rawHeaderJson["x5t#o"] ?: return@catching
+        val x5tO = joseCompliantSerializer.decodeFromJsonElement<JadesX5tO>(x5tOElement)
+
+        val certChain = jwsObject.header.certificateChain
+            ?: throw IllegalArgumentException("JAdES Compliance Failure: 'x5t#o' parameter requires an 'x5c' certificate chain.")
+
+        val digestAlgorithm = when (x5tO.digAlg.lowercase()) {
+            "sha-256", "s256" -> throw IllegalArgumentException(
+                "JAdES Compliance Failure: 'sha-256' is forbidden in 'x5t#o'. Use 'x5t#256' instead."
+            )
+            "sha-384", "s384" -> Digest.SHA384
+            "sha-512", "s512" -> Digest.SHA512
+            else -> throw IllegalArgumentException(
+                "Unsupported JAdES digest algorithm: '${x5tO.digAlg}'. System supports 'sha-384' or 'sha-512'."
+            )
+        }
+
+        val certBytes = certChain.leaf.encodeToDer()
+        val calculatedHash = digestAlgorithm.digest(certBytes)
+
+        val calculatedB64Url = calculatedHash.encodeToString(Base64UrlStrict)
+
+        if (calculatedB64Url != x5tO.digVal) {
+            throw IllegalArgumentException("JAdES Integrity Violation: The calculated certificate thumbprint does not match 'x5t#o'.")
+        }
+    }
 }
 
 /**

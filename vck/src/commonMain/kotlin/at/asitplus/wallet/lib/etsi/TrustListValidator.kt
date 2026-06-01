@@ -12,7 +12,7 @@ import kotlin.time.Instant
 
 /**
  * Verifies if this certificate is directly signed and trusted by any anchor in the [trustStore].
- * Enforces strict timeliness, cryptographic integrity
+ * Enforces time validity, cryptographic integrity
  */
 fun X509Certificate.isTrustedBy(
     trustStore: CertificateChain,
@@ -33,7 +33,6 @@ fun X509Certificate.isTrustedBy(
 
 /**
  * Checks whether this certificate has expired at the specified [date].
- *
  * @return `true` if the certificate is expired, `false` otherwise.
  */
 fun X509Certificate.isExpired(date: Instant = Clock.System.now()): Boolean =
@@ -41,7 +40,6 @@ fun X509Certificate.isExpired(date: Instant = Clock.System.now()): Boolean =
 
 /**
  * Checks whether this certificate is not yet valid at the specified [date].
- *
  * @return `true` if the certificate is not yet valid, `false` otherwise.
  */
 fun X509Certificate.isNotYetValid(date: Instant = Clock.System.now()): Boolean =
