@@ -69,6 +69,7 @@ Release 6.0.0:
  - Matrix testing
  - Add `LoTEFilterService` for extracting trust list certificates from `LoTE` based on `ServiceTypeIdentifier`
  - Add signature and time validity checks of certificate against the trust list
+ - Add JAdES B-B validation (Used when fetching LoTE)
 
 Release 5.12.0:
  - W3C JWT VC:
