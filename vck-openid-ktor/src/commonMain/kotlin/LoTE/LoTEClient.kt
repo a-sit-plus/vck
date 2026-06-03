@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.etsi.ListOfTrustedEntities
 import at.asitplus.etsi.TrustListPayload
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -42,7 +43,7 @@ class LoTEClient(
     }
 
     /**
-     * Fetches the signed List of Trusted Entities (LoTE) from the European Commission acceptance registry.
+     * Fetches the signed List of Trusted Entities (LoTE)
      * Returns a [KmmResult] wrapping the [ListOfTrustedEntities] on success.
      */
     suspend fun fetchTrustList(url: String): KmmResult<ListOfTrustedEntities> = catching {
@@ -52,15 +53,12 @@ class LoTEClient(
         }
 
         val responseBody = response.bodyAsText()
-        val jws = JwsSigned.deserialize(
-            TrustListPayload.serializer(),
-            responseBody,
-            joseCompliantSerializer
-        ).getOrThrow()
 
-        verifyJwsObject(jws).getOrThrow()
+        val (jwsCompact, payload) = JwsCompact.parse<TrustListPayload>(responseBody).getOrThrow()
+
+        verifyJwsObject(jwsCompact).getOrThrow()
 
         Napier.i("Successfully validated Trust List signature from $url")
-        jws.payload.loTe
+        payload.loTe
     }
 }

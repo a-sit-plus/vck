@@ -695,7 +695,7 @@ class VerifyJwsObject(
 }
 
 /**
- * Verifies a JWS object and additionally validates JAdES-B-B requirements,
+ * Verifies a JWS object and additionally validates JAdES-B-B requirements.
  */
 class VerifyJwsObjectJades(
     val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
@@ -707,23 +707,20 @@ class VerifyJwsObjectJades(
         @SerialName("digVal") val digVal: String
     )
 
-    override suspend operator fun invoke(jwsObject: JwsSigned<*>): KmmResult<Verifier.Success> = catching {
-        verifyJwsObject(jwsObject).getOrThrow()
+    override suspend operator fun invoke(jwsObject: JwsCompact): KmmResult<Verifier.Success> = catching {
+        verifyJwsObject(jwsObject).getOrThrow() // This internally uses plainSignature and signatureInput
         validateX5tO(jwsObject).getOrThrow()
         Verifier.Success
     }
 
-    private fun validateX5tO(jwsObject: JwsSigned<*>): KmmResult<Unit> = catching {
-        val plainInputString = jwsObject.plainSignatureInput.decodeToString()
-        val headerB64 = plainInputString.substringBefore('.')
-
-        val headerJsonStr = headerB64.decodeToByteArray(Base64UrlStrict).decodeToString()
-
+    private fun validateX5tO(jwsObject: JwsCompact): KmmResult<Unit> = catching {
+        val headerJsonStr = jwsObject.plainProtectedHeader.decodeToString()
         val rawHeaderJson = joseCompliantSerializer.parseToJsonElement(headerJsonStr).jsonObject
+
         val x5tOElement = rawHeaderJson["x5t#o"] ?: return@catching
         val x5tO = joseCompliantSerializer.decodeFromJsonElement<JadesX5tO>(x5tOElement)
 
-        val certChain = jwsObject.header.certificateChain
+        val certChain = jwsObject.jwsHeader.certificateChain
             ?: throw IllegalArgumentException("JAdES Compliance Failure: 'x5t#o' parameter requires an 'x5c' certificate chain.")
 
         val digestAlgorithm = when (x5tO.digAlg.lowercase()) {
@@ -739,7 +736,6 @@ class VerifyJwsObjectJades(
 
         val certBytes = certChain.leaf.encodeToDer()
         val calculatedHash = digestAlgorithm.digest(certBytes)
-
         val calculatedB64Url = calculatedHash.encodeToString(Base64UrlStrict)
 
         if (calculatedB64Url != x5tO.digVal) {
