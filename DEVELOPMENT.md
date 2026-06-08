@@ -1,9 +1,47 @@
 # Development
 
-* Clone recursively or at least init and update the `conventions-vclib/gradle-conventions-plugin` submodule manually
-* Make sure you have the path to an Android SDK path properly set up in `local.properties`! Otherwise this project will fail to load.
+Setup, build, test, and publishing for VC-K. For what the code does see [README.md](README.md); for how it is
+organized and where to make changes see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-To use a composite build with [Signum](https://github.com/a-sit-plus/signum) clone that repository in a directory called `signum` beside this repository. See [settings.gradle.kts](./settings.gradle.kts) for details.
+## Prerequisites
+
+* JDK 17.
+* Clone recursively, or at least init and update the `conventions-vclib/gradle-conventions-plugin` submodule
+  manually — the build won't load without it.
+* Set the path to an Android SDK in `local.properties`, or the project will fail to load.
+
+Build conventions (source sets, targets, publishing) come from the composite build under `conventions-vclib/`
+(plugin id `at.asitplus.gradle.vclib-conventions`). Dependency versions are centralized in
+`gradle/libs.versions.toml` — **do not** add `kotlinx-serialization` or crypto dependencies manually; they are
+provided transitively via [Signum](https://github.com/a-sit-plus/signum) and the conventions plugin.
+
+## Signum composite build
+
+To develop against [Signum](https://github.com/a-sit-plus/signum) — e.g. to test changes there against VC-K
+without publishing — clone it into a directory called `signum` beside this repository; `settings.gradle.kts`
+then picks it up as a composite build automatically and it takes precedence over the published `signum` artifact
+pinned in `gradle/libs.versions.toml`. Remove `../signum` to go back to the published version.
+
+## Building & testing
+
+Tests run on **TestBalloon** (`val Name by testSuite { "..." { ... } }`) with **Kotest** matchers and property
+testing (`shouldBe`, `Arb`, `checkAll`). Put credential/serialization tests in `commonTest` so they exercise all
+platforms; use `jvmTest` for fast local feedback and JVM-only dependencies.
+
+Prefer module-scoped tasks — the root `compileKotlin` task is **ambiguous** in this multiplatform build (candidates
+`compileKotlinJvm`, `compileKotlinIosArm64`, …) and fails on name resolution before showing any source error.
+Start narrow, then widen to `:module:check` or `build` once the focused surface is clean.
+
+```bash
+./gradlew :vck:jvmTest                       # fastest feedback loop (also :vck-openid:jvmTest, :vck-openid-ktor:jvmTest)
+./gradlew :vck:compileKotlinJvm              # quick JVM compile for one module
+./gradlew :vck-openid:jvmTest --tests '*OpenId4VpSdJwtProtocolTest*'   # --tests filtering works with TestBalloon
+./gradlew :csc-data-classes:check            # full checks for a single module
+./gradlew build                              # build everything
+```
+
+IDE run configs live under `.run/` (Test VCK / OpenID / KTOR). Set the environment variable
+`disableAppleTargets=true` to skip iOS targets for faster local builds on non-Mac machines.
 
 ## Publishing
 
