@@ -25,7 +25,8 @@ Release 6.0.0 (unreleased):
      - Renamed `request` to `data` to reflect serial name
      - Introduced `SignedDataElement` `MultiSignedDataElement` wrapper to keep serialization shape
  - OpenID for Verifiable Credential Issuance:
-   - Change: Issuer Metadata Claim Definition path: Replace `List<String>` with `OpenId4VciClaimsPathPointer`
+   - Change: Add typed subclasses for `SupportedCredentialFormat` for every credential representation 
+   - Change: In `SupportedCredentialFormat` replace `List<String>` with `OpenId4VciClaimsPathPointer` for claim definitions
  - Deprecations:
    - Remove code deprecated in 5.12.0, e.g. `CredentialSubject` as base class for JWT VC
    - Deprecate `vckJsonSerializer`, should be replaced with `joseCompliantSerializer` (Signum)

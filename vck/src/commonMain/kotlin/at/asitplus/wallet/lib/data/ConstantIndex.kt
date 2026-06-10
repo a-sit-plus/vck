@@ -114,6 +114,7 @@ object ConstantIndex {
 
 }
 
+// To be replaced in an upcoming PR
 fun SdJwtTypeMetadata.toCredentialScheme() = object : ConstantIndex.CredentialScheme {
     override val schemaUri: String
         get() = "https://schema.example.com"
