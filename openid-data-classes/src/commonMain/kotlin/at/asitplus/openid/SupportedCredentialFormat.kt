@@ -1,8 +1,6 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -121,7 +119,7 @@ sealed interface SupportedCredentialFormat {
             scope: String,
             supportedBindingMethods: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
-            credentialDefinition: SupportedCredentialFormatW3cVcJwtCredentialDefinition,
+            credentialDefinition: VcJwtCredentialDefinition,
             vcJwtClaims: Set<ClaimDescription>,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormatW3cVcJwt(

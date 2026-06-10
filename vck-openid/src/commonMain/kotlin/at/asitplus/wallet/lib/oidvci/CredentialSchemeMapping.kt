@@ -10,7 +10,7 @@ import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtCredentialDefinition
+import at.asitplus.openid.VcJwtCredentialDefinition
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
@@ -75,7 +75,7 @@ fun CredentialScheme.toIsoMdocSupportedCredentialFormat(identifier: String): Pai
 fun CredentialScheme.toPlainJwtSupportedCredentialFormat(identifier: String): Pair<String, SupportedCredentialFormat> =
     identifier to SupportedCredentialFormat.forVcJwt(
         scope = identifier,
-        credentialDefinition = SupportedCredentialFormatW3cVcJwtCredentialDefinition(
+        credentialDefinition = VcJwtCredentialDefinition(
             types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
         ),
         supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
