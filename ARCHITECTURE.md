@@ -163,7 +163,8 @@ external API requires an adapter. Application-facing signing hooks usually flow 
 specific signing/verification function types.
 
 Use `KmmResult` for public multiplatform APIs that need Swift-friendly result handling. Avoid replacing it with
-Kotlin's inline `Result` in public APIs.
+Kotlin's inline `Result` in public APIs.  
+Use `catching` as a drop-in replacement for `runCatching` to produce a `KmmResult` instead of a `Result`. Note that `catching` intentionally does not catch exceptions that cannot be handled such as out-of-heap errors. Use `catchingUnwrapped` internally whenever a `Result` is sufficient, because it also allows fatal exceptions to bubble up, but does not incur the instantiation overhead of producing a `KmmResult` instance.
 
 ### Dependency Injection Style
 
