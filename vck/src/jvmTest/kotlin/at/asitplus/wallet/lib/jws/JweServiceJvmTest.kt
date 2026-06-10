@@ -17,9 +17,7 @@ import at.asitplus.signum.indispensable.symmetric.randomKey
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.EncryptionMethod
@@ -33,7 +31,7 @@ import com.nimbusds.jose.crypto.AESEncrypter
 import com.nimbusds.jose.crypto.ECDHDecrypter
 import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.jwk.JWK
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -41,7 +39,7 @@ import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 
 @OptIn(HazardousMaterials::class, SecretExposure::class)
-val JweServiceJvmTest by testSuite {
+val JweServiceJvmTest by matrixSuite {
 
     val ecdhesConfiguration = listOf(
         EcdhesConfiguration(SECP_256_R_1, listOf(A128CBC_HS256, A128GCM)),
@@ -49,7 +47,7 @@ val JweServiceJvmTest by testSuite {
         EcdhesConfiguration(SECP_521_R_1, listOf(A256CBC_HS512, A256GCM)),
     )
 
-    withData(ecdhesConfiguration) - { config ->
+    data(ecdhesConfiguration) - { config ->
         val ephemeralKey = EphemeralKey {
             ec {
                 curve = config.curve
@@ -66,7 +64,7 @@ val JweServiceJvmTest by testSuite {
         val decrypter = DecryptJwe(keyMaterial)
         val randomPayload = uuid4().toString()
 
-        withData(config.encryption) - { encryptionMethod ->
+        data(config.encryption) - { encryptionMethod ->
             "${config.curve}, ${encryptionMethod}" - {
                 "Encrypted object from ext. library can be decrypted with int. library" {
                     val libJweHeader =
@@ -111,7 +109,7 @@ val JweServiceJvmTest by testSuite {
         SymmetricConfiguration(A256GCMKW, listOf(A256CBC_HS512, A256GCM)),
     )
 
-    withData(symmetricConfiguration) - { config ->
+    data(symmetricConfiguration) - { config ->
         val ephemeralKey = runBlocking { (config.algorithm as JweAlgorithm.Symmetric).algorithm.randomKey() }
         require(ephemeralKey is SymmetricKey.Integrated)
 
@@ -122,7 +120,7 @@ val JweServiceJvmTest by testSuite {
         val decrypter = DecryptJweSymmetric(ephemeralKey)
         val randomPayload = uuid4().toString()
 
-        withData(config.encryption) - { encryptionMethod ->
+        data(config.encryption) - { encryptionMethod ->
             "${config.algorithm.identifier}, ${encryptionMethod}" - {
                 "Encrypted object from ext. library can be decrypted with int. library" {
                     val libJweHeader =

@@ -2,13 +2,12 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.dif.SubmissionRequirement
 import at.asitplus.dif.SubmissionRequirementRuleEnum
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 
-val all by testSuite {
+val all by matrixSuite {
     "from" - {
         val group = "A"
         val submissionRequirement = SubmissionRequirement(
@@ -401,7 +400,7 @@ val all by testSuite {
     }
 }
 
-val pick by testSuite {
+val pick by matrixSuite {
     "from" - {
         val group = "A"
 

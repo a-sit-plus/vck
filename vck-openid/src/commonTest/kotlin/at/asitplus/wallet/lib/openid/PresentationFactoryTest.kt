@@ -8,21 +8,20 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.encodeToHexString
 
-val PresentationFactoryTest by testSuite {
+val PresentationFactoryTest by matrixSuite {
 
-    withFixtureGenerator {
+    fixture {
         object {
             private val keyMaterial = EphemeralKeyWithoutCert()
             val presentationFactory = PresentationFactory(

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib
 
-import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
@@ -13,7 +13,7 @@ private val knownCompressedPayload: ByteArray =
     "789c8bf2f1745248494dcb492c49d5cfcc03d30a45a9e945a9c5c599f9790a25a9c5250a05899539f989297a0a51234235032313330b2b1b3b072717370f2f1fbf80a090b088a898b884a494b48cac9cbc82a292b28aaa9aba86a696b68eae9ebe81a191b189a999b985a595b58dad9d3d006eea6cc7"
         .hexToByteArray()
 
-val DefaultZlibServiceTest by testSuite {
+val DefaultZlibServiceTest by matrixSuite {
     "compress/decompress round-trip" {
         val service = DefaultZlibService()
         val input = ("Round-trip ".repeat(64) + "zlib regression").encodeToByteArray()

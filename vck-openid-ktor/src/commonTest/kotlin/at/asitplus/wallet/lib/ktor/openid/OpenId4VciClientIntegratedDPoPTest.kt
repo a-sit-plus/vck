@@ -5,7 +5,7 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -16,7 +16,6 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondIncludingDpopNonce
@@ -27,14 +26,12 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
-import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.fail
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -43,14 +40,13 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlin.time.Duration.Companion.minutes
 
 /**
  * Tests [OpenId4VciClient] against [CredentialIssuer] with our own internal [SimpleAuthorizationService].
  *
  * Makes sure that the [OpenId4VciClient] and [OAuth2KtorClient] use the DPoP nonce provided in success responses too.
  */
-val OpenId4VciClientIntegratedDPoPTest by testSuite {
+val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
 
     data class Context(
         val attributes: Map<String, String>,
@@ -62,7 +58,7 @@ val OpenId4VciClientIntegratedDPoPTest by testSuite {
         val client: OpenId4VciClient,
     )
 
-    withFixtureGenerator {
+    fixture {
         val scheme = EuPidSdJwtScheme
         val representation = SD_JWT
         val attributes = mapOf(EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME to uuid4().toString())

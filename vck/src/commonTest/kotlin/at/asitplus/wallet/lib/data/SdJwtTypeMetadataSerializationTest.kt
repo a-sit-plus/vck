@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegmentName
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegment
@@ -10,7 +10,6 @@ import at.asitplus.wallet.sdjwt.SelectiveDisclosureConstraints
 import at.asitplus.wallet.sdjwt.SvgTemplatePropertyColorScheme
 import at.asitplus.wallet.sdjwt.SvgTemplatePropertyContrast
 import at.asitplus.wallet.sdjwt.SvgTemplatePropertyImageOrientation
-import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -18,8 +17,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-@Suppress("unused")
-val SdJwtTypeMetadataDocumentSerializationTest by testSuite {
+val SdJwtTypeMetadataDocumentSerializationTest by matrixSuite {
     "Deserialization is correct for EHIC" {
         val input = """{
           "vct": "urn:eudi:ehic:1",

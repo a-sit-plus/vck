@@ -1,14 +1,13 @@
 package at.asitplus.wallet.sdjwt
 
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 
 @Suppress("unused")
-val SelectiveDisclosureConstraintsTest by testSuite {
+val SelectiveDisclosureConstraintsTest by matrixSuite {
     /**
      * just making sure that the enum names remain consistent with the specification
      */
@@ -19,11 +18,8 @@ val SelectiveDisclosureConstraintsTest by testSuite {
     }
 
     testSuite("serialization") {
-        withData(SelectiveDisclosureConstraints.entries) {
+        data(SelectiveDisclosureConstraints.entries) test {
             Json.encodeToJsonElement(it).jsonPrimitive.content shouldBe it.identifier
         }
     }
 }
-
-
-

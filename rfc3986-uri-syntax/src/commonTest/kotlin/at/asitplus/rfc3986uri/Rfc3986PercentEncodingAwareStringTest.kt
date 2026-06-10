@@ -1,16 +1,15 @@
 package at.asitplus.rfc3986uri
 
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.shouldBe
 import io.ktor.http.Url
 
 @Suppress("unused")
-val Rfc3986PercentEncodingAwareStringTest by testSuite {
+val Rfc3986PercentEncodingAwareStringTest by matrixSuite {
     testSuite("percent decoding equality") {
-        withData(
-            mapOf( // upper/lowercase
+        data((mapOf( // upper/lowercase
                 "aaaaaaaaAAAAAAAA" to "aaaAAaAAaaaAAaAA"
             ).mapValues {
                 it.key.chunked(2).joinToString("") {
@@ -27,14 +26,12 @@ val Rfc3986PercentEncodingAwareStringTest by testSuite {
                 it.key to it.value
             } + ('0'..'9').plus('a'..'z').plus('A'..'Z').associate {
                 it.toString() to (it.toString() to "%${it.code.toString(16)}")
-            }
-        ) {
+            }).values) test {
             Rfc3986UriQuery(it.first) shouldBe Rfc3986UriQuery(it.second)
         }
     }
     testSuite("case insensitivity") {
-        withData(
-            mapOf(
+        data(mapOf(
                 "%C3%A4" to "ä",
                 "%C3%B6" to "ö",
                 "%C3%BC" to "ü",
@@ -45,8 +42,7 @@ val Rfc3986PercentEncodingAwareStringTest by testSuite {
                 "%C2%A5" to "¥",
             ).mapValues {
                 it.key to it.value
-            }
-        ) {
+            }.values) test {
             Rfc3986PercentEncodingAwareString(it.first).decode() shouldBe it.second
         }
     }

@@ -1,12 +1,9 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import at.asitplus.testballoon.withDataSuites
+import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import at.asitplus.wallet.lib.extensions.toView
-import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
@@ -15,7 +12,7 @@ import kotlin.time.Instant
 import kotlin.time.toDuration
 
 
-val StatusListTokenSerializationTest by testSuite {
+val StatusListTokenSerializationTest by matrixSuite {
     val jsonStatusListTokenPayloadTestVectors =
         mapOf<String, Pair<String, Map<String, (StatusListTokenPayload) -> Unit>>>(
             Pair(
@@ -57,11 +54,10 @@ val StatusListTokenSerializationTest by testSuite {
         )
     "jwt status list token payload" - {
         "deserialization" - {
-            withDataSuites(
-                jsonStatusListTokenPayloadTestVectors
-            ) { (it, assertions) ->
+            data(jsonStatusListTokenPayloadTestVectors.toList(), nameFn = { _, (name, _) -> name }) - { (_, value) ->
+                val (it, assertions) = value
                 val value = Json.decodeFromString<StatusListTokenPayload>(it)
-                withData(assertions) {
+                data(assertions.toList(), nameFn = { _, (name, _) -> name }) test { (_, it) ->
                     it(value)
                 }
                 Json.decodeFromString<StatusListTokenPayload>(Json.encodeToString(value)) shouldBe value

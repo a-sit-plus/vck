@@ -8,8 +8,7 @@ import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -37,7 +36,7 @@ import at.asitplus.wallet.lib.rqes.helper.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
@@ -58,9 +57,9 @@ private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
     ).toBase64UrlJsonString()
 )
 
-val KeyBindingTests by testSuite {
+val KeyBindingTests by matrixSuite {
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
         val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
             agent.storeCredential(
@@ -188,7 +187,7 @@ val KeyBindingTests by testSuite {
                 }
             """.trimIndent()
         }
-    }) - {
+    } }) - {
 
         "KB-JWT contains transaction data" {
             val verifierOid4Vp = OpenId4VpVerifier(

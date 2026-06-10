@@ -4,7 +4,7 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -17,7 +17,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.AuthorityKeyIdentifier
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.maps.shouldHaveSize
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -25,7 +25,7 @@ import kotlinx.serialization.json.Json
 import kotlin.random.Random
 
 @Suppress("unused")
-val DCQLQueryProcedureAdapterTest by testSuite {
+val DCQLQueryProcedureAdapterTest by matrixSuite {
 
     "Match issuer path" {
         val issuerIdentifier = "https://issuer.example.com/"

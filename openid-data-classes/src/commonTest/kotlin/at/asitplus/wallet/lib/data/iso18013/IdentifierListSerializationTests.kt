@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data.iso18013
 
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
@@ -10,7 +10,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.Identifier
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfoKey
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -42,7 +42,7 @@ private const val statusTestVec =
 private const val identifierListTestVec =
     "A26B6964656E74696669657273A342ABCDA042AAAAA1646E6F7465A042CCCCA107A06F6167677265676174696F6E5F757269782F68747470733A2F2F6578616D706C652E636F6D2F6964656E7469666965726C697374732F6167677265676174696F6E"
 
-val IdentifierListTest by testSuite {
+val IdentifierListTest by matrixSuite {
     "status containing IdentifierListInfo can be serialized" {
         val expected = RevocationListInfo.StatusSurrogate(
             identifierList = IdentifierListInfo(

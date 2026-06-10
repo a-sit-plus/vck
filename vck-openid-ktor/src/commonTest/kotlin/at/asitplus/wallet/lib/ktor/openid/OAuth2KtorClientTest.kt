@@ -27,7 +27,7 @@ import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -40,7 +40,7 @@ import io.ktor.http.*
 import io.ktor.util.*
 import kotlin.time.Duration.Companion.minutes
 
-val OAuth2KtorClientTest by testSuite {
+val OAuth2KtorClientTest by matrixSuite {
 
     data class Context(
         val clientAuthKeyMaterial: KeyMaterial,

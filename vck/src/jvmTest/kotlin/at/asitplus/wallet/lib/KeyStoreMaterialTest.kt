@@ -2,19 +2,18 @@ package at.asitplus.wallet.lib
 
 import at.asitplus.signum.supreme.SignatureResult
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
-import de.infix.testBalloon.framework.core.testSuite
-import at.asitplus.testballoon.*
+import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.testballoon.matrix.*
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.types.shouldBeInstanceOf
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.KeyStore
 import java.security.Security
 
-val KeyStoreMaterialTest by testSuite {
+val KeyStoreMaterialTest by matrixSuite {
 
     val ks = KeyStore.getInstance("JKS")
     ks.load(KeyStoreMaterial::class.java.getResourceAsStream("/pw_bar_kpw_foo_alias_foo.jks"), "bar".toCharArray())

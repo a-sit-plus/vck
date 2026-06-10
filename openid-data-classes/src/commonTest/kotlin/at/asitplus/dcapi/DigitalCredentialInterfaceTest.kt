@@ -2,10 +2,10 @@ package at.asitplus.dcapi
 
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 
-val DigitalCredentialInterfaceTest by testSuite {
+val DigitalCredentialInterfaceTest by matrixSuite {
     test("openid4vp signed response round-trips") {
         val response = joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(
             DIGITAL_CREDENTIAL_INTERFACE_SIGNED_RESPONSE_JSON

@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.utils
 
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.nulls.shouldBeNull
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
-val DefaultMapStoreTest by testSuite {
+val DefaultMapStoreTest by matrixSuite {
 
     test("simple types are working") {
         with(

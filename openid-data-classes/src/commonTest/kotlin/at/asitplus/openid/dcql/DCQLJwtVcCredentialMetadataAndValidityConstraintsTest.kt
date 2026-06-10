@@ -10,9 +10,8 @@ package at.asitplus.openid.dcql
  */
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -24,7 +23,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
 @Suppress("unused")
-val DCQLJwtVcCredentialMetadataAndValidityConstraintsTest by testSuite {
+val DCQLJwtVcCredentialMetadataAndValidityConstraintsTest by matrixSuite {
     "specification" - {
         "serial names" {
             DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES shouldBe "type_values"

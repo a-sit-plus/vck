@@ -2,8 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -23,7 +22,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -37,9 +36,9 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 @Suppress("unused")
-val OpenId4VpIsoProtocolTest by testSuite {
+val OpenId4VpIsoProtocolTest by matrixSuite {
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val material = EphemeralKeyWithoutCert()
         val agent = HolderAgent(material).also {
             val issuerAgent = IssuerAgent(
@@ -87,7 +86,7 @@ val OpenId4VpIsoProtocolTest by testSuite {
                 randomSource = RandomSource.Default,
             )
         }
-    }) - {
+    } }) - {
         "test with Fragment for mDL" {
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(

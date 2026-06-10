@@ -6,11 +6,9 @@ import at.asitplus.iso.IssuerSignedItem.Companion.PROP_ELEMENT_VALUE
 import at.asitplus.iso.IssuerSignedItem.Companion.PROP_RANDOM
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
+import at.asitplus.testballoon.matrix.*
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -32,7 +30,7 @@ import kotlin.random.Random
 import kotlin.random.nextULong
 import kotlin.time.Clock
 
-val IssuerSignedListSerializerTest by testSuite {
+val IssuerSignedListSerializerTest by matrixSuite {
 
     "deserializes elementValue from generic obor container once elementIdentifier is known" {
         val namespace = uuid4().toString()
@@ -55,9 +53,7 @@ val IssuerSignedListSerializerTest by testSuite {
     }
 
     "can deserialize any some data types in elementValue even when no custom deserializer is given" - {
-        withData(
-            nameFn = { "${it::class.simpleName ?: it.toString()} ($it)" },
-            listOf(
+        data(listOf(
                 Clock.System.now(),
                 Random.nextLong(),
                 uuid4().toString(),
@@ -65,8 +61,7 @@ val IssuerSignedListSerializerTest by testSuite {
                 false,
                 Random.nextBytes(16),
                 // Ints are not working, see test case below: Random.nextInt(),
-            )
-        ) {
+            ), nameFn = { _, it -> "${it::class.simpleName ?: it.toString()} ($it)" }) test {
             val namespace = uuid4().toString()
             val elementIdentifier = uuid4().toString()
 
@@ -86,12 +81,9 @@ val IssuerSignedListSerializerTest by testSuite {
     }
 
     "can't deserialize some data types in elementValue when no custom deserializer is given" - {
-        withData(
-            nameFn = { it::class.simpleName ?: it.toString() },
-            listOf(
+        data(listOf(
                 Random.nextInt(),
-            )
-        ) {
+            ), nameFn = { _, it -> it::class.simpleName ?: it.toString() }) test {
             val namespace = uuid4().toString()
             val elementIdentifier = uuid4().toString()
 

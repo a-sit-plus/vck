@@ -17,11 +17,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -32,9 +31,9 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.json.JsonPrimitive
 
-val VerifiablePresentationFactoryTest by testSuite {
+val VerifiablePresentationFactoryTest by matrixSuite {
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
             identifier = "https://issuer.example.com/".toUri(),
@@ -70,7 +69,7 @@ val VerifiablePresentationFactoryTest by testSuite {
             val sdJwtCredential = sdJwtCredential
             val isoCredential = isoCredential
         }
-    }) - {
+    } }) - {
 
         "sd-jwt createVerifiablePresentation uses disclosedAttributes (collection)" {
             val disclosedAttributes = listOf(

@@ -1,29 +1,27 @@
 package at.asitplus.rfc6749OAuth2AuthorizationFramework
 
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowWithMessage
 
 @Suppress("unused")
-val ResponseTypeNameCharTest by testSuite {
+val ResponseTypeNameCharTest by matrixSuite {
     "_ is allowed" {
         shouldNotThrowAny {
             ResponseTypeNameChar('_')
         }
     }
     "ALPHA is allowed" - {
-        withData(('a'..'z').toList() + ('A'..'Z').toList()) {
+        data(('a'..'z').toList() + ('A'..'Z').toList()) test {
             shouldNotThrowAny {
                 ResponseTypeNameChar(it)
             }
         }
     }
     "DIGIT is allowed" - {
-        withData(('0'..'9').toList()) {
+        data(('0'..'9').toList()) test {
             shouldNotThrowAny {
                 ResponseTypeNameChar(it)
             }

@@ -1,17 +1,16 @@
 package at.asitplus.etsi
 
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Instant
 
-val EtsiInstantSerializerTest by testSuite{
+val EtsiInstantSerializerTest by matrixSuite{
     testSuite("deserialization success") {
-        withData(
-            mapOf(
+        data((mapOf(
                 "2023-01-01T00:00:00Z" to Instant.fromEpochSeconds(1672531200),
                 "2023-01-02T12:34:56Z" to Instant.fromEpochSeconds(1672662896),
                 "2020-02-29T23:59:59Z" to Instant.fromEpochSeconds(1583020799),
@@ -24,8 +23,7 @@ val EtsiInstantSerializerTest by testSuite{
                 "1970-01-01T00:00:00Z" to Instant.fromEpochSeconds(0),
             ).mapValues {
                 Json.encodeToString(it.key) to it.value
-            }
-        ) {(string, expected) ->
+            }).values) test {(string, expected) ->
             Json.decodeFromString(
                 EtsiInstantSerializer(),
                 string
@@ -34,14 +32,12 @@ val EtsiInstantSerializerTest by testSuite{
     }
 
     testSuite("deserialization failure because of second fractions") {
-        withData(
-            listOf(
+        data((listOf(
                 "2023-01-01T00:00:00.00Z",
                 "2023-01-02T12:34:56.01Z",
             ).associateWith {
                 Json.encodeToString(it)
-            }
-        ) {string ->
+            }).values) test {string ->
             shouldThrow<IllegalArgumentException> {
                 Json.decodeFromString(
                     EtsiInstantSerializer(),
@@ -52,8 +48,7 @@ val EtsiInstantSerializerTest by testSuite{
     }
 
     testSuite("deserialization failure because of timezone") {
-        withData(
-            listOf(
+        data((listOf(
                 "2023-01-01T00:00:00.00",
                 "2023-01-01T00:00:00.00+00:00",
                 "2023-01-01T00:00:00.00+01:00",
@@ -62,8 +57,7 @@ val EtsiInstantSerializerTest by testSuite{
                 "2023-01-01T00:00:00.00-04:30",
             ).associateWith {
                 Json.encodeToString(it)
-            }
-        ) {string ->
+            }).values) test {string ->
             shouldThrow<IllegalArgumentException> {
                 Json.decodeFromString(
                     EtsiInstantSerializer(),
@@ -74,8 +68,7 @@ val EtsiInstantSerializerTest by testSuite{
     }
 
     testSuite("serialization success") {
-        withData(
-            mapOf(
+        data((mapOf(
                 "2023-01-01T00:00:00Z" to Instant.fromEpochSeconds(1672531200),
                 "2023-01-02T12:34:56Z" to Instant.fromEpochSeconds(1672662896),
                 "2020-02-29T23:59:59Z" to Instant.fromEpochSeconds(1583020799),
@@ -88,8 +81,7 @@ val EtsiInstantSerializerTest by testSuite{
                 "1970-01-01T00:00:00Z" to Instant.fromEpochSeconds(0),
             ).mapValues {
                 it.value to Json.encodeToString(it.key)
-            }
-        ) {(instant, expected) ->
+            }).values) test {(instant, expected) ->
             Json.encodeToString(
                 EtsiInstantSerializer(),
                 instant
@@ -98,13 +90,11 @@ val EtsiInstantSerializerTest by testSuite{
     }
 
     testSuite("serialization failure because of second fractions") {
-        withData(
-            listOf(
+        data((listOf(
                 Instant.fromEpochSeconds(1672531200) + 1.nanoseconds,
             ).associateBy {
                 it.toString()
-            }
-        ) {instant ->
+            }).values) test {instant ->
             shouldThrow<IllegalArgumentException> {
                 Json.encodeToString(
                     EtsiInstantSerializer(),

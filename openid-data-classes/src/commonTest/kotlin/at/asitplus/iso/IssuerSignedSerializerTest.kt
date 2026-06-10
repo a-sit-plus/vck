@@ -2,8 +2,8 @@ package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base16.Base16
@@ -11,7 +11,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.decodeFromByteArray
 
-val IssuerSignedSerializerTest by testSuite {
+val IssuerSignedSerializerTest by matrixSuite {
 
     "deserialize from EUDI Ref Impl (2024-10)" {
         CborCredentialSerializer.register(mapOf("birth_date" to LocalDate.serializer()), "eu.europa.ec.eudi.pid.1")

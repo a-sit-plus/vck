@@ -1,8 +1,6 @@
-import at.asitplus.testballoon.FreeSpec
-
+import at.asitplus.testballoon.matrix.ExecutionMode
+import at.asitplus.testballoon.matrix.MatrixTestDefaults
 import de.infix.testBalloon.framework.core.TestSession
-import de.infix.testBalloon.framework.core.invocation
-import de.infix.testBalloon.framework.core.testScope
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 
@@ -10,8 +8,12 @@ import io.github.aakira.napier.Napier
 expect val testNameLengths: Pair<Int, Int>
 
 class TestConfig : TestSession(
-    testConfig = DefaultConfiguration.invocation(de.infix.testBalloon.framework.core.TestConfig.Invocation.Concurrent)
-        .testScope(isEnabled = false)
+    testConfig = DefaultConfiguration.apply {
+        MatrixTestDefaults {
+            execution = ExecutionMode.Concurrent(8)
+            defaultTestNameMaxLength = testNameLengths.first
+        }
+    }
 ) {
     init {
         Napier.takeLogarithm()
@@ -19,7 +21,5 @@ class TestConfig : TestSession(
         at.asitplus.wallet.eupid.Initializer.initWithVCK()
         at.asitplus.wallet.eupidsdjwt.Initializer.initWithVCK()
         at.asitplus.wallet.mdl.Initializer.initWithVCK()
-        FreeSpec.defaultTestNameMaxLength = testNameLengths.first //work around Android test name length limit
-        FreeSpec.defaultDisplayNameMaxLength = testNameLengths.second //work around Android test name length limit
     }
 }

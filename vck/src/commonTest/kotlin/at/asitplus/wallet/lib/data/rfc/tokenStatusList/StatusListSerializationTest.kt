@@ -1,12 +1,10 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.toView
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -16,10 +14,9 @@ import kotlinx.serialization.encodeToHexString
 import kotlinx.serialization.json.Json
 
 @OptIn(ExperimentalSerializationApi::class)
-val StatusListSerializationTest by testSuite {
+val StatusListSerializationTest by matrixSuite {
     "json" - {
-        withData(
-            mapOf(
+        data((mapOf(
                 "one bit status codes" to Pair(
                     """{ "bits": 1, "lst": "eNrbuRgAAhcBXQ" }""",
                     listOf(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1).toChunkedTokenStatus(1)
@@ -36,8 +33,7 @@ val StatusListSerializationTest by testSuite {
                     """{ "bits": 8, "lst": "eNrbuRgAAhcBXQ" }""",
                     listOf(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1).toChunkedTokenStatus(8)
                 ),
-            )
-        ) { (jsonString, expectedStatusList) ->
+            )).values) test { (jsonString, expectedStatusList) ->
             val statusList = Json.decodeFromString<StatusList>(jsonString)
 
             expectedStatusList.forEachIndexed { index, status ->
@@ -68,8 +64,7 @@ val StatusListSerializationTest by testSuite {
         Json.decodeFromString<StatusList>(encoded) shouldBe statusList
     }
     "cbor" - {
-        withData(
-            mapOf(
+        data((mapOf(
                 "one bit status codes" to Pair(
                     """a2646269747301636c73744a78dadbb918000217015d""",
                     listOf(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1).toChunkedTokenStatus(1)
@@ -86,8 +81,7 @@ val StatusListSerializationTest by testSuite {
                     """A2646269747308636C73744A78DADBB918000217015D""",
                     listOf(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1).toChunkedTokenStatus(8)
                 ),
-            )
-        ) { (cborString, expectedStatusList) ->
+            )).values) test { (cborString, expectedStatusList) ->
             val statusList = coseCompliantSerializer.decodeFromHexString<StatusList>(cborString)
             expectedStatusList.forEachIndexed { index, status ->
                 statusList.toView()[index.toULong()] shouldBe status

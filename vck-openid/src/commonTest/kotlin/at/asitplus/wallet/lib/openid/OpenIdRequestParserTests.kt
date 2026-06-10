@@ -6,10 +6,9 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsFlattened
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -19,7 +18,7 @@ import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 
 
-val OpenIdRequestParserTests by testSuite {
+val OpenIdRequestParserTests by matrixSuite {
 
     // https://verifier.funke.wwwallet.org/verifier/public/definitions/presentation-request/PID
     val jws = """
@@ -92,7 +91,7 @@ val OpenIdRequestParserTests by testSuite {
 
     val authnRequestSerialized = joseCompliantSerializer.encodeToString(authnRequest)
 
-    withFixtureGenerator {
+    fixture {
         RequestParser()
     } - {
 
@@ -222,7 +221,7 @@ val OpenIdRequestParserTests by testSuite {
         }
     }
 
-    withFixtureGenerator {
+    fixture {
         RequestParser(
             remoteResourceRetriever = {
                 if (it.url == "https://client.example.org/req/1234567890") authnRequestSerialized else null
@@ -247,7 +246,7 @@ val OpenIdRequestParserTests by testSuite {
         }
 
     }
-    withFixtureGenerator {
+    fixture {
         RequestParser(
             remoteResourceRetriever = {
                 if (it.url == "https://client.example.org/req/1234567890") jws else null

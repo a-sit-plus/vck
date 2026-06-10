@@ -1,7 +1,7 @@
 package at.asitplus.rfc3986uri
 
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -9,10 +9,9 @@ import io.ktor.http.Url
 import io.ktor.http.authority
 
 @Suppress("unused")
-val Rfc3986UniformResourceIdentifierTest by testSuite {
+val Rfc3986UniformResourceIdentifierTest by matrixSuite {
     testSuite("parsing success") {
-        withData(
-            mapOf(
+        data(mapOf(
                 "https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html#claim-metadata" to listOf(
                     "https",
                     "www.ietf.org",
@@ -141,8 +140,7 @@ val Rfc3986UniformResourceIdentifierTest by testSuite {
                 ),
             ).mapValues {
                 it.key to it.value
-            }
-        ) { (uri, data) ->
+            }.values) test { (uri, data) ->
             shouldNotThrowAny {
                 val uri = Rfc3986UniformResourceIdentifier(uri)
                 uri.schemeName.toString() shouldBe data[0]
@@ -210,22 +208,22 @@ val Rfc3986UniformResourceIdentifierTest by testSuite {
     }
 
     testSuite("string round-trips") {
-        withData(
+        data(listOf(
             "https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html#claim-metadata",
-            "https://user:password@www.ietf.org:8080?name=draft#claim-metadata",
-            "https://user:password@127.0.0.1:8080?name=draft#claim-metadata",
-            "https://user:password@[aaAA::]:8080?name=draft#claim-metadata",
             "http://a/b/c/d;p?q",
             "http://www.ics.uci.edu/pub/ietf/uri/#Related",
             "http://www.w3.org/Addressing/",
             "ftp://foo.example.com/rfc/",
             "ftp://ftp.is.co.za/rfc/rfc1808.txt",
             "http://www.ietf.org/rfc/rfc2396.txt",
-            "ldap://[2001:db8::7]/c=GB?objectClass?one",
             "mailto:John.Doe@example.com",
             "telnet://192.0.2.16:80/",
             "urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
-        ) { uri ->
+            "https://user:password@www.ietf.org:8080?name=draft#claim-metadata",
+            "https://user:password@127.0.0.1:8080?name=draft#claim-metadata",
+            "https://user:password@[aaAA::]:8080?name=draft#claim-metadata",
+            "ldap://[2001:db8::7]/c=GB?objectClass?one",
+        )) test { uri ->
             Rfc3986UniformResourceIdentifier(uri).string shouldBe uri
         }
     }

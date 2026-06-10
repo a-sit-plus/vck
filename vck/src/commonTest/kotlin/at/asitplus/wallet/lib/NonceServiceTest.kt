@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib
 
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeEmpty
 
-val NonceServiceTest by testSuite {
+val NonceServiceTest by matrixSuite {
 
     test("nonce lifecycle is tracked") {
         val service = DefaultNonceService()

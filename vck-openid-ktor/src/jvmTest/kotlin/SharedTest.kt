@@ -1,5 +1,5 @@
 import at.asitplus.test.Target
-import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 
-val `Shared Andoid JVM Test` by testSuite { "should work on ${Target.current}" { } }
+val `Shared Andoid JVM Test` by matrixSuite { "should work on ${Target.current}" { } }

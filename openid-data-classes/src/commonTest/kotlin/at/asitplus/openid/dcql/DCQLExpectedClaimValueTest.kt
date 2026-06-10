@@ -1,29 +1,22 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
 
-val DCQLExpectedClaimValueTest by testSuite {
+val DCQLExpectedClaimValueTest by matrixSuite {
     "serialization" - {
-        withData(
-            "-1", "0", "1", "false", "true", "other"
-        ) {
+        data(listOf("-1", "0", "1", "false", "true", "other")) test {
             Json.decodeFromString<DCQLExpectedClaimValue>(Json.encodeToString(it))
                 .shouldBeInstanceOf<DCQLExpectedClaimValue.StringValue>()
         }
 
-        withData(
-            "0", "1", "-1"
-        ) {
+        data(listOf("0", "1", "-1")) test {
             Json.decodeFromString<DCQLExpectedClaimValue>(it).shouldBeInstanceOf<DCQLExpectedClaimValue.IntegerValue>()
         }
 
-        withData(
-            "true", "false"
-        ) {
+        data(listOf("true", "false")) test {
             Json.decodeFromString<DCQLExpectedClaimValue>(it).shouldBeInstanceOf<DCQLExpectedClaimValue.BooleanValue>()
         }
     }

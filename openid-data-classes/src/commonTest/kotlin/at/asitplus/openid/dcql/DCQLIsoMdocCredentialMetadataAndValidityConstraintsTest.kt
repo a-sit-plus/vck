@@ -12,9 +12,8 @@ package at.asitplus.openid.dcql
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeIn
@@ -24,7 +23,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
 @Suppress("unused")
-val DCQLIsoMdocCredentialMetadataAndValidityConstraintsTest by testSuite {
+val DCQLIsoMdocCredentialMetadataAndValidityConstraintsTest by matrixSuite {
     "specification" - {
         "serial names" {
             DCQLIsoMdocCredentialMetadataAndValidityConstraints.SerialNames.DOCTYPE_VALUE shouldBe "doctype_value"

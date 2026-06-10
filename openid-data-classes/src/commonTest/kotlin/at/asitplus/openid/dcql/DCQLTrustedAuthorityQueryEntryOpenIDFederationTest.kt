@@ -1,9 +1,8 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -14,14 +13,12 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-val DCQLTrustedAuthorityQueryEntryOpenIDFederationTest by testSuite {
+val DCQLTrustedAuthorityQueryEntryOpenIDFederationTest by matrixSuite {
     val serializer = DCQLTrustedAuthorityQueryEntryOpenIDFederation.serializer()
     "given unserialized version when serializing base type works" - {
-        withData(
-            DCQLTrustedAuthorityQueryEntryOpenIDFederation(
+        data(listOf(DCQLTrustedAuthorityQueryEntryOpenIDFederation(
                 values = nonEmptyListOf("https://trustanchor.example.com")
-            ),
-        ) {
+            ))) test {
             val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
             val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
             pseudoSerialized shouldBe pseudoSerializedBase
@@ -33,9 +30,7 @@ val DCQLTrustedAuthorityQueryEntryOpenIDFederationTest by testSuite {
         }
     }
     "given serialized version when deserializing base type works" - {
-        withData(
-            """{ "type": "openid_federation", "values": ["https://trustanchor.example.com"] }""",
-        ) { string ->
+        data(listOf("""{ "type": "openid_federation", "values": ["https://trustanchor.example.com"] }""")) test { string ->
             val deserialized = Json.decodeFromString(serializer, string)
             Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string) shouldBe deserialized
 

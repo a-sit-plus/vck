@@ -2,11 +2,11 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.ConstraintFilter
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.matthewnelson.encoding.base16.Base16
@@ -15,9 +15,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 
-val PresentationExchangeInputEvaluatorTest by testSuite {
+val PresentationExchangeInputEvaluatorTest by matrixSuite {
 
-    withFixtureGenerator {
+    fixture {
         object {
             val elementIdentifier = "p" + uuid4().bytes.encodeToString(Base16)
             val elementValue = uuid4().bytes.encodeToString(Base16)

@@ -15,8 +15,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -36,7 +35,7 @@ import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -52,9 +51,9 @@ import io.ktor.http.*
 import kotlinx.serialization.json.JsonElement
 
 @Suppress("unused")
-val RedirectUriClientTest by testSuite {
+val RedirectUriClientTest by matrixSuite {
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
         val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
             agent.storeCredential(
@@ -85,7 +84,7 @@ val RedirectUriClientTest by testSuite {
                 clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             )
         }
-    }) - {
+    } }) - {
 
         "test with Fragment" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(

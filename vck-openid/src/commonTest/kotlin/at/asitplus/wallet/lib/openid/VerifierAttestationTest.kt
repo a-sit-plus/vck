@@ -18,8 +18,7 @@ import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.typed
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -38,7 +37,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -49,9 +48,9 @@ import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
-val VerifierAttestationTest by testSuite {
+val VerifierAttestationTest by matrixSuite {
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
         val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
             agent.storeCredential(
@@ -79,7 +78,7 @@ val VerifierAttestationTest by testSuite {
                 randomSource = RandomSource.Default,
             )
         }
-    }) - {
+    } }) - {
 
         "test with request object and Attestation JWT" {
             val sprsKeyMaterial = EphemeralKeyWithoutCert()

@@ -1,32 +1,23 @@
 package at.asitplus.rfc3986uri
 
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 
 @Suppress("unused")
-val Rfc3986AuthorityHostTest by testSuite {
+val Rfc3986AuthorityHostTest by matrixSuite {
     testSuite("case insensitivity") {
-        withData(
-            mapOf(
+        data(mapOf(
                 "v6 simple" to Pair("aaAA::", "aAaA::"),
-            )
-        ) {
+            ).values) test {
             Rfc3986AuthorityHost("[${it.first}]") shouldBe Rfc3986AuthorityHost("[${it.second}]")
         }
     }
 
     testSuite("parsing success") {
-        withData(
-            "www.ietf.org",
-            "[aaAA::]",
-            "127.0.0.1",
-            "v1.a",
-            "[v1.a]",
-            "[vff.test:data]",
-        ) {it ->
+        data(listOf("www.ietf.org", "[aaAA::]", "127.0.0.1", "v1.a", "[v1.a]", "[vff.test:data]")) test {it ->
             shouldNotThrowAny {
                 Rfc3986AuthorityHost(it)
             }
@@ -79,12 +70,8 @@ val Rfc3986AuthorityHostTest by testSuite {
     }
 
     testSuite("IPvFuture round-trips through URI") {
-        withData(
-            "http://[v1.foo]/path",
-            "http://[vff.test:data]/",
-        ) { uri ->
+        data(listOf("http://[v1.foo]/path", "http://[vff.test:data]/")) test { uri ->
             Rfc3986UniformResourceIdentifier(uri).string shouldBe uri
         }
     }
 }
-

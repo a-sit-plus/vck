@@ -1,12 +1,11 @@
 package at.asitplus.wallet.lib.extensions
 
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import kotlin.random.Random
 
@@ -19,7 +18,7 @@ private class FakeZlibService(
     override fun decompress(input: ByteArray) = decompressResult
 }
 
-val StatusListCompressionTest by testSuite {
+val StatusListCompressionTest by matrixSuite {
     "StatusList.toView" - {
         "uses decompressed bytes when available" {
             val compressed = Random.nextBytes(16)

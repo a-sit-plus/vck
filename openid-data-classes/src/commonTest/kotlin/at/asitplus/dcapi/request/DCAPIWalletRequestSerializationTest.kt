@@ -12,7 +12,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsFlattened
 import at.asitplus.signum.indispensable.josef.toJwsGeneral
 import at.asitplus.signum.indispensable.josef.typed
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
@@ -21,7 +21,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 private typealias IsoMdocRequestParametersFrom =
     RequestParametersFrom<RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper>
 
-val DCAPIWalletRequestSerializationTest by testSuite {
+val DCAPIWalletRequestSerializationTest by matrixSuite {
     test("openid4vp unsigned request round-trips") {
         val parameters = testUnsignedOpenId4VpRequest.data
         val request = RequestParametersFrom.OpenId4VpDcApiUnsigned(

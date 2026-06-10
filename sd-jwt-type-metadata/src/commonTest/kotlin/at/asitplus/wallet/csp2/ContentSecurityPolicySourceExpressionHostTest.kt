@@ -4,13 +4,13 @@ import at.asitplus.csp2.ContentSecurityPolicySourceExpressionHash
 import at.asitplus.csp2.ContentSecurityPolicySourceExpressionHashAlgorithm
 import at.asitplus.csp2.ContentSecurityPolicySourceExpressionHost
 import at.asitplus.rfc3986uri.Rfc3986UriSchemeName
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 @Suppress("unused")
-val ContentSecurityPolicySourceExpressionHostTest by testSuite {
+val ContentSecurityPolicySourceExpressionHostTest by matrixSuite {
     /**
      * just making sure that the enum names remain consistent with the specification
      */

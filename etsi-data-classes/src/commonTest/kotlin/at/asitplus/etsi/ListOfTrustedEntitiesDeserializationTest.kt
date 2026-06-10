@@ -1,10 +1,10 @@
 package at.asitplus.etsi
 
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import kotlinx.serialization.json.Json
 
-val ListOfTrustedEntitiesDeserializationTest by testSuite {
+val ListOfTrustedEntitiesDeserializationTest by matrixSuite {
     val pidProvidersOriginal = """
           {
             "ListAndSchemeInformation": {
@@ -7024,12 +7024,12 @@ val ListOfTrustedEntitiesDeserializationTest by testSuite {
     """.trimIndent()
 
     testSuite("decode 1") {
-        withData(
+        data(mapOf(
             "pidProviders" to pidProvidersFixed,
             "walletProviders" to walletProvidersFixed,
             "wrpacProviders" to wrpacProvidersFixed,
             "mdlProviders" to mdlProvidersFixed,
-        ) {
+        ).values) test {
             Json.decodeFromString<ListOfTrustedEntities>(it)
         }
     }

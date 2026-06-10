@@ -3,8 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -16,12 +15,12 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 
-val JarmTest by testSuite {
-    withFixtureGenerator(suspend {
+val JarmTest by matrixSuite {
+    fixture({ kotlinx.coroutines.runBlocking {
         val holderKeyMaterial = EphemeralKeyWithoutCert()
         val holderAgent = HolderAgent(holderKeyMaterial).also {
             it.storeCredential(
@@ -51,7 +50,7 @@ val JarmTest by testSuite {
                 clientIdScheme = ClientIdScheme.RedirectUri(clientId)
             )
         }
-    }) - {
+    } }) - {
 
         /**
          * Incorrect behaviour arises when the [RelyingPartyMetadata.jsonWebKeySet] cannot be retrieved.

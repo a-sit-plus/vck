@@ -48,7 +48,7 @@ import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -65,7 +65,7 @@ import kotlin.time.Duration.Companion.minutes
  * Tests [OpenId4VciClient] against [CredentialIssuer] that uses [RemoteOAuth2AuthorizationServerAdapter]
  * to simulate an external OAuth2.0 Authorization Server (which is still our own internal [SimpleAuthorizationService]).
  */
-val OpenId4VciClientExternalAuthorizationServerTest by testSuite {
+val OpenId4VciClientExternalAuthorizationServerTest by matrixSuite {
 
     data class Context(
         val credentialKeyMaterial: KeyMaterial,

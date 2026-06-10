@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib
 
-import at.asitplus.testballoon.checkAll
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -17,9 +15,9 @@ import okio.deflate
 import okio.inflate
 import kotlin.random.Random
 
-val DefaultZlibServiceOkioInteropTest by testSuite {
+val DefaultZlibServiceOkioInteropTest by matrixSuite {
     "ours compressed data inflates with okio" - {
-        checkAll(iterations = 128, Arb.byteArray(Arb.positiveInt(1024), Arb.byte())) { input ->
+        property(Arb.byteArray(Arb.positiveInt(1024), Arb.byte()), iterations = 128) test { input ->
             val service = DefaultZlibService()
 
             val oursCompressed = service.compress(input).shouldNotBeNull()
@@ -28,7 +26,7 @@ val DefaultZlibServiceOkioInteropTest by testSuite {
     }
 
     "okio compressed data inflates with our implementation" - {
-        checkAll(iterations = 128, Arb.byteArray(Arb.positiveInt(1024), Arb.byte())) { input ->
+        property(Arb.byteArray(Arb.positiveInt(1024), Arb.byte()), iterations = 128) test { input ->
             val service = DefaultZlibService()
 
             val okioCompressed = okioDeflate(input)
@@ -37,7 +35,7 @@ val DefaultZlibServiceOkioInteropTest by testSuite {
     }
 
     "both parsers decode each other's zlib streams" - {
-        checkAll(iterations = 128, Arb.byteArray(Arb.positiveInt(1024), Arb.byte())) { input ->
+        property(Arb.byteArray(Arb.positiveInt(1024), Arb.byte()), iterations = 128) test { input ->
             val service = DefaultZlibService()
 
             val oursCompressed = service.compress(input).shouldNotBeNull()

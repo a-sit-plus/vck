@@ -14,8 +14,7 @@ import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.authlete.cbor.CBORByteArray
 import com.authlete.cbor.CBORDecoder
@@ -29,7 +28,7 @@ import com.authlete.cose.COSEVerifier
 import com.authlete.cose.SigStructureBuilder
 import com.authlete.cose.constants.COSEAlgorithms
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
@@ -40,7 +39,7 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 
-val CoseServiceJvmTest by testSuite {
+val CoseServiceJvmTest by matrixSuite {
 
     val configurations: List<Pair<EphemeralKey, X509SignatureAlgorithm>> =
         listOf(

@@ -1,11 +1,11 @@
 package at.asitplus.dcapi.issuance
 
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 
-val DigitalCredentialCreationOptionsTest by testSuite {
+val DigitalCredentialCreationOptionsTest by matrixSuite {
     test("https://digital-credentials.dev/dmv JSON parses") {
         val options = joseCompliantSerializer.decodeFromString<DigitalCredentialCreationOptions>(DIGITAL_CREDENTIALS_DEV_JSON)
         options.requests.size shouldBe 1

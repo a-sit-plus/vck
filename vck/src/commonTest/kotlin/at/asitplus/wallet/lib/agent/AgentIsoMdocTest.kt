@@ -20,8 +20,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -39,7 +38,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusVal
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -49,10 +48,10 @@ import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
 
-val AgentIsoMdocTest by testSuite {
+val AgentIsoMdocTest by matrixSuite {
 
     for (mode in IsoRevocationMode.entries) {
-        withFixtureGenerator(suspend { createIsoMdocFixture(mode) }) - {
+        fixture({ kotlinx.coroutines.runBlocking { createIsoMdocFixture(mode) } }) - {
             "presex: simple walk-through success${mode.testNameSuffix}" {
                 val vp = it.createPresexDeviceResponse(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
 

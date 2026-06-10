@@ -2,10 +2,9 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives
 
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -16,16 +15,14 @@ import kotlinx.serialization.encodeToByteArray
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
-val PositiveDurationFormatSerializerTest by testSuite {
+val PositiveDurationFormatSerializerTest by matrixSuite {
     "JSON serialization keeps ttl as a number" - {
-        withData(
-            mapOf(
+        data((mapOf(
                 "whole seconds" to Pair(1.toDuration(DurationUnit.SECONDS), "1"),
                 "minutes" to Pair(1.toDuration(DurationUnit.MINUTES), "60"),
                 "hours" to Pair(1.toDuration(DurationUnit.HOURS), "3600"),
                 "fractional seconds" to Pair(1.5.toDuration(DurationUnit.SECONDS), "1.5"),
-            )
-        ) { (duration, expectedJson) ->
+            )).values) test { (duration, expectedJson) ->
             val value = PositiveDuration(duration)
             val encoded = vckJsonSerializer.encodeToString(value)
 
@@ -35,13 +32,11 @@ val PositiveDurationFormatSerializerTest by testSuite {
     }
 
     "JSON deserialization rejects non-positive ttl values" - {
-        withData(
-            mapOf(
+        data((mapOf(
                 "zero" to "0",
                 "negative whole seconds" to "-1",
                 "negative fractional seconds" to "-1.5",
-            )
-        ) { encoded ->
+            )).values) test { encoded ->
             shouldThrow<SerializationException> {
                 vckJsonSerializer.decodeFromString<PositiveDuration>(encoded)
             }
@@ -49,13 +44,11 @@ val PositiveDurationFormatSerializerTest by testSuite {
     }
 
     "CBOR serialization uses unsigned integer values for whole-second ttl" - {
-        withData(
-            mapOf(
+        data((mapOf(
                 "1 second" to Pair(PositiveDuration(1.toDuration(DurationUnit.SECONDS)), "01"),
                 "1 minute" to Pair(PositiveDuration(1.toDuration(DurationUnit.MINUTES)), "183C"),
                 "1 hour" to Pair(PositiveDuration(1.toDuration(DurationUnit.HOURS)), "190E10"),
-            )
-        ) { (value, expectedHex) ->
+            )).values) test { (value, expectedHex) ->
             val encoded = coseCompliantSerializer.encodeToByteArray<PositiveDuration>(value)
 
             encoded.encodeToString(Base16Strict).uppercase() shouldBe expectedHex
@@ -64,13 +57,11 @@ val PositiveDurationFormatSerializerTest by testSuite {
     }
 
     "CBOR deserialization rejects unsupported ttl values" - {
-        withData(
-            mapOf(
+        data((mapOf(
                 "zero" to "00",
                 "negative one" to "20",
                 "above Long.MAX_VALUE" to "1B8000000000000000",
-            )
-        ) { encodedHex ->
+            )).values) test { encodedHex ->
             shouldThrow<SerializationException> {
                 coseCompliantSerializer.decodeFromByteArray<PositiveDuration>(
                     encodedHex.decodeToByteArray(Base16Strict),

@@ -9,8 +9,8 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base16.Base16
@@ -20,7 +20,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.decodeFromByteArray
 import kotlin.time.Instant
 
-val Iso18013SpecTest by testSuite {
+val Iso18013SpecTest by matrixSuite {
 
     CborCredentialSerializer.register(
         serializerMap = mapOf(

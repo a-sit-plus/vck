@@ -11,8 +11,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -36,7 +35,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -50,8 +49,8 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
-val OpenId4VpInteropTest by testSuite {
-    withFixtureGenerator(suspend {
+val OpenId4VpInteropTest by matrixSuite {
+    fixture({ kotlinx.coroutines.runBlocking {
         var sdAlgorithm: Digest? = null
         val issuerKeyId = uuid4().toString()
         val issuerIdentifier = "https://issuer.example.com"
@@ -111,7 +110,7 @@ val OpenId4VpInteropTest by testSuite {
                 clientIdScheme = clientIdScheme,
             )
         }
-    }) - {
+    } }) - {
 
         "process with cross-device flow with request_uri and pre-trusted" {
             val responseNonce = uuid4().toString()

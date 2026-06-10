@@ -2,10 +2,8 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -19,11 +17,9 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-val DCQLClaimsPathPointerTest by testSuite {
+val DCQLClaimsPathPointerTest by matrixSuite {
     "constructors" - {
-        withData(
-            listOf("test", 0u, null)
-        ) {
+        data(listOf("test", 0u, null)) test {
             when (it) {
                 null -> DCQLClaimsPathPointer(it)
                 is String -> DCQLClaimsPathPointer(it)
@@ -49,9 +45,7 @@ val DCQLClaimsPathPointerTest by testSuite {
                 }
             }
         }
-        withData(
-            listOf(0u, 100u, UInt.MAX_VALUE)
-        ) {
+        data(listOf(0u, 100u, UInt.MAX_VALUE)) test {
             DCQLClaimsPathPointer(it).run {
                 segments shouldHaveSize 1
                 segments.first().run {

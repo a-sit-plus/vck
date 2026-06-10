@@ -16,8 +16,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -34,7 +33,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -44,7 +43,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 
-val ValidatorVpTest by testSuite {
+val ValidatorVpTest by matrixSuite {
 
     val singularPresentationDefinition = PresentationExchangePresentation(
         CredentialPresentationRequest.PresentationExchangeRequest(
@@ -54,7 +53,7 @@ val ValidatorVpTest by testSuite {
         ),
     )
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val holderCredentialStore = InMemorySubjectCredentialStore()
         val holderKeyMaterial = EphemeralKeyWithoutCert()
         val issuerCredentialStore = InMemoryIssuerCredentialStore()
@@ -103,7 +102,7 @@ val ValidatorVpTest by testSuite {
             )
             val challenge = uuid4().toString()
         }
-    }) - {
+    } }) - {
 
         "correct challenge in VP leads to Success" {
             val presentationParameters = it.holder.createPresentation(

@@ -1,28 +1,19 @@
 package at.asitplus.etsi
 
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import kotlin.getValue
 
 @Suppress("unused")
-val EtsiCountryCodeTest by testSuite {
+val EtsiCountryCodeTest by matrixSuite {
     testSuite("must all be uppercase") {
-        withData(
-            "a",
-            "aA"
-        ) {
+        data(listOf("a", "aA")) test {
             shouldThrow<IllegalArgumentException> {
                 EtsiCountryCode(it)
             }
         }
-        withData(
-            "A",
-            "AA",
-            "EU",
-            "UK",
-            "EL",
-        ) {
+        data(listOf("A", "AA", "EU", "UK", "EL")) test {
             EtsiCountryCode(it)
         }
     }

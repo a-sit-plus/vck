@@ -1,10 +1,10 @@
 package at.asitplus.dcapi.request.verifier
 
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 
-val DigitalCredentialGetRequestTest by testSuite {
+val DigitalCredentialGetRequestTest by matrixSuite {
     test("openid4vp signed request round-trips") {
         val request = testSignedOpenId4VpRequest
 

@@ -1,15 +1,13 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives
 
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 
-val TokenStatusTest by testSuite {
+val TokenStatusTest by matrixSuite {
     "argument validation" - {
-        withData(
-            listOf(
+        data((listOf(
                 0u to true,
                 1u to true,
                 2u to true,
@@ -23,8 +21,7 @@ val TokenStatusTest by testSuite {
                 256u to false,
             ).associateBy {
                 "${it.first} shouldbe ${if (it.second) "not " else ""} fine"
-            }
-        ) { (status, expected) ->
+            }).values) test { (status, expected) ->
             if (expected) {
                 shouldNotThrowAny {
                     TokenStatus(status)

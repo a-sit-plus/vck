@@ -1,10 +1,10 @@
 package at.asitplus.wallet.sdjwt
 
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 
 @Suppress("unused")
-val SvgTemplatePropertyContrastTest by testSuite {
+val SvgTemplatePropertyContrastTest by matrixSuite {
     /**
      * just making sure that the enum names remain consistent with the specification
      */

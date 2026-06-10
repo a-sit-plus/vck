@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -10,7 +10,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExc
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.jsonObject
@@ -19,9 +19,9 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 
-val AgentComplexSdJwtTest by testSuite {
+val AgentComplexSdJwtTest by matrixSuite {
 
-    withFixtureGenerator {
+    fixture {
         object {
             val issuer = IssuerAgent(
                 identifier = "https://issuer.example.com/".toUri(),

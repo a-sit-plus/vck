@@ -16,8 +16,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -34,7 +33,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
@@ -47,9 +46,9 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 
-val ValidatorVcTest by testSuite {
+val ValidatorVcTest by matrixSuite {
 
-    withFixtureGenerator {
+    fixture {
         object {
             val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
             val issuerCredentialStore = InMemoryIssuerCredentialStore()

@@ -8,15 +8,15 @@ import at.asitplus.csc.collection_entries.CertificateParameters
 import at.asitplus.csc.collection_entries.KeyParameters
 import at.asitplus.csc.enums.CertificateOptions
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.matrix.*
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
 
-val CredentialInfoParsingTests by testSuite {
+val CredentialInfoParsingTests by matrixSuite {
 
 
     /**

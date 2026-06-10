@@ -1,10 +1,9 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.matrix.*
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -20,7 +19,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.random.Random
 
 @Suppress("unused")
-val DCQLIsoMdocClaimsQueryTest by testSuite {
+val DCQLIsoMdocClaimsQueryTest by matrixSuite {
     "specification" - {
         "serial names" {
             DCQLClaimsQuery.SerialNames.PATH shouldBe "path"

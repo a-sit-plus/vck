@@ -1,8 +1,8 @@
 package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -12,7 +12,7 @@ import kotlinx.serialization.encodeToByteArray
 
 private const val TEST_SYSTEM_NAME = "test-system-v1"
 
-val ZkSystemSpecSerializerTest by testSuite {
+val ZkSystemSpecSerializerTest by matrixSuite {
     
     ZkSystemParamRegistry.register(
         TEST_SYSTEM_NAME,
@@ -168,7 +168,7 @@ val ZkSystemSpecSerializerTest by testSuite {
     }
 }
 
-val ZkSystemParamRegistryTest by testSuite {
+val ZkSystemParamRegistryTest by matrixSuite {
 
     "register and lookup serializer" {
         val testSystem = "registry-test-system-lookup"

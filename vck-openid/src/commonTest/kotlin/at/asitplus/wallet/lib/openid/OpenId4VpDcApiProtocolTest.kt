@@ -9,7 +9,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsFlattened
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -23,13 +23,13 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 @Suppress("unused")
-val OpenId4VpDcApiProtocolTest by testSuite {
+val OpenId4VpDcApiProtocolTest by matrixSuite {
 
     val callingOrigin = "https://example.com"
     val callingPackageName = "com.example.app"
@@ -39,7 +39,7 @@ val OpenId4VpDcApiProtocolTest by testSuite {
         credentials = setOf(RequestOptionsCredential(AtomicAttribute2023, SD_JWT)),
     ).toDCQLRequest()
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
         val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
             agent.storeCredential(
@@ -71,7 +71,7 @@ val OpenId4VpDcApiProtocolTest by testSuite {
                 ),
             )
         }
-    }) - {
+    } }) - {
 
         test("DC API unsigned: parsed as DcApiUnsigned, validates and responds with OpenId4VpResponseUnsigned") { f ->
             val reqOptions = OpenId4VpRequestOptions(

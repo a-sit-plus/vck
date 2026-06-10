@@ -16,8 +16,7 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -40,7 +39,7 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyStatusListTokenHAIP
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -51,9 +50,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 
 
-val AgentSdJwtTest by testSuite {
+val AgentSdJwtTest by matrixSuite {
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val issuerCredentialStore = InMemoryIssuerCredentialStore()
         val holderCredentialStore = InMemorySubjectCredentialStore()
         val issuer = IssuerAgent(
@@ -94,7 +93,7 @@ val AgentSdJwtTest by testSuite {
             )
             val challenge = uuid4().toString()
         }
-    }) - {
+    } }) - {
 
         "keyBindingJws contains more JWK attributes, still verifies" {
             val credential = it.holderCredentialStore.getCredentials().getOrThrow()

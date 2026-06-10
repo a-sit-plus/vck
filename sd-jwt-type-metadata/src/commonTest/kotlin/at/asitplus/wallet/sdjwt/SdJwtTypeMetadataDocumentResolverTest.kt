@@ -1,12 +1,12 @@
 package at.asitplus.wallet.sdjwt
 
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 
 @Suppress("unused")
-val SdJwtTypeMetadataDocumentResolverTest by testSuite {
+val SdJwtTypeMetadataDocumentResolverTest by matrixSuite {
     test("extending works as expected") {
         val baseType = Json.decodeFromString(
             SdJwtTypeMetadataDocument.serializer(),

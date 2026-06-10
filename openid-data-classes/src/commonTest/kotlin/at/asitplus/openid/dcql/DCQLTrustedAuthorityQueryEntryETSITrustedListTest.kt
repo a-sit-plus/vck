@@ -1,9 +1,8 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -14,14 +13,12 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-val DCQLTrustedAuthorityQueryEntryETSITrustedListTest by testSuite {
+val DCQLTrustedAuthorityQueryEntryETSITrustedListTest by matrixSuite {
     val serializer = DCQLTrustedAuthorityQueryEntryETSITrustedList.serializer()
     "given unserialized version when serializing base type works" - {
-        withData(
-            DCQLTrustedAuthorityQueryEntryETSITrustedList(
+        data(listOf(DCQLTrustedAuthorityQueryEntryETSITrustedList(
                 values = nonEmptyListOf("https://lotl.example.com")
-            ),
-        ) {
+            ))) test {
             val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
             val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
             pseudoSerialized shouldBe pseudoSerializedBase
@@ -33,9 +30,7 @@ val DCQLTrustedAuthorityQueryEntryETSITrustedListTest by testSuite {
         }
     }
     "given serialized version when deserializing base type works" - {
-        withData(
-            """{ "type": "etsi_tl", "values": ["https://lotl.example.com"] }""",
-        ) { string ->
+        data(listOf("""{ "type": "etsi_tl", "values": ["https://lotl.example.com"] }""")) test { string ->
             val deserialized = Json.decodeFromString(serializer, string)
             Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string) shouldBe deserialized
 

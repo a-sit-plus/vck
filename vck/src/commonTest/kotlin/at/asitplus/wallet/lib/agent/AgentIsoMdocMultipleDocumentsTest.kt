@@ -9,7 +9,7 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -21,7 +21,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusVal
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.engine.runBlocking
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -31,9 +31,9 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlinx.serialization.builtins.ByteArraySerializer
 
-val AgentIsoMdocMultipleDocumentsTest by testSuite {
+val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
 
-    withFixtureGenerator {
+    fixture {
         object {
             val issuerCredentialStore = InMemoryIssuerCredentialStore()
             val issuer = IssuerAgent(

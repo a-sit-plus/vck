@@ -2,10 +2,9 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.ensureSize
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldHaveMinLength
@@ -13,7 +12,7 @@ import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.interfaces.ECPublicKey
 
-val JsonWebKeyJvmTest by testSuite {
+val JsonWebKeyJvmTest by matrixSuite {
 
     data class KeyMaterial(
         val ecCurve: ECCurve,

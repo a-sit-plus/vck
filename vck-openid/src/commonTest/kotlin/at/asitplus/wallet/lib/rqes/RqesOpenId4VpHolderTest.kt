@@ -15,22 +15,22 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.rqes.helper.DummyValueProvider
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-val RqesOpenId4VpHolderTest by testSuite {
+val RqesOpenId4VpHolderTest by matrixSuite {
 
-    withFixtureGenerator {
+    fixture {
         object {
             val dummyValueProvider = DummyValueProvider()
             val rqesWalletService = RqesWalletService(

@@ -3,10 +3,8 @@ package at.asitplus.openid.dcql
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -22,7 +20,7 @@ import kotlinx.serialization.json.long
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
-val DCQLClaimsPathPointerSegmentTest by testSuite {
+val DCQLClaimsPathPointerSegmentTest by matrixSuite {
     "select" - {
         "null" {
             val selection = DCQLClaimsPathPointerSegment.NullSegment.query(
@@ -57,7 +55,7 @@ val DCQLClaimsPathPointerSegmentTest by testSuite {
                     normalizedJsonPath = NormalizedJsonPath()
                 )
             )
-            withData(keys) {
+            data(keys) test {
                 val selection = DCQLClaimsPathPointerSegment.NameSegment(it)
                     .query(nodeList)
                 selection shouldHaveSize 1
@@ -81,9 +79,7 @@ val DCQLClaimsPathPointerSegmentTest by testSuite {
                     normalizedJsonPath = NormalizedJsonPath()
                 )
             )
-            withData(
-                listOf(0u, 1u, 2u)
-            ) { index ->
+            data(listOf(0u, 1u, 2u)) test { index ->
                 val selection = DCQLClaimsPathPointerSegment.IndexSegment(index)
                     .query(nodeList)
                 selection shouldHaveSize 1
@@ -112,15 +108,13 @@ val DCQLClaimsPathPointerSegmentTest by testSuite {
         )
         selection shouldHaveSize 3
 
-        withData(
-            List(1 + Random.nextInt(10)) {
+        data(List(1 + Random.nextInt(10)) {
                 when (Random.nextInt(3)) {
                     0 -> Random.nextBytes(32).encodeBase64()
                     1 -> Random.nextUInt()
                     else -> null
                 }
-            }
-        ) {
+            }) test {
             val segment = when (it) {
                 null -> DCQLClaimsPathPointerSegment.NullSegment
                 is String -> DCQLClaimsPathPointerSegment.NameSegment(it)

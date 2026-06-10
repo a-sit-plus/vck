@@ -1,8 +1,8 @@
 package at.asitplus.wallet
 
-import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import kotlin.experimental.ExperimentalNativeApi
 
 @OptIn(ExperimentalNativeApi::class)
-val iosOnlyTest by testSuite { "should run on on ${Platform}" {} }
+val iosOnlyTest by matrixSuite { "should run on on ${Platform}" {} }

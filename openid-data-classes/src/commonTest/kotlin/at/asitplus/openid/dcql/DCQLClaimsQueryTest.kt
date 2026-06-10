@@ -1,8 +1,7 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -10,7 +9,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-val DCQLClaimsQueryTest by testSuite {
+val DCQLClaimsQueryTest by matrixSuite {
     "specification" - {
         "serial names" {
             DCQLClaimsQuery.SerialNames.ID shouldBe "id"

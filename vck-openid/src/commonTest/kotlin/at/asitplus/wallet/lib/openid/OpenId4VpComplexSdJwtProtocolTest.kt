@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
@@ -17,7 +16,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -30,9 +29,9 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 @Suppress("unused")
-val OpenId4VpComplexSdJwtProtocolTest by testSuite {
+val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val randomRegion = uuid4().toString()
         val randomCountry = uuid4().toString()
         val holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -78,7 +77,7 @@ val OpenId4VpComplexSdJwtProtocolTest by testSuite {
                 clientIdScheme = ClientIdScheme.RedirectUri(clientId)
             )
         }
-    }) - {
+    } }) - {
 
         "Nested paths with DCQL" {
             val requestedClaims = setOf(

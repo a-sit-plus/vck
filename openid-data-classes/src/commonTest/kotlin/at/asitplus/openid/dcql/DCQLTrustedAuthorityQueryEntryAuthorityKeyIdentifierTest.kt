@@ -2,9 +2,8 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -18,14 +17,12 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
+val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by matrixSuite {
     val serializer = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier.serializer()
     "given unserialized version when serializing as base type works" - {
-        withData(
-            DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
+        data(listOf(DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
                 values = nonEmptyListOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y")
-            ),
-        ) {
+            ))) test {
             val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
             val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
             pseudoSerialized shouldBe pseudoSerializedBase
@@ -36,9 +33,7 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
         }
     }
     "given base64url string without padding when creating instance works" - {
-        withData(
-            "s9tIpPmhxdiuNkHMEWNpYim8S8Y"
-        ) { string ->
+        data(listOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y")) test { string ->
             val entry = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
             entry.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
                     string.decodeToByteArray(Base64UrlStrict)
@@ -46,9 +41,7 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
     }
 
     "given base64url string with padding when creating instance works" - {
-        withData(
-            "s9tIpPmhxdiuNkHMEWNpYim8S8Y="
-        ) { string ->
+        data(listOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y=")) test { string ->
             val entry = DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
             entry.authorityKeyIdentifiers.shouldBeSingleton().first().byteArray shouldBe
                     string.decodeToByteArray(Base64UrlStrict)
@@ -56,9 +49,7 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
     }
 
     "given non-base64url string when creating instance throws exception" - {
-        withData(
-            "s9tIpPmhxdiuNkHMEWNpYim8S8!=",
-        ) { string ->
+        data(listOf("s9tIpPmhxdiuNkHMEWNpYim8S8!=")) test { string ->
             shouldThrow<EncodingException> {
                 DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(nonEmptyListOf(string))
             }
@@ -66,9 +57,7 @@ val DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifierTest by testSuite {
     }
 
     "given serialized version when deserializing as base works" - {
-        withData(
-            """{ "type": "aki", "values": ["s9tIpPmhxdiuNkHMEWNpYim8S8Y"] }""",
-        ) { string ->
+        data(listOf("""{ "type": "aki", "values": ["s9tIpPmhxdiuNkHMEWNpYim8S8Y"] }""")) test { string ->
             val deserialized = Json.decodeFromString(serializer, string)
             deserialized shouldBe Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string)
 

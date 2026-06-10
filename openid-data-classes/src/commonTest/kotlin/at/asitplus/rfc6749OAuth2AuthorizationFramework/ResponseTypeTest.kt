@@ -1,10 +1,8 @@
 package at.asitplus.rfc6749OAuth2AuthorizationFramework
 
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.minus
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -12,7 +10,7 @@ import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 
 @Suppress("unused")
-val ResponseTypeTest by testSuite {
+val ResponseTypeTest by matrixSuite {
     val commonTypes = listOf(
         OpenIdConstants.VP_TOKEN,
         OpenIdConstants.ID_TOKEN,
@@ -33,19 +31,19 @@ val ResponseTypeTest by testSuite {
         }
     }
     "common types are valid" - {
-        withData(commonTypes) {
+        data(commonTypes) test {
             shouldNotThrowAny {
                 ResponseType(it)
             }
         }
     }
     "toString is as expected" - {
-        withData(commonTypes) {
+        data(commonTypes) test {
             ResponseType(it).toString() shouldBe it
         }
     }
     "common type combinations are valid and consistent between constructors" - {
-        withData(commonTypeCombinations) {
+        data(commonTypeCombinations) test {
             shouldNotThrowAny {
                 ResponseType(it)
             } shouldBe shouldNotThrowAny {
@@ -54,12 +52,12 @@ val ResponseTypeTest by testSuite {
         }
     }
     "equality does not depend on order" - {
-        withData(commonTypeCombinations) {
+        data(commonTypeCombinations) test {
             ResponseType(it) shouldBe ResponseType(it.reversed())
         }
     }
     "contains works properly" - {
-        withData(commonTypeCombinations) {
+        data(commonTypeCombinations) test {
             val type = ResponseType(it)
             it.forEach {
                 type.contains(it).shouldBeTrue()
@@ -67,7 +65,7 @@ val ResponseTypeTest by testSuite {
         }
     }
     "serialization works as expected" - {
-        withData(commonTypeCombinations) {
+        data(commonTypeCombinations) test {
             val type = ResponseType(it)
             Json.encodeToString(
                 ResponseType.serializer(), // TODO: for some reason this is necessary for iOs?
@@ -76,7 +74,7 @@ val ResponseTypeTest by testSuite {
         }
     }
     "deserialization works as expected" - {
-        withData(commonTypeCombinations) {
+        data(commonTypeCombinations) test {
             val value = it.joinToString(" ")
             val serialized = Json.encodeToString(value)
             val deserialized = Json.decodeFromString(
@@ -87,14 +85,14 @@ val ResponseTypeTest by testSuite {
         }
     }
     "leading spaces are not ignored" - {
-        withData(" vp_token", " vp_token id_token") {
+        data(listOf(" vp_token", " vp_token id_token")) test {
             shouldThrow<IllegalArgumentException> {
                 ResponseType(it).toString()
             }
         }
     }
     "trailing spaces are not ignored" - {
-        withData("vp_token ", "vp_token id_token ") {
+        data(listOf("vp_token ", "vp_token id_token ")) test {
             shouldThrow<IllegalArgumentException> {
                 ResponseType(it).toString()
             }

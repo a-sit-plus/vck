@@ -2,11 +2,11 @@ package at.asitplus.wallet.csp2
 
 import at.asitplus.csp2.ContentSecurityPolicySourceExpressionHash
 import at.asitplus.csp2.ContentSecurityPolicySourceExpressionHashAlgorithm
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 
 @Suppress("unused")
-val ContentSecurityPolicySourceExpressionHashTest by testSuite {
+val ContentSecurityPolicySourceExpressionHashTest by matrixSuite {
     /**
      * just making sure that the enum names remain consistent with the specification
      */

@@ -2,8 +2,8 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.matthewnelson.encoding.base16.Base16
@@ -18,7 +18,7 @@ import kotlin.time.Clock
  * as defined by ISO/IEC 18013-5:2021
  */
 @OptIn(ExperimentalSerializationApi::class)
-val Tag0SerializationTest by testSuite {
+val Tag0SerializationTest by matrixSuite {
 
     "ValidityInfo" {
         val input = ValidityInfo(

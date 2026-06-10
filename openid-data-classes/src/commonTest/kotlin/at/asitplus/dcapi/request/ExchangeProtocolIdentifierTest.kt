@@ -1,10 +1,10 @@
 package at.asitplus.dcapi.request
 
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
 
-val ExchangeProtocolIdentifierTest by testSuite {
+val ExchangeProtocolIdentifierTest by matrixSuite {
 
     test("openid4vp v1 signed parses") {
         val identifier = ExchangeProtocolIdentifier.OpenId4VpV1Signed

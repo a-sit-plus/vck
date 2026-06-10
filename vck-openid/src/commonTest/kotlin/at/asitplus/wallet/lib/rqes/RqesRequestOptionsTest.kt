@@ -7,7 +7,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME
@@ -24,14 +24,14 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
-val RqesRequestOptionsTest by testSuite {
+val RqesRequestOptionsTest by matrixSuite {
 
-    withFixtureGenerator {
+    fixture {
         object {
             val verifierOid4Vp: OpenId4VpVerifier = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),

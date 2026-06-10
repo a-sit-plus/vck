@@ -2,15 +2,14 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.*
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.booleans.shouldBeTrue
 import kotlinx.serialization.SerialName
 import kotlin.random.Random
 
-val EqualityTests by testSuite {
-    withFixtureGenerator {
+val EqualityTests by matrixSuite {
+    fixture {
         object {
             val jwk1 = JsonWebKey(x = Random.Default.nextBytes(32))
             val jwk2 = JsonWebKey(x = Random.Default.nextBytes(32))

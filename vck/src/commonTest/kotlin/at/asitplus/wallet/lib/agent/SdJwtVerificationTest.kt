@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.jws.SdJwtSigned
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -11,7 +11,7 @@ import io.kotest.matchers.shouldBe
 /**
  * Verifies examples from [RFC 9901](https://www.rfc-editor.org/rfc/rfc9901.html)
  */
-val SdJwtVerificationTest by testSuite {
+val SdJwtVerificationTest by matrixSuite {
 
     "A.1. Simple structured SD-JWT" {
         val input = """

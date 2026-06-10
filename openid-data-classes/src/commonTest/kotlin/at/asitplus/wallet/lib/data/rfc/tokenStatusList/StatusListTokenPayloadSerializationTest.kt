@@ -2,14 +2,14 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.Identifier
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -80,7 +80,7 @@ private val expectedPrefix = """
        19 FFFD                              
 """.trimIndent().replace("\n", "").replace(" ", "")
 
-val StatusListTokenPayloadSerializationTest by testSuite {
+val StatusListTokenPayloadSerializationTest by matrixSuite {
     "JSON serialization uses the expected claim names and ttl number format" {
         val json = vckJsonSerializer
             .encodeToJsonElement(StatusListTokenPayload.serializer(), statusListPayload)

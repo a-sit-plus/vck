@@ -45,6 +45,10 @@ Release 6.0.0 (unreleased):
    - `rfc3986-uri-syntax` implements [RFC 3986 URI Syntax](https://datatracker.ietf.org/doc/html/rfc3986)
  - Dependencies:
    - Update to [Signum 3.23.0](https://github.com/a-sit-plus/signum/releases/tag/3.23.0)
+   - Update to Kto 3.5.0
+   - Update Bouncy Castle 1.84
+   - Update to kotlinx.coroutines 1.11.0
+ - Matrix testing
 
 Release 5.12.0:
  - W3C JWT VC:

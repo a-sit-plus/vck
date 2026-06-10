@@ -14,8 +14,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -34,7 +33,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -47,8 +46,8 @@ import kotlin.time.Instant
  * see [https://verifier.eudiw.dev/cbor-selectable/verifiable](https://verifier.eudiw.dev/cbor-selectable/verifiable)
  */
 @Suppress("DEPRECATION")
-val OpenId4VpEuRefInteropTest by testSuite {
-    withFixtureGenerator(suspend {
+val OpenId4VpEuRefInteropTest by matrixSuite {
+    fixture({ kotlinx.coroutines.runBlocking {
         val holderKeyMaterial = EphemeralKeyWithoutCert()
         val agent = HolderAgent(holderKeyMaterial).also {
             val issuerAgent = IssuerAgent(
@@ -79,7 +78,7 @@ val OpenId4VpEuRefInteropTest by testSuite {
             val holderAgent = agent
             var holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
         }
-    }) - {
+    } }) - {
 
         "EUDI from URL 2024-05-17" {
             val url = """

@@ -12,7 +12,7 @@ import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldContain
@@ -22,7 +22,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 
-val OpenId4VpRequestOptionsTest by testSuite {
+val OpenId4VpRequestOptionsTest by matrixSuite {
 
     test("transaction data requires matching credential ids") {
         val credential = RequestOptionsCredential(

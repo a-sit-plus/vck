@@ -2,14 +2,14 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
-import at.asitplus.testballoon.invoke
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.openid.RequestParser
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-val SignatureRequestParsingTests by testSuite {
+val SignatureRequestParsingTests by matrixSuite {
     val jwt = """
         eyJhbGciOiJSUzI1NiIsImtpZCI6ImRpZDpkcl9wb2M6c2lnIzEiLCJ0eXAiOiJvYXV0aC1hdXRoei1yZXErand0In0.eyJyZXNwb25zZV90eXBl
         Ijoic2lnbl9yZXF1ZXN0IiwiY2xpZW50X2lkIjoiaHR0cHM6Ly9hcHBzLmVnaXouZ3YuYXQvZHJpdmluZ2FwcCIsImNsaWVudF9pZF9zY2hlbWUi

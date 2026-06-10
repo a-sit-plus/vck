@@ -12,7 +12,7 @@ import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -20,7 +20,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 
-val CredentialPresentationRequestBuilderTest by testSuite {
+val CredentialPresentationRequestBuilderTest by matrixSuite {
     test("invalid credential scheme for SD-JWT should not throw when creating query") {
         val credential = RequestOptionsCredential(
             credentialScheme = object : ConstantIndex.CredentialScheme {

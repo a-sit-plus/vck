@@ -1,7 +1,7 @@
 package at.asitplus.wallet.sdjwt
 
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
@@ -9,7 +9,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 @Suppress("unused")
-val SdJwtTypeMetadataClaimInformationPathTest by testSuite {
+val SdJwtTypeMetadataClaimInformationPathTest by matrixSuite {
     test("manual examples") {
         val jsonElement = Json.decodeFromString<JsonElement>(
             """

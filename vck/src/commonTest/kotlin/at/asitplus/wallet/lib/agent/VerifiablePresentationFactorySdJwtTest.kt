@@ -3,12 +3,11 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.testballoon.invoke
-import at.asitplus.testballoon.withFixtureGenerator
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.withClue
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -19,9 +18,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
-val VerifiablePresentationFactorySdJwtTest by testSuite {
+val VerifiablePresentationFactorySdJwtTest by matrixSuite {
 
-    withFixtureGenerator(suspend {
+    fixture({ kotlinx.coroutines.runBlocking {
         val issuer = IssuerAgent(
             keyMaterial = EphemeralKeyWithSelfSignedCert(),
             identifier = "https://issuer.example.com/".toUri(),
@@ -64,7 +63,7 @@ val VerifiablePresentationFactorySdJwtTest by testSuite {
             val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
             val sdJwtCredential = sdJwtCredential
         }
-    }) - {
+    } }) - {
 
         "disclosed SD-JWT contains only one disclosure for one plain disclosed attribute" {
             val disclosedAttributes = listOf(
