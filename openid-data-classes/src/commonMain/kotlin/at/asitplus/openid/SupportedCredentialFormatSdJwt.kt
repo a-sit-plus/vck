@@ -15,7 +15,7 @@ data class SupportedCredentialFormatSdJwt(
      * (I-D.ietf-oauth-sd-jwt-vc).
      */
     @SerialName(SerialNames.SD_JWT_VC_TYPE)
-    val sdJwtVcType: String, // TODO: Better typing?
+    val sdJwtVcType: String,
     @SerialName(SupportedCredentialFormat.SerialNames.SCOPE)
     override val scope: String? = null,
     @SerialName(SupportedCredentialFormat.SerialNames.CRYPTOGRAPHIC_BINDING_METHODS_SUPPORTED)
