@@ -21,6 +21,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SdJwtFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
@@ -105,27 +106,30 @@ class OpenId4VciClient(
             }
         }
 
-    private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? = when(this) {
+    private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? = when (this) {
         is SupportedCredentialFormatIsoMdoc -> AttributeIndex.resolveIsoDoctype(docType)
             ?: IsoMdocFallbackCredentialScheme(isoDocType = docType)
 
         is SupportedCredentialFormatSdJwt -> AttributeIndex.resolveSdJwtAttributeType(sdJwtVcType)
             ?: SdJwtFallbackCredentialScheme(sdJwtType = sdJwtVcType)
 
-        is SupportedCredentialFormatW3cVcJwt -> credentialDefinition.types.firstNotNullOfOrNull {
-            AttributeIndex.resolveAttributeType(it)
-                ?: VcFallbackCredentialScheme(vcType = it)
-        }
+        is SupportedCredentialFormatW3cVcJwt -> credentialDefinition.types
+            .filterNot { it == VERIFIABLE_CREDENTIAL }.run {
+                firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
+                    ?: firstOrNull()?.let { VcFallbackCredentialScheme(vcType = it) }
+            }
 
-        // TODO: are these correct?
-        is SupportedCredentialFormatW3cVcJsonLd -> credentialDefinition.type.firstNotNullOfOrNull {
-            AttributeIndex.resolveAttributeType(it)
-                ?: VcFallbackCredentialScheme(vcType = it)
-        }
-        is SupportedCredentialFormatW3cVcJwtJsonLd -> credentialDefinition.type.firstNotNullOfOrNull {
-            AttributeIndex.resolveAttributeType(it)
-                ?: VcFallbackCredentialScheme(vcType = it)
-        }
+        is SupportedCredentialFormatW3cVcJsonLd -> credentialDefinition.type
+            .filterNot { it == VERIFIABLE_CREDENTIAL }.run {
+                firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
+                    ?: firstOrNull()?.let { VcFallbackCredentialScheme(vcType = it) }
+            }
+
+        is SupportedCredentialFormatW3cVcJwtJsonLd -> credentialDefinition.type
+            .filterNot { it == VERIFIABLE_CREDENTIAL }.run {
+                firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
+                    ?: firstOrNull()?.let { VcFallbackCredentialScheme(vcType = it) }
+            }
     }
 
     /**
