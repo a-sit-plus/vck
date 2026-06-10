@@ -37,6 +37,7 @@ tasks.getByName("dokkaGenerate") {
 
 subprojects {
     rootProject.dependencies.add("dokka", this)
+    repositories {mavenLocal()}
 }
 
 val artifactVersion: String by extra

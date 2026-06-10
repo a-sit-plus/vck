@@ -11,7 +11,7 @@ import io.ktor.http.authority
 @Suppress("unused")
 val Rfc3986UniformResourceIdentifierTest by matrixSuite {
     testSuite("parsing success") {
-        data(mapOf(
+        mapOf(
                 "https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html#claim-metadata" to listOf(
                     "https",
                     "www.ietf.org",
@@ -138,9 +138,7 @@ val Rfc3986UniformResourceIdentifierTest by matrixSuite {
                     null,
                     null,
                 ),
-            ).mapValues {
-                it.key to it.value
-            }.values) test { (uri, data) ->
+            ).asData(nameFn = { (uri, _) -> uri }) test { (uri, data) ->
             shouldNotThrowAny {
                 val uri = Rfc3986UniformResourceIdentifier(uri)
                 uri.schemeName.toString() shouldBe data[0]
@@ -208,7 +206,7 @@ val Rfc3986UniformResourceIdentifierTest by matrixSuite {
     }
 
     testSuite("string round-trips") {
-        data(listOf(
+        listOf(
             "https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html#claim-metadata",
             "http://a/b/c/d;p?q",
             "http://www.ics.uci.edu/pub/ietf/uri/#Related",
@@ -223,7 +221,7 @@ val Rfc3986UniformResourceIdentifierTest by matrixSuite {
             "https://user:password@127.0.0.1:8080?name=draft#claim-metadata",
             "https://user:password@[aaAA::]:8080?name=draft#claim-metadata",
             "ldap://[2001:db8::7]/c=GB?objectClass?one",
-        )) test { uri ->
+        ).asData() test { uri ->
             Rfc3986UniformResourceIdentifier(uri).string shouldBe uri
         }
     }

@@ -16,7 +16,7 @@ import kotlinx.serialization.json.Json
 @OptIn(ExperimentalSerializationApi::class)
 val StatusListSerializationTest by matrixSuite {
     "json" - {
-        data((mapOf(
+        mapOf(
                 "one bit status codes" to Pair(
                     """{ "bits": 1, "lst": "eNrbuRgAAhcBXQ" }""",
                     listOf(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1).toChunkedTokenStatus(1)
@@ -33,7 +33,8 @@ val StatusListSerializationTest by matrixSuite {
                     """{ "bits": 8, "lst": "eNrbuRgAAhcBXQ" }""",
                     listOf(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1).toChunkedTokenStatus(8)
                 ),
-            )).values) test { (jsonString, expectedStatusList) ->
+            ).asData(nameFn = { (name, _) -> name }) test { (_, expected) ->
+            val (jsonString, expectedStatusList) = expected
             val statusList = Json.decodeFromString<StatusList>(jsonString)
 
             expectedStatusList.forEachIndexed { index, status ->
@@ -64,7 +65,7 @@ val StatusListSerializationTest by matrixSuite {
         Json.decodeFromString<StatusList>(encoded) shouldBe statusList
     }
     "cbor" - {
-        data((mapOf(
+        mapOf(
                 "one bit status codes" to Pair(
                     """a2646269747301636c73744a78dadbb918000217015d""",
                     listOf(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1).toChunkedTokenStatus(1)
@@ -81,7 +82,8 @@ val StatusListSerializationTest by matrixSuite {
                     """A2646269747308636C73744A78DADBB918000217015D""",
                     listOf(1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1).toChunkedTokenStatus(8)
                 ),
-            )).values) test { (cborString, expectedStatusList) ->
+            ).asData(nameFn = { (name, _) -> name }) test { (_, expected) ->
+            val (cborString, expectedStatusList) = expected
             val statusList = coseCompliantSerializer.decodeFromHexString<StatusList>(cborString)
             expectedStatusList.forEachIndexed { index, status ->
                 statusList.toView()[index.toULong()] shouldBe status

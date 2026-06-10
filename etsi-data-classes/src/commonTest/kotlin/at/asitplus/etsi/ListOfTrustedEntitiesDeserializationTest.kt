@@ -7024,13 +7024,13 @@ val ListOfTrustedEntitiesDeserializationTest by matrixSuite {
     """.trimIndent()
 
     testSuite("decode 1") {
-        data(mapOf(
+        mapOf(
             "pidProviders" to pidProvidersFixed,
             "walletProviders" to walletProvidersFixed,
             "wrpacProviders" to wrpacProvidersFixed,
             "mdlProviders" to mdlProvidersFixed,
-        ).values) test {
-            Json.decodeFromString<ListOfTrustedEntities>(it)
+        ).asData(nameFn = { (name, _) -> name }) test { (_, json) ->
+            Json.decodeFromString<ListOfTrustedEntities>(json)
         }
     }
 }

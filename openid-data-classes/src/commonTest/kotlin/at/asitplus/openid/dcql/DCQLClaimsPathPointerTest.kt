@@ -19,7 +19,7 @@ import kotlin.random.nextUInt
 
 val DCQLClaimsPathPointerTest by matrixSuite {
     "constructors" - {
-        data(listOf("test", 0u, null)) test {
+        listOf("test", 0u, null).asData() test {
             when (it) {
                 null -> DCQLClaimsPathPointer(it)
                 is String -> DCQLClaimsPathPointer(it)
@@ -45,7 +45,7 @@ val DCQLClaimsPathPointerTest by matrixSuite {
                 }
             }
         }
-        data(listOf(0u, 100u, UInt.MAX_VALUE)) test {
+        listOf(0u, 100u, UInt.MAX_VALUE).asData() test {
             DCQLClaimsPathPointer(it).run {
                 segments shouldHaveSize 1
                 segments.first().run {

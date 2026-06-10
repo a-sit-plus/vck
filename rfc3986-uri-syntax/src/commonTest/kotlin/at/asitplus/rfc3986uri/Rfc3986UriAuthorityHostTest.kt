@@ -9,15 +9,15 @@ import io.kotest.matchers.shouldBe
 @Suppress("unused")
 val Rfc3986AuthorityHostTest by matrixSuite {
     testSuite("case insensitivity") {
-        data(mapOf(
+        mapOf(
                 "v6 simple" to Pair("aaAA::", "aAaA::"),
-            ).values) test {
-            Rfc3986AuthorityHost("[${it.first}]") shouldBe Rfc3986AuthorityHost("[${it.second}]")
+            ).asData(nameFn = { (name, _) -> name }) test { (_, value) ->
+            Rfc3986AuthorityHost("[${value.first}]") shouldBe Rfc3986AuthorityHost("[${value.second}]")
         }
     }
 
     testSuite("parsing success") {
-        data(listOf("www.ietf.org", "[aaAA::]", "127.0.0.1", "v1.a", "[v1.a]", "[vff.test:data]")) test {it ->
+        listOf("www.ietf.org", "[aaAA::]", "127.0.0.1", "v1.a", "[v1.a]", "[vff.test:data]").asData() test {it ->
             shouldNotThrowAny {
                 Rfc3986AuthorityHost(it)
             }
@@ -70,7 +70,7 @@ val Rfc3986AuthorityHostTest by matrixSuite {
     }
 
     testSuite("IPvFuture round-trips through URI") {
-        data(listOf("http://[v1.foo]/path", "http://[vff.test:data]/")) test { uri ->
+        listOf("http://[v1.foo]/path", "http://[vff.test:data]/").asData() test { uri ->
             Rfc3986UniformResourceIdentifier(uri).string shouldBe uri
         }
     }

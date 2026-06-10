@@ -7,28 +7,28 @@ import io.kotest.assertions.throwables.shouldThrow
 
 val DCQLCredentialQueryIdentifierTest by matrixSuite {
     "success" - {
-        data(listOf(
+        listOf(
                 "numberTest0123456789",
                 "alphabetTestabcdefghijklmnopqrstuvwxyz",
                 "alphabetTestABCDEFGHIJKLMNOPQRSTUVWXYZ",
                 "underscore_test",
                 "dash-test",
                 "dash-underscore_test",
-            )) test {
+            ).asData() test {
             shouldNotThrowAny {
                 DCQLClaimsQueryIdentifier(it)
             }
         }
     }
     "failure" - {
-        data(listOf(
+        listOf(
                 "invalid_character space",
                 "invalid_character.dot",
                 "invalid_character:column",
                 "invalid_character!exclamationMark",
                 "invalid_character\"doubleQuote",
                 "invalid_character'singleQuote",
-            )) test {
+            ).asData() test {
             shouldThrow<IllegalArgumentException> {
                 DCQLClaimsQueryIdentifier(it)
             }

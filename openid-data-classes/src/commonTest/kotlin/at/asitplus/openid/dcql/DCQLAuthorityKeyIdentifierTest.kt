@@ -12,7 +12,7 @@ val DCQLAuthorityKeyIdentifierTest by matrixSuite {
     "given base64url string without padding" - {
         "when creating instance" - {
             "then does so successfully" - {
-                data(listOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y")) test { string ->
+                listOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y").asData() test { string ->
                     val identifier = DCQLAuthorityKeyIdentifier(string)
                     identifier.byteArray shouldBe string.decodeToByteArray(Base64UrlStrict)
                 }
@@ -22,7 +22,7 @@ val DCQLAuthorityKeyIdentifierTest by matrixSuite {
     "given base64url string with padding" - {
         "when creating instance" - {
             "then does so successfully" - {
-                data(listOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y=")) test { string ->
+                listOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y=").asData() test { string ->
                     val identifier = DCQLAuthorityKeyIdentifier(string)
                     identifier.byteArray shouldBe string.decodeToByteArray(Base64UrlStrict)
                 }
@@ -32,7 +32,7 @@ val DCQLAuthorityKeyIdentifierTest by matrixSuite {
     "given non-base64url string" - {
         "when creating instance" - {
             "then throws exception" - {
-                data(listOf("s9tIpPmhxdiuNkHMEWNpYim8S8!=")) test { string ->
+                listOf("s9tIpPmhxdiuNkHMEWNpYim8S8!=").asData() test { string ->
                     shouldThrow<EncodingException> {
                         DCQLAuthorityKeyIdentifier(string)
                     }

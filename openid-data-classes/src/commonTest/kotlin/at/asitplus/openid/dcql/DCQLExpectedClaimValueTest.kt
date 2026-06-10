@@ -7,16 +7,16 @@ import kotlinx.serialization.json.Json
 
 val DCQLExpectedClaimValueTest by matrixSuite {
     "serialization" - {
-        data(listOf("-1", "0", "1", "false", "true", "other")) test {
+        listOf("-1", "0", "1", "false", "true", "other").asData() test {
             Json.decodeFromString<DCQLExpectedClaimValue>(Json.encodeToString(it))
                 .shouldBeInstanceOf<DCQLExpectedClaimValue.StringValue>()
         }
 
-        data(listOf("0", "1", "-1")) test {
+        listOf("0", "1", "-1").asData() test {
             Json.decodeFromString<DCQLExpectedClaimValue>(it).shouldBeInstanceOf<DCQLExpectedClaimValue.IntegerValue>()
         }
 
-        data(listOf("true", "false")) test {
+        listOf("true", "false").asData() test {
             Json.decodeFromString<DCQLExpectedClaimValue>(it).shouldBeInstanceOf<DCQLExpectedClaimValue.BooleanValue>()
         }
     }

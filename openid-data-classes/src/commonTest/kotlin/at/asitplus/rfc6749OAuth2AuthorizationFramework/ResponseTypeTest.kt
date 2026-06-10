@@ -85,14 +85,14 @@ val ResponseTypeTest by matrixSuite {
         }
     }
     "leading spaces are not ignored" - {
-        data(listOf(" vp_token", " vp_token id_token")) test {
+        listOf(" vp_token", " vp_token id_token").asData() test {
             shouldThrow<IllegalArgumentException> {
                 ResponseType(it).toString()
             }
         }
     }
     "trailing spaces are not ignored" - {
-        data(listOf("vp_token ", "vp_token id_token ")) test {
+        listOf("vp_token ", "vp_token id_token ").asData() test {
             shouldThrow<IllegalArgumentException> {
                 ResponseType(it).toString()
             }

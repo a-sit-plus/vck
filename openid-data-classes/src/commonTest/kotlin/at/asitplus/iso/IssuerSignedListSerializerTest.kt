@@ -53,7 +53,7 @@ val IssuerSignedListSerializerTest by matrixSuite {
     }
 
     "can deserialize any some data types in elementValue even when no custom deserializer is given" - {
-        data(listOf(
+        listOf(
                 Clock.System.now(),
                 Random.nextLong(),
                 uuid4().toString(),
@@ -61,7 +61,7 @@ val IssuerSignedListSerializerTest by matrixSuite {
                 false,
                 Random.nextBytes(16),
                 // Ints are not working, see test case below: Random.nextInt(),
-            ), nameFn = { _, it -> "${it::class.simpleName ?: it.toString()} ($it)" }) test {
+            ).asData(nameFn = { "${it::class.simpleName ?: it.toString()} ($it)" }) test {
             val namespace = uuid4().toString()
             val elementIdentifier = uuid4().toString()
 
@@ -81,9 +81,9 @@ val IssuerSignedListSerializerTest by matrixSuite {
     }
 
     "can't deserialize some data types in elementValue when no custom deserializer is given" - {
-        data(listOf(
+        listOf(
                 Random.nextInt(),
-            ), nameFn = { _, it -> it::class.simpleName ?: it.toString() }) test {
+            ).asData(nameFn = { it::class.simpleName ?: it.toString() }) test {
             val namespace = uuid4().toString()
             val elementIdentifier = uuid4().toString()
 

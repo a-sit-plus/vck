@@ -54,10 +54,10 @@ val StatusListTokenSerializationTest by matrixSuite {
         )
     "jwt status list token payload" - {
         "deserialization" - {
-            data(jsonStatusListTokenPayloadTestVectors.toList(), nameFn = { _, (name, _) -> name }) - { (_, value) ->
+            data(jsonStatusListTokenPayloadTestVectors, nameFn = { (name, _) -> name }) - { (_, value) ->
                 val (it, assertions) = value
                 val value = Json.decodeFromString<StatusListTokenPayload>(it)
-                data(assertions.toList(), nameFn = { _, (name, _) -> name }) test { (_, it) ->
+                data(assertions, nameFn = { (name, _) -> name }) test { (_, it) ->
                     it(value)
                 }
                 Json.decodeFromString<StatusListTokenPayload>(Json.encodeToString(value)) shouldBe value

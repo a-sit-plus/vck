@@ -16,9 +16,9 @@ import kotlinx.serialization.json.jsonPrimitive
 val DCQLTrustedAuthorityQueryEntryETSITrustedListTest by matrixSuite {
     val serializer = DCQLTrustedAuthorityQueryEntryETSITrustedList.serializer()
     "given unserialized version when serializing base type works" - {
-        data(listOf(DCQLTrustedAuthorityQueryEntryETSITrustedList(
+        listOf(DCQLTrustedAuthorityQueryEntryETSITrustedList(
                 values = nonEmptyListOf("https://lotl.example.com")
-            ))) test {
+            )).asData() test {
             val pseudoSerialized = Json.encodeToJsonElement(serializer, it)
             val pseudoSerializedBase = Json.encodeToJsonElement(DCQLTrustedAuthorityQueryEntry.serializer(), it)
             pseudoSerialized shouldBe pseudoSerializedBase
@@ -30,7 +30,7 @@ val DCQLTrustedAuthorityQueryEntryETSITrustedListTest by matrixSuite {
         }
     }
     "given serialized version when deserializing base type works" - {
-        data(listOf("""{ "type": "etsi_tl", "values": ["https://lotl.example.com"] }""")) test { string ->
+        listOf("""{ "type": "etsi_tl", "values": ["https://lotl.example.com"] }""").asData() test { string ->
             val deserialized = Json.decodeFromString(serializer, string)
             Json.decodeFromString(DCQLTrustedAuthorityQueryEntry.serializer(), string) shouldBe deserialized
 

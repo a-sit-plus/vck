@@ -7,7 +7,7 @@ import io.kotest.assertions.throwables.shouldThrow
 
 val TokenStatusTest by matrixSuite {
     "argument validation" - {
-        data((listOf(
+        listOf(
                 0u to true,
                 1u to true,
                 2u to true,
@@ -19,9 +19,7 @@ val TokenStatusTest by matrixSuite {
                 128u to true,
                 255u to true,
                 256u to false,
-            ).associateBy {
-                "${it.first} shouldbe ${if (it.second) "not " else ""} fine"
-            }).values) test { (status, expected) ->
+            ).asData(nameFn = { (status, expected) -> "$status shouldbe ${if (expected) "not " else ""} fine" }) test { (status, expected) ->
             if (expected) {
                 shouldNotThrowAny {
                     TokenStatus(status)

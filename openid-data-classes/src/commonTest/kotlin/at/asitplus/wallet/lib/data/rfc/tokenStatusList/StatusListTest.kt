@@ -10,7 +10,7 @@ import io.kotest.matchers.shouldBe
 val StatusListTest by matrixSuite {
     "byte array correctness" - {
         "tokenStatus1 list" - {
-            data((mapOf(
+            mapOf(
                     "requires 0 bytes for 0 statuses" to Pair(
                         listOf(),
                         ByteArray(0) {
@@ -41,7 +41,8 @@ val StatusListTest by matrixSuite {
                             0.toByte()
                         }
                     ),
-                )).values) test { (values, expectedByteArray) ->
+                ).asData(nameFn = { (name, _) -> name }) test { (_, expected) ->
+                val (values, expectedByteArray) = expected
                 StatusListView.fromTokenStatuses(
                     values,
                     statusBitSize = TokenStatusBitSize.ONE,
@@ -49,7 +50,7 @@ val StatusListTest by matrixSuite {
             }
         }
         "tokenStatus2 list" - {
-            data((mapOf(
+            mapOf(
                     "requires 0 bytes for 0 statuses" to Pair(
                         listOf(),
                         ByteArray(0) {
@@ -111,7 +112,8 @@ val StatusListTest by matrixSuite {
                             (if(index == 0) 0 else 1).toByte()
                         }
                     ),
-                )).values) test { (values, expectedByteArray) ->
+                ).asData(nameFn = { (name, _) -> name }) test { (_, expected) ->
+                val (values, expectedByteArray) = expected
                 StatusListView.fromTokenStatuses(
                     values,
                     statusBitSize = TokenStatusBitSize.TWO,
@@ -119,7 +121,7 @@ val StatusListTest by matrixSuite {
             }
         }
         "tokenStatus4 list" - {
-            data((mapOf(
+            mapOf(
                     "requires 0 bytes for 0 statuses" to Pair(
                         listOf(),
                         ByteArray(0) {
@@ -177,7 +179,8 @@ val StatusListTest by matrixSuite {
                             (if(index == 0) 0 else 1).toByte()
                         }
                     ),
-                )).values) test { (values, expectedByteArray) ->
+                ).asData(nameFn = { (name, _) -> name }) test { (_, expected) ->
+                val (values, expectedByteArray) = expected
                 StatusListView.fromTokenStatuses(
                     values,
                     statusBitSize = TokenStatusBitSize.FOUR,
@@ -185,7 +188,7 @@ val StatusListTest by matrixSuite {
             }
         }
         "tokenStatus8 list" - {
-            data((mapOf(
+            mapOf(
                     "requires 0 bytes for 0 statuses" to Pair(
                         listOf(),
                         ByteArray(0) {
@@ -216,7 +219,8 @@ val StatusListTest by matrixSuite {
                             0.toByte()
                         }
                     ),
-                )).values) test { (values, expectedByteArray) ->
+                ).asData(nameFn = { (name, _) -> name }) test { (_, expected) ->
+                val (values, expectedByteArray) = expected
                 StatusListView.fromTokenStatuses(
                     values,
                     statusBitSize = TokenStatusBitSize.EIGHT,

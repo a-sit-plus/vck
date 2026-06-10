@@ -17,12 +17,13 @@ import kotlin.time.toDuration
 
 val PositiveDurationFormatSerializerTest by matrixSuite {
     "JSON serialization keeps ttl as a number" - {
-        data((mapOf(
+        mapOf(
                 "whole seconds" to Pair(1.toDuration(DurationUnit.SECONDS), "1"),
                 "minutes" to Pair(1.toDuration(DurationUnit.MINUTES), "60"),
                 "hours" to Pair(1.toDuration(DurationUnit.HOURS), "3600"),
                 "fractional seconds" to Pair(1.5.toDuration(DurationUnit.SECONDS), "1.5"),
-            )).values) test { (duration, expectedJson) ->
+            ).asData(nameFn = { (name, _) -> name }) test { (_, expected) ->
+            val (duration, expectedJson) = expected
             val value = PositiveDuration(duration)
             val encoded = vckJsonSerializer.encodeToString(value)
 
@@ -32,11 +33,11 @@ val PositiveDurationFormatSerializerTest by matrixSuite {
     }
 
     "JSON deserialization rejects non-positive ttl values" - {
-        data((mapOf(
+        mapOf(
                 "zero" to "0",
                 "negative whole seconds" to "-1",
                 "negative fractional seconds" to "-1.5",
-            )).values) test { encoded ->
+            ).asData(nameFn = { (name, _) -> name }) test { (_, encoded) ->
             shouldThrow<SerializationException> {
                 vckJsonSerializer.decodeFromString<PositiveDuration>(encoded)
             }
@@ -44,11 +45,12 @@ val PositiveDurationFormatSerializerTest by matrixSuite {
     }
 
     "CBOR serialization uses unsigned integer values for whole-second ttl" - {
-        data((mapOf(
+        mapOf(
                 "1 second" to Pair(PositiveDuration(1.toDuration(DurationUnit.SECONDS)), "01"),
                 "1 minute" to Pair(PositiveDuration(1.toDuration(DurationUnit.MINUTES)), "183C"),
                 "1 hour" to Pair(PositiveDuration(1.toDuration(DurationUnit.HOURS)), "190E10"),
-            )).values) test { (value, expectedHex) ->
+            ).asData(nameFn = { (name, _) -> name }) test { (_, expected) ->
+            val (value, expectedHex) = expected
             val encoded = coseCompliantSerializer.encodeToByteArray<PositiveDuration>(value)
 
             encoded.encodeToString(Base16Strict).uppercase() shouldBe expectedHex
@@ -57,11 +59,11 @@ val PositiveDurationFormatSerializerTest by matrixSuite {
     }
 
     "CBOR deserialization rejects unsupported ttl values" - {
-        data((mapOf(
+        mapOf(
                 "zero" to "00",
                 "negative one" to "20",
                 "above Long.MAX_VALUE" to "1B8000000000000000",
-            )).values) test { encodedHex ->
+            ).asData(nameFn = { (name, _) -> name }) test { (_, encodedHex) ->
             shouldThrow<SerializationException> {
                 coseCompliantSerializer.decodeFromByteArray<PositiveDuration>(
                     encodedHex.decodeToByteArray(Base16Strict),

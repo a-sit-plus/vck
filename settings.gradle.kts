@@ -31,13 +31,13 @@ include(":vck-openid-ktor")
 include(":rfc3986-uri-syntax")
 include(":sd-jwt-type-metadata")
 
-
+/*
 val signumFile = file("../signum/build.gradle.kts")
 if (signumFile.exists()) {
     logger.warn("Detected signum in ${signumFile.absolutePath}.")
     logger.warn("Including signum as composite build.")
     includeBuild("../signum")
-}
+}*/
 
 buildscript {
     repositories {

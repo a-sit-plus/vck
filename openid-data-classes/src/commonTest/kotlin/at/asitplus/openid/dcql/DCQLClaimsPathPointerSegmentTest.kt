@@ -79,7 +79,7 @@ val DCQLClaimsPathPointerSegmentTest by matrixSuite {
                     normalizedJsonPath = NormalizedJsonPath()
                 )
             )
-            data(listOf(0u, 1u, 2u)) test { index ->
+            listOf(0u, 1u, 2u).asData() test { index ->
                 val selection = DCQLClaimsPathPointerSegment.IndexSegment(index)
                     .query(nodeList)
                 selection shouldHaveSize 1

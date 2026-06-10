@@ -8,12 +8,12 @@ import kotlin.getValue
 @Suppress("unused")
 val EtsiCountryCodeTest by matrixSuite {
     testSuite("must all be uppercase") {
-        data(listOf("a", "aA")) test {
+        listOf("a", "aA").asData() test {
             shouldThrow<IllegalArgumentException> {
                 EtsiCountryCode(it)
             }
         }
-        data(listOf("A", "AA", "EU", "UK", "EL")) test {
+        listOf("A", "AA", "EU", "UK", "EL").asData() test {
             EtsiCountryCode(it)
         }
     }

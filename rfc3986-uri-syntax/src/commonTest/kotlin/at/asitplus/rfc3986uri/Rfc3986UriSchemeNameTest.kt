@@ -12,7 +12,7 @@ val Rfc3986UriSchemeNameTest by matrixSuite {
     }
 
     testSuite("starts with letter") {
-        data(listOf("123", "+aa", "-a", ".a")) test {
+        listOf("123", "+aa", "-a", ".a").asData() test {
             shouldThrow<IllegalArgumentException> {
                 Rfc3986UriSchemeName(it)
             }
