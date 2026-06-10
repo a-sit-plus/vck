@@ -4,7 +4,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
-import at.asitplus.openid.SupportedCredentialFormatMsoMdoc
+import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -206,7 +206,7 @@ val DeserializationTest by testSuite {
         joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
             supportedCredentialConfigurations.shouldNotBeNull().apply {
                 shouldNotBeEmpty()
-                get("org.iso.18013.5.1.mDL").shouldBeInstanceOf<SupportedCredentialFormatMsoMdoc>().apply {
+                get("org.iso.18013.5.1.mDL").shouldBeInstanceOf<SupportedCredentialFormatIsoMdoc>().apply {
                     format shouldBe CredentialFormatEnum.MSO_MDOC
                     docType shouldBe "org.iso.18013.5.1.mDL"
                     supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("cose_key")

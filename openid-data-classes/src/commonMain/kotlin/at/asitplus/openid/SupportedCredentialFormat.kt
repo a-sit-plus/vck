@@ -86,7 +86,7 @@ sealed interface SupportedCredentialFormat {
             docType: String,
             isoClaims: Set<ClaimDescription>,
             display: Set<DisplayProperties>? = null,
-        ) = SupportedCredentialFormatMsoMdoc(
+        ) = SupportedCredentialFormatIsoMdoc(
             scope = scope,
             supportedBindingMethods = supportedBindingMethods,
             supportedProofTypes = supportedProofTypes,
@@ -162,8 +162,8 @@ sealed interface SupportedCredentialFormat {
             value: SupportedCredentialFormat
         ) {
             when (value) {
-                is SupportedCredentialFormatMsoMdoc -> encoder.encodeSerializableValue(
-                    SupportedCredentialFormatMsoMdoc.serializer(),
+                is SupportedCredentialFormatIsoMdoc -> encoder.encodeSerializableValue(
+                    SupportedCredentialFormatIsoMdoc.serializer(),
                     value,
                 )
 
@@ -209,7 +209,7 @@ sealed interface SupportedCredentialFormat {
                     CredentialFormatEnum.DC_SD_JWT -> SupportedCredentialFormatSdJwt.serializer()
                     CredentialFormatEnum.JWT_VC_JSON_LD -> SupportedCredentialFormatW3cVcJwtJsonLd.serializer()
                     CredentialFormatEnum.JSON_LD -> SupportedCredentialFormatW3cVcJsonLd.serializer()
-                    CredentialFormatEnum.MSO_MDOC -> SupportedCredentialFormatMsoMdoc.serializer()
+                    CredentialFormatEnum.MSO_MDOC -> SupportedCredentialFormatIsoMdoc.serializer()
                     CredentialFormatEnum.NONE -> throw IllegalArgumentException(
                         "Unsupported format identifier `$formatIdentifier`."
                     )

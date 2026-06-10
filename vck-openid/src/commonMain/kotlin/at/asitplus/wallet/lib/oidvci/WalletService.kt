@@ -18,7 +18,7 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ProofTypes
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.SupportedCredentialFormatMsoMdoc
+import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
@@ -218,7 +218,7 @@ class WalletService(
             } == requestOptions.credentialScheme.sdJwtType!!
 
             ISO_MDOC ->  when(it) {
-                is SupportedCredentialFormatMsoMdoc -> it.docType
+                is SupportedCredentialFormatIsoMdoc -> it.docType
                 else -> null
             } == requestOptions.credentialScheme.isoDocType!!
         }

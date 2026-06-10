@@ -10,13 +10,13 @@ import kotlinx.serialization.json.JsonPrimitive
 
 
 @Serializable
-data class SupportedCredentialFormatMsoMdoc(
+data class SupportedCredentialFormatIsoMdoc(
     /**
      * OID4VCI:
      * ISO mDL: REQUIRED. String identifying the Credential type, as defined in (ISO.18013-5).
      */
     @SerialName(SerialNames.DOCTYPE)
-    val docType: String, // TODO: Better typing?
+    val docType: String,
     @SerialName(SupportedCredentialFormat.SerialNames.SCOPE)
     override val scope: String? = null,
     @SerialName(SupportedCredentialFormat.SerialNames.CRYPTOGRAPHIC_BINDING_METHODS_SUPPORTED)
@@ -51,9 +51,10 @@ data class SupportedCredentialFormatMsoMdoc(
 
     companion object {
         const val FORMAT_IDENTIFIER = "mso_mdoc"
-        val FORMAT = CredentialFormatEnum.parse(FORMAT_IDENTIFIER) ?: throw IllegalStateException(
-            "Expected format identifier `$FORMAT_IDENTIFIER` to represent a valid format, but couldn't find it."
-        )
+        val FORMAT = CredentialFormatEnum.parse(FORMAT_IDENTIFIER)
+            ?: throw IllegalStateException(
+                "Expected format identifier `$FORMAT_IDENTIFIER` to represent a valid format, but couldn't find it."
+            )
     }
 
     data object SerialNames {

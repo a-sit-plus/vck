@@ -14,12 +14,12 @@ val SupportedCredentialFormatTest by testSuite {
         ) { serialized ->
             withData(
                 SupportedCredentialFormat.serializer(),
-                SupportedCredentialFormatMsoMdoc.serializer(),
+                SupportedCredentialFormatIsoMdoc.serializer(),
             ) { serializer ->
                 Json.decodeFromString(
                     serializer,
                     serialized
-                ).shouldBeInstanceOf<SupportedCredentialFormatMsoMdoc>()
+                ).shouldBeInstanceOf<SupportedCredentialFormatIsoMdoc>()
             }
         }
     }

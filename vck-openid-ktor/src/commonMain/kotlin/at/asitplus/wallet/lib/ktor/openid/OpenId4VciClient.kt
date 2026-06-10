@@ -9,7 +9,7 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.SupportedCredentialFormatMsoMdoc
+import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
@@ -106,7 +106,7 @@ class OpenId4VciClient(
         }
 
     private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? = when(this) {
-        is SupportedCredentialFormatMsoMdoc -> AttributeIndex.resolveIsoDoctype(docType)
+        is SupportedCredentialFormatIsoMdoc -> AttributeIndex.resolveIsoDoctype(docType)
             ?: IsoMdocFallbackCredentialScheme(isoDocType = docType)
 
         is SupportedCredentialFormatSdJwt -> AttributeIndex.resolveSdJwtAttributeType(sdJwtVcType)
