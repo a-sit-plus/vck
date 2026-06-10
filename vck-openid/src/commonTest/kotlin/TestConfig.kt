@@ -4,15 +4,9 @@ import de.infix.testBalloon.framework.core.TestSession
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 
-
-expect val testNameLengths: Pair<Int, Int>
-
 class TestConfig : TestSession(
     testConfig = DefaultConfiguration.apply {
-        MatrixTestDefaults {
-            execution = ExecutionMode.Concurrent(8)
-            defaultTestNameMaxLength = testNameLengths.first
-        }
+        MatrixTestDefaults { execution = ExecutionMode.Concurrent(8) }
     }
 ) {
     init {
