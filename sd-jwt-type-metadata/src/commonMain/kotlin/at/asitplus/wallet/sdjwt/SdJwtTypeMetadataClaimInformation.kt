@@ -52,10 +52,11 @@ data class SdJwtTypeMetadataClaimInformation(
             path = base.path,
             display = child.display ?: base.display,
             isMandatory = if (child.isMandatory != null) child.extendFromMandatory(base.isMandatory) else base.isMandatory,
-            selectiveDisclosureConstraints = if (child.selectiveDisclosureConstraints != null)
-                child.selectiveDisclosureConstraints.extendFrom(base.selectiveDisclosureConstraints ?: SelectiveDisclosureConstraints.allowed)
-            else
-                base.selectiveDisclosureConstraints,
+            selectiveDisclosureConstraints = when {
+                child.selectiveDisclosureConstraints != null ->
+                    child.selectiveDisclosureConstraints.extendFrom(base.selectiveDisclosureConstraints ?: SelectiveDisclosureConstraints.ALLOWED)
+                else -> base.selectiveDisclosureConstraints
+            },
             svgId = child.svgId ?: base.svgId,
         )
     }

@@ -3,7 +3,7 @@ package at.asitplus.wallet.sdjwt
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class SdJwtTypeMetadataClaimInformationPathIndexSegment(
+value class SdJwtTypeMetadataClaimInformationPathSegmentIndex(
     val ulong: ULong
 ) : SdJwtTypeMetadataClaimInformationPathSegment {
     init {

@@ -71,6 +71,11 @@ val Rfc3986AuthorityHostTest by testSuite {
             shouldNotThrowAny { Rfc3986AuthorityHostIPv6("::") }
             shouldNotThrowAny { Rfc3986AuthorityHostIPv6("2001:db8::1") }
         }
+        test("IPv4 tail in full IPv6 literal without :: is accepted") {
+            shouldNotThrowAny { Rfc3986AuthorityHostIPv6("0:0:0:0:0:ffff:192.0.2.128") }
+            shouldNotThrowAny { Rfc3986UniformResourceIdentifier("http://[0:0:0:0:0:ffff:192.0.2.128]/") }
+            Rfc3986AuthorityHostIPv6("0:0:0:0:0:ffff:192.0.2.128").parts.size shouldBe 8
+        }
     }
 
     testSuite("IPvFuture round-trips through URI") {

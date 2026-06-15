@@ -8,7 +8,6 @@ import at.asitplus.testballoon.withFixtureGenerator
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.SdJwtTypeMetadata
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -17,6 +16,8 @@ import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadata
+import at.asitplus.wallet.sdjwt.SdJwtVcType
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -154,7 +155,7 @@ val ValidatorSdJwtTest by testSuite {
 
         test("credentials are valid with vctm added") {
             val typeMetadata = SdJwtTypeMetadata(
-                verifiableCredentialType = "https://www.w3.org/2018/credentials/v1"
+                vct = SdJwtVcType("https://www.w3.org/2018/credentials/v1")
             )
             val vctm = typeMetadata.let {
                 joseCompliantSerializer.encodeToString(it).encodeToByteArray().encodeToString(Base64UrlStrict)

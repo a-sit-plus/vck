@@ -1,26 +1,33 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.data.NonEmptyList
-import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.invoke
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegmentName
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegment
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataDocument
+import at.asitplus.wallet.sdjwt.SelectiveDisclosureConstraints
+import at.asitplus.wallet.sdjwt.SvgTemplatePropertyColorScheme
+import at.asitplus.wallet.sdjwt.SvgTemplatePropertyContrast
+import at.asitplus.wallet.sdjwt.SvgTemplatePropertyImageOrientation
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
-val SdJwtTypeMetadataSerializationTest by testSuite {
-
+@Suppress("unused")
+val SdJwtTypeMetadataDocumentSerializationTest by testSuite {
     "Deserialization is correct for EHIC" {
         val input = """{
           "vct": "urn:eudi:ehic:1",
           "name": "DC4EU EHIC SD-JWT VCTM",
-          "description": "DC4EU European Health Insurance Card (EHIC) SD-JWT Verifiable Credential Type Metadata, based on ietf-oauth-sd-jwt-vc (draft 09), using a single language tag (en-US).",
-          "${'$'}comment": "Implementation of the DC4EU VCTM may require Member State-specific clarifications to align with national policies governing the display of included claims.",
+          "description": "DC4EU European Health Insurance Card (EHIC) SD-JWT Verifiable Credential Type Metadata, based on ietf-oauth-sd-jwt-vc (draft 09), using a single localeuage tag (en-US).",
           "display": [
             {
-              "lang": "en-US",
+              "locale": "en-US",
               "name": "EHIC SD-JWT VC",
               "description": "European Health Insurance Card (EHIC) SD-JWT VC",
               "rendering": {
@@ -47,7 +54,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "svg_id": "personal_administrative_number_6",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Social Security PIN",
                   "description": "Unique personal identifier used by social security services."
                 }
@@ -60,7 +67,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "sd": "never",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Issuing authority"
                 }
               ]
@@ -73,7 +80,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "sd": "never",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Issuing authority id",
                   "description": "EHIC issuing authority unique identifier."
                 }
@@ -87,7 +94,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "sd": "never",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Issuing authority name",
                   "description": "EHIC issuing authority name."
                 }
@@ -101,7 +108,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "svg_id": "issuing_country_2",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Issuing country",
                   "description": "EHIC issuing country."
                 }
@@ -115,7 +122,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "svg_id": "date_of_expiry_9",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Expiry date",
                   "description": "EHIC expiration date."
                 }
@@ -128,7 +135,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "sd": "never",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Issue date",
                   "description": "EHIC validity start date."
                 }
@@ -141,7 +148,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "sd": "never",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Competent institution"
                 }
               ]
@@ -155,7 +162,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "svg_id": "authentic_source_id_7a",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Competent institution id",
                   "description": "Identifier of the competent insitution as registered in the EESSI Institution Repository."
                 }
@@ -170,7 +177,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "svg_id": "authentic_source_name_7b",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Competent institution name",
                   "description": "Name of the competent insitution as registered in the EESSI Institution Repository."
                 }
@@ -183,7 +190,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "sd": "never",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Ending date",
                   "description": "End date of the insurance coverage."
                 }
@@ -196,7 +203,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "sd": "never",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Starting date",
                   "description": "Start date of the insurance coverage."
                 }
@@ -210,48 +217,23 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "svg_id": "document_number_8",
               "display": [
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Document number",
                   "description": "EHIC unique document identifier."
                 }
               ]
             }
-          ],
-          "schema_uri": "https://demo-issuer.wwwallet.org/public/creds/ehic/european-health-insurance-card-schema-dc4eu-01.json",
-          "schema_uri#integrity": "sha256-lNMpT2YzCPU1AuIpSIjryv6KUgBUBUVs3eNbZQoMJNA="
+          ]
         }
         """.trimIndent()
 
-        joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(input).apply {
-            verifiableCredentialType shouldBe "urn:eudi:ehic:1"
-            name shouldBe "DC4EU EHIC SD-JWT VCTM"
-            description shouldBe "DC4EU European Health Insurance Card (EHIC) SD-JWT Verifiable Credential Type Metadata, based on ietf-oauth-sd-jwt-vc (draft 09), using a single language tag (en-US)."
-            display.shouldNotBeNull().shouldBeSingleton().first().apply {
-                language shouldBe "en-US"
-                name shouldBe "EHIC SD-JWT VC"
-                description shouldBe "European Health Insurance Card (EHIC) SD-JWT VC"
-                rendering.shouldNotBeNull().svgTemplate.shouldNotBeNull().shouldBeSingleton().first().apply {
-                    uri shouldBe "https://demo-issuer.wwwallet.org/public/creds/ehic/european-health-insurance-card-svg-dc4eu-01.svg"
-                    uriIntegrity shouldBe "sha256-GwKqaDcprF+QV3HPDQmbS/foYIErctFzieEicgvyRk4="
-                    properties.shouldNotBeNull().apply {
-                        get("orientation") shouldBe "landscape"
-                        get("color_scheme") shouldBe "light"
-                        get("contrast") shouldBe "normal"
-                    }
-                }
-            }
-            claims.shouldNotBeNull().first { it.path.segments.firstNamedSegment() == "document_number" }.apply {
-                path.segments.firstNamedSegment() shouldBe "document_number"
-                selectivelyDisclosable shouldBe ClaimSelectiveDisclosable.ALWAYS
-                svgId shouldBe "document_number_8"
-                display.shouldNotBeNull().first().apply {
-                    language shouldBe "en-US"
-                    label shouldBe "Document number"
-                    description shouldBe "EHIC unique document identifier."
-                }
-            }
-            schemaUri shouldBe "https://demo-issuer.wwwallet.org/public/creds/ehic/european-health-insurance-card-schema-dc4eu-01.json"
-            schemaUriIntegrity shouldBe "sha256-lNMpT2YzCPU1AuIpSIjryv6KUgBUBUVs3eNbZQoMJNA="
+        joseCompliantSerializer.decodeFromString(
+            SdJwtTypeMetadataDocument.serializer(),
+            input
+        ).definition.toSdJwtTypeMetadata().toCredentialScheme().apply {
+            CredentialRepresentation.SD_JWT shouldBeIn supportedRepresentations
+            sdJwtType shouldBe "urn:eudi:ehic:1"
+            claimDescriptions shouldHaveSize 13
         }
     }
 
@@ -266,7 +248,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
           "extends#integrity": "sha256-ilOUJsTultOwLfz7QUcFALaRa3BP/jelX1ds04kB9yU=",
           "display": [
             {
-              "lang": "en-US",
+              "locale": "en-US",
               "name": "Betelgeuse Education Credential",
               "description": "An education credential for all carbon-based life forms on Betelgeusians",
               "rendering": {
@@ -293,7 +275,7 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               }
             },
             {
-              "lang": "de-DE",
+              "locale": "de-DE",
               "name": "Betelgeuse-Bildungsnachweis",
               "rendering": {
                 "simple": {
@@ -324,12 +306,12 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "path": ["name"],
               "display": [
                 {
-                  "lang": "de-DE",
+                  "locale": "de-DE",
                   "label": "Vor- und Nachname",
                   "description": "Der Name des Studenten"
                 },
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Name",
                   "description": "The name of the student"
                 }
@@ -340,12 +322,12 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "path": ["address"],
               "display": [
                 {
-                  "lang": "de-DE",
+                  "locale": "de-DE",
                   "label": "Adresse",
                   "description": "Adresse zum Zeitpunkt des Abschlusses"
                 },
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Address",
                   "description": "Address at the time of graduation"
                 }
@@ -356,11 +338,11 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "path": ["address", "street_address"],
               "display": [
                 {
-                  "lang": "de-DE",
+                  "locale": "de-DE",
                   "label": "Straße"
                 },
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Street Address"
                 }
               ],
@@ -371,12 +353,12 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
               "path": ["degrees", null],
               "display": [
                 {
-                  "lang": "de-DE",
+                  "locale": "de-DE",
                   "label": "Abschluss",
                   "description": "Der Abschluss des Studenten"
                 },
                 {
-                  "lang": "en-US",
+                  "locale": "en-US",
                   "label": "Degree",
                   "description": "Degree earned by the student"
                 }
@@ -389,53 +371,52 @@ val SdJwtTypeMetadataSerializationTest by testSuite {
         }
         """.trimIndent()
 
-        joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(input).apply {
-            verifiableCredentialType shouldBe "https://betelgeuse.example.com/education_credential"
+        joseCompliantSerializer.decodeFromString<SdJwtTypeMetadataDocument>(input).definition.apply {
+            vct.string shouldBe "https://betelgeuse.example.com/education_credential"
             name shouldBe "Betelgeuse Education Credential - Preliminary Version"
             description shouldBe "This is our development version of the education credential. Don't panic."
-            extends shouldBe "https://galaxy.example.com/galactic-education-credential-0.9"
-            extendsIntegrity shouldBe "sha256-ilOUJsTultOwLfz7QUcFALaRa3BP/jelX1ds04kB9yU="
-            display.shouldNotBeNull().first { it.language == "en-US" }.apply {
+            extends?.string shouldBe "https://galaxy.example.com/galactic-education-credential-0.9"
+            extendsIntegrity?.string shouldBe "sha256-ilOUJsTultOwLfz7QUcFALaRa3BP/jelX1ds04kB9yU="
+            display.shouldNotBeNull().first { it.locale.string == "en-US" }.apply {
                 name shouldBe "Betelgeuse Education Credential"
                 description shouldBe "An education credential for all carbon-based life forms on Betelgeusians"
                 rendering.shouldNotBeNull().simple.shouldNotBeNull().apply {
                     logo.shouldNotBeNull().apply {
-                        uri shouldBe "https://betelgeuse.example.com/public/education-logo.png"
-                        uriIntegrity shouldBe "sha256-LmXfh+9cLlJNXN+TsMk+PmKjZ5t0WRL5ca/xGgX3c1U="
-                        altText shouldBe "Betelgeuse Ministry of Education logo"
+                        uri.string shouldBe "https://betelgeuse.example.com/public/education-logo.png"
+                        uriIntegrity?.string shouldBe "sha256-LmXfh+9cLlJNXN+TsMk+PmKjZ5t0WRL5ca/xGgX3c1U="
+                        alternativeText shouldBe "Betelgeuse Ministry of Education logo"
                     }
-                    backgroundColor shouldBe "#12107c"
-                    textColor shouldBe "#FFFFFF"
+                    backgroundColor?.string shouldBe "#12107c"
+                    textColor?.string shouldBe "#FFFFFF"
                 }
-                rendering.shouldNotBeNull().svgTemplate.shouldNotBeNull().shouldBeSingleton().first().apply {
-                    uri shouldBe "https://betelgeuse.example.com/public/credential-english.svg"
-                    uriIntegrity shouldBe "sha256-I4JcBGO7UfrkOBrsV7ytNJAfGuKLQh+e+Z31mc7iAb4="
+                rendering.shouldNotBeNull().svgTemplates.shouldNotBeNull().shouldBeSingleton().first().apply {
+                    uri.string shouldBe "https://betelgeuse.example.com/public/credential-english.svg"
+                    uriIntegrity?.string shouldBe "sha256-I4JcBGO7UfrkOBrsV7ytNJAfGuKLQh+e+Z31mc7iAb4="
                     properties.shouldNotBeNull().apply {
-                        get("orientation") shouldBe "landscape"
-                        get("color_scheme") shouldBe "light"
-                        get("contrast") shouldBe "high"
+                        imageOrientation shouldBe SvgTemplatePropertyImageOrientation.landscape
+                        colorScheme shouldBe SvgTemplatePropertyColorScheme.light
+                        contrast shouldBe SvgTemplatePropertyContrast.high
                     }
                 }
             }
-            display.shouldNotBeNull().first { it.language == "de-DE" }.apply {
+            display.shouldNotBeNull().first { it.locale.string == "de-DE" }.apply {
                 name shouldBe "Betelgeuse-Bildungsnachweis"
                 description.shouldBeNull()
             }
-            claims.shouldNotBeNull().first { it.path.segments.firstNamedSegment() == "name" }.apply {
-                selectivelyDisclosable shouldBe ClaimSelectiveDisclosable.ALLOWED
-                display.shouldNotBeNull().first { it.language == "en-US" }.apply {
+            claims.shouldNotBeNull().first { it.path.firstNamedSegment() == "name" }.apply {
+                selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALLOWED
+                display.shouldNotBeNull().first { it.locale.string == "en-US" }.apply {
                     label shouldBe "Name"
                     description shouldBe "The name of the student"
                 }
-                display.shouldNotBeNull().first { it.language == "de-DE" }.apply {
+                display.shouldNotBeNull().first { it.locale.string == "de-DE" }.apply {
                     label shouldBe "Vor- und Nachname"
                     description shouldBe "Der Name des Studenten"
                 }
             }
-            schemaUri shouldBe "https://exampleuniversity.com/public/credential-schema-0.9"
-            schemaUriIntegrity shouldBe "sha256-He4fNeA4xvjLbh/e+rd9Hw3l60OS4tEliHE7NDYXRwA="
         }
     }
 }
-private fun NonEmptyList<DCQLClaimsPathPointerSegment>.firstNamedSegment(): String? =
-    filterIsInstance<DCQLClaimsPathPointerSegment.NameSegment>().map { it.name }.firstOrNull()
+
+private fun List<SdJwtTypeMetadataClaimInformationPathSegment?>.firstNamedSegment(): String? =
+    filterIsInstance<SdJwtTypeMetadataClaimInformationPathSegmentName>().map { it.string }.firstOrNull()

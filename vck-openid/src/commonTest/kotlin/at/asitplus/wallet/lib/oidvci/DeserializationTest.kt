@@ -3,6 +3,9 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OpenId4VciClaimsPathPointer
+import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
+import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import de.infix.testBalloon.framework.core.testSuite
@@ -12,6 +15,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 
 val DeserializationTest by testSuite {
 
@@ -202,7 +206,7 @@ val DeserializationTest by testSuite {
         joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
             supportedCredentialConfigurations.shouldNotBeNull().apply {
                 shouldNotBeEmpty()
-                get("org.iso.18013.5.1.mDL").shouldNotBeNull().apply {
+                get("org.iso.18013.5.1.mDL").shouldBeInstanceOf<SupportedCredentialFormatIsoMdoc>().apply {
                     format shouldBe CredentialFormatEnum.MSO_MDOC
                     docType shouldBe "org.iso.18013.5.1.mDL"
                     supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("cose_key")
@@ -222,19 +226,17 @@ val DeserializationTest by testSuite {
                         }
                         claimDescription.shouldNotBeNull().apply {
                             shouldNotBeEmpty()
-                            firstOrNull { it.path == listOf("org.iso.18013.5.1", "given_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("org.iso.18013.5.1", "given_name") }.shouldNotBeNull()
                                 .also {
                                     it.display.shouldNotBeNull().firstOrNull { it.locale == "en-US" }.shouldNotBeNull()
                                     it.display.shouldNotBeNull().firstOrNull { it.locale == "ja-JP" }.shouldNotBeNull()
                                 }
-                            firstOrNull { it.path == listOf("org.iso.18013.5.1", "family_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("org.iso.18013.5.1", "family_name") }.shouldNotBeNull()
                         }
                     }
                 }
             }
         }
-
-
     }
 
     test("OID4VCI A.3.2. IETF SD-JWT VC") {
@@ -337,7 +339,7 @@ val DeserializationTest by testSuite {
         joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
             supportedCredentialConfigurations.shouldNotBeNull().apply {
                 shouldNotBeEmpty()
-                get("SD_JWT_VC_example_in_OpenID4VCI").shouldNotBeNull().apply {
+                get("SD_JWT_VC_example_in_OpenID4VCI").shouldBeInstanceOf<SupportedCredentialFormatSdJwt>().apply {
                     format shouldBe CredentialFormatEnum.DC_SD_JWT
                     scope shouldBe "SD_JWT_VC_example_in_OpenID4VCI"
                     sdJwtVcType shouldBe "SD_JWT_VC_example_in_OpenID4VCI"
@@ -358,12 +360,12 @@ val DeserializationTest by testSuite {
                     }
                     credentialMetadata.shouldNotBeNull().apply {
                         claimDescription.shouldNotBeNull().shouldNotBeEmpty().apply {
-                            firstOrNull { it.path == listOf("given_name") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("family_name") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("email") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("phone_number") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("address") }.shouldNotBeNull()
-                            firstOrNull { it.path == listOf("address", "street_address") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("given_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("family_name") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("email") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("phone_number") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("address") }.shouldNotBeNull()
+                            firstOrNull { it.path == OpenId4VciClaimsPathPointer("address", "street_address") }.shouldNotBeNull()
                         }
                     }
                 }

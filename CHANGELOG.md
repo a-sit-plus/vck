@@ -31,6 +31,8 @@ Release 6.0.0 (unreleased):
    - Update `loadInstanceAttestation` and `loadKeyAttestation` to use input parameter
    - JWT proof creation only loads/attaches a key attestation when issuer metadata requires it
    - Reject Wallet Instance Attestations, attestation proofs, JWT proofs, and Key Attestations that use signing algorithms outside the TS3 ES256/ES384/ES512 set
+   - Change: Add typed subclasses for `SupportedCredentialFormat` for every credential representation 
+   - Change: In `SupportedCredentialFormat` replace `List<String>` with `OpenId4VciClaimsPathPointer` for claim definitions
  - Deprecations:
    - Remove code deprecated in 5.12.0, e.g. `CredentialSubject` as base class for JWT VC
    - Deprecate `vckJsonSerializer`, should be replaced with `joseCompliantSerializer` (Signum)

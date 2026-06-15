@@ -34,9 +34,9 @@ val SdJwtTypeMetadataTest by testSuite {
             val enSvg = enDisplay.rendering!!.svgTemplates!!.single()
             enSvg.uri.string shouldBe "https://betelgeuse.example.com/public/credential-english.svg"
             enSvg.uriIntegrity.toString() shouldBe "sha256-I4JcBGO7UfrkOBrsV7ytNJAfGuKLQh+e+Z31mc7iAb4="
-            enSvg.properties!!.svgTemplatePropertyImageOrientation shouldBe SvgTemplatePropertyImageOrientation.landscape
-            enSvg.properties!!.svgTemplatePropertyColorScheme shouldBe SvgTemplatePropertyColorScheme.light
-            enSvg.properties!!.svgTemplatePropertyContrast shouldBe SvgTemplatePropertyContrast.high
+            enSvg.properties!!.imageOrientation shouldBe SvgTemplatePropertyImageOrientation.landscape
+            enSvg.properties!!.colorScheme shouldBe SvgTemplatePropertyColorScheme.light
+            enSvg.properties!!.contrast shouldBe SvgTemplatePropertyContrast.high
 
             val deDisplay = display.first { it.locale == Rfc5646LanguageTag("de-DE") }
             deDisplay.name shouldBe "Betelgeuse-Bildungsnachweis"
@@ -48,7 +48,7 @@ val SdJwtTypeMetadataTest by testSuite {
             claims.size shouldBe 7
 
             val nameClaim = claims.first { it.path == SdJwtTypeMetadataClaimInformationPath("name") }
-            nameClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+            nameClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
             nameClaim.isMandatory shouldBe true
             nameClaim.display!!.first { it.locale == Rfc5646LanguageTag("en-US") }.label shouldBe "Name"
             nameClaim.display!!.first { it.locale == Rfc5646LanguageTag("en-US") }.description shouldBe "The name of the student"
@@ -56,37 +56,37 @@ val SdJwtTypeMetadataTest by testSuite {
             nameClaim.display!!.first { it.locale == Rfc5646LanguageTag("de-DE") }.description shouldBe "Der Name des/der Studierenden"
 
             val addressClaim = claims.first { it.path == SdJwtTypeMetadataClaimInformationPath("address") }
-            addressClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+            addressClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
             addressClaim.isMandatory shouldBe null
             addressClaim.svgId shouldBe null
             addressClaim.display!!.first { it.locale == Rfc5646LanguageTag("en-US") }.label shouldBe "Address"
             addressClaim.display!!.first { it.locale == Rfc5646LanguageTag("de-DE") }.description shouldBe "Adresse zum Zeitpunkt des Abschlusses"
 
             val streetClaim = claims.first { it.path == SdJwtTypeMetadataClaimInformationPath("address", "street_address") }
-            streetClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+            streetClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
             streetClaim.svgId shouldBe SvgContentPlaceholder("address_street_address")
             streetClaim.display!!.first { it.locale == Rfc5646LanguageTag("de-DE") }.label shouldBe "Straße"
             streetClaim.display!!.first { it.locale == Rfc5646LanguageTag("en-US") }.label shouldBe "Street Address"
 
             val degreesClaim = claims.first { it.path == SdJwtTypeMetadataClaimInformationPath("degrees") }
-            degreesClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.never
+            degreesClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.NEVER
             degreesClaim.isMandatory shouldBe null
             degreesClaim.display!!.first { it.locale == Rfc5646LanguageTag("en-US") }.label shouldBe "Degrees"
             degreesClaim.display!!.first { it.locale == Rfc5646LanguageTag("de-DE") }.description shouldBe "Abschlüsse des/der Studierenden"
 
             val degreesWildcardPath = SdJwtTypeMetadataClaimInformationPath("degrees") + null
             val degreesWildcardClaim = claims.first { it.path == degreesWildcardPath }
-            degreesWildcardClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+            degreesWildcardClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
             degreesWildcardClaim.isMandatory shouldBe null
             degreesWildcardClaim.display shouldBe null
 
             val fieldOfStudyClaim = claims.first { it.path == degreesWildcardPath + "field_of_study" }
-            fieldOfStudyClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.never
+            fieldOfStudyClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.NEVER
             fieldOfStudyClaim.display!!.first { it.locale == Rfc5646LanguageTag("de-DE") }.label shouldBe "Studienfach"
             fieldOfStudyClaim.display!!.first { it.locale == Rfc5646LanguageTag("en-US") }.label shouldBe "Field of Study"
 
             val dateAwardedClaim = claims.first { it.path == degreesWildcardPath + "date_awarded" }
-            dateAwardedClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.always
+            dateAwardedClaim.selectiveDisclosureConstraints shouldBe SelectiveDisclosureConstraints.ALWAYS
             dateAwardedClaim.display!!.first { it.locale == Rfc5646LanguageTag("de-DE") }.label shouldBe "Verleihungsdatum"
             dateAwardedClaim.display!!.first { it.locale == Rfc5646LanguageTag("en-US") }.label shouldBe "Date Awarded"
         }

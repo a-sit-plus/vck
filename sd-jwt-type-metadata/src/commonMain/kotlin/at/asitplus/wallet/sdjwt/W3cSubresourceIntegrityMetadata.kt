@@ -45,7 +45,10 @@ value class W3cSubresourceIntegrityMetadata(
     val byteArray
         get() = expression.hashValue.byteArray
 
-    override fun toString() = expression.toString().removePrefix("'").removeSuffix("'")
+    val string
+        get() = expression.string.removePrefix("'").removeSuffix("'")
+
+    override fun toString() = string
 
     class InlineSerializer : KSerializer<W3cSubresourceIntegrityMetadata> {
         override val descriptor: SerialDescriptor

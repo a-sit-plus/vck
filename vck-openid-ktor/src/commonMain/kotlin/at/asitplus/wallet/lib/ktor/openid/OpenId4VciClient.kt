@@ -10,6 +10,11 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
+import at.asitplus.openid.SupportedCredentialFormatSdJwt
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
+import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
@@ -19,6 +24,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SdJwtFallbackCredentialScheme
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
@@ -104,17 +110,31 @@ class OpenId4VciClient(
             }
         }
 
-    private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? =
-        sdJwtVcType?.let {
-            AttributeIndex.resolveSdJwtAttributeType(it)
-                ?: SdJwtFallbackCredentialScheme(sdJwtType = it)
-        } ?: docType?.let {
-            AttributeIndex.resolveIsoDoctype(it)
-                ?: IsoMdocFallbackCredentialScheme(isoDocType = it)
-        } ?: credentialDefinition?.types?.firstNotNullOfOrNull {
-            AttributeIndex.resolveAttributeType(it)
-                ?: VcFallbackCredentialScheme(vcType = it)
-        }
+    private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? = when (this) {
+        is SupportedCredentialFormatIsoMdoc -> AttributeIndex.resolveIsoDoctype(docType)
+            ?: IsoMdocFallbackCredentialScheme(isoDocType = docType)
+
+        is SupportedCredentialFormatSdJwt -> AttributeIndex.resolveSdJwtAttributeType(sdJwtVcType)
+            ?: SdJwtFallbackCredentialScheme(sdJwtType = sdJwtVcType)
+
+        is SupportedCredentialFormatW3cVcJwt -> credentialDefinition.types
+            .filterNot { it == VERIFIABLE_CREDENTIAL }.run {
+                firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
+                    ?: firstOrNull()?.let { VcFallbackCredentialScheme(vcType = it) }
+            }
+
+        is SupportedCredentialFormatW3cVcJsonLd -> credentialDefinition.type
+            .filterNot { it == VERIFIABLE_CREDENTIAL }.run {
+                firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
+                    ?: firstOrNull()?.let { VcFallbackCredentialScheme(vcType = it) }
+            }
+
+        is SupportedCredentialFormatW3cVcJwtJsonLd -> credentialDefinition.type
+            .filterNot { it == VERIFIABLE_CREDENTIAL }.run {
+                firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
+                    ?: firstOrNull()?.let { VcFallbackCredentialScheme(vcType = it) }
+            }
+    }
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].

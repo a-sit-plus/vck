@@ -103,7 +103,19 @@ data class Rfc3986AuthorityHostIPv6(
         return when (parts.size) {
             1 -> {
                 // No `::` — every group must be explicit; zero-padding is not allowed
-                parts[0].map { it.toHexPart() }
+                val groups = parts[0]
+                val middleParts = groups.dropLast(1).map { it.toHexPart() }
+                val lastParts = groups.lastOrNull()?.let {
+                    if (it.contains(".")) {
+                        val ipv4 = Rfc3986AuthorityHostIPv4(it)
+                        ipv4.parts.chunked(2).map { (first, second) ->
+                            (first.toUInt().shl(8) + second).toUShort()
+                        }
+                    } else {
+                        listOf(it.toHexPart())
+                    }
+                } ?: listOf()
+                listOf(middleParts, lastParts).flatten()
             }
 
             2 -> {

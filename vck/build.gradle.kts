@@ -29,6 +29,7 @@ kotlin {
             dependencies {
                 api(project(":dif-data-classes"))
                 api(project(":openid-data-classes"))
+                api(project(":sd-jwt-type-metadata"))
                 commonImplementationAndApiDependencies()
             }
         }
@@ -53,7 +54,8 @@ if ("true" != disableAppleTargets) exportXCFramework(
     transitiveExports = true,
     static = false,
     project(":dif-data-classes"),
-    project(":openid-data-classes")
+    project(":openid-data-classes"),
+    project(":sd-jwt-type-metadata")
 )
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/vck/tree/main/")

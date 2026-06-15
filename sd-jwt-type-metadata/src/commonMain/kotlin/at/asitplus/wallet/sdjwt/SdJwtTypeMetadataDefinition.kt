@@ -2,18 +2,15 @@ package at.asitplus.wallet.sdjwt
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 
 /**
- * {
- *   "vct":"https://betelgeuse.example.com/education_credential/v42",
- *   "":"Betelgeuse Education Credential - Version 42",
- *   "":"This is our education credential. Don't panic.",
- *   "":"https://galaxy.example.com/galactic-education-credential/v2",
- *   "":"sha256-ilOUJsTultOwLfz7QUcFALaRa3BP/jelX1ds04kB9yU="
- * }
- * Note: This implementation does not support going back to the original document, an integrity check would likely fail.
+ * Metadata for an SD-JWT VC Type
+ * According to
+ * https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-16.html#name-display-metadata
  */
 @Serializable
+@JsonIgnoreUnknownKeys
 data class SdJwtTypeMetadataDefinition(
     @SerialName(SerialNames.VCT)
     val vct: SdJwtVcType,
