@@ -13,14 +13,13 @@ Release 6.0.0 (unreleased):
    - Change: `SdJwtSigned` now stores the issuer JWS as `JwsCompact` and key binding JWS as `JwsCompactTyped<KeyBindingJws>`
    - Deprecate `SdJwtSigned.getPayloadAsVerifiableCredentialSdJwt()` and `SdJwtSigned.getPayloadAsJsonObject()`, use `SdJwtSigned.jws.getPayload<...>()`
  - OpenID for Verifiable Presentations:
-   - Add `DcApiMultiSigned` member to `RequestParameterFrom` sealed class
+   - BREAKING: Integrate DC API request wrappers into `RequestParametersFrom` as `OpenId4VpDcApiUnsigned`, `OpenId4VpDcApiSigned`, `OpenId4VpDcApiMultiSigned`, and `IsoMdocDcApi`; DC API metadata such as `protocol`, `credentialIds`, `callingPackageName`, and `callingOrigin` is now represented directly on `RequestParametersFrom.DcApiRequest`
    - Add `attributePaths` and `optionalAttributePaths` to `RequestOptionsCredential` for requesting literal claim names containing dots with `DCQLClaimsPathPointer`, while keeping the deprecated string attributes as nested dot-notation shorthand. ISO mdoc requests also accept explicit namespace/name paths and prefix single claim names with the credential scheme namespace.
    - Change: `RequestInfo.dpop`/`RequestInfo.clientAttestation`/`RequestInfo.clientAttestationDpop` now `JwsCompactTyped` instead of `String`
    - Change: `BuildDPoPHeader`/`BuildClientAttestationJwt`/`BuildClientAttestationPoPJwt` objects now return `JwsCompactTyped` instead of `String`
    - Change `JarRequestParameter.clientId` from optional to mandatory to enforce RFC9101 definition.
  - Digital Credentials API:
-   - Add `OpenId4VpMultisigned` member to `DCAPIWalletRequest` sealed class
-   - BREAKING: Refactor `DCAPIWalletRequest.request` from `RequestParameter` to `String` to more narrowly convey content (`JWS` or `JsonString`)
+   - Deprecate `DCAPIWalletRequest` in favor of `RequestParametersFrom.DcApiRequest`; compatibility type aliases are provided for the old wallet request names
    - BREAKING: Refactor `DigitalCredentialGetRequest.OpenId4Vp`
      - Renamed `request` to `data` to reflect serial name
      - Introduced `SignedDataElement` `MultiSignedDataElement` wrapper to keep serialization shape
