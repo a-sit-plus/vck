@@ -128,7 +128,7 @@ class RequestParser(
         ?.let {
             it.parseAsJwsRequest(parent)
                 ?: it.parseFromJson(parent)
-                ?: throw InvalidRequest("URL not valid: ${parameters.requestUri}")
+                ?: throw InvalidRequest("request_uri content not a valid request object: ${parameters.requestUri}")
         }
 
     private suspend fun JarRequestParameters.resourceRetrieverInput(
