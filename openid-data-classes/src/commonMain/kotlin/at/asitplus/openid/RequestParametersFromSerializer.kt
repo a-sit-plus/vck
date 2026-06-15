@@ -130,8 +130,8 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
             RequestParametersFrom.IsoMdocDcApi(
                 parameters = requireIsoMdocRequestWrapper(),
                 jsonString = requireJsonString(),
-                credentialIds = requireCredentialIds(),
-                callingPackageName = requireCallingPackageName(),
+                credentialIds = credentialIds,
+                callingPackageName = callingPackageName,
                 callingOrigin = requireCallingOrigin(),
             ).cast()
 

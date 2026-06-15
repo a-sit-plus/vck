@@ -9,6 +9,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.signum.indispensable.josef.JwsGeneralTyped
 import at.asitplus.signum.indispensable.josef.JwsTyped
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -41,10 +42,10 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @JsonClassDiscriminator("protocol")
     sealed interface DcApiRequest {
         @SerialName(SerialNames.CREDENTIAL_IDS)
-        val credentialIds: Collection<String>
+        val credentialIds: Collection<String>?
 
         @SerialName(SerialNames.CALLING_PACKAGE_NAME)
-        val callingPackageName: String
+        val callingPackageName: String?
 
         @SerialName(SerialNames.CALLING_ORIGIN)
         val callingOrigin: String
@@ -80,7 +81,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @SerialName(SerialNames.JWS)
         override val jwsTyped: JwsGeneralTyped<AuthenticationRequestParameters>,
         @SerialName(SerialNames.VERIFIED)
-        override val verified: Boolean,
+        override val verified: Boolean = false,
         @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
         @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
@@ -91,6 +92,10 @@ sealed class RequestParametersFrom<S : RequestParameters> {
 
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: AuthenticationRequestParameters = jwsTyped.payload
+
+        @Deprecated("Renamed", replaceWith = ReplaceWith("jwsTyped"))
+        val request: JwsGeneralTyped<AuthenticationRequestParameters>
+            get() = jwsTyped
 
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.OpenId4VpV1Multisigned
@@ -109,7 +114,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @SerialName(SerialNames.JWS)
         override val jwsTyped: JwsCompactTyped<AuthenticationRequestParameters>,
         @SerialName(SerialNames.VERIFIED)
-        override val verified: Boolean,
+        override val verified: Boolean = false,
         @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
         @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
@@ -120,6 +125,29 @@ sealed class RequestParametersFrom<S : RequestParameters> {
 
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: AuthenticationRequestParameters = jwsTyped.payload
+
+        @Deprecated(
+            message = "Please use primary constructor",
+            replaceWith = ReplaceWith(
+                "OpenId4VpDcApiSigned(jwsTyped = request, verified = false, credentialIds = credentialIds, callingPackageName = callingPackageName, callingOrigin = callingOrigin)"
+            )
+        )
+        constructor(
+            request: JwsCompactTyped<AuthenticationRequestParameters>,
+            credentialIds: Collection<String>,
+            callingPackageName: String,
+            callingOrigin: String,
+        ) : this(
+            jwsTyped = request,
+            verified = false,
+            credentialIds = credentialIds,
+            callingPackageName = callingPackageName,
+            callingOrigin = callingOrigin,
+        )
+
+        @Deprecated("Renamed", replaceWith = ReplaceWith("jwsTyped"))
+        val request: JwsCompactTyped<AuthenticationRequestParameters>
+            get() = jwsTyped
 
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.OpenId4VpV1Signed
@@ -150,6 +178,30 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.OpenId4VpV1Unsigned
 
+        @Deprecated(
+            message = "Use the primary constructor.",
+            replaceWith = ReplaceWith(
+                "OpenId4VpDcApiUnsigned(parameters = request, jsonString = joseCompliantSerializer.encodeToString(request), credentialIds = credentialIds, callingPackageName = callingPackageName, callingOrigin = callingOrigin)",
+                imports = ["at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer"]
+            )
+        )
+        constructor(
+            request: AuthenticationRequestParameters,
+            credentialIds: Collection<String>,
+            callingPackageName: String,
+            callingOrigin: String,
+        ) : this(
+            parameters = request,
+            jsonString = joseCompliantSerializer.encodeToString(request),
+            credentialIds = credentialIds,
+            callingPackageName = callingPackageName,
+            callingOrigin = callingOrigin,
+        )
+
+        @Deprecated("Renamed", replaceWith = ReplaceWith("parameters"))
+        val request: AuthenticationRequestParameters
+            get() = parameters
+
     }
 
     @Serializable
@@ -159,9 +211,9 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @SerialName(SerialNames.JSON_STRING)
         val jsonString: String,
         @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
-        override val credentialIds: Collection<String>,
+        override val credentialIds: Collection<String>? = null,
         @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
-        override val callingPackageName: String,
+        override val callingPackageName: String? = null,
         @SerialName(DcApiRequest.SerialNames.CALLING_ORIGIN)
         override val callingOrigin: String
     ) : DcApiRequest, RequestParametersFrom<IsoMdocDcApi.IsoMdocRequestWrapper>() {
@@ -180,6 +232,30 @@ sealed class RequestParametersFrom<S : RequestParameters> {
 
         override val protocol: ExchangeProtocolIdentifier
             get() = ExchangeProtocolIdentifier.IsoMdocAnnexC
+
+        @Deprecated(
+            message = "Use the primary constructor with parameters and jsonString.",
+            replaceWith = ReplaceWith(
+                "IsoMdocDcApi(parameters = IsoMdocDcApi.IsoMdocRequestWrapper(isoMdocRequest), jsonString = joseCompliantSerializer.encodeToString(isoMdocRequest), credentialIds = credentialIds, callingPackageName = callingPackageName, callingOrigin = callingOrigin)",
+                imports = ["at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer"]
+            )
+        )
+        constructor(
+            isoMdocRequest: IsoMdocRequest,
+            credentialIds: Collection<String>? = null,
+            callingPackageName: String? = null,
+            callingOrigin: String,
+        ) : this(
+            parameters = IsoMdocRequestWrapper(isoMdocRequest),
+            jsonString = joseCompliantSerializer.encodeToString(isoMdocRequest),
+            credentialIds = credentialIds,
+            callingPackageName = callingPackageName,
+            callingOrigin = callingOrigin,
+        )
+
+        @Deprecated("Use parameters.isoMdocRequest instead.", replaceWith = ReplaceWith("parameters.isoMdocRequest"))
+        val isoMdocRequest: IsoMdocRequest
+            get() = parameters.isoMdocRequest
 
     }
 
