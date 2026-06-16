@@ -15,6 +15,7 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
@@ -69,7 +70,8 @@ class HolderAgent(
                     vc = validated.jws,
                     vcSerialized = credential.vcJws,
                     scheme = credential.scheme,
-                    renewalInfo = renewalInfo
+                    renewalInfo = renewalInfo,
+                    issuer = credential.signedVcJws.jws.jwsHeader.certificateChain?.leaf?.encodeToDerOrNull()
                 )
             }
 
@@ -83,7 +85,8 @@ class HolderAgent(
                     vcSerialized = credential.vcSdJwt,
                     disclosures = validated.disclosures,
                     scheme = credential.scheme,
-                    renewalInfo = renewalInfo
+                    renewalInfo = renewalInfo,
+                    issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf?.encodeToDerOrNull()
                 )
             }
 
@@ -93,7 +96,8 @@ class HolderAgent(
                 subjectCredentialStore.storeCredential(
                     issuerSigned = validated.issuerSigned,
                     scheme = credential.scheme,
-                    renewalInfo = renewalInfo
+                    renewalInfo = renewalInfo,
+                    issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)
                 )
             }
         }
