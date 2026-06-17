@@ -1,12 +1,11 @@
 package at.asitplus.wallet.lib.etsi
 
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
-import at.asitplus.testballoon.invoke
 
 
-val TrustListValidatorTest by testSuite {
+val TrustListValidatorTest by matrixSuite {
 
     val trustAnchorPem = "-----BEGIN CERTIFICATE-----\n" +
             "MIIDRzCCAi+gAwIBAgIBATANBgkqhkiG9w0BAQsFADBFMQswCQYDVQQGEwJVUzEf\n" +

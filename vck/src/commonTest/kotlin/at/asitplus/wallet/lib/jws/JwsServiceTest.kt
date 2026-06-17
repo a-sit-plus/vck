@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.catching
-import at.asitplus.dcapi.request.DCAPIWalletRequest
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -11,13 +10,19 @@ import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.pki.leaf
+import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.testballoon.matrix.*
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import com.benasher44.uuid.uuid4
+import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -27,9 +32,7 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
-import net.orandja.obor.codec.Cbor.Companion.copy
 import kotlin.random.Random
 
 val JwsServiceTest by matrixSuite {
@@ -130,9 +133,7 @@ val JwsServiceTest by matrixSuite {
                 .payload shouldBe it.randomPayload
         }
 
-        val dummyVerifier = object : VerifyJwsObjectFun {
-            override suspend fun invoke(jwsObject: JwsCompact) = catching { Verifier.Success }
-        }
+        val dummyVerifier = VerifyJwsObjectFun { catching { Verifier.Success } }
         val jadesVerifier = VerifyJwsObjectJades(verifyJwsObject = dummyVerifier)
 
         test("JAdES verification passes with valid x5t#o parameter (SHA-384)") {
@@ -239,7 +240,6 @@ fun JwsCompact.patchHeader(patcher: kotlinx.serialization.json.JsonObjectBuilder
     val newJwsStr = "$updatedHeaderB64.${parts[1]}.${parts[2]}"
 
     return JwsCompact(newJwsStr)
-    }
 }
 
 /**

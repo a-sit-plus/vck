@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.etsi
 
 import at.asitplus.etsi.ListOfTrustedEntities
-import at.asitplus.testballoon.withData
-import de.infix.testBalloon.framework.core.testSuite
+import at.asitplus.testballoon.matrix.matrixSuite
+
 import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.Json
 
-val LoTEFilterTest by testSuite {
+val LoTEFilterTest by matrixSuite {
 
     val pidProvidersOriginal = """
           {
@@ -7033,13 +7033,12 @@ val LoTEFilterTest by testSuite {
     )
 
     testSuite("filter lote by type identifier") {
-        withData(
-            nameFn = { it.first }, // Uses the key as the test name
+        mapOf(
             "pidProviders" to TestData(pidProvidersFixed, "http://uri.etsi.org/19602/SvcType/PID/Issuance"),
             "walletProviders" to TestData(walletProvidersFixed, "http://uri.etsi.org/19602/SvcType/WalletSolution/Issuance"),
             "wrpacProviders" to TestData(wrpacProvidersFixed, "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance"),
             "mdlProviders" to TestData(mdlProvidersFixed, "http://uri.etsi.org/19602/SvcType/mDL/Issuance"),
-        ) { (_, data) ->
+        ).asData() test{ (_, data) ->
             val lote = Json.decodeFromString<ListOfTrustedEntities>(data.json)
 
             val criteria = LoTEFilterCriteria(expectedServiceType = data.expectedServiceType)
