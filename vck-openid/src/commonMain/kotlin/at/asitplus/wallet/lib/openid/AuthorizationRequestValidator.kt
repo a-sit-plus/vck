@@ -70,8 +70,8 @@ internal class AuthorizationRequestValidator(
             }
 
             is RequestParametersFrom.OpenId4VpDcApiUnsigned -> {
-                if (this.parameters.clientId != null)
-                    throw InvalidRequest("client_id not allowed for DC API unsigned request")
+                // Nothing to validate: the Wallet authenticates the client through the calling Origin,
+                // and any client_id present in an unsigned request is ignored (not used for authentication).
             }
 
             else -> throw InvalidRequest("DC API request not set even though response mode is ${parameters.responseMode}")

@@ -15,6 +15,7 @@ Release 6.0.0:
  - OpenID for Verifiable Presentations:
    - BREAKING: Integrate DC API request wrappers into `RequestParametersFrom` as `OpenId4VpDcApiUnsigned`, `OpenId4VpDcApiSigned`, `OpenId4VpDcApiMultiSigned`, and `IsoMdocDcApi`; DC API metadata such as `protocol`, `credentialIds`, `callingPackageName`, and `callingOrigin` is now represented directly on `RequestParametersFrom.DcApiRequest`
    - Change: Signed and multisigned DC API requests are now rejected unless `expected_origins` is set, as required by OpenID4VP for signed requests over the Digital Credentials API
+   - Fix: Unsigned DC API requests are no longer rejected when a `client_id` is present; per [OpenID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-request) the Wallet MUST ignore any `client_id` parameter in an unsigned request
    - Add `attributePaths` and `optionalAttributePaths` to `RequestOptionsCredential` for requesting literal claim names containing dots with `DCQLClaimsPathPointer`, while keeping the deprecated string attributes as nested dot-notation shorthand. ISO mdoc requests also accept explicit namespace/name paths and prefix single claim names with the credential scheme namespace.
    - Change: `RequestInfo.dpop`/`RequestInfo.clientAttestation`/`RequestInfo.clientAttestationDpop` now `JwsCompactTyped` instead of `String`
    - Change: `BuildDPoPHeader`/`BuildClientAttestationJwt`/`BuildClientAttestationPoPJwt` objects now return `JwsCompactTyped` instead of `String`

@@ -78,7 +78,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 presentationRequest = dcqlRequest,
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
-                populateClientId = false,
+                // client_id is populated, but the Wallet MUST ignore it for unsigned DC API requests
             )
             val authnRequest = f.verifierOid4vp.createAuthnRequest(reqOptions)
 
