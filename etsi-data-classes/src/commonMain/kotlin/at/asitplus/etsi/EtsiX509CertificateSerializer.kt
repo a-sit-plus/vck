@@ -37,25 +37,11 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
     }
 
     override fun deserialize(decoder: Decoder): X509Certificate? = try {
-        when (decoder) {
-            is JsonDecoder -> {
-                val jsonObject = decoder
-                    .decodeJsonElement()
-                    .jsonObject
-
-                val base64 = jsonObject[
-                    EtsiX509CertificateSerializationSurrogate.SerialNames.VALUE
-                ]?.jsonPrimitive?.content ?: return null
-
-                val bytes = Base64.Default.decode(base64)
-
-                X509Certificate.decodeFromByteArray(bytes)
-            }
-            else -> {
-                decoder.decodeSerializableValue(
-                    EtsiX509CertificateSerializationSurrogate.serializer(),
-                ).value
-            }
+        if (decoder is JsonDecoder) {
+            val element = decoder.decodeJsonElement()
+            decoder.json.decodeFromJsonElement(delegate, element).value
+        } else {
+            decoder.decodeSerializableValue(delegate).value
         }
     } catch (_: Exception) {
         null
