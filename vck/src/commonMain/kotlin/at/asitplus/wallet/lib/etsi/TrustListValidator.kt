@@ -36,14 +36,14 @@ fun X509Certificate.isTrustedBy(
  * @return `true` if the certificate is expired, `false` otherwise.
  */
 fun X509Certificate.isExpired(date: Instant = Clock.System.now()): Boolean =
-    Instant.fromEpochSeconds(date.epochSeconds) > tbsCertificate.validUntil.instant
+    date > tbsCertificate.validUntil.instant
 
 /**
  * Checks whether this certificate is not yet valid at the specified [date].
  * @return `true` if the certificate is not yet valid, `false` otherwise.
  */
 fun X509Certificate.isNotYetValid(date: Instant = Clock.System.now()): Boolean =
-    Instant.fromEpochSeconds(date.epochSeconds) < tbsCertificate.validFrom.instant
+    date < tbsCertificate.validFrom.instant
 
 
 /**

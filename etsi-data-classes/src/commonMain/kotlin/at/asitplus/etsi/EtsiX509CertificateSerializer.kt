@@ -36,6 +36,11 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
         )
     }
 
+    /**
+     * Because the underlying parser enforces strict ASN.1 validation,
+     * parsing these "in-the-wild" certificates can throw exceptions. This catch block ensures
+     * a single malformed certificate does not crash the deserialization of the entire trusted list.
+     */
     override fun deserialize(decoder: Decoder): X509Certificate? = try {
         if (decoder is JsonDecoder) {
             val element = decoder.decodeJsonElement()

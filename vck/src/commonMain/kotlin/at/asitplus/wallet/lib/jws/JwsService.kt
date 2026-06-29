@@ -696,6 +696,10 @@ class VerifyJwsObject(
 
 /**
  * Verifies a JWS object and additionally validates JAdES-B-B requirements.
+ * Ensures that the JWS signature is valid using `VerifyJwsObject` and further enforces
+ * the integrity of the signing certificate chain by validating the `x5t#o`
+ * (X.509 certificate thumbprint) header parameter against the leaf certificate
+ * in the `x5c` chain
  */
 class VerifyJwsObjectJades(
     val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
@@ -708,38 +712,49 @@ class VerifyJwsObjectJades(
     )
 
     override suspend operator fun invoke(jwsObject: JwsCompact): KmmResult<Verifier.Success> = catching {
-        verifyJwsObject(jwsObject).getOrThrow() // This internally uses plainSignature and signatureInput
+        verifyJwsObject(jwsObject).getOrThrow()
         validateX5tO(jwsObject).getOrThrow()
         Verifier.Success
     }
 
+    /**
+     * Validates the 'x5t#o' parameter against the leaf certificate of the 'x5c' chain.
+     * The calculated thumbprint of the leaf certificate must match the value from `x5t#o`
+     */
     private fun validateX5tO(jwsObject: JwsCompact): KmmResult<Unit> = catching {
         val headerJsonStr = jwsObject.plainProtectedHeader.decodeToString()
         val rawHeaderJson = joseCompliantSerializer.parseToJsonElement(headerJsonStr).jsonObject
-
         val x5tOElement = rawHeaderJson["x5t#o"] ?: return@catching
         val x5tO = joseCompliantSerializer.decodeFromJsonElement<JadesX5tO>(x5tOElement)
 
         val certChain = jwsObject.jwsHeader.certificateChain
             ?: throw IllegalArgumentException("JAdES Compliance Failure: 'x5t#o' parameter requires an 'x5c' certificate chain.")
 
-        val digestAlgorithm = when (x5tO.digAlg.lowercase()) {
+        val digestAlgorithm = parseJadesDigestAlgorithm(x5tO.digAlg)
+
+        val certBytes = certChain.leaf.encodeToDer()
+        val calculatedHash = digestAlgorithm.digest(certBytes)
+        val calculatedB64Url = calculatedHash.encodeToString(Base64UrlStrict)
+
+        require (calculatedB64Url == x5tO.digVal) {
+            "JAdES Integrity Violation: The calculated certificate thumbprint does not match 'x5t#o'."
+        }
+    }
+
+    /**
+     * Parses the JAdES digest algorithm string into a [Digest] instance.
+     * Throws [IllegalArgumentException] if the algorithm is forbidden (like SHA-256 in x5t#o) or unsupported.
+     */
+    private fun parseJadesDigestAlgorithm(alg: String): Digest {
+        return when (alg.lowercase()) {
             "sha-256", "s256" -> throw IllegalArgumentException(
                 "JAdES Compliance Failure: 'sha-256' is forbidden in 'x5t#o'. Use 'x5t#256' instead."
             )
             "sha-384", "s384" -> Digest.SHA384
             "sha-512", "s512" -> Digest.SHA512
             else -> throw IllegalArgumentException(
-                "Unsupported JAdES digest algorithm: '${x5tO.digAlg}'. System supports 'sha-384' or 'sha-512'."
+                "Unsupported JAdES digest algorithm: '$alg'. System supports 'sha-384' or 'sha-512'."
             )
-        }
-
-        val certBytes = certChain.leaf.encodeToDer()
-        val calculatedHash = digestAlgorithm.digest(certBytes)
-        val calculatedB64Url = calculatedHash.encodeToString(Base64UrlStrict)
-
-        if (calculatedB64Url != x5tO.digVal) {
-            throw IllegalArgumentException("JAdES Integrity Violation: The calculated certificate thumbprint does not match 'x5t#o'.")
         }
     }
 }

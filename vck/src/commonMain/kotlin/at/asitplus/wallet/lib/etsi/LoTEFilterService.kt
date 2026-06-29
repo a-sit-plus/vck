@@ -9,8 +9,15 @@ import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.Serializable
 
+/**
+ * Service to filter and extract trusted X.509 certificates from an ETSI List of Trusted Entities (LoTE)
+ */
 class LoTEFilterService {
 
+    /**
+     * Extracts certificates matching the requested service type identifier where
+     * the certificate's subject organization aligns with the trusted provider's registered names
+     */
     fun extractTrustedCertificates(lote: ListOfTrustedEntities, criteria: LoTEFilterCriteria): List<TrustedCertificate> {
         val entities = lote.trustedEntitiesList ?: return emptyList()
 
@@ -25,7 +32,10 @@ class LoTEFilterService {
         }
     }
 
-    // Checks if any organization name matches the provider's TEName
+    /**
+     * Checks if the Organization (O) attribute within the certificate's Subject Name matches
+     * any of the localized names declared in the provider's [TEName] block.
+     */
     private fun X509Certificate.hasMatchingOrganization(providerName: TEName): Boolean {
         val orgName = tbsCertificate.subjectName
             .flatMap { it.attrsAndValues }
@@ -35,6 +45,10 @@ class LoTEFilterService {
 
         return providerName.any { it.value.equals(orgName, ignoreCase = true) }
     }
+
+    /**
+     * Unwraps the Organization value wrapper into a standard String,
+     */
     private fun AttributeTypeAndValue.Organization.asStringOrNull(): String? = when (val element = value) {
         is Asn1Primitive -> runCatching { Asn1String.decodeFromTlv(element).value }.getOrNull()
         else -> element.toString()

@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.csc.serializers.Base64X509CertificateSerializer
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.sha256
@@ -10,8 +11,11 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
@@ -29,7 +33,6 @@ import io.ktor.utils.io.core.toByteArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToByteArray
-import kotlin.String
 
 /**
  * Stores all credentials that a subject has received
@@ -48,6 +51,7 @@ interface SubjectCredentialStore {
         vcSerialized: String,
         scheme: VcJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo? = null,
+        issuer: X509Certificate? = null
     ): StoreEntry
 
     /**
@@ -63,6 +67,7 @@ interface SubjectCredentialStore {
         disclosures: Map<String, SelectiveDisclosureItem?>,
         scheme: SdJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo? = null,
+        issuer: X509Certificate? = null
     ): StoreEntry
 
     /**
@@ -75,6 +80,7 @@ interface SubjectCredentialStore {
         issuerSigned: IssuerSigned,
         scheme: IsoMdocCredentialScheme,
         renewalInfo: CredentialRenewalInfo? = null,
+        issuer: X509Certificate? = null
     ): StoreEntry
 
     /**
@@ -94,6 +100,7 @@ interface SubjectCredentialStore {
         val credentialFormat: CredentialFormatEnum
         val claimFormat: ClaimFormat
         val renewalInfo: CredentialRenewalInfo?
+        val issuer: X509Certificate?
 
         // has been added nullable to not break de-serializing existing store entries
         val schemeIdentifier: String?
@@ -110,6 +117,8 @@ interface SubjectCredentialStore {
             override val schemaUri: String? = null,
             @SerialName("credential-renewal-info")
             override val renewalInfo: CredentialRenewalInfo? = null,
+            @Serializable(with = Base64X509CertificateSerializer::class)
+            override val issuer: X509Certificate? = null,
             /** See [VcJwtCredentialScheme.vcType] */
             @SerialName("scheme-identifier")
             override val schemeIdentifier: String? = null,
@@ -148,6 +157,8 @@ interface SubjectCredentialStore {
             override val schemaUri: String? = null,
             @SerialName("credential-renewal-info")
             override val renewalInfo: CredentialRenewalInfo? = null,
+            @Serializable(with = Base64X509CertificateSerializer::class)
+            override val issuer: X509Certificate? = null,
             /** See [SdJwtCredentialScheme.sdJwtType] */
             @SerialName("scheme-identifier")
             override val schemeIdentifier: String? = null,
@@ -178,6 +189,8 @@ interface SubjectCredentialStore {
             override val schemaUri: String? = null,
             @SerialName("credential-renewal-info")
             override val renewalInfo: CredentialRenewalInfo? = null,
+            @Serializable(with = Base64X509CertificateSerializer::class)
+            override val issuer: X509Certificate? = null,
             /** See [IsoMdocCredentialScheme.isoDocType] */
             @SerialName("scheme-identifier")
             override val schemeIdentifier: String? = null,

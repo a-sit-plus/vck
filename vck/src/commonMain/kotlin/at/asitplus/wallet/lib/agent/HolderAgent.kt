@@ -71,7 +71,7 @@ class HolderAgent(
                     vcSerialized = credential.vcJws,
                     scheme = credential.scheme,
                     renewalInfo = renewalInfo,
-                    issuer = credential.signedVcJws.jws.jwsHeader.certificateChain?.leaf?.encodeToDerOrNull()
+                    issuer = credential.signedVcJws.jws.jwsHeader.certificateChain?.leaf
                 )
             }
 
@@ -86,7 +86,7 @@ class HolderAgent(
                     disclosures = validated.disclosures,
                     scheme = credential.scheme,
                     renewalInfo = renewalInfo,
-                    issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf?.encodeToDerOrNull()
+                    issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf
                 )
             }
 
@@ -97,7 +97,11 @@ class HolderAgent(
                     issuerSigned = validated.issuerSigned,
                     scheme = credential.scheme,
                     renewalInfo = renewalInfo,
-                    issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)
+                    issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)?.let {
+                        X509Certificate.decodeFromDer(
+                            it
+                        )
+                    }
                 )
             }
         }
