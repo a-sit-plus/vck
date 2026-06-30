@@ -1,10 +1,4 @@
 # Changelog
-Release 6.0.0:
- - Trust Evaluation:
-    - Add `LoTEFilterService` for extracting trust list certificates from `LoTE` based on `ServiceTypeIdentifier`
-    - Add signature and time validity checks of certificate against the trust list
-    - Add JAdES B-B validation (Used when fetching LoTE)
-    - Add `issuer` property in `StoreEntry`, for evaluation of trust against trust list 
 
 Release 7.0.0 (unreleased):
 - Credential definitions:
@@ -20,6 +14,11 @@ Release 7.0.0 (unreleased):
     - Document usage of remote metadata retrieval
 - Refactorings:
     - `OpenId4VpHolder.getMatchingCredentials()` returns `KmmResult` instead of `Result`
+- Trust Evaluation:
+    - Add `LoTEFilterService` for extracting trust list certificates from `LoTE` based on `ServiceTypeIdentifier`
+    - Add signature and time validity checks of certificate against the trust list
+    - Add JAdES B-B validation (Used when fetching LoTE)
+    - Add `issuer` property in `StoreEntry`, for evaluation of trust against trust list
 
 Release 6.0.0:
  - JWS:
