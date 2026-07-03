@@ -11,13 +11,18 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
+ * A success identity object to avoid KmmResult<Unit> footguns.
+ */
+data object Success
+
+/**
  * Verifies if this certificate is directly signed and trusted by any anchor in the [trustStore].
  * Enforces time validity, cryptographic integrity
  */
 fun X509Certificate.isTrustedBy(
     trustStore: CertificateChain,
     date: Instant = Clock.System.now()
-): KmmResult<Unit> = catching {
+): KmmResult<Success> = catching {
     if (!this.isValidAt(date)) throw Exception("Certificate is not valid at $date")
 
     trustStore
@@ -28,7 +33,7 @@ fun X509Certificate.isTrustedBy(
         ?: throw IllegalArgumentException(
             "No valid trust anchor could verify certificate"
         )
-
+    Success
 }
 
 /**
