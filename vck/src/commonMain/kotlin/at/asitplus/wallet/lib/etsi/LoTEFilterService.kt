@@ -18,14 +18,24 @@ class LoTEFilterService {
      * Extracts certificates matching the requested service type identifier where
      * the certificate's subject organization aligns with the trusted provider's registered names
      */
-    fun extractTrustedCertificates(lote: ListOfTrustedEntities, criteria: LoTEFilterCriteria): List<TrustedCertificate> {
+    fun extractTrustedCertificates(sourceUrl: String, lote: ListOfTrustedEntities, criteria: LoTEFilterCriteria): List<TrustedCertificate> {
         val entities = lote.trustedEntitiesList ?: return emptyList()
 
         return entities.flatMap { entity ->
             val providerName = entity.trustedEntityInformation.teName
 
             entity.trustedEntityServices
-                .filter { it.serviceInformation.serviceTypeIdentifier?.string == criteria.expectedServiceType }
+                .filter { service ->
+                    val serviceTypeId = service.serviceInformation.serviceTypeIdentifier?.string
+
+                    if (serviceTypeId != null) {
+                        // Field is present. Check if it matches type
+                        serviceTypeId.contains(criteria.expectedServiceType.type, ignoreCase = true)
+                    } else {
+                        // Field is absent. The services inherit the list's default type
+                        sourceUrl.contains(criteria.expectedServiceType.type, ignoreCase = true)
+                    }
+                }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
                 .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
                 .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType) }
@@ -58,9 +68,35 @@ class LoTEFilterService {
 data class TrustedCertificate(
     val certificate: @Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?,
     val providerName: TEName,
-    val serviceType: String
+    val serviceType: LoTEServiceType
 )
 
 data class LoTEFilterCriteria(
-    val expectedServiceType: String,
+    val expectedServiceType: LoTEServiceType,
 )
+
+enum class LoTEServiceType(val type: String) {
+    PID("pid"),
+    MDL("mdl"),
+    WRPAC("wrpac"),
+    EAA("eaa"),
+    WALLET("wallet");
+
+    companion object {
+        /**
+         * Resolves a raw scheme type string into a safe Enum
+         */
+        fun fromSchemeType(rawSchemeType: String?): LoTEServiceType? {
+            if (rawSchemeType.isNullOrBlank()) return null
+
+            return when {
+                rawSchemeType.contains("pid", ignoreCase = true) -> PID
+                rawSchemeType.contains("mdl", ignoreCase = true) -> MDL
+                rawSchemeType.contains("wrpac", ignoreCase = true) -> WRPAC
+                rawSchemeType.contains("eaa", ignoreCase = true) -> EAA
+                rawSchemeType.contains("wallet", ignoreCase = true) -> WALLET
+                else -> null
+            }
+        }
+    }
+}

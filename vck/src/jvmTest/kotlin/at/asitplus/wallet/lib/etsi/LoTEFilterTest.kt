@@ -7029,21 +7029,21 @@ val LoTEFilterTest by matrixSuite {
 
     data class TestData(
         val json: String,
-        val expectedServiceType: String
+        val fetchUrl: String
     )
 
     testSuite("filter lote by type identifier") {
         mapOf(
-            "pidProviders" to TestData(pidProvidersFixed, "http://uri.etsi.org/19602/SvcType/PID/Issuance"),
-            "walletProviders" to TestData(walletProvidersFixed, "http://uri.etsi.org/19602/SvcType/WalletSolution/Issuance"),
-            "wrpacProviders" to TestData(wrpacProvidersFixed, "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance"),
-            "mdlProviders" to TestData(mdlProvidersFixed, "http://uri.etsi.org/19602/SvcType/mDL/Issuance"),
+            "pidProviders" to TestData(pidProvidersFixed, "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/pid-providers.json"),
+            "walletProviders" to TestData(walletProvidersFixed, "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/wallet-providers.json"),
+            "wrpacProviders" to TestData(wrpacProvidersFixed, "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/wrpac-providers.json"),
+            "mdlProviders" to TestData(mdlProvidersFixed, "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/mdl-providers.json"),
         ).asData() test{ (_, data) ->
             val lote = Json.decodeFromString<ListOfTrustedEntities>(data.json)
 
-            val criteria = LoTEFilterCriteria(expectedServiceType = data.expectedServiceType)
+            val criteria = LoTEFilterCriteria(expectedServiceType = LoTEServiceType.fromSchemeType(data.fetchUrl)!!)
 
-            val trustedCerts = LoTEFilterService().extractTrustedCertificates(lote, criteria)
+            val trustedCerts = LoTEFilterService().extractTrustedCertificates(data.fetchUrl, lote, criteria)
 
             trustedCerts.size shouldNotBe(0)
         }
