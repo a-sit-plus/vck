@@ -75,14 +75,23 @@ data class LoTEFilterCriteria(
     val expectedServiceType: LoTEServiceType,
 )
 
-enum class LoTEServiceType(val type: String) {
-    PID("pid"),
-    MDL("mdl"),
-    WRPAC("wrpac"),
-    EAA("eaa"),
-    WALLET("wallet");
+enum class LoTEServiceType(val type: String, val fileName: String) {
+    PID("pid", "pid-providers.json"),
+    MDL("mdl", "mdl-providers.json"),
+    WRPAC("wrpac", "wrpac-providers.json"),
+    WALLET("wallet", "wallet-providers.json"),
+    EAA("eaa", "pub-eaa-providers.json");
+
+    /**
+     * Resolves the full URL for this service type's trust list using a given base URL.
+     */
+    fun defaultUrl(baseUrl: String = DEFAULT_BASE_URL): String = "$baseUrl/$fileName"
 
     companion object {
+        const val DEFAULT_BASE_URL = "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw"
+
+        val defaultUrls: List<String> = entries.map { it.defaultUrl() }
+
         /**
          * Resolves a raw scheme type string into a safe Enum
          */

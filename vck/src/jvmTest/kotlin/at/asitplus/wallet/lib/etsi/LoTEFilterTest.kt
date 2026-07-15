@@ -7034,10 +7034,10 @@ val LoTEFilterTest by matrixSuite {
 
     testSuite("filter lote by type identifier") {
         mapOf(
-            "pidProviders" to TestData(pidProvidersFixed, "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/pid-providers.json"),
-            "walletProviders" to TestData(walletProvidersFixed, "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/wallet-providers.json"),
-            "wrpacProviders" to TestData(wrpacProvidersFixed, "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/wrpac-providers.json"),
-            "mdlProviders" to TestData(mdlProvidersFixed, "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/mdl-providers.json"),
+            "pidProviders" to TestData(pidProvidersFixed, LoTEServiceType.PID.defaultUrl()),
+            "walletProviders" to TestData(walletProvidersFixed, LoTEServiceType.WALLET.defaultUrl()),
+            "wrpacProviders" to TestData(wrpacProvidersFixed, LoTEServiceType.WRPAC.defaultUrl()),
+            "mdlProviders" to TestData(mdlProvidersFixed, LoTEServiceType.MDL.defaultUrl()),
         ).asData() test{ (_, data) ->
             val lote = Json.decodeFromString<ListOfTrustedEntities>(data.json)
 
