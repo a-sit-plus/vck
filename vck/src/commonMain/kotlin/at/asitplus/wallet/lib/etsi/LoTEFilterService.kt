@@ -86,17 +86,12 @@ enum class LoTEServiceType(val type: String) {
         /**
          * Resolves a raw scheme type string into a safe Enum
          */
-        fun fromSchemeType(rawSchemeType: String?): LoTEServiceType? {
-            if (rawSchemeType.isNullOrBlank()) return null
+        fun fromSchemeType(rawSchemeType: String?): LoTEServiceType {
+            if (rawSchemeType.isNullOrBlank()) return EAA
 
-            return when {
-                rawSchemeType.contains("pid", ignoreCase = true) -> PID
-                rawSchemeType.contains("mdl", ignoreCase = true) -> MDL
-                rawSchemeType.contains("wrpac", ignoreCase = true) -> WRPAC
-                rawSchemeType.contains("eaa", ignoreCase = true) -> EAA
-                rawSchemeType.contains("wallet", ignoreCase = true) -> WALLET
-                else -> null
-            }
+            return entries.firstOrNull {
+                it != EAA && rawSchemeType.contains(it.type, ignoreCase = true)
+            } ?: EAA
         }
     }
 }
