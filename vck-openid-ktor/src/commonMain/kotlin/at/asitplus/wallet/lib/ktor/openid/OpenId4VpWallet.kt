@@ -113,7 +113,7 @@ class OpenId4VpWallet(
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 
-// TODO is this the correct place or should we have another wallet class for annex c?
+    // TODO is this the correct place or should we have another wallet class for annex c?
     val iso180137AnnexCHolder = Iso180137AnnexCHolder(
         holder = holderAgent,
         keyMaterial = keyMaterial,
@@ -239,6 +239,9 @@ class OpenId4VpWallet(
         openId4VpHolder.getMatchingCredentials(preparationState).getOrThrow()
     }
 
+    @Deprecated(
+        message = "Prepare the DC API request and match credentials using its DcApiPreparationState instead.",
+    )
     suspend fun getMatchingCredentials(
         request: RequestParametersFrom.IsoMdocDcApi,
     ) = catching {
@@ -251,6 +254,9 @@ class OpenId4VpWallet(
         dcApiHolder.getMatchingCredentials(state).getOrThrow()
     }
 
+    @Deprecated(
+        message = "Use finalizeDcApiResponse with the DcApiPreparationState returned by prepareDcApiRequest.",
+    )
     suspend fun finalizeIso180137AnnexCResponse(
         request: RequestParametersFrom.IsoMdocDcApi,
         credentialPresentation: CredentialPresentation.PresentationExchangePresentation,

@@ -76,6 +76,11 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     holder = holderAgent,
                     randomSource = RandomSource.Default,
                 )
+                val dcApiHolder = DcApiHolder(
+                    keyMaterial = holderKeyMaterial,
+                    holder = holderAgent,
+                    openId4VpHolder = holderOid4vp,
+                )
                 val dcApiVerifier = DcApiVerifier(
                     keyMaterial = EphemeralKeyWithoutCert(),
                     clientIdScheme = ClientIdScheme.PreRegistered(
@@ -249,6 +254,30 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             response.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
                 .params.shouldBeInstanceOf<OpenId4VpResponseUnsigned>()
+        }
+
+        test("DC API holder dispatches and finalizes OpenID4VP requests") { f ->
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+            )
+            val authnRequest = f.createUnsignedAuthnRequest(reqOptions)
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiUnsigned(
+                parameters = authnRequest,
+                jsonString = joseCompliantSerializer.encodeToString(authnRequest),
+                credentialIds = listOf(credentialId),
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+
+            val state = f.dcApiHolder.startAuthorizationResponsePreparation(dcApiRequest)
+                .getOrThrow()
+                .shouldBeInstanceOf<DcApiPreparationState.OpenId4Vp>()
+            val response = f.dcApiHolder.finalizeAuthorizationResponse(state)
+                .getOrThrow()
+
+            response.shouldBeInstanceOf<OpenId4VpResponseUnsigned>()
         }
 
         test("DC API unsigned: SD-JWT response validates with origin audience") { f ->
