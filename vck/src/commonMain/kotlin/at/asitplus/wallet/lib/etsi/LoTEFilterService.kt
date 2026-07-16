@@ -75,31 +75,28 @@ data class LoTEFilterCriteria(
     val expectedServiceType: LoTEServiceType,
 )
 
-enum class LoTEServiceType(val type: String, val fileName: String) {
-    PID("pid", "pid-providers.json"),
-    MDL("mdl", "mdl-providers.json"),
+enum class LoTEServiceType(
+    val type: String,
+    val fileName: String,
+    private val identifiers: List<String> = emptyList()
+) {
+    PID("pid", "pid-providers.json", listOf("urn:eudi:pid:", "eu.europa.ec.eudi.pid.")),
+    MDL("mdl", "mdl-providers.json", listOf("org.iso.18013.5.1.mDL")),
     WRPAC("wrpac", "wrpac-providers.json"),
     WALLET("wallet", "wallet-providers.json"),
     EAA("eaa", "pub-eaa-providers.json");
 
-    /**
-     * Resolves the full URL for this service type's trust list using a given base URL.
-     */
-    fun defaultUrl(baseUrl: String = DEFAULT_BASE_URL): String = "$baseUrl/$fileName"
+    fun defaultUrl(baseUrl: String = DEFAULT_BASE_URL) = "$baseUrl/$fileName"
 
     companion object {
         const val DEFAULT_BASE_URL = "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw"
+        val defaultUrls = entries.map { it.defaultUrl() }
 
-        val defaultUrls: List<String> = entries.map { it.defaultUrl() }
+        fun fromSchemeIdentifier(schemeIdentifier: String?): LoTEServiceType {
+            if (schemeIdentifier.isNullOrBlank()) return EAA
 
-        /**
-         * Resolves a raw scheme type string into a safe Enum
-         */
-        fun fromSchemeType(rawSchemeType: String?): LoTEServiceType {
-            if (rawSchemeType.isNullOrBlank()) return EAA
-
-            return entries.firstOrNull {
-                it != EAA && rawSchemeType.contains(it.type, ignoreCase = true)
+            return entries.firstOrNull { entry ->
+                entry.identifiers.any { schemeIdentifier.contains(it, ignoreCase = true) }
             } ?: EAA
         }
     }
