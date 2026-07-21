@@ -20,7 +20,7 @@ class LoTEFilterService {
      */
     fun extractTrustedCertificates(sourceUrl: String, lote: ListOfTrustedEntities, criteria: LoTEFilterCriteria): List<TrustedCertificate> {
         val entities = lote.trustedEntitiesList ?: return emptyList()
-
+        val loteType = lote.listAndSchemeInformation?.loteType?.toString()
         return entities.flatMap { entity ->
             val providerName = entity.trustedEntityInformation.teName
 
@@ -33,6 +33,7 @@ class LoTEFilterService {
                         serviceTypeId.contains(criteria.expectedServiceType.type, ignoreCase = true)
                     } else {
                         // Field is absent. The services inherit the list's default type
+                        loteType?.contains(criteria.expectedServiceType.type, ignoreCase = true) == true ||
                         sourceUrl.contains(criteria.expectedServiceType.type, ignoreCase = true)
                     }
                 }
