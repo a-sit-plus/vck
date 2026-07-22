@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenStore
@@ -24,7 +23,14 @@ class InMemoryIssuerCredentialStore(
         val vcId: String,
         val statusListIndex: ULong,
         var status: TokenStatus,
-    )
+    ) {
+        /** For JVM callers which can't access ULong directly */
+        internal constructor(
+            vcId: String,
+            status: TokenStatus,
+            statusListIndex: Long,
+        ) : this(vcId, statusListIndex.toULong(), status)
+    }
 
     /** Maps timePeriod to credentials for referenced tokens which may be revoked later on */
     private val referencedTokens = mutableMapOf<Int, MutableList<Credential>>()

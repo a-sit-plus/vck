@@ -16,7 +16,14 @@ interface ReferencedTokenStore {
         val id: String,
         val timePeriod: Int,
         val statusListIndex: ULong,
-    )
+    ) {
+        /** For JVM callers which can't access ULong directly */
+        internal constructor(
+            id: String,
+            statusListIndex: Long,
+            timePeriod: Int
+        ): this(id, timePeriod, statusListIndex.toULong())
+    }
 
     /**
      * Called by an `StatusListIssuer` when creating a token (that is a verifiable credential for us)
@@ -42,6 +49,12 @@ interface ReferencedTokenStore {
      * Set the [status] of the referenced token with this [index] for the [timePeriod], if it exists.
      */
     fun setStatus(timePeriod: Int, index: ULong, status: TokenStatus): Boolean
+
+    /**
+     * For JVM callers: Set the [status] of the referenced token with this [index] for the [timePeriod], if it exists.
+     */
+    fun setStatus(timePeriod: Int, index: Long, status: TokenStatus): Boolean =
+        setStatus(timePeriod, index.toULong(), status)
 
     /**
      * Set the status of the referenced token with this [identifier] for the [timePeriod] to revoked, if it exists.

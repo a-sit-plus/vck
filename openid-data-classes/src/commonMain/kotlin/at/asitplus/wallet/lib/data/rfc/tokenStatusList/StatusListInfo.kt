@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.require
 
 /**
  * Specifies an url to retrieve a status list token, and an index specifying the position in the
@@ -42,6 +43,28 @@ data class StatusListInfo(
 
     override val certificate: ByteArray? = null,
 ) : RevocationListInfo() {
+
+    /** For JVM callers which can't access ULong directly */
+    internal constructor(
+        /**
+         * Identifies the Status List or Status List Token containing the status information for the Referenced Token.
+         * The value of uri MUST be a URI conforming to RFC3986.
+         */
+        uri: UniformResourceIdentifier,
+        /**
+         * Integer that represents the index to check for status information in the Status List for the current
+         * Referenced Token.
+         **/
+        index: Long,
+        certificate: ByteArray? = null,
+    ) : this(
+        index = index.toULong().also {
+            require(index >= 0) { "index must be non-negative" }
+        },
+        uri = uri,
+        certificate = certificate,
+    )
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -67,7 +90,5 @@ data class StatusListInfo(
         const val URI = "uri"
         const val STATUS_LIST_INFO = "status_list"
     }
+
 }
-
-
-
