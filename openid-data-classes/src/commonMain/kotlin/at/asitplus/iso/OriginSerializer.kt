@@ -23,7 +23,7 @@ fun String.serializeOrigin(): String? = catching {
         append(host)
         if (port != null && port != scheme.defaultPort()) {
             append(":")
-            append(port)
+            append(port.toString())
         }
     }
 }.getOrNull()

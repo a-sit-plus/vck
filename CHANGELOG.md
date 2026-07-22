@@ -42,7 +42,8 @@ Release 7.0.0 (unreleased):
     - Status claims for identifier lists from ISO 18013-5 contain the certificate of the status list issuer
 - JVM interoperability:
     - Add `@JvmOverloads` to public API constructors with default parameters across the published modules.
-    - Provide methods to use non-negative `Long` values for status-list indices and accompanying API
+    - Provide methods to use non-negative `Long` values for status list indices and accompanying API
+    - Preserve RFC 3986 port and IPvFuture syntax without artificial `ULong` limits.
 - Refactorings:
     - `OpenId4VpHolder.getMatchingCredentials()` returns `KmmResult` instead of `Result`
     - In `SdJwtInputValidationResult` transport error during integrity validation in `integrityValidationResult` instead of `isIntegrityGood`

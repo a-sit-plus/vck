@@ -16,7 +16,7 @@ data class Rfc3986AuthorityHostIPvFuture(
     @Transient
     private val summary = validate()
 
-    private fun validate(): Pair<ULong, CaseInsensitiveString> {
+    private fun validate(): Pair<String, CaseInsensitiveString> {
         val start = string.firstOrNull()
         require(start != null && start in "vV") {
             "Expected future ip version literals to start with a version indicator, but got `$string`"
@@ -47,7 +47,7 @@ data class Rfc3986AuthorityHostIPvFuture(
                 }
             }
         }
-        return version.toULong(16) to CaseInsensitiveString(data)
+        return version.trimStart('0').ifEmpty { "0" }.lowercase() to CaseInsensitiveString(data)
     }
 
     class InlineSerializer : KSerializer<Rfc3986AuthorityHostIPvFuture> {

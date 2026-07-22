@@ -68,7 +68,11 @@ val Rfc3986AuthorityHostTest by matrixSuite {
     }
 
     testSuite("IPvFuture round-trips through URI") {
-        listOf("http://[v1.foo]/path", "http://[vff.test:data]/").asData() test { uri ->
+        listOf(
+            "http://[v1.foo]/path",
+            "http://[vff.test:data]/",
+            "http://[v123456789abcdef0123456789.data]/",
+        ).asData() test { uri ->
             Rfc3986UniformResourceIdentifier(uri).string shouldBe uri
         }
     }
