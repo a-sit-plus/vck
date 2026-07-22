@@ -330,7 +330,7 @@ data class MobileDrivingLicence(
                 "issuingCountry=$issuingCountry, " +
                 "issuingAuthority=$issuingAuthority, " +
                 "licenceNumber='$licenceNumber', " +
-                "portrait=${portrait?.encodeToString(Base16(strict = true))}, " +
+                "portrait=${portrait.encodeToString(Base16(strict = true))}, " +
                 "drivingPrivileges=${drivingPrivileges.contentToString()}, " +
                 "unDistinguishingSign=$unDistinguishingSign, " +
                 "administrativeNumber=$administrativeNumber, " +

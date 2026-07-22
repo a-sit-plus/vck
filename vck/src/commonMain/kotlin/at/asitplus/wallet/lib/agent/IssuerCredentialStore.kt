@@ -14,12 +14,14 @@ interface IssuerCredentialStore {
         val statusListIndex: ULong,
     )
 
+    @Suppress("DEPRECATION")
     @Deprecated("Use method from `ReferencedTokenStore` instead")
     suspend fun createStoredCredentialReference(
         credential: CredentialToBeIssued,
         timePeriod: Int,
     ): KmmResult<StoredCredentialReference>
 
+    @Suppress("DEPRECATION")
     @Deprecated("Issuer will call onCredentialStored instead")
     suspend fun updateStoredCredential(
         reference: StoredCredentialReference,

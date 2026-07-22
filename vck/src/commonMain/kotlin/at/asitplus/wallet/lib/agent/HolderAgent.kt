@@ -300,10 +300,7 @@ class HolderAgent @JvmOverloads constructor(
                             pathAuthorizationValidator?.invoke(credential, it) ?: true
                         },
                     ).onFailure {
-                        Napier.d(
-                            "findInputDescriptorMatches failed for credential with schemaUri ${credential.schemaUri}",
-                            it
-                        )
+                        Napier.d("findInputDescriptorMatches failed for credential ${credential}", it)
                     }
                 }
             }.mapKeys {

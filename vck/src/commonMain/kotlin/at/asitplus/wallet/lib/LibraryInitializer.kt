@@ -31,6 +31,7 @@ object LibraryInitializer {
         AttributeIndex.registerAttributeType(credentialScheme)
     }
 
+    @Suppress("DEPRECATION")
     @Deprecated("Use the other method with CredentialScheme not from ConstantIndex")
     fun registerExtensionLibrary(
         credentialScheme: ConstantIndex.CredentialScheme,

@@ -32,6 +32,7 @@ object ConstantIndex {
         const val CLAIM_FAMILY_NAME = "family_name"
         const val CLAIM_DATE_OF_BIRTH = "date_of_birth"
         const val CLAIM_PORTRAIT = "portrait"
+        @Deprecated("Use other identifiers instead, e.g. `vcType` or `sdJwtType` or `isoDocType`")
         override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2023.json"
         override val vcType: String = "AtomicAttribute2023"
         override val sdJwtType: String = "AtomicAttribute2023"
