@@ -1,7 +1,6 @@
 package at.asitplus.wallet.mdl
 
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
-import at.asitplus.wallet.lib.data.NullableInstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -20,6 +19,6 @@ data class MobileDrivingLicenceJws(
     @Serializable(with = InstantLongSerializer::class)
     val issuedAt: Instant,
     @SerialName("exp")
-    @Serializable(with = NullableInstantLongSerializer::class)
+    @Serializable(with = InstantLongSerializer::class)
     val expiration: Instant?,
 )

@@ -9,6 +9,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlin.time.Instant
 
+@Deprecated("Use InstantLongSerializer instead", replaceWith = ReplaceWith("InstantLongSerializer"), level = DeprecationLevel.WARNING)
 class NullableInstantLongSerializer : KSerializer<Instant?> {
 
     override val descriptor: SerialDescriptor =

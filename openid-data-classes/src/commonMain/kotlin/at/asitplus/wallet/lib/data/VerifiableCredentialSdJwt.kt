@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import kotlinx.serialization.SerialName
@@ -28,7 +29,7 @@ data class VerifiableCredentialSdJwt(
      * See [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519) for more information.
      */
     @SerialName("nbf")
-    @Serializable(with = NullableInstantLongSerializer::class)
+    @Serializable(with = InstantLongSerializer::class)
     val notBefore: Instant? = null,
 
     /**
@@ -44,7 +45,7 @@ data class VerifiableCredentialSdJwt(
      * See [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519) for more information.
      */
     @SerialName("exp")
-    @Serializable(with = NullableInstantLongSerializer::class)
+    @Serializable(with = InstantLongSerializer::class)
     val expiration: Instant? = null,
 
     /**
@@ -52,7 +53,7 @@ data class VerifiableCredentialSdJwt(
      * See [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519) for more information.
      */
     @SerialName("iat")
-    @Serializable(with = NullableInstantLongSerializer::class)
+    @Serializable(with = InstantLongSerializer::class)
     val issuedAt: Instant? = null,
 
     @SerialName("jti")

@@ -16,6 +16,7 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.nullable
 import kotlin.time.Instant
 
 /**
@@ -33,7 +34,7 @@ data class VerifiableCredentialJws(
     @SerialName("iss")
     val issuer: String,
     @SerialName("exp")
-    @Serializable(with = NullableInstantLongSerializer::class)
+    @Serializable(with = InstantLongSerializer::class)
     val expiration: Instant?,
     @SerialName("jti")
     val jwtId: String,
