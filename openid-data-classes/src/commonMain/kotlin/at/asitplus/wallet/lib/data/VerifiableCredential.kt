@@ -13,6 +13,7 @@ package at.asitplus.wallet.lib.data
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.iso.InstantStringSerializer
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
@@ -37,7 +38,7 @@ data class VerifiableCredential(
     @Serializable(with = InstantStringSerializer::class)
     @SerialName("issuanceDate")
     val issuanceDate: Instant,
-    @Serializable(with = NullableInstantStringSerializer::class)
+    @Serializable(with = InstantStringSerializer::class)
     @SerialName("expirationDate")
     val expirationDate: Instant?,
     @SerialName("status")
