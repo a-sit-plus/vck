@@ -11,7 +11,7 @@ import kotlin.time.Instant
 
 @Deprecated(
     "Moved to Signum",
-    replaceWith = ReplaceWith("InstantStringSerializer", imports = ["import at.asitplus.iso.InstantStringSerializer"])
+    replaceWith = ReplaceWith("InstantStringSerializer", imports = ["at.asitplus.iso.InstantStringSerializer"])
 )
 class NullableInstantStringSerializer : KSerializer<Instant?> {
 
