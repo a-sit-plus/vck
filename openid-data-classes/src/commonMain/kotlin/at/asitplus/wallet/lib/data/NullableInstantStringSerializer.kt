@@ -9,6 +9,10 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlin.time.Instant
 
+@Deprecated(
+    "Moved to Signum",
+    replaceWith = ReplaceWith("InstantStringSerializer", imports = ["import at.asitplus.iso.InstantStringSerializer"])
+)
 class NullableInstantStringSerializer : KSerializer<Instant?> {
 
     override val descriptor: SerialDescriptor =
