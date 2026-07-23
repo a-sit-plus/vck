@@ -1,8 +1,11 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.jwtpayload.ClientAttestationClaims
+import at.asitplus.signum.indispensable.josef.jwtpayload.ClientAttestationPayload
+import at.asitplus.signum.indispensable.josef.jwtpayload.WalletAttestationPayload
+import at.asitplus.signum.indispensable.josef.jwtpayload.WalletAttestationPopPayload
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -32,7 +35,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
     /** Used to verify client attestation JWTs */
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
     /** Callback to verify the client attestation JWT against a set of trusted roots */
-    private val verifyClientAttestationJwt: (suspend (JwsCompactTyped<JsonWebToken>) -> Boolean) = { true },
+    private val verifyClientAttestationJwt: (suspend (JwsCompactTyped<ClientAttestationClaims>) -> Boolean) = { true },
     /** Clock used to verify WIA and WIA PoP timestamps. */
     private val clock: Clock = Clock.System,
     /** Time leeway for verification of WIA and WIA PoP timestamps. */
@@ -81,7 +84,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
         }
     }
 
-    private fun JwsCompactTyped<JsonWebToken>.validateWalletInstanceAttestation(clientId: String?) {
+    private fun JwsCompactTyped<WalletAttestationPayload>.validateWalletInstanceAttestation(clientId: String?) {
         if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
             throw InvalidClient("invalid client attestation typ: ${jws.jwsHeader.type}")
         }
@@ -95,9 +98,6 @@ class ClientAuthenticationService @JvmOverloads constructor(
         }
         if (payload.issuer != null) {
             throw InvalidClient("client attestation must not contain iss")
-        }
-        if (payload.subject == null) {
-            throw InvalidClient("client attestation has no sub")
         }
         if (clientId != null && payload.subject != clientId) {
             throw InvalidClient("subject not equal to client_id")
@@ -113,25 +113,22 @@ class ClientAuthenticationService @JvmOverloads constructor(
         if (expiration - issuedAt >= 24.hours) {
             throw InvalidClient("client attestation lifetime must be less than 24 hours")
         }
-        if (payload.walletName.isNullOrBlank()) {
+        if (payload.walletName.isBlank()) {
             throw InvalidClient("client attestation has no wallet_name")
         }
-        if (payload.walletVersion.isNullOrBlank()) {
+        if (payload.walletVersion.isBlank()) {
             throw InvalidClient("client attestation has no wallet_version")
         }
-        if (payload.walletSolutionCertificationInformation.isNullOrBlank()) {
+        if (payload.walletSolutionCertificationInformation.isBlank()) {
             throw InvalidClient("client attestation has no wallet_solution_certification_information")
         }
         val clientStatus = payload.clientStatus ?: throw InvalidClient("client attestation has no client_status")
         if (clientStatus.expiration < (clock.now() - timeLeeway)) {
             throw InvalidClient("client_status expiration in past: ${clientStatus.expiration}")
         }
-        if (payload.confirmationClaim == null) {
-            throw InvalidClient("client attestation has no cnf")
-        }
     }
 
-    private fun JwsCompactTyped<JsonWebToken>.validateWalletInstanceAttestationPop(clientId: String?) {
+    private fun JwsCompactTyped<WalletAttestationPopPayload>.validateWalletInstanceAttestationPop(clientId: String?) {
         if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
             throw InvalidClient("invalid client attestation PoP typ: ${jws.jwsHeader.type}")
         }
@@ -148,7 +145,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
                 "client attestation PoP aud '${payload.audience}' does not match issuer '$issuerIdentifier'"
             )
         }
-        if (payload.issuedAt == null || payload.issuedAt!! > (clock.now() + timeLeeway)) {
+        if (payload.issuedAt > (clock.now() + timeLeeway)) {
             throw InvalidClient("client attestation PoP iat in future: ${payload.issuedAt}")
         }
         if (payload.expiration == null || payload.expiration!! < (clock.now() - timeLeeway)) {

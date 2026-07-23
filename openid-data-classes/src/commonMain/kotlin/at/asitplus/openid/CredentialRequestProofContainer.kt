@@ -1,14 +1,17 @@
 package at.asitplus.openid
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.josef.JwtClaimNames
+import at.asitplus.signum.indispensable.josef.JwtPayload
+import at.asitplus.signum.indispensable.josef.KeyAttestationPayload
 import at.asitplus.signum.indispensable.josef.typed
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.time.Instant
 
 @Serializable
 data class CredentialRequestProofContainer(
@@ -31,16 +34,32 @@ data class CredentialRequestProofContainer(
     @SerialName("attestation")
     val attestation: Set<@Serializable(JwsCompactStringSerializer::class) JwsCompact>? = null,
 ) {
+    data class JwtProofTypePayload(
+        @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.ISS)
+        override val issuer: String? = null,
+        @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.AUD)
+        override val audience: String,
+        @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.IAT)
+        @Serializable(with = InstantLongSerializer::class)
+        override val issuedAt: Instant,
+        @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.OpenIdConnectCore.NONCE)
+        val nonce: String? = null,
+    ) : JwtPayload {
+        override val subject: String? = null
+        override val notBefore: Instant? = null
+        override val expiration: Instant? = null
+        override val jwtId: String? = null
+    }
 
-    val jwtParsed: Collection<JwsCompactTyped<JsonWebToken>>? by lazy {
+    val jwtParsed: Collection<JwsCompactTyped<JwtProofTypePayload>>? by lazy {
         jwt?.mapNotNull {
-            catchingUnwrapped<JwsCompactTyped<JsonWebToken>> { it.typed() }.getOrNull()
+            catchingUnwrapped<JwsCompactTyped<JwtProofTypePayload>> { it.typed() }.getOrNull()
         }
     }
 
-    val attestationParsed: Collection<JwsCompactTyped<KeyAttestationJwt>>? by lazy {
+    val attestationParsed: Collection<JwsCompactTyped<KeyAttestationPayload>>? by lazy {
         attestation?.mapNotNull {
-            catchingUnwrapped<JwsCompactTyped<KeyAttestationJwt>> { it.typed() }.getOrNull()
+            catchingUnwrapped<JwsCompactTyped<KeyAttestationPayload>> { it.typed() }.getOrNull()
         }
     }
 }

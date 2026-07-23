@@ -12,7 +12,6 @@ package at.asitplus.wallet.lib.data
  * This software is distributed under the Apache License 2.0,
  * see the "LICENSE" file for more details
  */
-
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
