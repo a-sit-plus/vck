@@ -17,10 +17,10 @@ data class RequestInfo(
      * Value of the header `OAuth-Client-Attestation` (OAuth 2.0 Attestation-Based Client Authentication).
      * A JWT that conforms to the structure and syntax as defined in Section 4.2
      */
-    val clientAttestation: JwsCompactTyped<ClientAttestationClaims.WithCNF>? = null,
+    val clientAttestation: JwsCompactTyped<ClientAttestationClaims.Attestation>? = null,
     /**
      * Value of the header `OAuth-Client-Attestation-PoP` (OAuth 2.0 Attestation-Based Client Authentication).
      * A JWT that adheres to the structure and syntax as defined in Section 4.3
      */
-    val clientAttestationPop: JwsCompactTyped<ClientAttestationClaims.Pop>? = null,
+    val clientAttestationPop: JwsCompactTyped<ClientAttestationClaims.ProofOfPossession>? = null,
 )

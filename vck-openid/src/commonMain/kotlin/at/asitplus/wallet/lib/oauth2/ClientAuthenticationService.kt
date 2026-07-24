@@ -83,7 +83,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
         }
     }
 
-    private fun JwsCompactTyped<ClientAttestationClaims.WithCNF>.validateWalletInstanceAttestation(clientId: String?) {
+    private fun JwsCompactTyped<ClientAttestationClaims.Attestation>.validateWalletInstanceAttestation(clientId: String?) {
         if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
             throw InvalidClient("invalid client attestation typ: ${jws.jwsHeader.type}")
         }
@@ -116,7 +116,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
         }
     }
 
-    private fun JwsCompactTyped<ClientAttestationClaims.Pop>.validateWalletInstanceAttestationPop(clientId: String?) {
+    private fun JwsCompactTyped<ClientAttestationClaims.ProofOfPossession>.validateWalletInstanceAttestationPop(clientId: String?) {
         if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
             throw InvalidClient("invalid client attestation PoP typ: ${jws.jwsHeader.type}")
         }
