@@ -115,7 +115,8 @@ internal class VpTokenValidator(
     private fun CredentialFormatEnum.toClaimFormat(): ClaimFormat = when (this) {
         CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
         CredentialFormatEnum.DC_SD_JWT -> ClaimFormat.SD_JWT
-        CredentialFormatEnum.MSO_MDOC -> ClaimFormat.MSO_MDOC
+        CredentialFormatEnum.MSO_MDOC,
+        CredentialFormatEnum.MSO_MDOC_ZK -> ClaimFormat.MSO_MDOC
         CredentialFormatEnum.NONE,
         CredentialFormatEnum.JWT_VC_JSON_LD,
         CredentialFormatEnum.JSON_LD,

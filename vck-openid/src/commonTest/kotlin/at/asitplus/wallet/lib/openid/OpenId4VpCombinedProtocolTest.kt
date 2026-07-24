@@ -18,6 +18,7 @@ import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
+import at.asitplus.openid.dcql.DCQLIsoMdocZkCredentialQuery
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -329,6 +330,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                         originalDcqlRequest.dcqlQuery.credentials.zip(otherDcqlQuery.credentials) { good, bad ->
                             when (bad) {
                                 is DCQLIsoMdocCredentialQuery -> bad.copy(id = good.id)
+                                is DCQLIsoMdocZkCredentialQuery -> bad.copy(id = good.id)
                                 is DCQLJwtVcCredentialQuery -> bad.copy(id = good.id)
                                 is DCQLSdJwtCredentialQuery -> bad.copy(id = good.id)
                             }

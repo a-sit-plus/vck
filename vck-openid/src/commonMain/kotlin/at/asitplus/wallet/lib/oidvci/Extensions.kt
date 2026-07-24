@@ -20,7 +20,8 @@ fun CredentialRepresentation.toFormat(): CredentialFormatEnum = when (this) {
 
 fun CredentialFormatEnum.toRepresentation() = when (this) {
     CredentialFormatEnum.DC_SD_JWT -> SD_JWT
-    CredentialFormatEnum.MSO_MDOC -> ISO_MDOC
+    CredentialFormatEnum.MSO_MDOC,
+    CredentialFormatEnum.MSO_MDOC_ZK -> ISO_MDOC
     else -> PLAIN_JWT
 }
 

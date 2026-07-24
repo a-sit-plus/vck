@@ -141,6 +141,20 @@ sealed interface DCQLCredentialQuery {
                     ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
             )
 
+            CredentialFormatEnum.MSO_MDOC_ZK -> DCQLIsoMdocZkCredentialQuery(
+                id = id,
+                format = format,
+                meta = meta as DCQLIsoMdocZkCredentialMetadataAndValidityConstraints,
+                claims = claims?.map {
+                    it as DCQLIsoMdocClaimsQuery
+                }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
+                claimSets = claimSets,
+                multiple = multiple ?: Defaults.MULTIPLE,
+                trustedAuthorities = trustedAuthorities,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding
+                    ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+            )
+
             else -> throw IllegalArgumentException("Unsupported credential format: ${format}")
         }
     }
@@ -222,7 +236,11 @@ sealed interface DCQLCredentialQuery {
      * present.
      */
     fun match(credential: DCQLCredential): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
-        if (credential.format != format) {
+        val expectedFormat = when (format) {
+            CredentialFormatEnum.MSO_MDOC_ZK -> CredentialFormatEnum.MSO_MDOC
+            else -> format
+        }
+        if (credential.format != expectedFormat) {
             throw IllegalArgumentException("Incompatible credential format")
         }
 
@@ -320,6 +338,7 @@ sealed interface DCQLCredentialQuery {
             match(
                 credential = when (this) {
                     is DCQLIsoMdocCredentialQuery -> parseIsoMdocCredential(it)
+                    is DCQLIsoMdocZkCredentialQuery -> parseIsoMdocCredential(it)
                     is DCQLSdJwtCredentialQuery -> parseSdJwtCredential(it)
                     is DCQLJwtVcCredentialQuery -> parseVcJwsCredential(it)
                 },
