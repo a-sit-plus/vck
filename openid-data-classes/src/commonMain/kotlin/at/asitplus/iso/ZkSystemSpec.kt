@@ -6,14 +6,12 @@ import kotlinx.serialization.Serializable
 @Serializable(with = ZkSystemSpecSerializer::class)
 data class ZkSystemSpec (
     @SerialName(PROP_ZK_SYSTEM_ID)
-    val zkSystemId: String,
+    override val zkSystemId: String,
     @SerialName(PROP_SYSTEM)
-    val system: String,
+    override val system: String,
     @SerialName(PROP_PARAMS)
-    val params: Map<String, Any>
-) {
-
-
+    override val params: Map<String, Any>
+) : ZkSystem {
     companion object {
         const val PROP_ZK_SYSTEM_ID = "zkSystemId"
         const val PROP_SYSTEM = "system"

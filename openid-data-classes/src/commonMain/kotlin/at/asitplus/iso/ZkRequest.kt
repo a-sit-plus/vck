@@ -9,16 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ZkRequest (
     @SerialName("zkRequired")
-    val zkRequired: Boolean,
+    override val zkRequired: Boolean,
     @SerialName("systemSpecs")
-    val systemSpecs: List<ZkSystemSpec>,
-) {
-    fun validate() {
-        require(!zkRequired || systemSpecs.isNotEmpty()) {
-            "systemSpecs list cannot be empty if Zero-Knowledge is enforced"
-        }
-    }
-    companion object {
-        val Default = ZkRequest(false, emptyList())
-    }
-}
+    override val systemSpecs: List<ZkSystemSpec>,
+): ZkInfo
