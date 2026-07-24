@@ -148,6 +148,9 @@ class ClientAuthenticationService @JvmOverloads constructor(
 }
 
 //Currently we only support [WalletAttestationClaims], do we want to support more general [ClientAttestationClaims]?
+/**
+ * timeNow = Clock.now - leeway
+ */
 private fun WalletInstanceAttestationClaims?.validate(timeNow: Instant) {
     if (this == null) {
         throw InvalidClient("client attestation is not a valid WalletAttestationPayload")
