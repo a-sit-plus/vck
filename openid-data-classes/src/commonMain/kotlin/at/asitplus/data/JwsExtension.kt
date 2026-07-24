@@ -1,9 +1,9 @@
 package at.asitplus.data
 
+import at.asitplus.openid.jwtpayload.KeyAttestationPayload
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.KeyAttestationPayload
 import at.asitplus.signum.indispensable.josef.typed
 import kotlinx.serialization.json.JsonObject
 

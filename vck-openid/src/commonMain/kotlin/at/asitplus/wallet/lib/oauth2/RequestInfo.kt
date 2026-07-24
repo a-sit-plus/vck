@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.jwtpayload.ClientAttestationClaims
+import at.asitplus.openid.jwtpayload.ClientAttestationClaims
+import at.asitplus.openid.jwtpayload.DpopPayload
 import io.ktor.http.*
 
 /** Holds information about the HTTP request the client has made, to validate client authentication. */

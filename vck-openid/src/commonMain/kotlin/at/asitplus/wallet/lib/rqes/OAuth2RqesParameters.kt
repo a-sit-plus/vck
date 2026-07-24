@@ -7,7 +7,7 @@ import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.csc.serializers.HashesSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -101,7 +101,7 @@ sealed class OAuth2RqesParameters {
          * user’s application account
          */
         @SerialName("account_token")
-        val accountToken: JsonWebToken? = null,
+        val accountToken: JwsCompact? = null,
 
         /**
          * CSC: OPTIONAL

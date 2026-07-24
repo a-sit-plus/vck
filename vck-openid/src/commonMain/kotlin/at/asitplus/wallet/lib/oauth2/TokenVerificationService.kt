@@ -8,9 +8,9 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.openid.jwtpayload.DpopPayload
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -148,7 +148,7 @@ class JwtTokenVerificationService(
 
     private suspend fun verifyDpopProof(
         httpRequest: RequestInfo,
-    ): JwsCompactTyped<JsonWebToken> = httpRequest.dpop?.also {
+    ): JwsCompactTyped<DpopPayload> = httpRequest.dpop?.also {
         verifyJwsObject(it.jws).getOrElse { throw InvalidDpopProof("DPoP JWT not verified.", it) }
         if (it.jws.jwsHeader.type != JwsContentTypeConstants.DPOP_JWT) {
             throw InvalidDpopProof("invalid type: ${it.jws.jwsHeader.type}")

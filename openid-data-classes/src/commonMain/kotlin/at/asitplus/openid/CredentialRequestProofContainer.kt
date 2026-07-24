@@ -1,13 +1,13 @@
 package at.asitplus.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.openid.jwtpayload.KeyAttestationPayload
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwtClaimNames
 import at.asitplus.signum.indispensable.josef.JwtPayload
-import at.asitplus.signum.indispensable.josef.KeyAttestationPayload
 import at.asitplus.signum.indispensable.josef.typed
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

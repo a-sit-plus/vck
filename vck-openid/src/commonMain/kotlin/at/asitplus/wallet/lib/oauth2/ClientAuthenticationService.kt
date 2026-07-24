@@ -2,8 +2,8 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.jwtpayload.ClientAttestationClaims
-import at.asitplus.signum.indispensable.josef.jwtpayload.WalletInstanceAttestationClaims
+import at.asitplus.openid.jwtpayload.ClientAttestationClaims
+import at.asitplus.openid.jwtpayload.WalletInstanceAttestationClaims
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun

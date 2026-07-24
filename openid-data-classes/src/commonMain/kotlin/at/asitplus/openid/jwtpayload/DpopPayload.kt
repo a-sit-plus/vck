@@ -1,10 +1,11 @@
-package at.asitplus.wallet.lib.oauth2
+package at.asitplus.openid.jwtpayload
 
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
-import at.asitplus.signum.indispensable.josef.JwtClaimNames.IanaRegistered.ClaimNames
+import at.asitplus.signum.indispensable.josef.JwtClaimNames
 import at.asitplus.signum.indispensable.josef.JwtPayload
-import io.ktor.http.*
+import io.ktor.http.HttpMethod
+import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -13,26 +14,25 @@ import kotlin.time.Instant
  * Defined in [RFC9449](https://www.rfc-editor.org/rfc/rfc9449.html) Sec 4.2
  * Additional claims MAY be included
  */
-//TODO maybe Dpop interface?
 data class DpopPayload(
-    @SerialName(ClaimNames.RFC7519.ISS)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.ISS)
     override val issuer: String? = null,
 
-    @SerialName(ClaimNames.RFC7519.SUB)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.SUB)
     override val subject: String? = null,
 
-    @SerialName(ClaimNames.RFC7519.AUD)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.AUD)
     override val audience: String? = null,
 
-    @SerialName(ClaimNames.RFC7519.NBF)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.NBF)
     @Serializable(with = InstantLongSerializer::class)
     override val notBefore: Instant? = null,
 
-    @SerialName(ClaimNames.RFC7519.IAT)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.IAT)
     @Serializable(with = InstantLongSerializer::class)
     override val issuedAt: Instant,
 
-    @SerialName(ClaimNames.RFC7519.EXP)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.EXP)
     @Serializable(with = InstantLongSerializer::class)
     override val expiration: Instant? = null,
 
@@ -45,14 +45,14 @@ data class DpopPayload(
      * Identifier (UUID) string according to [RFC4122]. The jti can be used by the server for replay detection
      * and prevention; see Section 11.1.
      */
-    @SerialName(ClaimNames.RFC7519.JTI)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.JTI)
     override val jwtId: String,
 
     /**
      * REQUIRED:
      * The value of the HTTP method (Section 9.1 of [RFC9110]) of the request to which the JWT is attached.
      */
-    @SerialName(ClaimNames.RFC9449.HTM)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC9449.HTM)
     val httpMethod: HttpMethod,
 
     /**
@@ -60,7 +60,7 @@ data class DpopPayload(
      * The HTTP target URI (Section 7.1 of [RFC9110]) of the request to which the JWT is attached,
      * without query and fragment parts.
      */
-    @SerialName(ClaimNames.RFC9449.HTU)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC9449.HTU)
     val httpTarget: Url,
 
     /**
@@ -70,7 +70,7 @@ data class DpopPayload(
      * Hash of the access token. The value MUST be the result of a base64url encoding (as defined in
      * Section 2 of [RFC7515]) the SHA-256 [SHS] hash of the ASCII encoding of the associated access token's value.
      */
-    @SerialName(ClaimNames.RFC9449.ATH)
+    @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC9449.ATH)
     @Serializable(with = ByteArrayBase64Serializer::class)
     val accessTokenHash: ByteArray? = null,
 ) : JwtPayload {

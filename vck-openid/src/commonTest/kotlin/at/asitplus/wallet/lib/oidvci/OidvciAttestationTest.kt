@@ -34,7 +34,6 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.KeyStorageStatus
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -123,9 +122,9 @@ val OidvciAttestationTest by matrixSuite {
             var client = WalletService(
                 loadKeyAttestation = { input ->
                     catching {
-                        SignJwt<KeyAttestationJwt>(walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
+                        SignJwt<KeyAttestationPayload>(walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
                             type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
-                            payload = KeyAttestationJwt(
+                            payload = KeyAttestationPayload(
                                 issuedAt = System.now(),
                                 expiration = System.now() + 1.days,
                                 attestedKeys = setOf(clientKeyMaterial.jsonWebKey),
@@ -143,7 +142,7 @@ val OidvciAttestationTest by matrixSuite {
                                     expiration = System.now() + 31.days,
                                 ),
                             ),
-                            serializer = KeyAttestationJwt.serializer(),
+                            serializer = KeyAttestationPayload.serializer(),
                         ).getOrThrow()
                     }
                 },
@@ -279,9 +278,9 @@ val OidvciAttestationTest by matrixSuite {
                 loadKeyAttestation = { input ->
                     capturedInput = input
                     catching {
-                        SignJwt<KeyAttestationJwt>(it.walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
+                        SignJwt<KeyAttestationPayload>(it.walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
                             type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
-                            payload = KeyAttestationJwt(
+                            payload = KeyAttestationPayload(
                                 issuedAt = System.now(),
                                 expiration = System.now() + 1.days,
                                 attestedKeys = setOf(it.clientKeyMaterial.jsonWebKey),
@@ -299,7 +298,7 @@ val OidvciAttestationTest by matrixSuite {
                                     expiration = System.now() + 31.days,
                                 ),
                             ),
-                            serializer = KeyAttestationJwt.serializer(),
+                            serializer = KeyAttestationPayload.serializer(),
                         ).getOrThrow()
                     }
                 },
@@ -534,9 +533,9 @@ private suspend fun WalletService.loadTestKeyAttestation(
 ) = catching {
     val walletProviderKeyMaterial = EphemeralKeyWithoutCert()
     val clientKeyMaterial = EphemeralKeyWithoutCert()
-    SignJwt<KeyAttestationJwt>(walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
+    SignJwt<KeyAttestationPayload>(walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
         type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
-        payload = KeyAttestationJwt(
+        payload = KeyAttestationPayload(
             issuedAt = System.now(),
             expiration = System.now() + 1.days,
             attestedKeys = setOf(clientKeyMaterial.jsonWebKey),
@@ -554,7 +553,7 @@ private suspend fun WalletService.loadTestKeyAttestation(
                 expiration = System.now() + 31.days,
             ),
         ),
-        serializer = KeyAttestationJwt.serializer(),
+        serializer = KeyAttestationPayload.serializer(),
     ).getOrThrow()
 }
 
@@ -562,9 +561,9 @@ private suspend fun buildValidKeyAttestation(
     signerKeyMaterial: KeyMaterial,
     attestedKey: KeyMaterial,
     nonce: String,
-) = SignJwt<KeyAttestationJwt>(signerKeyMaterial, JwsHeaderCertOrJwk())(
+) = SignJwt<KeyAttestationPayload>(signerKeyMaterial, JwsHeaderCertOrJwk())(
     type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
-    payload = KeyAttestationJwt(
+    payload = KeyAttestationPayload(
         issuedAt = System.now(),
         expiration = System.now() + 1.days,
         attestedKeys = setOf(attestedKey.jsonWebKey),
@@ -582,7 +581,7 @@ private suspend fun buildValidKeyAttestation(
             expiration = System.now() + 31.days,
         ),
     ),
-    serializer = KeyAttestationJwt.serializer(),
+    serializer = KeyAttestationPayload.serializer(),
 ).getOrThrow()
 
 private suspend fun JwsCompact.withHeaderAlg(alg: JwsAlgorithm.Signature): JwsCompact =
