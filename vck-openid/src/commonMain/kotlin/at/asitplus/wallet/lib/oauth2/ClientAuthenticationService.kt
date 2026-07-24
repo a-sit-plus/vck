@@ -3,9 +3,7 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.jwtpayload.ClientAttestationClaims
-import at.asitplus.signum.indispensable.josef.jwtpayload.ClientAttestationPayload
-import at.asitplus.signum.indispensable.josef.jwtpayload.WalletAttestationPayload
-import at.asitplus.signum.indispensable.josef.jwtpayload.WalletAttestationPopPayload
+import at.asitplus.signum.indispensable.josef.jwtpayload.WalletInstanceAttestationClaims
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -18,6 +16,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 
 /**
@@ -84,7 +83,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
         }
     }
 
-    private fun JwsCompactTyped<WalletAttestationPayload>.validateWalletInstanceAttestation(clientId: String?) {
+    private fun JwsCompactTyped<ClientAttestationClaims.WithCNF>.validateWalletInstanceAttestation(clientId: String?) {
         if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
             throw InvalidClient("invalid client attestation typ: ${jws.jwsHeader.type}")
         }
@@ -103,32 +102,21 @@ class ClientAuthenticationService @JvmOverloads constructor(
             throw InvalidClient("subject not equal to client_id")
         }
         val issuedAt = payload.issuedAt ?: throw InvalidClient("client attestation has no iat")
-        val expiration = payload.expiration ?: throw InvalidClient("client attestation has no exp")
         if (issuedAt > (clock.now() + timeLeeway)) {
             throw InvalidClient("client attestation iat in future: $issuedAt")
         }
-        if (expiration < (clock.now() - timeLeeway)) {
-            throw InvalidClient("client attestation expired: $expiration")
+        if (payload.expiration < (clock.now() - timeLeeway)) {
+            throw InvalidClient("client attestation expired: ${payload.expiration}")
         }
-        if (expiration - issuedAt >= 24.hours) {
+        if (payload.expiration - issuedAt >= 24.hours) {
             throw InvalidClient("client attestation lifetime must be less than 24 hours")
         }
-        if (payload.walletName.isBlank()) {
-            throw InvalidClient("client attestation has no wallet_name")
-        }
-        if (payload.walletVersion.isBlank()) {
-            throw InvalidClient("client attestation has no wallet_version")
-        }
-        if (payload.walletSolutionCertificationInformation.isBlank()) {
-            throw InvalidClient("client attestation has no wallet_solution_certification_information")
-        }
-        val clientStatus = payload.clientStatus ?: throw InvalidClient("client attestation has no client_status")
-        if (clientStatus.expiration < (clock.now() - timeLeeway)) {
-            throw InvalidClient("client_status expiration in past: ${clientStatus.expiration}")
+        with(payload as? WalletInstanceAttestationClaims) {
+            validate(clock.now() - timeLeeway)
         }
     }
 
-    private fun JwsCompactTyped<WalletAttestationPopPayload>.validateWalletInstanceAttestationPop(clientId: String?) {
+    private fun JwsCompactTyped<ClientAttestationClaims.Pop>.validateWalletInstanceAttestationPop(clientId: String?) {
         if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
             throw InvalidClient("invalid client attestation PoP typ: ${jws.jwsHeader.type}")
         }
@@ -151,6 +139,29 @@ class ClientAuthenticationService @JvmOverloads constructor(
         if (payload.expiration == null || payload.expiration!! < (clock.now() - timeLeeway)) {
             throw InvalidClient("client attestation PoP expired: ${payload.expiration}")
         }
-    }
 
+        //Previously missing?
+        with(payload as? WalletInstanceAttestationClaims) {
+            validate(clock.now() - timeLeeway)
+        }
+    }
+}
+
+//Currently we only support [WalletAttestationClaims], do we want to support more general [ClientAttestationClaims]?
+private fun WalletInstanceAttestationClaims?.validate(timeNow: Instant) {
+    if (this == null) {
+        throw InvalidClient("client attestation is not a valid WalletAttestationPayload")
+    }
+    if (walletName.isBlank()) {
+        throw InvalidClient("client attestation has no wallet_name")
+    }
+    if (walletVersion.isBlank()) {
+        throw InvalidClient("client attestation has no wallet_version")
+    }
+    if (walletSolutionCertificationInformation.isBlank()) {
+        throw InvalidClient("client attestation has no wallet_solution_certification_information")
+    }
+    if (clientStatus.expiration < timeNow) {
+        throw InvalidClient("client_status expiration in past: ${clientStatus.expiration}")
+    }
 }
