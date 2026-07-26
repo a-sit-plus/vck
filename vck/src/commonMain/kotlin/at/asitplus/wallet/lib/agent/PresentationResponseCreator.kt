@@ -11,6 +11,7 @@ import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
+import at.asitplus.openid.dcql.DCQLIsoMdocZkCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -74,7 +75,7 @@ internal class PresentationResponseCreator(
 
         val presentations = credentialSubmissions.mapValues { (queryId, submissions) ->
             val query = dcqlQuery.credentials.first { it.id == queryId }
-            if (query.multiple != true && submissions.size != 1) {
+            if (!query.multiple && submissions.size != 1) {
                 throw IllegalArgumentException(
                     "Credential query ${query.id} does not allow multiple submission, but ${submissions.size} were provided."
                 )
@@ -87,10 +88,15 @@ internal class PresentationResponseCreator(
                     }
                     CreatePresentationResult.VcJws(credential.vcSerialized)
                 } else {
+                    val meta = when (query) {
+                        is DCQLIsoMdocZkCredentialQuery -> PresentationMetadata.IsoMdocZk(query.meta.zkSystemType)
+                        else -> null
+                    }
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
                         credential = credential,
                         disclosedAttributes = it.matchingResult,
+                        presentationMetadata = meta,
                     ).getOrThrow()
                 }
             }
@@ -110,7 +116,7 @@ internal class PresentationResponseCreator(
         val selectedCredentials = DeviceRetrievalProcedure.validateSubmission(deviceRequest, submissions).getOrThrow()
         val result = verifiablePresentationFactory.createVerifiablePresentation(
             request = request,
-            credentialAndDisclosedAttributes = selectedCredentials,
+            isoPresentations = selectedCredentials,
         ).getOrThrow()
         return PresentationResponseParameters.DeviceRetrievalParameters(result.deviceResponse)
     }
@@ -145,8 +151,8 @@ internal class PresentationResponseCreator(
                 presentationResults = listOf(
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
-                        credentialAndDisclosedAttributes = submissions.associate {
-                            it.second.credential as StoreEntry.Iso to it.second.disclosedAttributes
+                        isoPresentations = submissions.map {
+                            IsoPresentation(it.second.credential as StoreEntry.Iso, it.second.disclosedAttributes)
                         },
                     ).getOrThrow()
                 ),
