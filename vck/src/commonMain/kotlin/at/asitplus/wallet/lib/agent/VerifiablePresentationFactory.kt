@@ -134,8 +134,8 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                isoPresentation = listOf(IsoPresentation(
-                    credential, disclosedAttributes.toRequestedIsoClaims(credential), presentationMetadata)
+                isoPresentation = listOf(IsoPresentation.create(
+                    credential, disclosedAttributes.toRequestedIsoClaims(credential), presentationMetadata).getOrThrow()
                 ),
             )
         }

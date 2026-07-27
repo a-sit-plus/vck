@@ -61,7 +61,7 @@ internal object DeviceRetrievalProcedure {
             ) {
                 "Disclosed attributes do not exactly match document request at index $index"
             }
-            IsoPresentation(credential, submission.disclosedAttributes, meta)
+            IsoPresentation.create(credential, submission.disclosedAttributes, meta).getOrThrow()
         }
     }
 
