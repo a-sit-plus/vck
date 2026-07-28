@@ -53,8 +53,14 @@ interface ReferencedTokenStore {
     /**
      * For JVM callers: Set the [status] of the referenced token with this [index] for the [timePeriod], if it exists.
      */
-    fun setStatus(timePeriod: Int, index: Long, status: TokenStatus): Boolean =
+    fun setStatusLong(timePeriod: Int, index: Long, status: TokenStatus): Boolean =
         setStatus(timePeriod, index.toULong(), status)
+
+    /**
+     * For JVM callers: Set the [status] value of the referenced token with this [index] for the [timePeriod].
+     */
+    fun setStatusLong(timePeriod: Int, index: Long, status: Byte): Boolean =
+        setStatusLong(timePeriod, index, TokenStatus(status.toUByte()))
 
     /**
      * Set the status of the referenced token with this [identifier] for the [timePeriod] to revoked, if it exists.

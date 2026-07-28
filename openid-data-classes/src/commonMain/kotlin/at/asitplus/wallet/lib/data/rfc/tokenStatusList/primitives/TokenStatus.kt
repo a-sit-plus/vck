@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives
 
 import kotlin.jvm.JvmInline
+import kotlin.jvm.JvmField
 
 /**
  *  7. Status Types
@@ -32,6 +33,15 @@ value class TokenStatus(val value: UByte) {
         val Valid = TokenStatus(Specification.VALID)
         val Invalid = TokenStatus(Specification.INVALID)
         val Suspended = TokenStatus(Specification.SUSPENDED)
+
+        @JvmField
+        val VALID: Byte = Valid.value.toByte()
+
+        @JvmField
+        val INVALID: Byte = Invalid.value.toByte()
+
+        @JvmField
+        val SUSPENDED: Byte = Suspended.value.toByte()
     }
 
     /**

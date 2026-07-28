@@ -1,8 +1,11 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
+import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
+import kotlin.jvm.JvmStatic
 import kotlin.require
 
 /**
@@ -44,26 +47,36 @@ data class StatusListInfo(
     override val certificate: ByteArray? = null,
 ) : RevocationListInfo() {
 
-    /** For JVM callers which can't access ULong directly */
-    internal constructor(
-        /**
-         * Identifies the Status List or Status List Token containing the status information for the Referenced Token.
-         * The value of uri MUST be a URI conforming to RFC3986.
-         */
-        uri: UniformResourceIdentifier,
-        /**
-         * Integer that represents the index to check for status information in the Status List for the current
-         * Referenced Token.
-         **/
+    /** For JVM callers which can't access value class or ULong constructors directly */
+    @JvmOverloads
+    constructor(
+        uri: String,
         index: Long,
         certificate: ByteArray? = null,
     ) : this(
         index = index.toULong().also {
             require(index >= 0) { "index must be non-negative" }
         },
-        uri = uri,
+        uri = UniformResourceIdentifier(uri),
         certificate = certificate,
     )
+
+    companion object {
+        /** For JVM callers which use the value class carrier type */
+        @JvmStatic
+        @JvmOverloads
+        fun fromUri(
+            uri: Url,
+            index: Long,
+            certificate: ByteArray? = null,
+        ) = StatusListInfo(
+            index = index.toULong().also {
+                require(index >= 0) { "index must be non-negative" }
+            },
+            uri = UniformResourceIdentifier(uri),
+            certificate = certificate,
+        )
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -9,7 +9,7 @@ import io.kotest.matchers.shouldBe
 val StatusListIndexTest by matrixSuite {
     "negative status-list indices are rejected" {
         shouldThrow<IllegalArgumentException> {
-            StatusListInfo(UniformResourceIdentifier("https://example.com/status"), -1)
+            StatusListInfo("https://example.com/status", -1)
         }
         shouldThrow<IllegalArgumentException> {
             StatusListView(ByteArray(1), TokenStatusBitSize.ONE).getOrNull(-1)
@@ -17,7 +17,7 @@ val StatusListIndexTest by matrixSuite {
     }
 
     "Java constructor delegates to ULong" {
-        val info = StatusListInfo(UniformResourceIdentifier("https://example.com/status"), 1)
+        val info = StatusListInfo("https://example.com/status", 1)
         info.index shouldBe 1UL
     }
 }
