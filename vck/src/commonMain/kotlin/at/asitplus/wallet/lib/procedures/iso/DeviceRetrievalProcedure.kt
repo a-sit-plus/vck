@@ -10,9 +10,9 @@ import at.asitplus.wallet.lib.agent.DeviceRequestCredentialDisclosure
 import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalClaimMatch
 import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalCredentialMatch
 import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalQueryMatchingResult
-import at.asitplus.wallet.lib.agent.IsoPresentation
+import at.asitplus.wallet.lib.agent.IsoPresentationParameters
 import at.asitplus.wallet.lib.agent.PresentationException
-import at.asitplus.wallet.lib.agent.PresentationMetadata
+import at.asitplus.wallet.lib.agent.ZkMetadata
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 
 /** Matching and submission validation for ISO Device Retrieval requests. */
@@ -30,7 +30,7 @@ internal object DeviceRetrievalProcedure {
     fun validateSubmission(
         deviceRequest: DeviceRequest,
         submissions: Collection<DeviceRequestCredentialDisclosure<StoreEntry>>,
-    ): KmmResult<Collection<IsoPresentation>> = catching {
+    ): KmmResult<Collection<IsoPresentationParameters>> = catching {
         require(submissions.size == deviceRequest.docRequests.size) {
             "A submission is required for every document request"
         }
@@ -47,7 +47,7 @@ internal object DeviceRetrievalProcedure {
                 "Credential docType does not match document request at index $index"
             }
             val meta = itemsRequest.requestInfo?.zkRequest?.let {
-               PresentationMetadata.IsoMdocZk(it)
+               ZkMetadata.IsoMdocZk(it)
             }
             val requiredPaths = evaluateItemsRequestAgainstCredential(
                 itemsRequest = itemsRequest,
@@ -61,7 +61,7 @@ internal object DeviceRetrievalProcedure {
             ) {
                 "Disclosed attributes do not exactly match document request at index $index"
             }
-            IsoPresentation.create(credential, submission.disclosedAttributes, meta).getOrThrow()
+            IsoPresentationParameters.create(credential, submission.disclosedAttributes, meta).getOrThrow()
         }
     }
 

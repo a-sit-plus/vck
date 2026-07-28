@@ -69,8 +69,8 @@ class VerifiablePresentationFactory(
         credentialAndDisclosedAttributes: Map<StoreEntry.Iso, Collection<NormalizedJsonPath>>,
     ): KmmResult<CreatePresentationResult.DeviceResponse> = createVerifiablePresentation(
         request = request,
-        isoPresentations = credentialAndDisclosedAttributes.entries.map {
-            IsoPresentation(it.key, it.value) },
+        isoPresentationParameters = credentialAndDisclosedAttributes.entries.map {
+            IsoPresentationParameters(it.key, it.value) },
     )
 
 
@@ -80,11 +80,11 @@ class VerifiablePresentationFactory(
      */
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
-        isoPresentations: Collection<IsoPresentation>,
+        isoPresentationParameters: Collection<IsoPresentationParameters>,
     ): KmmResult<CreatePresentationResult.DeviceResponse> = catching {
         createIsoPresentation(
             request = request,
-            isoPresentation = isoPresentations,
+            isoPresentationParameters = isoPresentationParameters,
         )
     }
 
@@ -107,7 +107,7 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                isoPresentation = listOf(IsoPresentation(credential, disclosedAttributes,)),
+                isoPresentationParameters = listOf(IsoPresentationParameters(credential, disclosedAttributes,)),
             )
         }
     }
@@ -116,7 +116,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         credential: StoreEntry,
         disclosedAttributes: DCQLCredentialQueryMatchingResult,
-        presentationMetadata: PresentationMetadata? = null
+        zkMetadata: ZkMetadata? = null
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is StoreEntry.Vc -> if (disclosedAttributes !is AllClaimsMatchingResult) {
@@ -134,8 +134,8 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                isoPresentation = listOf(IsoPresentation.create(
-                    credential, disclosedAttributes.toRequestedIsoClaims(credential), presentationMetadata).getOrThrow()
+                isoPresentationParameters = listOf(IsoPresentationParameters.create(
+                    credential, disclosedAttributes.toRequestedIsoClaims(credential), zkMetadata).getOrThrow()
                 ),
             )
         }
@@ -179,11 +179,11 @@ class VerifiablePresentationFactory(
 
     private suspend fun createIsoPresentation(
         request: PresentationRequestParameters,
-        isoPresentation: Collection<IsoPresentation>,
+        isoPresentationParameters: Collection<IsoPresentationParameters>,
     ) = CreatePresentationResult.DeviceResponse(
         deviceResponse = DeviceResponse(
             parsedVersion = Version(1, 0),
-            documents = isoPresentation.map { (credential, requestedClaims) ->
+            documents = isoPresentationParameters.map { (credential, requestedClaims) ->
                 credential.discloseRequestedClaims(requestedClaims, request)
             }.toTypedArray(),
             status = 0U,

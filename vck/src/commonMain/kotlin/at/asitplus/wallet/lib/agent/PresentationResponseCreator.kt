@@ -89,14 +89,14 @@ internal class PresentationResponseCreator(
                     CreatePresentationResult.VcJws(credential.vcSerialized)
                 } else {
                     val meta = when (query) {
-                        is DCQLIsoMdocZkCredentialQuery -> PresentationMetadata.IsoMdocZk(query.meta.zkSystemType)
+                        is DCQLIsoMdocZkCredentialQuery -> ZkMetadata.IsoMdocZk(query.meta.zkSystemType)
                         else -> null
                     }
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
                         credential = credential,
                         disclosedAttributes = it.matchingResult,
-                        presentationMetadata = meta,
+                        zkMetadata = meta,
                     ).getOrThrow()
                 }
             }
@@ -116,7 +116,7 @@ internal class PresentationResponseCreator(
         val selectedCredentials = DeviceRetrievalProcedure.validateSubmission(deviceRequest, submissions).getOrThrow()
         val result = verifiablePresentationFactory.createVerifiablePresentation(
             request = request,
-            isoPresentations = selectedCredentials,
+            isoPresentationParameters = selectedCredentials,
         ).getOrThrow()
         return PresentationResponseParameters.DeviceRetrievalParameters(result.deviceResponse)
     }
@@ -151,8 +151,8 @@ internal class PresentationResponseCreator(
                 presentationResults = listOf(
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
-                        isoPresentations = submissions.map {
-                            IsoPresentation(it.second.credential as StoreEntry.Iso, it.second.disclosedAttributes)
+                        isoPresentationParameters = submissions.map {
+                            IsoPresentationParameters(it.second.credential as StoreEntry.Iso, it.second.disclosedAttributes)
                         },
                     ).getOrThrow()
                 ),
