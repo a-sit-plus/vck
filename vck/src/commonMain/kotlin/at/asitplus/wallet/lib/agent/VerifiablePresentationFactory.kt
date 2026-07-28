@@ -63,16 +63,16 @@ class VerifiablePresentationFactory(
     private val signKeyBinding: SignJwtFun<KeyBindingJws> =
         SignJwt(keyMaterial, JwsHeaderNone()),
 ) {
-
+    @Deprecated("Use createVerifiablePresentation(request, isoPresentationParameters) instead")
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         credentialAndDisclosedAttributes: Map<StoreEntry.Iso, Collection<NormalizedJsonPath>>,
     ): KmmResult<CreatePresentationResult.DeviceResponse> = createVerifiablePresentation(
         request = request,
-        isoPresentationParameters = credentialAndDisclosedAttributes.entries.map {
-            IsoPresentationParameters(it.key, it.value) },
+        isoPresentationParameters = credentialAndDisclosedAttributes.map { (credential, claims) ->
+            IsoPresentationParameters.create(credential, claims).getOrThrow()
+        }
     )
-
 
     /**
      * Creates one Device Response while preserving every selected document and its order. A collection is used rather
@@ -92,6 +92,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         credential: StoreEntry,
         disclosedAttributes: Collection<NormalizedJsonPath>,
+        zkMetadata: ZkMetadata? = null
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is StoreEntry.Vc -> createVcPresentation(
@@ -107,7 +108,11 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                isoPresentationParameters = listOf(IsoPresentationParameters(credential, disclosedAttributes,)),
+                isoPresentationParameters = listOf(IsoPresentationParameters.create(
+                    credential = credential,
+                    claims = disclosedAttributes,
+                    zkMetadata = zkMetadata
+                ).getOrThrow()),
             )
         }
     }

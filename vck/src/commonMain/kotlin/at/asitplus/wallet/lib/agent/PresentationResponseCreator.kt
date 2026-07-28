@@ -88,15 +88,14 @@ internal class PresentationResponseCreator(
                     }
                     CreatePresentationResult.VcJws(credential.vcSerialized)
                 } else {
-                    val meta = when (query) {
-                        is DCQLIsoMdocZkCredentialQuery -> ZkMetadata.IsoMdocZk(query.meta.zkSystemType)
-                        else -> null
-                    }
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
                         credential = credential,
                         disclosedAttributes = it.matchingResult,
-                        zkMetadata = meta,
+                        zkMetadata = when (query) {
+                            is DCQLIsoMdocZkCredentialQuery -> ZkMetadata.IsoMdocZk(query.meta.zkSystemType)
+                            else -> null
+                        }
                     ).getOrThrow()
                 }
             }
@@ -152,7 +151,10 @@ internal class PresentationResponseCreator(
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
                         isoPresentationParameters = submissions.map {
-                            IsoPresentationParameters(it.second.credential as StoreEntry.Iso, it.second.disclosedAttributes)
+                            IsoPresentationParameters.create(
+                                credential = it.second.credential as StoreEntry.Iso,
+                                claims = it.second.disclosedAttributes
+                            ).getOrThrow()
                         },
                     ).getOrThrow()
                 ),

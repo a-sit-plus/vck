@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 
 @ConsistentCopyVisibility
@@ -9,21 +10,16 @@ data class IsoPresentationParameters private constructor(
     val claims: Collection<NormalizedJsonPath>,
     val zkMetadata: ZkMetadata?
 ) {
-    constructor(
-        credential: SubjectCredentialStore.StoreEntry.Iso,
-        claims: Collection<NormalizedJsonPath>
-    ) : this(credential, claims, null)
-
     companion object {
         fun create(
             credential: SubjectCredentialStore.StoreEntry.Iso,
             claims: Collection<NormalizedJsonPath>,
-            zkMetadata: ZkMetadata?
-        ): KmmResult<IsoPresentationParameters> {
+            zkMetadata: ZkMetadata? = null,
+        ): KmmResult<IsoPresentationParameters> = catching {
             if (zkMetadata?.isCompatibleWith(credential) == false) {
-                return KmmResult.failure(PresentationException("Metadata incompatible with credential"))
+               throw PresentationException("Metadata incompatible with credential")
             }
-            return KmmResult.success(IsoPresentationParameters(credential, claims, zkMetadata))
+            IsoPresentationParameters(credential, claims, zkMetadata)
         }
     }
 }
