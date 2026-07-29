@@ -19,11 +19,15 @@ data class StatusListView(
     fun isEmpty() = uncompressed.isEmpty()
     fun isNotEmpty() = !isEmpty()
 
-    operator fun get(index: Int) = get(index.toULong())
+    operator fun get(index: Int) = get(index.toULong().also {
+        require(index >= 0) { "index must be non-negative" }
+    })
 
     operator fun get(index: UInt) = get(index.toULong())
 
-    operator fun get(index: Long) = get(index.toULong())
+    operator fun get(index: Long) = get(index.toULong().also {
+        require(index >= 0) { "index must be non-negative" }
+    })
 
     operator fun get(index: ULong) = getOrNull(index)
         ?: throw IndexOutOfBoundsException("Index $index is out of bounds, size ${size}")
@@ -31,7 +35,9 @@ data class StatusListView(
     private val size: ULong
         get() = uncompressed.size.toULong() * Byte.SIZE_BITS.toULong() / statusBitSize.value
 
-    fun getOrNull(index: Long) = getOrNull(index.toULong())
+    fun getOrNull(index: Long) = getOrNull(index.toULong().also {
+        require(index >= 0) { "index must be non-negative" }
+    })
 
     fun getOrNull(index: ULong): TokenStatus? {
         val tokenStatusesPerByte = Byte.SIZE_BITS.toULong() / statusBitSize.value

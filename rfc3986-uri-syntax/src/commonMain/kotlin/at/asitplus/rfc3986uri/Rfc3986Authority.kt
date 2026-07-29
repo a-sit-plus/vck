@@ -8,6 +8,16 @@ data class Rfc3986Authority(
     val host: Rfc3986AuthorityHost,
     val rawPort: String?,
 ) {
+    constructor(
+        userInfo: Rfc3986UriAuthorityUserInformation?,
+        host: Rfc3986AuthorityHost,
+        port: ULong,
+    ) : this(
+        userInfo = userInfo,
+        host = host,
+        rawPort = port.toString()
+    )
+
     init {
         require(rawPort == null || rawPort.isNotEmpty() && rawPort.all { it in '0'..'9' }) {
             "port must contain decimal digits"
@@ -17,16 +27,6 @@ data class Rfc3986Authority(
     val port: ULong? = rawPort?.toULongOrNull()
 
     companion object {
-        @Deprecated(
-            "Use a String port",
-            ReplaceWith("Rfc3986Authority(userInfo, host, port.toString())"),
-        )
-        operator fun invoke(
-            userInfo: Rfc3986UriAuthorityUserInformation?,
-            host: Rfc3986AuthorityHost,
-            port: ULong,
-        ) = Rfc3986Authority(userInfo, host, port.toString())
-
         operator fun invoke(string: String): Rfc3986Authority {
             val userInfoSeparatorIndex = string.indexOf('@').takeIf {
                 it != -1

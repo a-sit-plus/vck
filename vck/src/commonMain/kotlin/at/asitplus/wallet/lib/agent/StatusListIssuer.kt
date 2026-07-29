@@ -38,7 +38,9 @@ interface StatusListIssuer : StatusIssuer, StatusProvider {
      * Returns `true` if this credential has been revoked.
      */
     fun revokeCredentialByIndexLong(timePeriod: Int, statusListIndex: Long): Boolean =
-        revokeCredentialByIndex(timePeriod, statusListIndex.toULong())
+        revokeCredentialByIndex(timePeriod, statusListIndex.toULong().also {
+            require(statusListIndex >= 0) { "statusListIndex must be non-negative" }
+        })
 
     /**
      * Sets the status of one specific credential to

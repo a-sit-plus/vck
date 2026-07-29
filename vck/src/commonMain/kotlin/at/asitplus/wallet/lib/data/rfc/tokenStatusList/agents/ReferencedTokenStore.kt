@@ -22,7 +22,12 @@ interface ReferencedTokenStore {
             id: String,
             statusListIndex: Long,
             timePeriod: Int
-        ): this(id, timePeriod, statusListIndex.toULong())
+        ) : this(
+            id = id,
+            timePeriod = timePeriod,
+            statusListIndex = statusListIndex.toULong().also {
+                require(statusListIndex >= 0) { "statusListIndex must be non-negative" }
+            })
     }
 
     /**
@@ -54,13 +59,17 @@ interface ReferencedTokenStore {
      * For JVM callers: Set the [status] of the referenced token with this [index] for the [timePeriod], if it exists.
      */
     fun setStatusLong(timePeriod: Int, index: Long, status: TokenStatus): Boolean =
-        setStatus(timePeriod, index.toULong(), status)
+        setStatus(timePeriod, index.toULong().also {
+            require(index >= 0) { "index must be non-negative" }
+        }, status)
 
     /**
      * For JVM callers: Set the [status] value of the referenced token with this [index] for the [timePeriod].
      */
     fun setStatusLong(timePeriod: Int, index: Long, status: Byte): Boolean =
-        setStatusLong(timePeriod, index, TokenStatus(status.toUByte()))
+        setStatusLong(timePeriod, index, TokenStatus(status.toUByte().also {
+            require(status >= 0) { "status must be non-negative" }
+        }))
 
     /**
      * Set the status of the referenced token with this [identifier] for the [timePeriod] to revoked, if it exists.

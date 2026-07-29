@@ -29,7 +29,13 @@ class InMemoryIssuerCredentialStore(
             vcId: String,
             status: TokenStatus,
             statusListIndex: Long,
-        ) : this(vcId, statusListIndex.toULong(), status)
+        ) : this(
+            vcId = vcId,
+            statusListIndex = statusListIndex.toULong().also {
+                require(statusListIndex >= 0) { "statusListIndex must be non-negative" }
+            },
+            status = status
+        )
     }
 
     /** Maps timePeriod to credentials for referenced tokens which may be revoked later on */
