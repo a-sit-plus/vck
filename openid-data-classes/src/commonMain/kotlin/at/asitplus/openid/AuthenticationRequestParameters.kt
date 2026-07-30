@@ -12,6 +12,7 @@ import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
+import at.asitplus.signum.indispensable.josef.JwtPayload
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -237,7 +238,7 @@ data class AuthenticationRequestParameters(
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
     @SerialName("aud")
-    val audience: String? = null,
+    override val audience: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
@@ -247,14 +248,14 @@ data class AuthenticationRequestParameters(
      * OpenID4VP 1.0: The iss claim MAY be present in the Request Object. However, even if it is present, the Wallet MUST ignore it
      */
     @SerialName("iss")
-    val issuer: String? = null,
+    override val issuer: String? = null,
 
     /**
      * OPTIONAL. Time at which the request was issued.
      */
     @SerialName("iat")
     @Serializable(with = InstantLongSerializer::class)
-    val issuedAt: Instant? = null,
+    override val issuedAt: Instant? = null,
 
     /**
      * RFC8707: In requests to the authorization server, a client MAY indicate the protected resource (a.k.a.
@@ -385,7 +386,7 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("verifier_info")
     val verifierInfo: List<VerifierInfo>? = null
-) : RequestParameters() {
+) : RequestParameters(), JwtPayload {
     init {
         responseType?.let {
             ResponseType(it) // syntax validation
@@ -509,4 +510,9 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (verifierInfo?.hashCode() ?: 0)
         return result
     }
+
+    override val subject: String? = null
+    override val notBefore: Instant? = null
+    override val expiration: Instant? = null
+    override val jwtId: String? = null
 }

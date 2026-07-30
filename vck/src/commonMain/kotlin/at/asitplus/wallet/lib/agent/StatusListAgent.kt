@@ -129,12 +129,10 @@ class StatusListAgent @JvmOverloads constructor(
         revocationList = buildRevocationList(timePeriod, kind),
         issuedAt = clock.now().truncateToSeconds(),
         timeToLive = PositiveDuration(revocationListLifetime),
-        subject = UniformResourceIdentifier(
-            when (kind) {
-                STATUS_LIST -> getStatusListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
-                IDENTIFIER_LIST -> getIdentifierListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
-            }
-        ),
+        subject = when (kind) {
+            STATUS_LIST -> getStatusListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+            IDENTIFIER_LIST -> getIdentifierListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+        },
     ).also {
         Napier.d("revocation status list: ${it.revocationList}")
     }

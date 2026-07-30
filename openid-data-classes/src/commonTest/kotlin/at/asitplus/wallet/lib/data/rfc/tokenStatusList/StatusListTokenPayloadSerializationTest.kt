@@ -8,7 +8,6 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.Identifier
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
-import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
@@ -23,7 +22,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-private val subject = UniformResourceIdentifier("https://example.com/statuslists/1")
+private const val subject = "https://example.com/statuslists/1"
 private val issuedAt = Instant.fromEpochSeconds(1_700_000_000)
 private val identifierList = IdentifierList(
     identifiers = mapOf(
@@ -85,7 +84,7 @@ val StatusListTokenPayloadSerializationTest by matrixSuite {
             .encodeToJsonElement(StatusListTokenPayload.serializer(), statusListPayload)
             .jsonObject
 
-        json[StatusListTokenPayloadSurrogate.SerialNames.SUBJECT] shouldBe JsonPrimitive(subject.string)
+        json[StatusListTokenPayloadSurrogate.SerialNames.SUBJECT] shouldBe JsonPrimitive(subject)
         json[StatusListTokenPayloadSurrogate.SerialNames.ISSUED_AT] shouldBe JsonPrimitive(issuedAt.epochSeconds)
         json[StatusListTokenPayloadSurrogate.SerialNames.EXPIRATION_TIME] shouldBe JsonPrimitive(
             statusListPayload.expirationTime!!.epochSeconds
@@ -136,7 +135,7 @@ val StatusListTokenPayloadSerializationTest by matrixSuite {
         val expectedPrefix = buildString {
             append("A3")
             append("02")
-            append(encodeCbor(String.serializer(), subject.string))
+            append(encodeCbor(String.serializer(), subject))
             append("06")
             append(encodeCbor(Long.serializer(), issuedAt.epochSeconds))
             append("19FFFA")
@@ -175,7 +174,7 @@ val StatusListTokenPayloadSerializationTest by matrixSuite {
         val malformed = buildString {
             append("A4")
             append("02")
-            append(encodeCbor(String.serializer(), subject.string))
+            append(encodeCbor(String.serializer(), subject))
             append("06")
             append(encodeCbor(Long.serializer(), issuedAt.epochSeconds))
             append("19FFFD")

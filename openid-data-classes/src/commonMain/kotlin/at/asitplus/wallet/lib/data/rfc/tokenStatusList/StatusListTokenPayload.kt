@@ -2,9 +2,9 @@ package at.asitplus.wallet.lib.data.rfc.tokenStatusList
 
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
+import at.asitplus.signum.indispensable.josef.JwtPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload.StatusListTokenPayloadSurrogateSerializer
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
-import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.cbor.CborConfiguration
@@ -30,7 +30,7 @@ data class StatusListTokenPayload(
      * JWT serializes this as claim `sub`.
      * CWT serializes this as label `2`.
      */
-    val subject: UniformResourceIdentifier,
+    override val subject: String,
 
     /**
      * REQUIRED. The issued-at timestamp of the status list token.
@@ -38,7 +38,7 @@ data class StatusListTokenPayload(
      * JWT serializes this as claim `iat`.
      * CWT serializes this as label `6`.
      */
-    val issuedAt: Instant,
+    override val issuedAt: Instant,
 
     /**
      * RECOMMENDED. The expiration timestamp of the status list token.
@@ -64,7 +64,13 @@ data class StatusListTokenPayload(
      *   with label `65530`.
      */
     val revocationList: RevocationList,
-) {
+) : JwtPayload {
+    override val issuer: String? = null
+    override val audience: String? = null
+    override val notBefore: Instant? = null
+    override val expiration: Instant? = null
+    override val jwtId: String? = null
+
     internal object StatusListTokenPayloadSurrogateSerializer :
         TransformingSerializerTemplate<StatusListTokenPayload, StatusListTokenPayloadSurrogate>(
             parent = StatusListTokenPayloadSurrogate.Companion.serializer(),
