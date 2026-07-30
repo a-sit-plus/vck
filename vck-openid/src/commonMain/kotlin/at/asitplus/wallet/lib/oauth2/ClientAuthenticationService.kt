@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.openid.jwtpayload.ClientAttestationPopPayload
+import at.asitplus.openid.jwtpayload.WalletAttestationPayload
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.openid.jwtpayload.ClientAttestationClaims
-import at.asitplus.openid.jwtpayload.WalletInstanceAttestationClaims
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -16,7 +16,6 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
 
 
 /**
@@ -34,7 +33,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
     /** Used to verify client attestation JWTs */
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
     /** Callback to verify the client attestation JWT against a set of trusted roots */
-    private val verifyClientAttestationJwt: (suspend (JwsCompactTyped<ClientAttestationClaims>) -> Boolean) = { true },
+    private val verifyClientAttestationJwt: (suspend (JwsCompactTyped<WalletAttestationPayload>) -> Boolean) = { true },
     /** Clock used to verify WIA and WIA PoP timestamps. */
     private val clock: Clock = Clock.System,
     /** Time leeway for verification of WIA and WIA PoP timestamps. */
@@ -76,95 +75,84 @@ class ClientAuthenticationService @JvmOverloads constructor(
             val instanceAttestationPopJwt = httpRequest.clientAttestationPop
             instanceAttestationPopJwt.validateWalletInstanceAttestationPop(instanceAttestation.payload.subject)
             val cnf = instanceAttestation.payload.confirmationClaim
-                ?: throw InvalidClient("client attestation has no cnf")
             if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt.jws, cnf)) {
                 throw InvalidClient("client attestation PoP JWT not verified")
             }
         }
     }
 
-    private fun JwsCompactTyped<ClientAttestationClaims.Attestation>.validateWalletInstanceAttestation(clientId: String?) {
-        if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
-            throw InvalidClient("invalid client attestation typ: ${jws.jwsHeader.type}")
+    private fun JwsCompactTyped<WalletAttestationPayload>.validateWalletInstanceAttestation(clientId: String?) {
+        with(jws.jwsHeader) {
+            if (type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
+                throw InvalidClient("invalid client attestation typ: $type")
+            }
+            if (certificateChain.isNullOrEmpty()) {
+                throw InvalidClient("client attestation has no x5c")
+            }
+            if (algorithm !is JwsAlgorithm.Signature ||
+                algorithm !in SimpleAuthorizationService.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
+            ) {
+                throw InvalidClient("unsupported client attestation alg: $algorithm")
+            }
         }
-        if (jws.jwsHeader.certificateChain.isNullOrEmpty()) {
-            throw InvalidClient("client attestation has no x5c")
-        }
-        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            jws.jwsHeader.algorithm !in SimpleAuthorizationService.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
-        ) {
-            throw InvalidClient("unsupported client attestation alg: ${jws.jwsHeader.algorithm}")
-        }
-        if (payload.issuer != null) {
-            throw InvalidClient("client attestation must not contain iss")
-        }
-        if (clientId != null && payload.subject != clientId) {
-            throw InvalidClient("subject not equal to client_id")
-        }
-        val issuedAt = payload.issuedAt ?: throw InvalidClient("client attestation has no iat")
-        if (issuedAt > (clock.now() + timeLeeway)) {
-            throw InvalidClient("client attestation iat in future: $issuedAt")
-        }
-        if (payload.expiration < (clock.now() - timeLeeway)) {
-            throw InvalidClient("client attestation expired: ${payload.expiration}")
-        }
-        if (payload.expiration - issuedAt >= 24.hours) {
-            throw InvalidClient("client attestation lifetime must be less than 24 hours")
-        }
-        with(payload as? WalletInstanceAttestationClaims) {
-            validate(clock.now() - timeLeeway)
+        with(payload) {
+            if (issuer != null) {
+                throw InvalidClient("client attestation must not contain iss")
+            }
+            if (clientId != null && subject != clientId) {
+                throw InvalidClient("subject not equal to client_id")
+            }
+            val issuedAt = issuedAt ?: throw InvalidClient("client attestation has no iat")
+            if (issuedAt > (clock.now() + timeLeeway)) {
+                throw InvalidClient("client attestation iat in future: $issuedAt")
+            }
+            if (expiration < (clock.now() - timeLeeway)) {
+                throw InvalidClient("client attestation expired: $expiration")
+            }
+            if (expiration - issuedAt >= 24.hours) {
+                throw InvalidClient("client attestation lifetime must be less than 24 hours")
+            }
+            if (walletName.isBlank()) {
+                throw InvalidClient("client attestation has no wallet_name")
+            }
+            if (walletVersion.isBlank()) {
+                throw InvalidClient("client attestation has no wallet_version")
+            }
+            if (walletSolutionCertificationInformation.isBlank()) {
+                throw InvalidClient("client attestation has no wallet_solution_certification_information")
+            }
+            if (clientStatus.expiration < clock.now() - timeLeeway) {
+                throw InvalidClient("client_status expiration in past: ${clientStatus.expiration}")
+            }
         }
     }
 
-    private fun JwsCompactTyped<ClientAttestationClaims.ProofOfPossession>.validateWalletInstanceAttestationPop(clientId: String?) {
-        if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
-            throw InvalidClient("invalid client attestation PoP typ: ${jws.jwsHeader.type}")
+    private fun JwsCompactTyped<ClientAttestationPopPayload>.validateWalletInstanceAttestationPop(clientId: String?) {
+        with(jws.jwsHeader) {
+            if (type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
+                throw InvalidClient("invalid client attestation PoP typ: $type")
+            }
+            if (algorithm !is JwsAlgorithm.Signature ||
+                algorithm !in SimpleAuthorizationService.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
+            ) {
+                throw InvalidClient("unsupported client attestation PoP alg: $algorithm")
+            }
         }
-        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            jws.jwsHeader.algorithm !in SimpleAuthorizationService.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
-        ) {
-            throw InvalidClient("unsupported client attestation PoP alg: ${jws.jwsHeader.algorithm}")
+        with(payload) {
+            if (issuer == null || issuer != clientId) {
+                throw InvalidClient("client attestation PoP iss not equal to client_id")
+            }
+            if (issuerIdentifier != null && audience != issuerIdentifier) {
+                throw InvalidClient(
+                    "client attestation PoP aud '${audience}' does not match issuer '$issuerIdentifier'"
+                )
+            }
+            if (issuedAt > (clock.now() + timeLeeway)) {
+                throw InvalidClient("client attestation PoP iat in future: $issuedAt")
+            }
+            if (expiration == null || expiration!! < (clock.now() - timeLeeway)) {
+                throw InvalidClient("client attestation PoP expired: $expiration")
+            }
         }
-        if (payload.issuer == null || payload.issuer != clientId) {
-            throw InvalidClient("client attestation PoP iss not equal to client_id")
-        }
-        if (issuerIdentifier != null && payload.audience != issuerIdentifier) {
-            throw InvalidClient(
-                "client attestation PoP aud '${payload.audience}' does not match issuer '$issuerIdentifier'"
-            )
-        }
-        if (payload.issuedAt > (clock.now() + timeLeeway)) {
-            throw InvalidClient("client attestation PoP iat in future: ${payload.issuedAt}")
-        }
-        if (payload.expiration == null || payload.expiration!! < (clock.now() - timeLeeway)) {
-            throw InvalidClient("client attestation PoP expired: ${payload.expiration}")
-        }
-
-        //Previously missing?
-        with(payload as? WalletInstanceAttestationClaims) {
-            validate(clock.now() - timeLeeway)
-        }
-    }
-}
-
-//Currently we only support [WalletAttestationClaims], do we want to support more general [ClientAttestationClaims]?
-/**
- * timeNow = Clock.now - leeway
- */
-private fun WalletInstanceAttestationClaims?.validate(timeNow: Instant) {
-    if (this == null) {
-        throw InvalidClient("client attestation is not a valid WalletAttestationPayload")
-    }
-    if (walletName.isBlank()) {
-        throw InvalidClient("client attestation has no wallet_name")
-    }
-    if (walletVersion.isBlank()) {
-        throw InvalidClient("client attestation has no wallet_version")
-    }
-    if (walletSolutionCertificationInformation.isBlank()) {
-        throw InvalidClient("client attestation has no wallet_solution_certification_information")
-    }
-    if (clientStatus.expiration < timeNow) {
-        throw InvalidClient("client_status expiration in past: ${clientStatus.expiration}")
     }
 }

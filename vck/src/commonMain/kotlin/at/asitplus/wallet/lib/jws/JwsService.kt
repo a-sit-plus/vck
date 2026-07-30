@@ -20,6 +20,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwtPayload
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.jsonWebKeyBytes
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -102,7 +103,7 @@ class JwsHeaderNone : JwsHeaderIdentifierFun {
 }
 
 /** Create a [JwsCompact], setting [JwsHeader.type] to the specified value */
-fun interface SignJwtFun<P : Any> {
+fun interface SignJwtFun<P : JwtPayload> {
     suspend operator fun invoke(
         type: String?,
         payload: P,
@@ -121,7 +122,7 @@ fun interface SignJwtExtFun<P : Any> {
 }
 
 /** Create a [JwsCompact], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
-class SignJwt<P : Any>(
+class SignJwt<P : JwtPayload>(
     val keyMaterial: KeyMaterial,
     val headerModifier: JwsHeaderIdentifierFun,
 ) : SignJwtFun<P> {
@@ -736,7 +737,7 @@ class VerifyJwsObjectJades(
         val calculatedHash = digestAlgorithm.digest(certBytes)
         val calculatedB64Url = calculatedHash.encodeToString(Base64UrlStrict)
 
-        require (calculatedB64Url == x5tO.digVal) {
+        require(calculatedB64Url == x5tO.digVal) {
             "JAdES Integrity Violation: The calculated certificate thumbprint does not match 'x5t#o'."
         }
     }
@@ -750,6 +751,7 @@ class VerifyJwsObjectJades(
             "sha-256", "s256" -> throw IllegalArgumentException(
                 "JAdES Compliance Failure: 'sha-256' is forbidden in 'x5t#o'. Use 'x5t#256' instead."
             )
+
             "sha-384", "s384" -> Digest.SHA384
             "sha-512", "s512" -> Digest.SHA512
             else -> throw IllegalArgumentException(
