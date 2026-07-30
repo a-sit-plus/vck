@@ -13,27 +13,35 @@ package at.asitplus.wallet.lib.data
  * see the "LICENSE" file for more details
  */
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
+import at.asitplus.signum.indispensable.josef.JwtClaimNames.IanaRegistered.ClaimNames.RFC7519
+import at.asitplus.signum.indispensable.josef.JwtPayload
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
+
+@Deprecated("Renamed", replaceWith = ReplaceWith("VerifiableCredentialPayload"))
+typealias VerifiableCredentialJws = VerifiableCredentialPayload
 
 /**
  * JWS representation of a [VerifiableCredential].
  */
 @Serializable
-data class VerifiableCredentialJws(
+data class VerifiableCredentialPayload(
     @SerialName("vc")
     val vc: VerifiableCredential,
-    @SerialName("sub")
-    val subject: String?,
-    @SerialName("nbf")
+    @SerialName(RFC7519.SUB)
+    override val subject: String?,
+    @SerialName(RFC7519.NBF)
     @Serializable(with = InstantLongSerializer::class)
-    val notBefore: Instant,
-    @SerialName("iss")
-    val issuer: String,
-    @SerialName("exp")
+    override val notBefore: Instant,
+    @SerialName(RFC7519.ISS)
+    override val issuer: String,
+    @SerialName(RFC7519.EXP)
     @Serializable(with = InstantLongSerializer::class)
-    val expiration: Instant?,
-    @SerialName("jti")
-    val jwtId: String,
-)
+    override val expiration: Instant?,
+    @SerialName(RFC7519.JTI)
+    override val jwtId: String,
+) : JwtPayload {
+    override val audience: String? = null
+    override val issuedAt: Instant? = null
+}

@@ -42,7 +42,7 @@ data class CredentialRequestProofContainer(
         @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC7519.IAT)
         @Serializable(with = InstantLongSerializer::class)
         override val issuedAt: Instant,
-        @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.OpenIdConnectCore.NONCE)
+        @SerialName(JwtClaimNames.IanaRegistered.ClaimNames.RFC9449.NONCE)
         val nonce: String? = null,
     ) : JwtPayload {
         override val subject: String? = null
