@@ -1,5 +1,6 @@
 package at.asitplus.openid.jwtpayload
 
+import at.asitplus.openid.jwtpayload.claims.ClientAttestationClaims
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
@@ -15,8 +16,10 @@ typealias WalletAttestationClaims = WalletAttestationPayload
 /**
  * Wallet Instance Attestation (WIA) as defined by
  * [EUDI TS3](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
+ * based on
+ * [OID4VPI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-wallet-attestations-in-jwt-)
+ * [Draft OAuth 2.0 Attestation-Based Client Authentication](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-10)
  */
-@Deprecated("Will move into VCK next release")
 @Serializable
 data class WalletAttestationPayload(
     @SerialName(IanaRegistered.ClaimNames.RFC7519.ISS)
@@ -47,31 +50,32 @@ data class WalletAttestationPayload(
      */
     @SerialName(IanaRegistered.ClaimNames.RFC7800.CNF)
     override val confirmationClaim: ConfirmationClaim,
+
     /**
      * OID4VCI: OPTIONAL. String containing a human-readable name of the Wallet.
      * EUDI TS3 REQUIRED
      */
     @SerialName(UnregisteredClaims.EudiTs3Claims.WALLET_NAME)
-    override val walletName: String,
+    val walletName: String,
 
     /**
      * OID4VCI: OPTIONAL. String containing a URL to get further information about the Wallet and the Wallet Provider.
      * EUDI TS3 OPTIONAL
      */
     @SerialName(UnregisteredClaims.EudiTs3Claims.WALLET_LINK)
-    override val walletLink: String? = null,
+    val walletLink: String? = null,
 
     /**
      * EUDI TS3 WUA 1.5: REQUIRED. version of the Wallet Solution.
      */
     @SerialName(UnregisteredClaims.EudiTs3Claims.WALLET_VERSION)
-    override val walletVersion: String,
+    val walletVersion: String,
 
     /**
      * EUDI TS3 WUA 1.5: REQUIRED. information about the certification achieved by the Wallet Solution.
      */
     @SerialName(UnregisteredClaims.EudiTs3Claims.WALLET_SOLUTION_CERTIFICATION_INFORMATION)
-    override val walletSolutionCertificationInformation: String,
+    val walletSolutionCertificationInformation: String,
 
     /**
      * EUDI TS3 WUA 1.5: REQUIRED.
@@ -79,6 +83,6 @@ data class WalletAttestationPayload(
      * commits to maintaining the referenced status.
      */
     @SerialName(UnregisteredClaims.EudiTs3Claims.CLIENT_STATUS)
-    override val clientStatus: ClientStatus,
-) : ClientAttestationClaims.Attestation, WalletInstanceAttestationClaims {
+    val clientStatus: ClientStatus,
+) : ClientAttestationClaims {
 }

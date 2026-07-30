@@ -49,7 +49,7 @@ data class KeyAttestationPayload(
      * Optional. String that represents a nonce provided by the Issuer to prove that a key attestation was freshly
      * generated.
      */
-    @SerialName(ClaimNames.OpenIdConnectCore.NONCE)
+    @SerialName(ClaimNames.RFC9449.NONCE)
     val nonce: String? = null,
 
     /**
