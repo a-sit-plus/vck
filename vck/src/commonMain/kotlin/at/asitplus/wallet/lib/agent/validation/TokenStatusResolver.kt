@@ -8,7 +8,7 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
@@ -20,7 +20,6 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import io.ktor.util.*
 import kotlin.io.encoding.Base64
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
@@ -117,7 +116,7 @@ suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) =
 suspend operator fun TokenStatusResolver.invoke(sdJwt: VerifiableCredentialSdJwt) =
     invoke(CredentialWrapper.SdJwt(sdJwt))
 
-suspend operator fun TokenStatusResolver.invoke(vcJws: VerifiableCredentialJws) = invoke(CredentialWrapper.VcJws(vcJws))
+suspend operator fun TokenStatusResolver.invoke(vcJws: VerifiableCredentialPayload) = invoke(CredentialWrapper.VcJws(vcJws))
 
 suspend operator fun TokenStatusResolver.invoke(storeEntry: SubjectCredentialStore.StoreEntry) = when (storeEntry) {
     is SubjectCredentialStore.StoreEntry.Iso -> invoke(CredentialWrapper.Mdoc(storeEntry.issuerSigned))
@@ -128,7 +127,7 @@ suspend operator fun TokenStatusResolver.invoke(storeEntry: SubjectCredentialSto
 suspend operator fun TokenStatusResolver.invoke(credentialWrapper: CredentialWrapper) = when (credentialWrapper) {
     is CredentialWrapper.Mdoc -> credentialWrapper.issuerSigned.issuerAuth.payload?.status
     is CredentialWrapper.SdJwt -> credentialWrapper.sdJwt.statusElement
-    is CredentialWrapper.VcJws -> credentialWrapper.verifiableCredentialJws.vc.credentialStatus
+    is CredentialWrapper.VcJws -> credentialWrapper.verifiableCredentialPayload.vc.credentialStatus
 }?.let {
     invoke(it)
 }

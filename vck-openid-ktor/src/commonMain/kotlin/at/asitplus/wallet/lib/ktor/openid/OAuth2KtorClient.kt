@@ -20,6 +20,7 @@ import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.jwtpayload.DpopPayload
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -77,7 +78,7 @@ class OAuth2KtorClient(
     /** Used to prove possession of the key material for the instance attestation. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to.**/
-    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+    private val signDpop: SignJwtFun<DpopPayload> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /**
      * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works

@@ -67,7 +67,7 @@ sealed class StatusListToken {
         statusListTokenResolvedAt: Instant?,
         isInstantInThePast: (Instant) -> Boolean,
     ): KmmResult<StatusListTokenPayload> = catching {
-        if (revocationListInfo != null && statusListTokenPayload.subject.string != revocationListInfo.uri.string) {
+        if (revocationListInfo != null && statusListTokenPayload.subject != revocationListInfo.uri.string) {
             throw IllegalArgumentException("The subject claim of the Status List Token is not equal to the uri claim in the status_list object of the Referenced Token.")
         }
 

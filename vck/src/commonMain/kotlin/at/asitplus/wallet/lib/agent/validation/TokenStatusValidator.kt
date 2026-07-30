@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -34,7 +34,7 @@ suspend operator fun TokenStatusValidator.invoke(sdJwt: VerifiableCredentialSdJw
     CredentialWrapper.SdJwt(sdJwt)
 )
 
-suspend operator fun TokenStatusValidator.invoke(vcJws: VerifiableCredentialJws) = invoke(
+suspend operator fun TokenStatusValidator.invoke(vcJws: VerifiableCredentialPayload) = invoke(
     CredentialWrapper.VcJws(vcJws)
 )
 
@@ -47,7 +47,7 @@ suspend operator fun TokenStatusValidator.invoke(storeEntry: SubjectCredentialSt
 suspend operator fun TokenStatusValidator.invoke(credentialWrapper: CredentialWrapper) = when (credentialWrapper) {
     is CredentialWrapper.Mdoc -> credentialWrapper.issuerSigned.issuerAuth.payload?.status
     is CredentialWrapper.SdJwt -> credentialWrapper.sdJwt.statusElement
-    is CredentialWrapper.VcJws -> credentialWrapper.verifiableCredentialJws.vc.credentialStatus
+    is CredentialWrapper.VcJws -> credentialWrapper.verifiableCredentialPayload.vc.credentialStatus
 }?.let {
     invoke(it)
 } ?: TokenStatusValidationResult.Valid(null)

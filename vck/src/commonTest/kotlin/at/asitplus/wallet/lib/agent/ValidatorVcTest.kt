@@ -22,7 +22,7 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.ktx.extractId
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -66,7 +66,7 @@ val ValidatorVcTest by matrixSuite {
                     tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
                 )
             )
-            val issuerSignVc = SignJwt<VerifiableCredentialJws>(issuerKeyMaterial, JwsHeaderCertOrJwk())
+            val issuerSignVc = SignJwt<VerifiableCredentialPayload>(issuerKeyMaterial, JwsHeaderCertOrJwk())
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
 
             suspend fun issueCredential(
@@ -112,7 +112,7 @@ val ValidatorVcTest by matrixSuite {
                 jwtId: String = it.id,
                 issuanceDate: Instant = it.issuanceDate,
                 expirationDate: Instant? = it.expirationDate,
-            ) = VerifiableCredentialJws(
+            ) = VerifiableCredentialPayload(
                 vc = it,
                 subject = subject,
                 notBefore = issuanceDate,
@@ -121,15 +121,15 @@ val ValidatorVcTest by matrixSuite {
                 jwtId = jwtId
             )
 
-            suspend fun signJws(vcJws: VerifiableCredentialJws): String =
+            suspend fun signJws(vcJws: VerifiableCredentialPayload): String =
                 issuerSignVc(
                     JwsContentTypeConstants.JWT,
                     vcJws,
-                    VerifiableCredentialJws.serializer()
+                    VerifiableCredentialPayload.serializer()
                 ).getOrThrow().toString()
 
-            suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws) =
-                SignJwt<VerifiableCredentialJws>(
+            suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialPayload) =
+                SignJwt<VerifiableCredentialPayload>(
                     issuerKeyMaterial
                 ) { header: JwsHeader, _: KeyMaterial ->
                     // this should be issuerKeyMaterial.jsonWebKey, but is a wrong key
@@ -137,7 +137,7 @@ val ValidatorVcTest by matrixSuite {
                 }(
                     JwsContentTypeConstants.JWT,
                     vcJws,
-                    VerifiableCredentialJws.serializer()
+                    VerifiableCredentialPayload.serializer()
                 ).getOrThrow().toString()
 
         }
@@ -311,7 +311,7 @@ val ValidatorVcTest by matrixSuite {
             ).getOrThrow().let {
                 context.issueCredential(it, expirationDate = Clock.System.now() - 1.hours)
                     .let { vc ->
-                        VerifiableCredentialJws(
+                        VerifiableCredentialPayload(
                             vc = vc,
                             subject = vc.credentialSubject.extractId(),
                             notBefore = vc.issuanceDate,

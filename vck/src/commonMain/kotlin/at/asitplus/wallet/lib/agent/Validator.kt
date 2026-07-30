@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverNoop
 import at.asitplus.wallet.lib.agent.validation.TokenStatusValidator
 import at.asitplus.wallet.lib.agent.validation.invoke
 import at.asitplus.wallet.lib.agent.validation.toTokenStatusValidator
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import kotlin.jvm.JvmOverloads
@@ -46,12 +46,12 @@ class Validator @JvmOverloads constructor(
         timelinessValidationSummary = credentialTimelinessValidator(sdJwt)
     )
 
-    suspend fun checkCredentialFreshness(vcJws: VerifiableCredentialJws) = CredentialFreshnessSummary.VcJws(
+    suspend fun checkCredentialFreshness(vcJws: VerifiableCredentialPayload) = CredentialFreshnessSummary.VcJws(
         tokenStatusValidationResult = checkRevocationStatus(vcJws),
         timelinessValidationSummary = credentialTimelinessValidator(vcJws)
     )
 
-    internal fun checkCredentialTimeliness(vcJws: VerifiableCredentialJws) = credentialTimelinessValidator(vcJws)
+    internal fun checkCredentialTimeliness(vcJws: VerifiableCredentialPayload) = credentialTimelinessValidator(vcJws)
 
     /**
      * Checks the revocation state of the passed credential.
@@ -61,6 +61,6 @@ class Validator @JvmOverloads constructor(
 
     internal suspend fun checkRevocationStatus(issuerSigned: IssuerSigned) = tokenStatusValidator(issuerSigned)
     internal suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt) = tokenStatusValidator(sdJwt)
-    internal suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws) = tokenStatusValidator(vcJws)
+    internal suspend fun checkRevocationStatus(vcJws: VerifiableCredentialPayload) = tokenStatusValidator(vcJws)
 
 }

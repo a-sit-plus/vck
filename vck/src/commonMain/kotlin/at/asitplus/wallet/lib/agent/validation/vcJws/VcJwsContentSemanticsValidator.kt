@@ -13,12 +13,12 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
  */
 
 import at.asitplus.wallet.lib.data.VcDataModelConstants
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.ktx.extractId
 import io.github.aakira.napier.Napier
 
 class VcJwsContentSemanticsValidator {
-    operator fun invoke(vcJws: VerifiableCredentialJws) = VcJwsContentSemanticsValidationSummary(
+    operator fun invoke(vcJws: VerifiableCredentialPayload) = VcJwsContentSemanticsValidationSummary(
         inconsistentIssuerError = if (vcJws.issuer != vcJws.vc.issuer) {
             VcJwsContentSemanticsValidationSummary.InconsistentIssuerError(
                 jwsIssuer = vcJws.issuer,

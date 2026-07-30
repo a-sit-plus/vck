@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.data.keyAttestationParsed
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
@@ -8,11 +9,10 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.openid.jwtpayload.KeyAttestationPayload
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -48,8 +48,8 @@ class ProofValidator @JvmOverloads constructor(
     private val clock: Clock = Clock.System,
     /** Time leeway for verification of timestamps in proof elements in credential requests. */
     private val timeLeeway: Duration = 5.minutes,
-    /** Callback to verify a received [KeyAttestationJwt] proof in credential requests. */
-    private val verifyAttestationProof: suspend (JwsCompactTyped<KeyAttestationJwt>) -> Boolean = { true },
+    /** Callback to verify a received [KeyAttestationPayload] proof in credential requests. */
+    private val verifyAttestationProof: suspend (JwsCompactTyped<KeyAttestationPayload>) -> Boolean = { true },
     /** Turn on to require key attestation support in the [validProofTypes]. */
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenges to clients to include in proof of possession of key material. */
@@ -96,7 +96,7 @@ class ProofValidator @JvmOverloads constructor(
         else -> null
     }
 
-    private suspend fun JwsCompactTyped<JsonWebToken>.validateJwtProof(): Collection<CryptoPublicKey> {
+    private suspend fun JwsCompactTyped<CredentialRequestProofContainer.JwtProofTypePayload>.validateJwtProof(): Collection<CryptoPublicKey> {
         if (jws.jwsHeader.type != OpenIdConstants.PROOF_JWT_TYPE) {
             throw InvalidProof("invalid typ: ${jws.jwsHeader.type}")
         }
@@ -106,10 +106,10 @@ class ProofValidator @JvmOverloads constructor(
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
-        if (payload.audience == null || payload.audience != publicContext) {
+        if (payload.audience != publicContext) {
             throw InvalidProof("invalid audience: ${payload.audience}")
         }
-        if (payload.issuedAt == null || payload.issuedAt!! > (clock.now() + timeLeeway)) {
+        if (payload.issuedAt > (clock.now() + timeLeeway)) {
             throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
         }
         val keyAttestation = jws.jwsHeader.keyAttestationParsed
@@ -136,14 +136,14 @@ class ProofValidator @JvmOverloads constructor(
      * OID4VCI 8.2.1.3: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
      * in the `attested_keys` claim.
      */
-    private suspend fun JwsCompactTyped<KeyAttestationJwt>.validateAttestationProof(): Collection<CryptoPublicKey> {
+    private suspend fun JwsCompactTyped<KeyAttestationPayload>.validateAttestationProof(): Collection<CryptoPublicKey> {
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
         return validateKeyAttestation()
     }
 
-    private suspend fun JwsCompactTyped<KeyAttestationJwt>.validateKeyAttestation(): Collection<CryptoPublicKey> {
+    private suspend fun JwsCompactTyped<KeyAttestationPayload>.validateKeyAttestation(): Collection<CryptoPublicKey> {
         if (jws.jwsHeader.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
             throw InvalidProof("invalid typ: ${jws.jwsHeader.type}")
         }

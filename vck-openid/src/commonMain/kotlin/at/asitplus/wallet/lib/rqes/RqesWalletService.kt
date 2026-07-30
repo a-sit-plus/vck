@@ -23,7 +23,6 @@ import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.Companion.entries
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.rqes.RqesWalletService.SigningCredential
 import com.benasher44.uuid.uuid4
 
 /**
@@ -178,7 +177,7 @@ private suspend fun AuthenticationRequestParameters.enrichAuthRequest(
 )
 
 @Throws(IllegalArgumentException::class)
-fun CredentialInfo.toSigningCredential(): SigningCredential {
+fun CredentialInfo.toSigningCredential(): RqesWalletService.SigningCredential {
     require(this.credentialID != null) {
         "credentialID must not be null (Required by SignHashRequestParameters)"
     }

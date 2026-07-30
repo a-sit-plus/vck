@@ -10,7 +10,7 @@ import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 
 class InMemorySubjectCredentialStore : SubjectCredentialStore {
@@ -18,7 +18,7 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
     private val credentials = mutableListOf<SubjectCredentialStore.StoreEntry>()
 
     override suspend fun storeCredential(
-        vc: VerifiableCredentialJws,
+        vc: VerifiableCredentialPayload,
         vcSerialized: String,
         scheme: VcJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo?,

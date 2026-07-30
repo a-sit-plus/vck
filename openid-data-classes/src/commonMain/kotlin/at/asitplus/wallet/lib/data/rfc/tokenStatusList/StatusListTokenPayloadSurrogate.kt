@@ -74,7 +74,7 @@ data class StatusListTokenPayloadSurrogate(
     val identifierList: IdentifierList? = null,
 ) {
     constructor(statusListTokenPayload: StatusListTokenPayload) : this(
-        subject = statusListTokenPayload.subject,
+        subject = UniformResourceIdentifier(statusListTokenPayload.subject),
         issuedAt = statusListTokenPayload.issuedAt,
         expirationTime = statusListTokenPayload.expirationTime,
         timeToLive = statusListTokenPayload.timeToLive,
@@ -87,7 +87,7 @@ data class StatusListTokenPayloadSurrogate(
     }
 
     fun toStatusListTokenPayload() = StatusListTokenPayload(
-        subject = subject,
+        subject = subject.string,
         issuedAt = issuedAt,
         expirationTime = expirationTime,
         timeToLive = timeToLive,

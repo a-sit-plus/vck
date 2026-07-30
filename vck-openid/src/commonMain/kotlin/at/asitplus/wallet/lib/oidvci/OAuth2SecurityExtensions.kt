@@ -1,17 +1,20 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.iso.sha256
+import at.asitplus.openid.jwtpayload.ClientAttestationPopPayload
+import at.asitplus.openid.jwtpayload.DpopPayload
+import at.asitplus.openid.jwtpayload.WalletAttestationPayload
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import io.github.aakira.napier.Napier
+import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -24,20 +27,32 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 object BuildDPoPHeader {
-    /**
-     * To be set as header `DPoP` in making request to [url],
-     * see [RFC 9449](https://datatracker.ietf.org/doc/html/rfc9449)
-     */
+
+    @Deprecated("Replaced")
     suspend operator fun invoke(
-        signDpop: SignJwtFun<JsonWebToken>,
+        signDpop: SignJwtFun<DpopPayload>,
         url: String,
         httpMethod: String = "POST",
         accessToken: String? = null,
         nonce: String? = null,
         randomSource: RandomSource = RandomSource.Secure
-    ): JwsCompactTyped<JsonWebToken> = signDpop(
+    ): JwsCompactTyped<DpopPayload> =
+        invoke(signDpop, Url(url), HttpMethod.parse(httpMethod), accessToken, nonce, randomSource)
+
+    /**
+     * To be set as header `DPoP` in making request to [url],
+     * see [RFC 9449](https://datatracker.ietf.org/doc/html/rfc9449)
+     */
+    suspend operator fun invoke(
+        signDpop: SignJwtFun<DpopPayload>,
+        url: Url,
+        httpMethod: HttpMethod = HttpMethod.Post,
+        accessToken: String? = null,
+        nonce: String? = null,
+        randomSource: RandomSource = RandomSource.Secure
+    ): JwsCompactTyped<DpopPayload> = signDpop(
         type = JwsContentTypeConstants.DPOP_JWT,
-        payload = JsonWebToken(
+        payload = DpopPayload(
             jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
             httpMethod = httpMethod,
             httpTargetUrl = url,
@@ -47,7 +62,7 @@ object BuildDPoPHeader {
         ).also {
             Napier.d("Building DPoP JWT: $it")
         },
-        serializer = JsonWebToken.serializer(),
+        serializer = DpopPayload.serializer(),
     ).getOrThrow()
 }
 
@@ -69,7 +84,7 @@ object BuildClientAttestationJwt {
      * @param clockSkew duration to subtract from [Clock.System.now] when setting the creation timestamp
      */
     suspend operator fun invoke(
-        signJwt: SignJwtFun<JsonWebToken>,
+        signJwt: SignJwtFun<WalletAttestationPayload>,
         clientId: String,
         @Suppress("UNUSED_PARAMETER")
         issuer: String? = null,
@@ -84,9 +99,9 @@ object BuildClientAttestationJwt {
         walletLink: String? = null,
         lifetime: Duration = 60.minutes,
         clockSkew: Duration = 3.minutes,
-    ): JwsCompactTyped<JsonWebToken> = signJwt(
+    ): JwsCompactTyped<WalletAttestationPayload> = signJwt(
         type = JwsContentTypeConstants.CLIENT_ATTESTATION_JWT,
-        payload = JsonWebToken(
+        payload = WalletAttestationPayload(
             subject = clientId,
             issuedAt = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue,
             expiration = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue +
@@ -102,7 +117,7 @@ object BuildClientAttestationJwt {
         ).also {
             Napier.d("Building client attestation JWT: $it")
         },
-        serializer = JsonWebToken.serializer(),
+        serializer = WalletAttestationPayload.serializer(),
     ).getOrThrow()
 
     private fun defaultClientStatus(): JsonObject = buildJsonObject {
@@ -126,16 +141,16 @@ object BuildClientAttestationPoPJwt {
      * @param clockSkew duration to subtract from [Clock.System.now] when setting the creation timestamp
      */
     suspend operator fun invoke(
-        signJwt: SignJwtFun<JsonWebToken>,
+        signJwt: SignJwtFun<ClientAttestationPopPayload>,
         clientId: String,
         audience: String,
         nonce: String? = null,
         lifetime: Duration = 10.minutes,
         clockSkew: Duration = 3.minutes,
         randomSource: RandomSource = RandomSource.Secure
-    ): JwsCompactTyped<JsonWebToken> = signJwt(
+    ): JwsCompactTyped<ClientAttestationPopPayload> = signJwt(
         type = JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
-        payload = JsonWebToken(
+        payload = ClientAttestationPopPayload(
             issuer = clientId,
             audience = audience,
             jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
@@ -145,6 +160,6 @@ object BuildClientAttestationPoPJwt {
         ).also {
             Napier.d("Building client attestation PoP JWT: $it")
         },
-        serializer = JsonWebToken.serializer(),
+        serializer = ClientAttestationPopPayload.serializer(),
     ).getOrThrow()
 }
