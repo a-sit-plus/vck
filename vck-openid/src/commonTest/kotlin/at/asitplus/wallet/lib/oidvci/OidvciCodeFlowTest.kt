@@ -33,7 +33,7 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ExtractedSdJwtCredentialScheme
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
@@ -186,7 +186,7 @@ val OidvciCodeFlowTest by matrixSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsCompactTyped<VerifiableCredentialJws>(
+            JwsCompactTyped<VerifiableCredentialPayload>(
                 serializedCredential
             ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                 shouldNotThrowAny {
@@ -257,7 +257,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsCompactTyped<VerifiableCredentialJws>(
+                JwsCompactTyped<VerifiableCredentialPayload>(
                     it.credentialString.shouldNotBeNull()
                 ).payload.subject
             }.toSet().shouldHaveSize(2)

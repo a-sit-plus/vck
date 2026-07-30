@@ -14,7 +14,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 
 /**
@@ -31,7 +31,7 @@ interface Holder {
 
     sealed class StoreCredentialInput {
         data class Vc(
-            val signedVcJws: JwsCompactTyped<VerifiableCredentialJws>,
+            val signedVcJws: JwsCompactTyped<VerifiableCredentialPayload>,
             val vcJws: String,
             val scheme: VcJwtCredentialScheme,
         ) : StoreCredentialInput()

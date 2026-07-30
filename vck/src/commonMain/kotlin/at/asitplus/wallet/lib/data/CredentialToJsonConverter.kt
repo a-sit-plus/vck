@@ -82,8 +82,8 @@ object CredentialToJsonConverter {
         }
     }
 
-    fun toJsonElement(verifiableCredentialJws: VerifiableCredentialJws) = buildJsonObject {
-        val vcAsJsonElement = joseCompliantSerializer.encodeToJsonElement(verifiableCredentialJws.vc.credentialSubject)
+    fun toJsonElement(verifiableCredentialPayload: VerifiableCredentialPayload) = buildJsonObject {
+        val vcAsJsonElement = joseCompliantSerializer.encodeToJsonElement(verifiableCredentialPayload.vc.credentialSubject)
         vcAsJsonElement.jsonObject.entries.forEach {
             put(it.key, it.value)
         }

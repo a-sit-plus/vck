@@ -65,7 +65,7 @@ import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -524,7 +524,7 @@ class WalletService @JvmOverloads constructor(
         credentialScheme: CredentialScheme,
     ): Holder.StoreCredentialInput = when (credentialRepresentation) {
         PLAIN_JWT -> Vc(
-            signedVcJws = JwsCompactTyped<VerifiableCredentialJws>(this),
+            signedVcJws = JwsCompactTyped<VerifiableCredentialPayload>(this),
             vcJws = this,
             scheme = credentialScheme as VcJwtCredentialScheme
         )

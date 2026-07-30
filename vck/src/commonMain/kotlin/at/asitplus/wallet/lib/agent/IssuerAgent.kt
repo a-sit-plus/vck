@@ -32,7 +32,7 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseFun
 import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.ktx.extractId
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
@@ -76,7 +76,7 @@ class IssuerAgent @JvmOverloads constructor(
     private val identifier: UniformResourceIdentifier,
     private val signIssuedSdJwt: SignJwtExtFun<JsonObject> =
         SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
-    private val signIssuedVc: SignJwtFun<VerifiableCredentialJws> =
+    private val signIssuedVc: SignJwtFun<VerifiableCredentialPayload> =
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
         SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderCertificate()),
@@ -167,7 +167,7 @@ class IssuerAgent @JvmOverloads constructor(
         val vcInJws = signIssuedVc(
             type = JwsContentTypeConstants.JWT,
             payload = vc.toJws(),
-            serializer = VerifiableCredentialJws.serializer(),
+            serializer = VerifiableCredentialPayload.serializer(),
         ).getOrElse {
             throw IllegalStateException("Could not sign VC", it)
         }
@@ -232,7 +232,7 @@ class IssuerAgent @JvmOverloads constructor(
         }
     }
 
-    private fun VerifiableCredential.toJws() = VerifiableCredentialJws(
+    private fun VerifiableCredential.toJws() = VerifiableCredentialPayload(
         vc = this,
         subject = credentialSubject.extractId(),
         notBefore = issuanceDate,

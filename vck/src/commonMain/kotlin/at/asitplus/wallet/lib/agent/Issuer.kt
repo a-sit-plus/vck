@@ -11,7 +11,7 @@ import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenIssuer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -37,7 +37,7 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          */
         data class VcJwt(
             val vc: VerifiableCredential,
-            val signedVcJws: JwsCompactTyped<VerifiableCredentialJws>,
+            val signedVcJws: JwsCompactTyped<VerifiableCredentialPayload>,
             override val scheme: VcJwtCredentialScheme,
             override val subjectPublicKey: CryptoPublicKey,
             override val userInfo: OidcUserInfoExtended,

@@ -14,7 +14,7 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
 
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 
 sealed interface VcJwsInputValidationResult {
     val isSuccess: Boolean
@@ -29,13 +29,13 @@ sealed interface VcJwsInputValidationResult {
 
     data class ContentValidationSummary(
         val input: String,
-        val parsed: JwsCompactTyped<VerifiableCredentialJws>,
+        val parsed: JwsCompactTyped<VerifiableCredentialPayload>,
         val isIntegrityGood: Boolean,
         val subjectMatchingResult: SubjectMatchingResult?,
         val contentSemanticsValidationSummary: VcJwsContentSemanticsValidationSummary,
         val vpValidationSummary: VpJwsValidationSummary?,
     ) : VcJwsInputValidationResult {
-        val payload: VerifiableCredentialJws
+        val payload: VerifiableCredentialPayload
             get() = parsed.payload
 
         override val isSuccess: Boolean

@@ -42,7 +42,7 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlin.jvm.JvmInline
 
@@ -189,7 +189,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             CredentialToJsonConverter.toJsonElement(this.vc)
         ),
         satisfiesCryptographicHolderBinding = !vc.subject.isNullOrEmpty(),
-        authorityKeyIdentifiers = JwsCompactTyped<VerifiableCredentialJws>(
+        authorityKeyIdentifiers = JwsCompactTyped<VerifiableCredentialPayload>(
             vcSerialized
         ).jws.jwsHeader.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()

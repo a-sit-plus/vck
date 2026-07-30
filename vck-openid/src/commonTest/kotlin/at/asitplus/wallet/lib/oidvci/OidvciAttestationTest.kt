@@ -45,7 +45,7 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -175,7 +175,7 @@ val OidvciAttestationTest by matrixSuite {
                     .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
                     .response
 
-                JwsCompactTyped<VerifiableCredentialJws>(
+                JwsCompactTyped<VerifiableCredentialPayload>(
                     credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull(),
                 ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                     shouldNotThrowAny {
@@ -358,7 +358,7 @@ val OidvciAttestationTest by matrixSuite {
                     .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
                     .response
 
-                JwsCompactTyped<VerifiableCredentialJws>(
+                JwsCompactTyped<VerifiableCredentialPayload>(
                     credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull(),
                 ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                     shouldNotThrowAny {

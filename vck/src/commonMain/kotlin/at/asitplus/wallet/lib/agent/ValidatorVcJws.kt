@@ -23,7 +23,7 @@ import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidationResult.
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidator
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_PRESENTATION
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -48,13 +48,13 @@ class ValidatorVcJws @JvmOverloads constructor(
         VcJwsInputValidator(verifyJwsObject = verifyJwsObject),
     private val validator: Validator = Validator(),
 ) {
-    internal fun checkCredentialTimeliness(vcJws: VerifiableCredentialJws) =
+    internal fun checkCredentialTimeliness(vcJws: VerifiableCredentialPayload) =
         validator.checkCredentialTimeliness(vcJws)
 
-    suspend fun checkCredentialFreshness(vcJws: VerifiableCredentialJws) =
+    suspend fun checkCredentialFreshness(vcJws: VerifiableCredentialPayload) =
         validator.checkCredentialFreshness(vcJws)
 
-    internal suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws) =
+    internal suspend fun checkRevocationStatus(vcJws: VerifiableCredentialPayload) =
         validator.checkRevocationStatus(vcJws)
 
     /**
@@ -130,7 +130,7 @@ class ValidatorVcJws @JvmOverloads constructor(
      * @param vpJws Optionally, the VP enclosing the VC
      */
     suspend fun verifyVcJws(
-        input: JwsCompactTyped<VerifiableCredentialJws>,
+        input: JwsCompactTyped<VerifiableCredentialPayload>,
         publicKey: CryptoPublicKey,
         vpJws: JwsCompactTyped<VerifiablePresentationJws>? = null,
     ) = verifyVcJws(input.toString(), publicKey, vpJws)

@@ -20,9 +20,9 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.KeyBindingPayload
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.VerifiablePresentationPayload
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
@@ -48,9 +48,9 @@ class HolderAgent @JvmOverloads constructor(
     private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(validator = validator),
     private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(validator = validator),
     private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(validator = validator),
-    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
+    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationPayload> =
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-    private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
+    private val signKeyBinding: SignJwtFun<KeyBindingPayload> = SignJwt(keyMaterial, JwsHeaderNone()),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(keyMaterial, signVerifiablePresentation, signKeyBinding),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,

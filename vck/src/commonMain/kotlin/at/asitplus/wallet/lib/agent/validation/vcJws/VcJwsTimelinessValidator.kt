@@ -3,12 +3,12 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import io.github.aakira.napier.Napier
 
 class VcJwsTimelinessValidator {
     operator fun invoke(
-        vcJws: VerifiableCredentialJws,
+        vcJws: VerifiableCredentialPayload,
         timeScope: TimeScope,
     ) = timeScope {
         VcJwsTimelinessValidationDetails(

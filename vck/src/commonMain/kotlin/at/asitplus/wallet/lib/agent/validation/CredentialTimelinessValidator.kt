@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocTimelinessValidator
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtTimelinessValidator
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsTimelinessValidator
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
@@ -32,7 +32,7 @@ data class CredentialTimelinessValidator @JvmOverloads constructor(
         sdJwtTimelinessValidator(sdJwt, timeScope = TimeScope(clock.now(), timeLeeway)),
     )
 
-    operator fun invoke(vcJws: VerifiableCredentialJws) = CredentialTimelinessValidationSummary.VcJws(
+    operator fun invoke(vcJws: VerifiableCredentialPayload) = CredentialTimelinessValidationSummary.VcJws(
         vcJwsTimelinessValidator(vcJws, timeScope = TimeScope(clock.now(), timeLeeway)),
     )
 
@@ -49,6 +49,6 @@ data class CredentialTimelinessValidator @JvmOverloads constructor(
     operator fun invoke(credentialWrapper: CredentialWrapper): CredentialTimelinessValidationSummary = when (credentialWrapper) {
         is CredentialWrapper.Mdoc -> invoke(credentialWrapper.issuerSigned)
         is CredentialWrapper.SdJwt -> invoke(credentialWrapper.sdJwt)
-        is CredentialWrapper.VcJws -> invoke(credentialWrapper.verifiableCredentialJws)
+        is CredentialWrapper.VcJws -> invoke(credentialWrapper.verifiableCredentialPayload)
     }
 }

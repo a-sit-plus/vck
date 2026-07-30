@@ -25,7 +25,7 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.serialization.SerialName
@@ -42,20 +42,20 @@ interface SubjectCredentialStore {
      * Implementations should store the passed credential in a secure way.
      * Passed credentials have been validated before.
      *
-     * @param vc Instance of [VerifiableCredentialJws]
+     * @param vc Instance of [VerifiableCredentialPayload]
      * @param vcSerialized Serialized form of [VerifiableCredential]
      */
     suspend fun storeCredential(
-        vc: VerifiableCredentialJws,
+        vc: VerifiableCredentialPayload,
         vcSerialized: String,
         scheme: VcJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo? = null,
         issuer: X509Certificate? = null
     ): StoreEntry
 
-    @Deprecated("Use storeCredential(vc: VerifiableCredentialJws, vcSerialized: String, scheme: VcJwtCredentialScheme, renewalInfo: CredentialRenewalInfo?, issuer: X509Certificate?) instead")
+    @Deprecated("Use storeCredential(vc: VerifiableCredentialPayload, vcSerialized: String, scheme: VcJwtCredentialScheme, renewalInfo: CredentialRenewalInfo?, issuer: X509Certificate?) instead")
     suspend fun storeCredential(
-        vc: VerifiableCredentialJws,
+        vc: VerifiableCredentialPayload,
         vcSerialized: String,
         scheme: VcJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo? = null,
@@ -152,7 +152,7 @@ interface SubjectCredentialStore {
             @SerialName("vc-serialized")
             val vcSerialized: String,
             @SerialName("vc")
-            val vc: VerifiableCredentialJws,
+            val vc: VerifiableCredentialPayload,
             @Deprecated("Use scheme instead")
             @SerialName("schema-uri")
             override val schemaUri: String? = null,

@@ -13,7 +13,7 @@ import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
@@ -97,7 +97,7 @@ interface Verifier {
 
     sealed class VerifyCredentialResult {
         data class SuccessJwt(
-            val jws: VerifiableCredentialJws,
+            val jws: VerifiableCredentialPayload,
         ) : VerifyCredentialResult()
 
         data class SuccessSdJwt(

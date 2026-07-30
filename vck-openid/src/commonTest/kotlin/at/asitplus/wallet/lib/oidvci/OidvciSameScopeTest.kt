@@ -24,7 +24,7 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialPayload
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -109,7 +109,7 @@ val OidvciSameScopeTest by matrixSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsCompactTyped<VerifiableCredentialJws>(
+            JwsCompactTyped<VerifiableCredentialPayload>(
                 serializedCredential
             ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
         }
