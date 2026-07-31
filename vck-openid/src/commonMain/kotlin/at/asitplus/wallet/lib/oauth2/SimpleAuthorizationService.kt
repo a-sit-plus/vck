@@ -26,7 +26,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -151,7 +151,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */
     private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = DEFAULT_WALLET_ATTESTATION_ALGORITHMS,
     /** Used to sign JWT introspection responses (RFC 9701). */
-    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponse> =
+    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponseJson> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /** Used to create and verify `issuer_state` values of credential offers. */
     private val issuerStateService: CodeService = DefaultCodeService(),
@@ -829,14 +829,14 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             tokenService.verification.getTokenInfo(request.token)
         }.fold(
             onSuccess = {
-                TokenIntrospectionResponse(
+                TokenIntrospectionResponseJson(
                     active = true,
                     scope = it.scope,
                     authorizationDetails = it.authorizationDetails,
                 )
             },
             onFailure = {
-                TokenIntrospectionResponse(active = false)
+                TokenIntrospectionResponseJson(active = false)
             }
         )
         when (request.responseFormat) {
@@ -844,7 +844,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                 jwt = signIntrospectionJwt(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
                     response,
-                    TokenIntrospectionResponse.serializer()
+                    TokenIntrospectionResponseJson.serializer()
                 ).getOrThrow().toString()
             )
 

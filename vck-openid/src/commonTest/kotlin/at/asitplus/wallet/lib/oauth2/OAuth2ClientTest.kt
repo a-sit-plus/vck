@@ -6,7 +6,7 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -101,7 +101,7 @@ val OAuth2ClientTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
         }
         test("token introspection JWT response") {
@@ -119,7 +119,7 @@ val OAuth2ClientTest by matrixSuite {
                 null
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
-            val parsed = JwsCompactTyped<TokenIntrospectionResponse>(jwtResponse.jwt)
+            val parsed = JwsCompactTyped<TokenIntrospectionResponseJson>(jwtResponse.jwt)
             parsed.payload.active shouldBe true
         }
         test("process with pushed authorization request and JAR") {
@@ -149,7 +149,7 @@ val OAuth2ClientTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
         }
         test("process with authorization code flow, and JAR") {
@@ -176,7 +176,7 @@ val OAuth2ClientTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
         }
 
@@ -249,7 +249,7 @@ val OAuth2ClientTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
         }
 

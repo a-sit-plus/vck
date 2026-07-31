@@ -4,7 +4,7 @@ import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -285,7 +285,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
             it.introspect(token)
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
         }
 
@@ -611,7 +611,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             }
 
             it.introspect(token)
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
         }
 

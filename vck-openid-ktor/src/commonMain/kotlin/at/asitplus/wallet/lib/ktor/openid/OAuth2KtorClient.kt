@@ -21,7 +21,7 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -103,7 +103,7 @@ class OAuth2KtorClient(
     /** Source for random bytes, i.e., nonces for proof-of-possession of key material for sender-constrained tokens. */
     private val randomSource: RandomSource = RandomSource.Secure,
     /** Verifies signed token introspection responses. By default, every syntactically valid JWS is accepted. */
-    private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+    private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponseJson>) -> Boolean = { true },
     /**
      * Return a new Wallet Instance Attestation (WIA) to authenticate the Wallet App to the
      * Authorization Service with OAuth Attestation Based Client Auth.
@@ -484,7 +484,7 @@ class OAuth2KtorClient(
         popAudience: String,
         retryCount: Int = 0,
         issuerMetadata: IssuerMetadata? = null,
-    ): TokenIntrospectionResponse = oauthMetadata.introspectionEndpoint?.let { url ->
+    ): TokenIntrospectionResponseJson = oauthMetadata.introspectionEndpoint?.let { url ->
         Napier.i("callTokenIntrospection: $url with $request")
         val response = try {
             client.request {
@@ -678,14 +678,14 @@ data class TokenResponseWithDpopNonce(
 
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean,
+    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponseJson>) -> Boolean,
     requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
-): TokenIntrospectionResponse = catchingUnwrapped {
+): TokenIntrospectionResponseJson = catchingUnwrapped {
     if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
         parseJwt(body, verifyTokenIntrospectionJwt)
     } else {
         catchingUnwrapped {
-            joseCompliantSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
+            joseCompliantSerializer.decodeFromString(TokenIntrospectionResponseJson.serializer(), body)
         }.getOrElse {
             parseJwt(body, verifyTokenIntrospectionJwt)
         }
@@ -696,10 +696,10 @@ private suspend fun parseTokenIntrospectionResponse(
 
 private suspend fun parseJwt(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean
-): TokenIntrospectionResponse =
+    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponseJson>) -> Boolean
+): TokenIntrospectionResponseJson =
     joseCompliantSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
-        JwsCompactTyped<TokenIntrospectionResponse>(jwtResponse.jwt).run {
+        JwsCompactTyped<TokenIntrospectionResponseJson>(jwtResponse.jwt).run {
             require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
             payload
         }

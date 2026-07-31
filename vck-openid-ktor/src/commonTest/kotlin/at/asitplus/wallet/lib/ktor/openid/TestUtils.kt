@@ -9,7 +9,7 @@ import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenIntrospectionJwtResponse
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -190,14 +190,14 @@ object TestUtils {
     )
 
     fun MockRequestHandleScope.respond(result: TokenIntrospectionResult): HttpResponseData = when (result) {
-        is TokenIntrospectionResponse -> respond(result)
+        is TokenIntrospectionResponseJson -> respond(result)
         is TokenIntrospectionJwtResponse -> respond(
             joseCompliantSerializer.encodeToString<TokenIntrospectionJwtResponse>(result),
             headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
         )
     }
 
-    fun MockRequestHandleScope.respond(result: TokenIntrospectionResponse): HttpResponseData = respond(
+    fun MockRequestHandleScope.respond(result: TokenIntrospectionResponseJson): HttpResponseData = respond(
         joseCompliantSerializer.encodeToString(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )

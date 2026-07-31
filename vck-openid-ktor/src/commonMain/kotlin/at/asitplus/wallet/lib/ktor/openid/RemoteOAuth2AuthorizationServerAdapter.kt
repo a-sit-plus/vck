@@ -5,7 +5,7 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
@@ -149,7 +149,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
     override suspend fun getDpopNonce() = dpopNonceService.provideNonce()
 }
 
-private fun TokenIntrospectionResponse.toTokenInfo(token: String) = TokenInfo(
+private fun TokenIntrospectionResponseJson.toTokenInfo(token: String) = TokenInfo(
     token = token,
     scope = this.scope,
     authorizationDetails = this.authorizationDetails,

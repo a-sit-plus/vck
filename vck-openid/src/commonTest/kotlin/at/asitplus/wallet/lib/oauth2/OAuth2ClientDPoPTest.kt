@@ -7,7 +7,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -187,7 +187,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
 
             val dpopForResource = BuildDPoPHeader(
@@ -240,7 +240,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
 
             @Suppress("DEPRECATION")
@@ -268,7 +268,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 TokenIntrospectionRequest(token = refreshedAccessToken.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
 
             val dpopForResource = BuildDPoPHeader(
@@ -320,7 +320,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
@@ -581,7 +581,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
 
             // simulate access to protected resource, i.e. verify access token
@@ -618,7 +618,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 TokenIntrospectionRequest(token = token.accessToken),
                 null
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())

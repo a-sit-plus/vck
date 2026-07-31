@@ -6,7 +6,7 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionJwtResponse
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -151,7 +151,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                 )
 
                 request.url.toString() == introspectionEndpoint -> respond(
-                    joseCompliantSerializer.encodeToString(TokenIntrospectionResponse(active = false)),
+                    joseCompliantSerializer.encodeToString(TokenIntrospectionResponseJson(active = false)),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
@@ -171,13 +171,13 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
     }
 
     test("getTokenInfo handles jwt response") {
-        val signedJwt = SignJwt<TokenIntrospectionResponse>(
+        val signedJwt = SignJwt<TokenIntrospectionResponseJson>(
             keyMaterial = EphemeralKeyWithoutCert(),
             headerModifier = JwsHeaderNone()
         ).invoke(
             JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
-            TokenIntrospectionResponse(active = true, scope = "scope"),
-            TokenIntrospectionResponse.serializer()
+            TokenIntrospectionResponseJson(active = true, scope = "scope"),
+            TokenIntrospectionResponseJson.serializer()
         ).getOrThrow().jws.toString()
 
         val mockEngine = MockEngine { request ->
