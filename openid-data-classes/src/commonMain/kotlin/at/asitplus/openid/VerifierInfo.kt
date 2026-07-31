@@ -40,5 +40,5 @@ data class VerifierInfo(
      * Credentials.
      */
     @SerialName("credential_ids")
-    val credentialIds: Set<String>,
+    val credentialIds: Set<String>? = null,
 )

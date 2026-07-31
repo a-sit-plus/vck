@@ -199,6 +199,7 @@ internal class OpenId4VpRequestFactory(
         dcqlQuery = (presentationRequest as? DCQLRequest)?.dcqlQuery,
         transactionData = transactionData?.map { it.toBase64UrlJsonString() },
         expectedOrigins = expectedOrigins,
+        verifierInfo = verifierInfo,
     )
 
     private fun OpenId4VpRequestOptions.clientMetadata(): RelyingPartyMetadata? = when (verifierMetadataMode) {

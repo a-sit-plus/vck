@@ -136,7 +136,7 @@ internal class AuthorizationRequestValidator(
             // checked before calling this method
             else -> throw InvalidRequest("Unexpected clientIdScheme $clientIdScheme")
         }
-        // TODO Trust Model: Verify root of trust for certificate chain
+        // TODO ETSI trust chain validation should happen here (policy OIDs, EKU, trust list, etc.)
     }
 
     private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanDns(
@@ -166,10 +166,11 @@ internal class AuthorizationRequestValidator(
     private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanHash(
         leaf: X509Certificate,
     ) {
+        val expectedHash = parameters.clientIdWithoutPrefix
         val calculatedHash = leaf.encodeToDerSafe()
             .getOrElse { throw InvalidRequest("Could not encode certificate to DER", it) }
             .sha256().encodeToString(Base64UrlStrict)
-        if (calculatedHash != parameters.clientIdWithoutPrefix) {
+        if (calculatedHash != expectedHash) {
             throw InvalidRequest("hash of certificate (${calculatedHash}) is not equal to client_id")
         }
     }

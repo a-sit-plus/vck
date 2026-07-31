@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.data.NonEmptyList
 import at.asitplus.data.validation.third_party.kotlin.collections.requireIsNotNullOrEmpty
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
@@ -7,6 +8,7 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.TransactionData
+import at.asitplus.openid.VerifierInfo
 import at.asitplus.wallet.lib.RequestOptions
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.*
@@ -63,6 +65,12 @@ data class OpenId4VpRequestOptions(
      * unsigned requests and therefore a Wallet MUST ignore this parameter if it is present in an unsigned request.
      */
     val expectedOrigins: List<String>? = null,
+
+    /**
+     * OID4VP 1.0: OPTIONAL. A non-empty array of attestations about the Verifier relevant to the Credential Request.
+     * These attestations MAY include Verifier metadata, policies, trust status, or authorizations.
+     */
+    val verifierInfo: NonEmptyList<VerifierInfo>? = null,
 
     /**
      * Whether the client_id should be added to the request. Required for DC API:

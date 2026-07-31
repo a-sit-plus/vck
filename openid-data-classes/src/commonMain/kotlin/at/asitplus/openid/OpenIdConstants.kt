@@ -390,6 +390,13 @@ object OpenIdConstants {
     }
 
     /**
+     * Constants for VerifierInfo
+     */
+    object VerifierInfo {
+        const val REGISTRATION_CERT_FORMAT = "registration_cert"
+    }
+
+    /**
      * Error codes for OAuth2 responses
      */
     object Errors {

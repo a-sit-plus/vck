@@ -20,6 +20,7 @@ Release 8.0.0 (unreleased):
     - Match non-fully specified COSE algorithms with fully specified ones
     - Reject credential presentations containing any invalid issuer signed items according to ISO 18013-5 9.3.1 Inspection procedure for issuer data authentication
     - Correctly validate credential submissions for DCQL queries
+    - Add `VerifierInfo` to `OpenId4VpRequestOptions`
 - Deprecations:
     - Remove code deprecated in 7.0.0, e.g. various `Iso180137AnnexC*` and related classes
     - Deprecate all classes used for Presentation Exchange requests and so on, e.g., `CredentialPresentationRequest.PresentationExchangeRequest` or `PresentationExchangeCredentialDisclosure` or `CredentialPresentation.PresentationExchangePresentation`

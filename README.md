@@ -61,6 +61,7 @@ VC-K provides full implementations of the OpenID protocol family for credential 
     - Request objects by value or reference
     - Presentation definitions and submissions
     - Verifier attestations
+    - `verifier_info` attestations with profile-defined formats (for example `registration_cert`)
     - Signed and/or encrypted responses
     - Digital Credential Query Language (DCQL)
     - Presentation Exchange

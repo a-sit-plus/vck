@@ -20,7 +20,7 @@ class KeyStoreMaterial
 @JvmOverloads constructor(
     private val keyStore: KeyStore,
     keyAlias: String,
-    privateKeyPassword: CharArray,
+    privateKeyPassword: CharArray? = null,
     providerName: String? = null,
     private val certAlias: String? = null,
     customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
@@ -38,6 +38,8 @@ class KeyStoreMaterial
     override suspend fun getCertificate(): X509Certificate? =
         certAlias?.let { X509Certificate.decodeFromByteArray(keyStore.getCertificate(it).encoded) }
 
+    fun getCertificateChain(): List<X509Certificate>? =
+        certAlias?.let { keyStore.getCertificateChain(it).mapNotNull { X509Certificate.decodeFromByteArray(it.encoded) } }
 }
 
 /**
