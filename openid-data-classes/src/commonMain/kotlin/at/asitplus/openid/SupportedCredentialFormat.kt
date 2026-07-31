@@ -210,8 +210,8 @@ sealed interface SupportedCredentialFormat {
                     CredentialFormatEnum.DC_SD_JWT -> SupportedCredentialFormatSdJwt.serializer()
                     CredentialFormatEnum.JWT_VC_JSON_LD -> SupportedCredentialFormatW3cVcJwtJsonLd.serializer()
                     CredentialFormatEnum.JSON_LD -> SupportedCredentialFormatW3cVcJsonLd.serializer()
-                    CredentialFormatEnum.MSO_MDOC,
-                    CredentialFormatEnum.MSO_MDOC_ZK-> SupportedCredentialFormatIsoMdoc.serializer()
+                    CredentialFormatEnum.MSO_MDOC -> SupportedCredentialFormatIsoMdoc.serializer()
+                    CredentialFormatEnum.MSO_MDOC_ZK,
                     CredentialFormatEnum.NONE -> throw IllegalArgumentException(
                         "Unsupported format identifier `$formatIdentifier`."
                     )
