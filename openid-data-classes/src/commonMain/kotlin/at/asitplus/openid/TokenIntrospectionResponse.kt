@@ -1,0 +1,3 @@
+package at.asitplus.openid
+
+sealed interface TokenIntrospectionResponse

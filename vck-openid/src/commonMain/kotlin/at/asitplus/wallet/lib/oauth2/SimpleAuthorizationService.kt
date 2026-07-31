@@ -24,10 +24,11 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
-import at.asitplus.openid.TokenIntrospectionJwtResponse
-import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResponseJson
-import at.asitplus.openid.TokenIntrospectionResult
+import at.asitplus.openid.TokenIntrospectionResponseJwt
+import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -36,6 +37,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -60,6 +62,7 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -145,13 +148,13 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Sets [OAuth2AuthorizationServerMetadata.requestObjectSigningAlgorithmsSupported].
      * Currently, we only support [JwsAlgorithm.Signature.ES256].
      * If set the client MAY wrap [RequestParameters] as [JarRequestParameters]
-     * - this is the default behaviour of `OAuth2KtorClient`
+     * - this is the default behavior of `OAuth2KtorClient`
      */
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
     /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */
     private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = DEFAULT_WALLET_ATTESTATION_ALGORITHMS,
     /** Used to sign JWT introspection responses (RFC 9701). */
-    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponseJson> =
+    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponseJwtPayload> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /** Used to create and verify `issuer_state` values of credential offers. */
     private val issuerStateService: CodeService = DefaultCodeService(),
@@ -805,7 +808,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     ): KmmResult<JsonObject> = userInfo(authorizationHeader, httpRequest)
 
     /**
-     * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter],
+     * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter]),
      * we can directly access our [tokenService].
      */
     override suspend fun getTokenInfo(
@@ -816,9 +819,10 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     override suspend fun tokenIntrospection(
-        request: TokenIntrospectionRequest,
+        request: TokenIntrospectionRequestContent,
+        acceptHeader: ContentType,
         httpRequest: RequestInfo?,
-    ): KmmResult<TokenIntrospectionResult> = catching {
+    ): KmmResult<TokenIntrospectionResponse> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()
         clientAuthenticationService.authenticateClient(
             httpRequest = httpRequest,
@@ -839,16 +843,24 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                 TokenIntrospectionResponseJson(active = false)
             }
         )
-        when (request.responseFormat) {
-            TokenIntrospectionRequest.ResponseFormat.JWT -> TokenIntrospectionJwtResponse(
-                jwt = signIntrospectionJwt(
+
+        when (acceptHeader) {
+            ContentType.Application.Json -> response
+
+            ContentType.Application.IntrospectionJwt -> TokenIntrospectionResponseJwt(
+                signIntrospectionJwt(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
-                    response,
-                    TokenIntrospectionResponseJson.serializer()
-                ).getOrThrow().toString()
+                    TokenIntrospectionResponseJwtPayload(
+                        issuer = "foo", //TODO
+                        audience = "bar", //TODO
+                        iat = Clock.System.now(),
+                        tokenIntrospection = response
+                    ),
+                    TokenIntrospectionResponseJwtPayload.serializer()
+                ).getOrThrow()
             )
 
-            else -> response
+            else -> throw InvalidRequest("accept_header invalid")
         }
     }
 

@@ -3,13 +3,12 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionJwtResponse
-import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
+import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenIntrospectionResponseJson
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -22,6 +21,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.ContentType
 
 val OAuth2ClientTest by matrixSuite {
     fixture {
@@ -98,8 +98,8 @@ val OAuth2ClientTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -115,12 +115,11 @@ val OAuth2ClientTest by matrixSuite {
             )
             val token = it.server.token(tokenRequest, null).getOrThrow()
             val jwtResponse = it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken, responseFormat = ResponseFormat.JWT),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.IntrospectionJwt,
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
-            val parsed = JwsCompactTyped<TokenIntrospectionResponseJson>(jwtResponse.jwt)
-            parsed.payload.active shouldBe true
+                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+            jwtResponse.value.payload.tokenIntrospection.active shouldBe true
         }
         test("process with pushed authorization request and JAR") {
             val state = uuid4().toString()
@@ -146,8 +145,8 @@ val OAuth2ClientTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -173,8 +172,8 @@ val OAuth2ClientTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -246,8 +245,8 @@ val OAuth2ClientTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }

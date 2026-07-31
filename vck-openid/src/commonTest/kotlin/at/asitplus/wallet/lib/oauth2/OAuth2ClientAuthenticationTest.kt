@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -186,7 +186,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
                 @Suppress("DEPRECATION")
                 suspend fun introspect(token: TokenResponseParameters) = server.tokenIntrospection(
-                    TokenIntrospectionRequest(token = token.accessToken),
+                    TokenIntrospectionRequestContent(token = token.accessToken),
+                    ContentType.Application.Json,
                     RequestInfo(
                         url = "https://example.com/",
                         method = HttpMethod.Get,

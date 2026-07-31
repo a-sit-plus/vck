@@ -6,7 +6,7 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -203,9 +204,10 @@ val OAuth2KtorClientTest by matrixSuite {
                 request.url.fullPath.startsWith(introspectionEndpointPath) -> {
                     receivedPopChallenges += request.toRequestInfo().clientAttestationPop?.payload?.challenge
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val params: TokenIntrospectionRequest =
-                        requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
-                    authorizationService.tokenIntrospection(params, request.toRequestInfo()).fold(
+                    val params: TokenIntrospectionRequestContent =
+                        requestBody.decodeFromPostBody<TokenIntrospectionRequestContent>()
+                    val acceptHeader: ContentType = request.parseAcceptHeaderForTokenIntrospection()
+                    authorizationService.tokenIntrospection(params, acceptHeader, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) },
                     )
@@ -297,10 +299,9 @@ val OAuth2KtorClientTest by matrixSuite {
 
             client.callTokenIntrospection(
                 oauthMetadata = authorizationService.metadata(),
-                request = TokenIntrospectionRequest(
+                request = TokenIntrospectionRequestContent(
                     token = tokenResponse.params.accessToken,
                     tokenTypeHint = tokenResponse.params.tokenType,
-                    responseFormat = TokenIntrospectionRequest.ResponseFormat.JWT,
                 ),
                 token = tokenResponse.params.accessToken,
                 popAudience = authorizationService.publicContext,
@@ -759,3 +760,11 @@ val OAuth2KtorClientTest by matrixSuite {
         }
     }
 }
+
+private fun HttpRequestData.parseAcceptHeaderForTokenIntrospection(): ContentType =
+    headers[HttpHeaders.Accept]
+        ?.let(::parseHeaderValue)
+        ?.sortedByDescending { it.quality }
+        ?.map { ContentType.parse(it.value) }?.firstOrNull {
+            it == ContentType.Application.Json || it == ContentType.Application.IntrospectionJwt
+        } ?: throw IllegalArgumentException("Accept header is mandatory to specify answer format")

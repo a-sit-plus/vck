@@ -9,7 +9,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
-import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -203,8 +203,15 @@ val OpenId4VciClientExternalAuthorizationServerTest by matrixSuite {
 
                 request.url.toString() == "$authServerPublicContext$introspectionEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val params = requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
-                    externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).fold(
+                    val params = requestBody.decodeFromPostBody<TokenIntrospectionRequestContent>()
+                    val acceptHeader = request.headers[HttpHeaders.Accept]
+                        ?.let(ContentType::parse)
+                        ?: ContentType.Application.Json
+                    externalAuthorizationServer.tokenIntrospection(
+                        params,
+                        acceptHeader,
+                        request.toRequestInfo(),
+                    ).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )

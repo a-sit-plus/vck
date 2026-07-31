@@ -8,11 +8,13 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.PushedAuthenticationResponseParameters
-import at.asitplus.openid.TokenIntrospectionJwtResponse
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResponseJson
-import at.asitplus.openid.TokenIntrospectionResult
+import at.asitplus.openid.TokenIntrospectionResponseJwt
+import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
@@ -24,6 +26,7 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
@@ -189,18 +192,21 @@ object TestUtils {
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
-    fun MockRequestHandleScope.respond(result: TokenIntrospectionResult): HttpResponseData = when (result) {
+    fun MockRequestHandleScope.respond(result: TokenIntrospectionResponse): HttpResponseData = when (result) {
         is TokenIntrospectionResponseJson -> respond(result)
-        is TokenIntrospectionJwtResponse -> respond(
-            joseCompliantSerializer.encodeToString<TokenIntrospectionJwtResponse>(result),
-            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-        )
+        is TokenIntrospectionResponseJwt -> respond(result.value)
     }
 
     fun MockRequestHandleScope.respond(result: TokenIntrospectionResponseJson): HttpResponseData = respond(
         joseCompliantSerializer.encodeToString(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
+
+    fun MockRequestHandleScope.respond(result: JwsCompactTyped<TokenIntrospectionResponseJwtPayload>): HttpResponseData =
+        respond(
+            result.toString(),
+            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.IntrospectionJwt.toString())
+        )
 
     fun MockRequestHandleScope.respond(result: JsonObject): HttpResponseData = respond(
         joseCompliantSerializer.encodeToString(result),

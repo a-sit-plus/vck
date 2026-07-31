@@ -5,8 +5,9 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
-import at.asitplus.openid.TokenIntrospectionJwtResponse
+import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -16,6 +17,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
@@ -30,6 +32,7 @@ import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Clock
 
 val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
 
@@ -171,14 +174,21 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
     }
 
     test("getTokenInfo handles jwt response") {
-        val signedJwt = SignJwt<TokenIntrospectionResponseJson>(
-            keyMaterial = EphemeralKeyWithoutCert(),
-            headerModifier = JwsHeaderNone()
-        ).invoke(
-            JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
-            TokenIntrospectionResponseJson(active = true, scope = "scope"),
-            TokenIntrospectionResponseJson.serializer()
-        ).getOrThrow().jws.toString()
+        val tokenIntrospectionJwt = TokenIntrospectionResponseJwt(
+            SignJwt<TokenIntrospectionResponseJwtPayload>(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                headerModifier = JwsHeaderNone(),
+            ).invoke(
+                JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
+                TokenIntrospectionResponseJwtPayload(
+                    issuer = issuer,
+                    audience = "foo", // TODO
+                    iat = Clock.System.now(),
+                    tokenIntrospection = TokenIntrospectionResponseJson(active = true, scope = "scope"),
+                ),
+                TokenIntrospectionResponseJwtPayload.serializer(),
+            ).getOrThrow()
+        )
 
         val mockEngine = MockEngine { request ->
             when {
@@ -190,10 +200,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString() == introspectionEndpoint -> respond(
-                    joseCompliantSerializer.encodeToString(TokenIntrospectionJwtResponse(jwt = signedJwt)),
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                )
+                request.url.toString() == introspectionEndpoint -> respond(tokenIntrospectionJwt)
 
                 else -> respondError(HttpStatusCode.NotFound)
             }

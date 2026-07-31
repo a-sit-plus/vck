@@ -6,7 +6,7 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -184,8 +184,8 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -237,8 +237,8 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -265,8 +265,8 @@ val OAuth2ClientDPoPTest by matrixSuite {
             refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = refreshedAccessToken.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = refreshedAccessToken.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -317,8 +317,8 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -578,8 +578,8 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -615,8 +615,8 @@ val OAuth2ClientDPoPTest by matrixSuite {
             ).getOrThrow()
 
             it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                ContentType.Application.Json,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }

@@ -1,15 +1,19 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.data.MediaTypes.Application
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 import kotlin.time.Instant
 
 /**
  * [RFC 9701: JWT Response for OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/rfc9701/):
- * Response to HTTP HEADER Accept = [Application.INTROSPECTION_JWT]; subsequently to be used inside a JWT.
- * Uses [TokenIntrospectionResponseJson] internally.
+ * Response Payload when request HTTP HEADER Accept = [Application.INTROSPECTION_JWT];
+ * Subsequently to be used inside a JWT. Uses [TokenIntrospectionResponseJson] internally.
  *
  * For [Application.JSON] use [TokenIntrospectionResponseJson] as defined in
  * [RFC 7662: OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
@@ -27,4 +31,26 @@ data class TokenIntrospectionResponseJwtPayload(
     val iat: Instant,
     @SerialName("token_introspection")
     val tokenIntrospection: TokenIntrospectionResponseJson,
-) {}
+)
+
+
+/**
+ * [RFC 9701: JWT Response for OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/rfc9701/):
+ * Response when request HTTP HEADER Accept = [Application.INTROSPECTION_JWT];
+ * Payload defined in [TokenIntrospectionResponseJwtPayload]
+ *
+ * For [Application.JSON] use [TokenIntrospectionResponseJson] as defined in
+ * [RFC 7662: OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
+ */
+@Serializable
+@JvmInline
+value class TokenIntrospectionResponseJwt(
+    @Serializable(with = Serializer::class)
+    val value: JwsCompactTyped<TokenIntrospectionResponseJwtPayload>
+): TokenIntrospectionResponse {
+    object Serializer :
+        KSerializer<JwsCompactTyped<TokenIntrospectionResponseJwtPayload>> by JwsTypedSerializerTemplate(
+            JwsCompactStringSerializer,
+            TokenIntrospectionResponseJwtPayload.serializer(),
+        )
+}

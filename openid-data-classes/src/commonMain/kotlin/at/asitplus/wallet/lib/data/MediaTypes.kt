@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.wallet.lib.data.MediaTypes.Application.INTROSPECTION_JWT
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
+import io.ktor.http.ContentType
 
 data object MediaTypes {
     /** `statuslist+jwt` */
@@ -24,5 +26,16 @@ data object MediaTypes {
 
         /** `application/jwt` */
         const val JWT = "application/jwt"
+
+        /** `application/token-introspection+jwt` */
+        const val INTROSPECTION_JWT = "application/token-introspection+jwt"
     }
 }
+
+/**
+ * KTOR integration: Receiver parameter for namespace
+ * See [MediaTypes.Application.INTROSPECTION_JWT]
+ */
+@Suppress("UnusedReceiverParameter")
+val ContentType.Application.IntrospectionJwt: ContentType
+    get() = ContentType.parse(INTROSPECTION_JWT)

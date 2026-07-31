@@ -6,11 +6,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
-sealed interface TokenIntrospectionResult
-
 /**
  * [RFC 7662: OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662):
- * Response to HTTP HEADER Accept = [Application.JSON]; subsequently in JSON format.
+ * Response when request HTTP HEADER Accept = [Application.JSON]; subsequently in JSON format.
  * Although it defines some of the same parameters this class MUST not be used as JWT/JWS Payload!
  *
  * for [Application.INTROSPECTION_JWT] use [TokenIntrospectionResponseJwtPayload] as defined in
@@ -119,16 +117,4 @@ data class TokenIntrospectionResponseJson(
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,
 
-    ) : TokenIntrospectionResult
-
-/**
- * [RFC 9701: JWT Response for OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/rfc9701/): Response.
- */
-@Serializable
-data class TokenIntrospectionJwtResponse(
-    /**
-     * REQUIRED. JWT containing the token introspection response claims.
-     */
-    @SerialName("jwt")
-    val jwt: String,
-) : TokenIntrospectionResult
+    ) : TokenIntrospectionResponse

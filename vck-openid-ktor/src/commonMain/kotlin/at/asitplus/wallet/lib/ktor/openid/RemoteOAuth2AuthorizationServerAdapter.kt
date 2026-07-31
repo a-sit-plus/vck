@@ -4,11 +4,12 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
-import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -83,13 +84,14 @@ class RemoteOAuth2AuthorizationServerAdapter(
     ): KmmResult<TokenInfo> = catching {
         val oauthMetadata = _metadata.await()
         val token = authorizationHeader.let { if (it.contains(" ")) it.split(" ").last() else it }
-        val request = TokenIntrospectionRequest(
+        val request = TokenIntrospectionRequestContent(
             token = token,
             tokenTypeHint = authorizationHeader.split(" ").firstOrNull()
         )
         oauth2Client.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
             request = request,
+            acceptHeader = ContentType.Application.IntrospectionJwt,
             token = token,
             popAudience = publicContext
         ).toTokenInfo(token)

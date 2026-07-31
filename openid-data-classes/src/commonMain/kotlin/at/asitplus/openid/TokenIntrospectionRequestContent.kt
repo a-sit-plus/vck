@@ -5,9 +5,11 @@ import kotlinx.serialization.Serializable
 
 /**
  * [RFC 7662: OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662): Request.
+ * Requires additional `Accept` Header information to be complete - in order to differentiate [TokenIntrospectionResponseJwtPayload]
+ * vs [TokenIntrospectionResponseJson] response
  */
 @Serializable
-data class TokenIntrospectionRequest(
+data class TokenIntrospectionRequestContent(
     /**
      * REQUIRED.  The string value of the token.  For access tokens, this
      * is the `access_token` (see [TokenResponseParameters.accessToken]) value returned from the token endpoint
