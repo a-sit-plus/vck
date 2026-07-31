@@ -65,22 +65,28 @@ internal class PresentationFactory(
         if (credentialPresentation is CredentialPresentation.IsoDeviceRetrievalPresentation) {
             throw InvalidRequest("ISO Device Retrieval responses are not OpenID4VP presentations")
         }
+        val sessionTranscriptCallback = suspend {
+            calcSessionTranscript(
+                clientId = state.request.parameters.clientId,
+                responseUrl = state.request.parameters.responseUrl ?: state.request.parameters.redirectUrlExtracted,
+                nonce = nonce,
+                dcApiRequestCallingOrigin = state.dcApiCallingOrigin,
+                recipientKey = if (state.responseRequiresEncryption)
+                    requireNotNull(state.jsonWebKeys?.getEncryptionTargetKey()) {
+                        "Could not load recipient key but response requires encryption"
+                    }
+                else null
+            )
+        }
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = state.audience,
             transactionData = state.request.parameters.transactionData,
+            calcSessionTranscript = sessionTranscriptCallback,
             calcIsoDeviceSignaturePlain = {
                 calcDeviceSignature(
-                    clientId = state.request.parameters.clientId,
-                    responseUrl = state.request.parameters.responseUrl ?: state.request.parameters.redirectUrlExtracted,
-                    nonce = nonce,
+                    sessionTranscriptCallback = sessionTranscriptCallback,
                     docType = it.docType,
-                    dcApiRequestCallingOrigin = state.dcApiCallingOrigin,
-                    recipientKey = if (state.responseRequiresEncryption)
-                        requireNotNull(state.jsonWebKeys?.getEncryptionTargetKey()) {
-                            "Could not load recipient key but response requires encryption"
-                        }
-                    else null
                 )
             }
         )
@@ -111,24 +117,14 @@ internal class PresentationFactory(
      */
     @Throws(PresentationException::class, CancellationException::class)
     private suspend fun calcDeviceSignature(
-        clientId: String?,
-        responseUrl: String?,
-        nonce: String,
+        sessionTranscriptCallback: suspend () -> SessionTranscript,
         docType: String,
-        dcApiRequestCallingOrigin: String?,
-        recipientKey: JsonWebKey?,
     ): CoseSigned<ByteArray> = signDeviceAuthDetached(
         protectedHeader = null,
         unprotectedHeader = null,
         payload = DeviceAuthentication(
             type = DeviceAuthentication.TYPE,
-            sessionTranscript = calcSessionTranscript(
-                clientId = clientId,
-                responseUrl = responseUrl,
-                nonce = nonce,
-                dcApiRequestCallingOrigin = dcApiRequestCallingOrigin,
-                recipientKey = recipientKey
-            ),
+            sessionTranscript = sessionTranscriptCallback.invoke(),
             docType = docType,
             namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         ).wrap(),

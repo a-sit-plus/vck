@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -42,7 +43,16 @@ data class PresentationRequestParameters(
         "Only applies to deprecated Presentation Exchange. DCQL uses `DCQLCredentialQuery.multiple`; " +
                 "ISO Device Retrieval always creates one DeviceResponse."
     )
-    val returnOneDeviceResponse: Boolean = false
+    val returnOneDeviceResponse: Boolean = false,
+
+    /**
+     * Optional callback to calculate the ISO mDoc Session Transcript.
+     *
+     * This is a callback because calculating the Session Transcript might fail for non-mDoc presentations.
+     * By using a callback, we ensure that it's only calculated when an ISO mDoc is actually
+     * part of the presentation, avoiding unnecessary failures for SD-JWT or W3C VC presentations.
+     */
+    val calcSessionTranscript: (suspend () -> SessionTranscript)? = null,
 ) {
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms
