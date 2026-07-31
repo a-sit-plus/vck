@@ -10,10 +10,10 @@ sealed interface TokenIntrospectionResult
 
 /**
  * [RFC 7662: OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662):
- * Response in [Application.JSON] format. Although it defines some of the same parameters
- * this class MUST not be used as JWT/JWS Payload!
+ * Response to HTTP HEADER Accept = [Application.JSON]; subsequently in JSON format.
+ * Although it defines some of the same parameters this class MUST not be used as JWT/JWS Payload!
  *
- * for [Application.JWT] use [TokenIntrospectionJwtResponse] as defined in
+ * for [Application.INTROSPECTION_JWT] use [TokenIntrospectionResponseJwtPayload] as defined in
  * [RFC 9701: JWT Response for OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/rfc9701/)
  */
 @Serializable
