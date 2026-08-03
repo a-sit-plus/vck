@@ -5,15 +5,16 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
-import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResponseJwt
+import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -22,6 +23,7 @@ import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
+import at.asitplus.wallet.lib.oauth2.parseAcceptHeaderForTokenIntrospection
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
@@ -55,8 +57,9 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             validatedClientKey: at.asitplus.signum.indispensable.josef.JsonWebKey?,
         ) = refreshToken
 
-        override suspend fun getTokenInfo(tokenOrAuthHeader: String): TokenInfo = TokenInfo(
+        override suspend fun getTokenInfo(tokenOrAuthHeader: String, acceptHeader: String): TokenInfo = TokenInfo(
             token = tokenOrAuthHeader,
+            responseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader),
             scope = null,
             authorizationDetails = null,
         )
@@ -136,7 +139,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             internalTokenVerificationService = tokenVerificationService,
         )
 
-        adapter.getTokenInfo("Bearer token", null)
+        adapter.getTokenInfo("Bearer token", ContentType.Application.Json.toString(), null)
             .exceptionOrNull().shouldNotBeNull()
             .let { it as HttpErrorResponseException }
             .oauth2Error shouldBe expectedError
@@ -169,7 +172,8 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
         )
 
         shouldThrow<InvalidToken> {
-            adapter.getTokenInfo("Bearer token", null).getOrThrow()
+            adapter.getTokenInfo("Bearer token", ContentType.Application.Json.toString(), null)
+                .getOrThrow()
         }
     }
 
@@ -212,7 +216,12 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             internalTokenVerificationService = tokenVerificationService,
         )
 
-        val tokenInfo = adapter.getTokenInfo("Bearer token", null).getOrThrow()
+        val tokenInfo =
+            adapter.getTokenInfo(
+                "Bearer token",
+                ContentType.Application.IntrospectionJwt.toString(),
+                null
+            ).getOrThrow()
         tokenInfo.scope shouldBe "scope"
     }
 
@@ -269,7 +278,8 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             internalTokenVerificationService = tokenVerificationService,
         )
 
-        adapter.getUserInfo("Bearer wallet-token", null).getOrThrow() shouldBe userInfoResponse
+        adapter.getUserInfo("Bearer wallet-token", listOf(ContentType.Application.Json.toString()).toString(), null)
+            .getOrThrow() shouldBe userInfoResponse
         userInfoCalls shouldBe 2
     }
 }

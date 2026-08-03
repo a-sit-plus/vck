@@ -773,6 +773,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      */
     override suspend fun userInfo(
         authorizationHeader: String,
+        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
         // The user info comes out of the validation itself, so it must not be looked up a second time
@@ -791,9 +792,10 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      */
     suspend fun userInfoWithDpopNonce(
         authorizationHeader: String,
+        acceptHeader: String,
         httpRequest: RequestInfo? = null,
     ): KmmResult<ResponseWithDpopNonce<JsonObject>> = catching {
-        val response = userInfo(authorizationHeader, httpRequest).getOrThrow()
+        val response = userInfo(authorizationHeader, acceptHeader, httpRequest).getOrThrow()
         ResponseWithDpopNonce(response, tokenService.dpopNonce())
     }
 
@@ -804,8 +806,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      */
     override suspend fun getUserInfo(
         authorizationHeader: String,
+        acceptHeader: String,
         httpRequest: RequestInfo?,
-    ): KmmResult<JsonObject> = userInfo(authorizationHeader, httpRequest)
+    ): KmmResult<JsonObject> = userInfo(authorizationHeader, acceptHeader, httpRequest)
 
     /**
      * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter]),
@@ -813,14 +816,15 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      */
     override suspend fun getTokenInfo(
         authorizationHeader: String,
+        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenInfo> = catching {
-        tokenService.verification.getTokenInfo(authorizationHeader)
+        tokenService.verification.getTokenInfo(authorizationHeader, acceptHeader)
     }
 
     override suspend fun tokenIntrospection(
+        acceptHeader: String,
         request: TokenIntrospectionRequestContent,
-        acceptHeader: ContentType,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenIntrospectionResponse> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()
@@ -829,8 +833,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             clientId = null,
             validatedClientKey = validatedClientKey
         ).getOrThrow()
+        val responseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader)
         val response = catchingUnwrapped {
-            tokenService.verification.getTokenInfo(request.token)
+            tokenService.verification.getTokenInfo(request.token, acceptHeader)
         }.fold(
             onSuccess = {
                 TokenIntrospectionResponseJson(
@@ -844,7 +849,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             }
         )
 
-        when (acceptHeader) {
+        when (responseFormat) {
             ContentType.Application.Json -> response
 
             ContentType.Application.IntrospectionJwt -> TokenIntrospectionResponseJwt(
@@ -866,6 +871,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
     override suspend fun validateAccessToken(
         authorizationHeader: String,
+        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<ValidatedAccessToken> = tokenService.validateAccessToken(
         authorizationHeader = authorizationHeader,

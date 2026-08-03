@@ -126,6 +126,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             @Suppress("DEPRECATION")
             it.server.getUserInfo(
                 token.toHttpHeaderValue(),
+                ContentType.Application.Json.toString(),
                 RequestInfo(
                     url = it.resourceUrl,
                     method = HttpMethod.Post,
@@ -147,7 +148,11 @@ val OAuth2ClientDPoPTest by matrixSuite {
             val forged = it.signAccessToken(payload, key = EphemeralKeyWithoutCert())
 
             shouldThrow<OAuth2Exception.InvalidToken> {
-                it.server.getUserInfo("${OpenIdConstants.TOKEN_PREFIX_DPOP}$forged", null).getOrThrow()
+                it.server.getUserInfo(
+                    "${OpenIdConstants.TOKEN_PREFIX_DPOP}$forged",
+                    ContentType.Application.Json.toString(),
+                    null,
+                ).getOrThrow()
             }
         }
 
@@ -156,7 +161,11 @@ val OAuth2ClientDPoPTest by matrixSuite {
             val expired = it.signAccessToken(payload.copy(expiration = Clock.System.now() - 1.hours))
 
             shouldThrow<OAuth2Exception.InvalidToken> {
-                it.server.getUserInfo("${OpenIdConstants.TOKEN_PREFIX_DPOP}$expired", null).getOrThrow()
+                it.server.getUserInfo(
+                    "${OpenIdConstants.TOKEN_PREFIX_DPOP}$expired",
+                    ContentType.Application.Json.toString(),
+                    null,
+                ).getOrThrow()
             }
         }
 
@@ -184,8 +193,9 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -202,6 +212,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             @Suppress("DEPRECATION")
             it.server.userInfo(
                 token.toHttpHeaderValue(),
+                ContentType.Application.Json.toString(),
                 RequestInfo(
                     url = it.resourceUrl,
                     method = HttpMethod.Post,
@@ -237,8 +248,9 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -265,8 +277,9 @@ val OAuth2ClientDPoPTest by matrixSuite {
             refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = refreshedAccessToken.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -283,6 +296,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             // simulate access to protected resource, i.e. verify access token
             it.server.userInfo(
                 refreshedAccessToken.toHttpHeaderValue(),
+                ContentType.Application.Json.toString(),
                 RequestInfo(
                     url = it.resourceUrl,
                     method = HttpMethod.Post,
@@ -317,8 +331,9 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -578,8 +593,9 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -588,7 +604,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 it.server.userInfo(
                     token.toHttpHeaderValue(),
-                    null
+                    ContentType.Application.Json.toString(),
                 ).getOrThrow()
             }
         }
@@ -615,8 +631,9 @@ val OAuth2ClientDPoPTest by matrixSuite {
             ).getOrThrow()
 
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -635,6 +652,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 it.server.userInfo(
                     token.toHttpHeaderValue(),
+                    ContentType.Application.Json.toString(),
                     RequestInfo(
                         url = it.resourceUrl,
                         method = HttpMethod.Post,

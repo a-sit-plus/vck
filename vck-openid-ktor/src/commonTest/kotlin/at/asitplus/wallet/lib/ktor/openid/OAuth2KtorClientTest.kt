@@ -206,8 +206,8 @@ val OAuth2KtorClientTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenIntrospectionRequestContent =
                         requestBody.decodeFromPostBody<TokenIntrospectionRequestContent>()
-                    val acceptHeader: ContentType = request.parseAcceptHeaderForTokenIntrospection()
-                    authorizationService.tokenIntrospection(params, acceptHeader, request.toRequestInfo()).fold(
+                    val acceptHeader: String = request.headers[HttpHeaders.Accept].shouldNotBeNull()
+                    authorizationService.tokenIntrospection(acceptHeader, params, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) },
                     )
@@ -299,6 +299,7 @@ val OAuth2KtorClientTest by matrixSuite {
 
             client.callTokenIntrospection(
                 oauthMetadata = authorizationService.metadata(),
+                responseFormat = ContentType.Application.IntrospectionJwt,
                 request = TokenIntrospectionRequestContent(
                     token = tokenResponse.params.accessToken,
                     tokenTypeHint = tokenResponse.params.tokenType,
@@ -422,7 +423,6 @@ val OAuth2KtorClientTest by matrixSuite {
             }
         }
     }
-
     test("fetches advertised attestation challenge for the PAR PoP") {
         with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = true)) {
             client.startAuthorization(

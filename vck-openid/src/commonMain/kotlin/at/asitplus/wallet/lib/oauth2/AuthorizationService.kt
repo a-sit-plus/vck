@@ -11,7 +11,6 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import io.ktor.http.ContentType
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -81,6 +80,7 @@ interface AuthorizationService {
      */
     suspend fun userInfo(
         authorizationHeader: String,
+        acceptHeader: String,
         httpRequest: RequestInfo? = null,
     ): KmmResult<JsonObject>
 
@@ -88,12 +88,13 @@ interface AuthorizationService {
      * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection
      * [RFC 9701](https://datatracker.ietf.org/doc/rfc9701/): JWT Response for OAuth 2.0 Token Introspection
      *
+     * @param acceptHeader as sent from the client as HTTP ACCEPT Header
      * @param request as sent from the client as form POST
      * @param httpRequest information about the HTTP request from the client, to validate authentication
      */
     suspend fun tokenIntrospection(
+        acceptHeader: String,
         request: TokenIntrospectionRequestContent,
-        acceptHeader: ContentType,
         httpRequest: RequestInfo? = null,
     ): KmmResult<TokenIntrospectionResponse>
 }

@@ -14,6 +14,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -21,6 +22,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKeyFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.TokenInfo
+import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
 import kotlin.time.Clock.System
@@ -44,6 +46,7 @@ interface TokenVerificationService {
     /** Reads information about the token contained in [tokenOrAuthHeader] for token introspection. */
     suspend fun getTokenInfo(
         tokenOrAuthHeader: String,
+        acceptHeader: String,
     ): TokenInfo
 
     /** Validates the token (either plain token or from an HTTP `Authorization` header, i.e., with prefix). */
@@ -108,10 +111,12 @@ class JwtTokenVerificationService(
 
     override suspend fun getTokenInfo(
         tokenOrAuthHeader: String,
+        acceptHeader: String,
     ): TokenInfo = run {
         val accessToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         else tokenOrAuthHeader
+        val responseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader)
         val tokenJwt = validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
         if (tokenJwt.payload.jwtId == null)
             throw InvalidToken("access token not valid: $accessToken")
@@ -119,6 +124,7 @@ class JwtTokenVerificationService(
         with(tokenJwt.payload) {
             TokenInfo(
                 token = accessToken,
+                responseFormat = responseFormat,
                 authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
                 scope = scope
             )
@@ -303,11 +309,20 @@ class BearerTokenVerificationService(
 
     override suspend fun getTokenInfo(
         tokenOrAuthHeader: String,
+        acceptHeader: String,
     ): TokenInfo = run {
         val token = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
         else tokenOrAuthHeader
-        tokenGenerationService.verifyAccessToken(token)?.toTokenInfo()
+        tokenGenerationService.verifyAccessToken(token)
+            ?.toTokenInfo(parseAcceptHeaderForTokenIntrospection(acceptHeader))
             ?: throw InvalidToken("authorization header not valid: $tokenOrAuthHeader")
     }
 }
+
+fun parseAcceptHeaderForTokenIntrospection(acceptHeader: String) = acceptHeader
+    .let(::parseHeaderValue)
+    .sortedByDescending { it.quality }
+    .map { ContentType.parse(it.value) }.firstOrNull {
+        it == ContentType.Application.Json || it == ContentType.Application.IntrospectionJwt
+    } ?: throw IllegalArgumentException("Accept header is mandatory to specify answer format")

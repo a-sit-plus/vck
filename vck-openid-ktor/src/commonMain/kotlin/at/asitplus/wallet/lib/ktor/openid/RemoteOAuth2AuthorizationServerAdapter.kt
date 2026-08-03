@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
+import at.asitplus.wallet.lib.oauth2.parseAcceptHeaderForTokenIntrospection
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
@@ -80,7 +81,8 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun getTokenInfo(
         authorizationHeader: String,
-        httpRequest: RequestInfo?,
+        acceptHeader: String,
+        httpRequest: RequestInfo?
     ): KmmResult<TokenInfo> = catching {
         val oauthMetadata = _metadata.await()
         val token = authorizationHeader.let { if (it.contains(" ")) it.split(" ").last() else it }
@@ -88,13 +90,15 @@ class RemoteOAuth2AuthorizationServerAdapter(
             token = token,
             tokenTypeHint = authorizationHeader.split(" ").firstOrNull()
         )
+        val responseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader)
+
         oauth2Client.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
+            responseFormat = responseFormat,
             request = request,
-            acceptHeader = ContentType.Application.IntrospectionJwt,
             token = token,
-            popAudience = publicContext
-        ).toTokenInfo(token)
+            popAudience = publicContext,
+        ).toTokenInfo(token, responseFormat)
     }
 
     /**
@@ -104,6 +108,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
      */
     override suspend fun getUserInfo(
         authorizationHeader: String,
+        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
         val userInfoEndpoint = _metadata.await().userInfoEndpoint
@@ -138,6 +143,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun validateAccessToken(
         authorizationHeader: String,
+        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<ValidatedAccessToken> = catching {
         internalTokenVerificationService.validateAccessToken(
@@ -151,8 +157,9 @@ class RemoteOAuth2AuthorizationServerAdapter(
     override suspend fun getDpopNonce() = dpopNonceService.provideNonce()
 }
 
-private fun TokenIntrospectionResponseJson.toTokenInfo(token: String) = TokenInfo(
+private fun TokenIntrospectionResponseJson.toTokenInfo(token: String, responseFormat: ContentType) = TokenInfo(
     token = token,
+    responseFormat = responseFormat,
     scope = this.scope,
     authorizationDetails = this.authorizationDetails,
 )

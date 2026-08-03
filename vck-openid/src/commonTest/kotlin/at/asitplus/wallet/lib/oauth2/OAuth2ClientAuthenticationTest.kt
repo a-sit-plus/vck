@@ -186,8 +186,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
                 @Suppress("DEPRECATION")
                 suspend fun introspect(token: TokenResponseParameters) = server.tokenIntrospection(
+                    ContentType.Application.Json.toString(),
                     TokenIntrospectionRequestContent(token = token.accessToken),
-                    ContentType.Application.Json,
                     RequestInfo(
                         url = "https://example.com/",
                         method = HttpMethod.Get,

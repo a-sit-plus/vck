@@ -169,6 +169,7 @@ val OpenId4VciClientWithEncryptionTest by matrixSuite {
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
                     credentialIssuer.credential(
                         authorizationHeader = authn,
+                        acceptHeader = request.headers[HttpHeaders.Accept].shouldNotBeNull(),
                         params = WalletService.CredentialRequest.parse(requestBody).getOrThrow(),
                         credentialDataProvider = credentialDataProviderFun(
                             scheme = scheme,

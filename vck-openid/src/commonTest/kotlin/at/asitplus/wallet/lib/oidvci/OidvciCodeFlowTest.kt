@@ -59,6 +59,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
@@ -175,6 +176,7 @@ val OidvciCodeFlowTest by matrixSuite {
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
+                acceptHeader = ContentType.Application.Json.toString(),
                 params = it.client.createCredential(
                     tokenResponse = token,
                     metadata = it.issuer.metadata,
@@ -213,6 +215,7 @@ val OidvciCodeFlowTest by matrixSuite {
             requestOptions.forEach { requestOption ->
                 it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
+                    acceptHeader = ContentType.Application.Json.toString(),
                     params = it.client.createCredential(
                         tokenResponse = token,
                         metadata = it.issuer.metadata,
@@ -288,6 +291,7 @@ val OidvciCodeFlowTest by matrixSuite {
 
             val credentials: Collection<CredentialResponseSingleCredential> = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
+                acceptHeader = ContentType.Application.Json.toString(),
                 params = WalletService.CredentialRequest.Plain(credentialRequest),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
@@ -334,6 +338,7 @@ val OidvciCodeFlowTest by matrixSuite {
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
+                acceptHeader = ContentType.Application.Json.toString(),
                 params = it.client.createCredential(
                     tokenResponse = token,
                     metadata = it.issuer.metadata,
@@ -359,6 +364,7 @@ val OidvciCodeFlowTest by matrixSuite {
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
+                acceptHeader = ContentType.Application.Json.toString(),
                 params = it.client.createCredential(
                     tokenResponse = token,
                     metadata = it.issuer.metadata,
@@ -419,6 +425,7 @@ val OidvciCodeFlowTest by matrixSuite {
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
+                acceptHeader = ContentType.Application.Json.toString(),
                 params = it.client.createCredential(
                     tokenResponse = token,
                     metadata = it.issuer.metadata,
@@ -448,6 +455,7 @@ val OidvciCodeFlowTest by matrixSuite {
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
+                acceptHeader = ContentType.Application.Json.toString(),
                 params = it.client.createCredential(
                     tokenResponse = token,
                     metadata = it.issuer.metadata,
@@ -590,6 +598,7 @@ val OidvciCodeFlowTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
+                    acceptHeader = ContentType.Application.Json.toString(),
                     params = it.client.createCredential(
                         tokenResponse = token,
                         metadata = it.issuer.metadata,
@@ -616,6 +625,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 val token = it.getToken(authorizationDetails)
                 it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
+                    acceptHeader = ContentType.Application.Json.toString(),
                     params = it.client.createCredential(
                         tokenResponse = token,
                         metadata = it.issuer.metadata,
@@ -638,6 +648,7 @@ val OidvciCodeFlowTest by matrixSuite {
 
             val credential = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
+                acceptHeader = ContentType.Application.Json.toString(),
                 params = it.client.createCredential(
                     tokenResponse = token,
                     metadata = it.issuer.metadata,

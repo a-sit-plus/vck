@@ -11,7 +11,6 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResponseJwt
-import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -35,6 +34,7 @@ import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationChallenge
 import at.asitplus.wallet.lib.oauth2.ResponseWithDpopNonce
+import at.asitplus.wallet.lib.oauth2.parseAcceptHeaderForTokenIntrospection
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -193,20 +193,16 @@ object TestUtils {
     )
 
     fun MockRequestHandleScope.respond(result: TokenIntrospectionResponse): HttpResponseData = when (result) {
-        is TokenIntrospectionResponseJson -> respond(result)
-        is TokenIntrospectionResponseJwt -> respond(result.value)
-    }
+        is TokenIntrospectionResponseJson -> respond(
+            joseCompliantSerializer.encodeToString(result),
+            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        )
 
-    fun MockRequestHandleScope.respond(result: TokenIntrospectionResponseJson): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
-
-    fun MockRequestHandleScope.respond(result: JwsCompactTyped<TokenIntrospectionResponseJwtPayload>): HttpResponseData =
-        respond(
-            result.toString(),
+        is TokenIntrospectionResponseJwt -> respond(
+            result.value.toString(),
             headers = headersOf(HttpHeaders.ContentType, ContentType.Application.IntrospectionJwt.toString())
         )
+    }
 
     fun MockRequestHandleScope.respond(result: JsonObject): HttpResponseData = respond(
         joseCompliantSerializer.encodeToString(result),

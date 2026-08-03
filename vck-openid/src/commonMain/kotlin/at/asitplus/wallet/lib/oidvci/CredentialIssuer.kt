@@ -33,6 +33,8 @@ import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
@@ -199,9 +201,12 @@ class CredentialIssuer @JvmOverloads constructor(
         params: WalletService.CredentialRequest,
         credentialDataProvider: CredentialDataProviderFun,
         request: RequestInfo? = null,
+        acceptHeader: String = request?.headers?.get(HttpHeaders.Accept)
+            ?: ContentType.Application.Json.toString(),
     ): KmmResult<CredentialResponse> = catching {
         credentialInternal(
             authorizationHeader = authorizationHeader,
+            acceptHeader = acceptHeader,
             request = params.decryptIfNeeded(),
             credentialDataProvider = credentialDataProvider,
             requestInfo = request,
@@ -216,6 +221,7 @@ class CredentialIssuer @JvmOverloads constructor(
 
     private suspend fun credentialInternal(
         authorizationHeader: String,
+        acceptHeader: String,
         request: CredentialRequestParameters,
         credentialDataProvider: CredentialDataProviderFun,
         requestInfo: RequestInfo? = null,
@@ -224,10 +230,14 @@ class CredentialIssuer @JvmOverloads constructor(
         Napier.i("credential called")
         Napier.d("credential called with $authorizationHeader, $request")
         encryptionService.validateRequestEncryption(request, hasBeenEncrypted)
-        val validated = authorizationService.validateAccessToken(authorizationHeader, requestInfo).getOrThrow()
+        val validated = authorizationService.validateAccessToken(
+            authorizationHeader,
+            acceptHeader,
+            requestInfo,
+        ).getOrThrow()
         request.validateAgainstToken(validated)
         val userInfo = validated.userInfoExtended
-            ?: loadUserInfo(authorizationHeader, requestInfo)
+            ?: loadUserInfo(authorizationHeader, acceptHeader, requestInfo)
         val (scheme, representation) = request.extractCredentialRepresentation()
         val responseParameters = proofValidator.validateProofExtractSubjectPublicKeys(request).map { subjectPublicKey ->
             issuer.issueCredential(
@@ -251,9 +261,11 @@ class CredentialIssuer @JvmOverloads constructor(
 
     private suspend fun loadUserInfo(
         authorizationHeader: String,
+        acceptHeader: String,
         request: RequestInfo?,
     ): OidcUserInfoExtended = authorizationService.getUserInfo(
         authorizationHeader = authorizationHeader,
+        acceptHeader = acceptHeader,
         httpRequest = request
     ).getOrThrow().let {
         OidcUserInfoExtended.fromJsonObject(it).getOrThrow()

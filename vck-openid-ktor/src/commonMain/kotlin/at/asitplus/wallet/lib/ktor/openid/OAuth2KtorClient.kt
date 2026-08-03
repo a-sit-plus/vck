@@ -20,6 +20,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenRequestParameters
@@ -49,7 +50,6 @@ import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
-import at.asitplus.wallet.lib.oidvci.TokenInfo
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
@@ -477,12 +477,12 @@ class OAuth2KtorClient(
 
     /**
      * Calls the token introspection endpoint ([OAuth2AuthorizationServerMetadata.introspectionEndpoint])
-     * to check whether the given token is active, returns [TokenInfo] on success, otherwise throws [InvalidToken].
+     * to check whether the given token is active, returns [TokenIntrospectionResponseJson] on success, otherwise throws [InvalidToken].
      */
     suspend fun callTokenIntrospection(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
+        responseFormat: ContentType,
         request: TokenIntrospectionRequestContent,
-        acceptHeader: ContentType = ContentType.Application.Json,
         token: String,
         popAudience: String,
         retryCount: Int = 0,
@@ -491,7 +491,7 @@ class OAuth2KtorClient(
         Napier.i("callTokenIntrospection: $url with $request")
         val response = try {
             client.request {
-                accept(acceptHeader)
+                accept(responseFormat)
                 url(url)
                 method = HttpMethod.Post
                 setBody(FormDataContent(parameters {
@@ -509,8 +509,8 @@ class OAuth2KtorClient(
             return@let error.updateDpopNonceOrAttestationChallengeAndRetry(url, retryCount) {
                 callTokenIntrospection(
                     oauthMetadata = oauthMetadata,
+                    responseFormat = responseFormat,
                     request = request,
-                    acceptHeader = acceptHeader,
                     token = token,
                     popAudience = popAudience,
                     retryCount = retryCount + 1,
@@ -522,7 +522,7 @@ class OAuth2KtorClient(
         updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
         parseTokenIntrospectionResponse(
             body = response.bodyAsText(),
-            acceptHeader = acceptHeader,
+            acceptHeader = responseFormat,
             verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
         ).also {
             if (!it.active) {

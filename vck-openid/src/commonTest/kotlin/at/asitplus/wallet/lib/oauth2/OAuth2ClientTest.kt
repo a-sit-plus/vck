@@ -98,8 +98,9 @@ val OAuth2ClientTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -115,8 +116,9 @@ val OAuth2ClientTest by matrixSuite {
             )
             val token = it.server.token(tokenRequest, null).getOrThrow()
             val jwtResponse = it.server.tokenIntrospection(
+                ContentType.Application.IntrospectionJwt.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.IntrospectionJwt,
+                null
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
             jwtResponse.value.payload.tokenIntrospection.active shouldBe true
@@ -145,8 +147,9 @@ val OAuth2ClientTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -172,8 +175,9 @@ val OAuth2ClientTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
@@ -245,8 +249,9 @@ val OAuth2ClientTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                ContentType.Application.Json,
+                null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
