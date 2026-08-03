@@ -6,7 +6,7 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -204,8 +204,8 @@ val OAuth2KtorClientTest by matrixSuite {
                 request.url.fullPath.startsWith(introspectionEndpointPath) -> {
                     receivedPopChallenges += request.toRequestInfo().clientAttestationPop?.payload?.challenge
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val params: TokenIntrospectionRequestContent =
-                        requestBody.decodeFromPostBody<TokenIntrospectionRequestContent>()
+                    val params: TokenIntrospectionRequest =
+                        requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
                     val acceptHeader: String = request.headers[HttpHeaders.Accept].shouldNotBeNull()
                     authorizationService.tokenIntrospection(acceptHeader, params, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
@@ -300,7 +300,7 @@ val OAuth2KtorClientTest by matrixSuite {
             client.callTokenIntrospection(
                 oauthMetadata = authorizationService.metadata(),
                 responseFormat = ContentType.Application.IntrospectionJwt,
-                request = TokenIntrospectionRequestContent(
+                request = TokenIntrospectionRequest(
                     token = tokenResponse.params.accessToken,
                     tokenTypeHint = tokenResponse.params.tokenType,
                 ),

@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.testballoon.matrix.fixture
@@ -35,7 +35,7 @@ val OAuth2ClientTest by matrixSuite {
 
             suspend fun introspectJson(token: String) = server.tokenIntrospection(
                 ContentType.Application.Json.toString(),
-                TokenIntrospectionRequestContent(token = token),
+                TokenIntrospectionRequest(token = token),
                 null,
             ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
@@ -109,7 +109,7 @@ val OAuth2ClientTest by matrixSuite {
             shouldThrow<OAuth2Exception.InvalidClient> {
                 it.server.tokenIntrospection(
                     ContentType.Application.IntrospectionJwt.toString(),
-                    TokenIntrospectionRequestContent(token = "unknown-token"),
+                    TokenIntrospectionRequest(token = "unknown-token"),
                     null
                 ).getOrThrow()
             }
@@ -126,7 +126,7 @@ val OAuth2ClientTest by matrixSuite {
 
                 server.tokenIntrospection(
                     mediaRange.toString(),
-                    TokenIntrospectionRequestContent(token = "unknown-token"),
+                    TokenIntrospectionRequest(token = "unknown-token"),
                     null,
                 ).getOrThrow()
                     .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
@@ -135,7 +135,7 @@ val OAuth2ClientTest by matrixSuite {
         test("token introspection honors a specific rejection over a wildcard") {
             it.server.tokenIntrospection(
                 "${TokenIntrospectionResponseJwt.contentType};q=0, ${ContentType.Any};q=1",
-                TokenIntrospectionRequestContent(token = "unknown-token"),
+                TokenIntrospectionRequest(token = "unknown-token"),
                 null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
@@ -150,7 +150,7 @@ val OAuth2ClientTest by matrixSuite {
                 shouldThrow<IllegalArgumentException> {
                     it.server.tokenIntrospection(
                         acceptHeader,
-                        TokenIntrospectionRequestContent(token = "token"),
+                        TokenIntrospectionRequest(token = "token"),
                         null,
                     ).getOrThrow()
                 }

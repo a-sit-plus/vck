@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
  * vs [TokenIntrospectionResponseJson] response
  */
 @Serializable
-data class TokenIntrospectionRequestContent(
+data class TokenIntrospectionRequest(
     /**
      * REQUIRED.  The string value of the token.  For access tokens, this
      * is the `access_token` (see [TokenResponseParameters.accessToken]) value returned from the token endpoint

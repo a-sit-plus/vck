@@ -24,7 +24,7 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
-import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResponseJwt
@@ -831,7 +831,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
     override suspend fun tokenIntrospection(
         acceptHeader: String,
-        request: TokenIntrospectionRequestContent,
+        request: TokenIntrospectionRequest,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenIntrospectionResponse> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()

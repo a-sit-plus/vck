@@ -13,7 +13,8 @@ Release 8.0.0 (unreleased):
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject
 - OAuth 2.0:
     - Support JWT token introspection responses according to RFC 9701 using `application/token-introspection+jwt` content negotiation; `RemoteOAuth2AuthorizationServerAdapter` requests JWT responses by default and can be configured to use RFC 7662 JSON responses
-    - BREAKING: Replace `TokenIntrospectionRequest`, `TokenIntrospectionResult`, `TokenIntrospectionResponse`, and `TokenIntrospectionJwtResponse` with `TokenIntrospectionRequestContent`, sealed `TokenIntrospectionResponse`, `TokenIntrospectionResponseJson`, `TokenIntrospectionResponseJwtPayload`, and typed `TokenIntrospectionResponseJwt`; select the response format with the HTTP `Accept` header instead of the `response_format` request parameter
+    - BREAKING: Replace `TokenIntrospectionResult`, `TokenIntrospectionResponse`, and `TokenIntrospectionJwtResponse` with sealed `TokenIntrospectionResponse`, `TokenIntrospectionResponseJson`, `TokenIntrospectionResponseJwtPayload`, and typed `TokenIntrospectionResponseJwt`
+    - Select Token Introspection response format with the HTTP `Accept` header instead of the `response_format` request parameter
 - Verifiable Presentations:
     - Compute ISO mDoc `DeviceAuthentication` signatures automatically using the `calcIsoSessionTranscript` callback instead of requiring `calcIsoDeviceSignaturePlain` 
     - Replace `PresentationRequestParameters.calcIsoDeviceSignaturePlain` with the `PresentationRequestParameters.calcIsoSessionTranscript` callback to return a nullable `SessionTranscript`. DeviceSignature and DeviceAuth is now calculated based on the Transcript.

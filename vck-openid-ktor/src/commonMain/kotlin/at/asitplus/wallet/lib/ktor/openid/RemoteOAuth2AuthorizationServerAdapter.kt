@@ -4,7 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
-import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenResponseParameters
@@ -87,7 +87,7 @@ class RemoteOAuth2AuthorizationServerAdapter @JvmOverloads constructor(
     ): KmmResult<TokenInfo> = catching {
         val oauthMetadata = _metadata.await()
         val token = authorizationHeader.let { if (it.contains(" ")) it.split(" ").last() else it }
-        val request = TokenIntrospectionRequestContent(
+        val request = TokenIntrospectionRequest(
             token = token,
             tokenTypeHint = authorizationHeader.split(" ").firstOrNull()
         )

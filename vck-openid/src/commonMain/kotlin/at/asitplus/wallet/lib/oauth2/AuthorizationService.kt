@@ -4,7 +4,7 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.KmmResult
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -93,7 +93,7 @@ interface AuthorizationService {
      */
     suspend fun tokenIntrospection(
         acceptHeader: String,
-        request: TokenIntrospectionRequestContent,
+        request: TokenIntrospectionRequest,
         httpRequest: RequestInfo? = null,
     ): KmmResult<TokenIntrospectionResponse>
 }

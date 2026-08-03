@@ -6,7 +6,7 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -89,7 +89,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
             suspend fun introspectJson(token: String) = server.tokenIntrospection(
                 ContentType.Application.Json.toString(),
-                TokenIntrospectionRequestContent(token = token),
+                TokenIntrospectionRequest(token = token),
                 null,
             ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
 
@@ -197,7 +197,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
             it.server.tokenIntrospection(
                 ContentType.Application.Json.toString(),
-                TokenIntrospectionRequestContent(token = token.accessToken),
+                TokenIntrospectionRequest(token = token.accessToken),
                 null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()

@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenResponseParameters
@@ -196,7 +196,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 @Suppress("DEPRECATION")
                 suspend fun introspect(token: TokenResponseParameters) = server.tokenIntrospection(
                     ContentType.Application.Json.toString(),
-                    TokenIntrospectionRequestContent(token = token.accessToken),
+                    TokenIntrospectionRequest(token = token.accessToken),
                     RequestInfo(
                         url = "https://example.com/",
                         method = HttpMethod.Get,
@@ -296,7 +296,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             }
             val introspectionResponse = it.server.tokenIntrospection(
                 ContentType.Application.IntrospectionJwt.toString(),
-                TokenIntrospectionRequestContent(token = token.accessToken),
+                TokenIntrospectionRequest(token = token.accessToken),
                 it.introspectionRequestInfo(HttpMethod.Get),
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
@@ -566,7 +566,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             test("token introspection returns inactive JWT for $description") {
                 val introspectionResponse = it.server.tokenIntrospection(
                     acceptHeader,
-                    TokenIntrospectionRequestContent(token = "unknown-token"),
+                    TokenIntrospectionRequest(token = "unknown-token"),
                     it.introspectionRequestInfo(),
                 ).getOrThrow()
                     .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()

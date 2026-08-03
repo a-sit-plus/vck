@@ -19,7 +19,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.TokenIntrospectionRequestContent
+import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
@@ -481,7 +481,7 @@ class OAuth2KtorClient(
     suspend fun callTokenIntrospection(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         responseFormat: ContentType,
-        request: TokenIntrospectionRequestContent,
+        request: TokenIntrospectionRequest,
         token: String,
         popAudience: String,
         retryCount: Int = 0,
