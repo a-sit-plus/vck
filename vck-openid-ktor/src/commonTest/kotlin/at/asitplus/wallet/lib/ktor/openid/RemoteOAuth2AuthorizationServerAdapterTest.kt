@@ -23,7 +23,6 @@ import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
-import at.asitplus.wallet.lib.oauth2.parseAcceptHeaderForTokenIntrospection
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
@@ -57,9 +56,8 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             validatedClientKey: at.asitplus.signum.indispensable.josef.JsonWebKey?,
         ) = refreshToken
 
-        override suspend fun getTokenInfo(tokenOrAuthHeader: String, acceptHeader: String): TokenInfo = TokenInfo(
+        override suspend fun getTokenInfo(tokenOrAuthHeader: String): TokenInfo = TokenInfo(
             token = tokenOrAuthHeader,
-            responseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader),
             scope = null,
             authorizationDetails = null,
         )
@@ -139,7 +137,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             internalTokenVerificationService = tokenVerificationService,
         )
 
-        adapter.getTokenInfo("Bearer token", ContentType.Application.Json.toString(), null)
+        adapter.getTokenInfo("Bearer token", null)
             .exceptionOrNull().shouldNotBeNull()
             .let { it as HttpErrorResponseException }
             .oauth2Error shouldBe expectedError
@@ -156,10 +154,13 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString() == introspectionEndpoint -> respond(
-                    joseCompliantSerializer.encodeToString(TokenIntrospectionResponseJson(active = false)),
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                )
+                request.url.toString() == introspectionEndpoint -> {
+                    request.headers[HttpHeaders.Accept] shouldBe ContentType.Application.Json.toString()
+                    respond(
+                        joseCompliantSerializer.encodeToString(TokenIntrospectionResponseJson(active = false)),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
 
                 else -> respondError(HttpStatusCode.NotFound)
             }
@@ -169,10 +170,11 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             publicContext = issuer,
             engine = mockEngine,
             internalTokenVerificationService = tokenVerificationService,
+            tokenIntrospectionResponseFormat = ContentType.Application.Json,
         )
 
         shouldThrow<InvalidToken> {
-            adapter.getTokenInfo("Bearer token", ContentType.Application.Json.toString(), null)
+            adapter.getTokenInfo("Bearer token", null)
                 .getOrThrow()
         }
     }
@@ -204,7 +206,10 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString() == introspectionEndpoint -> respond(tokenIntrospectionJwt)
+                request.url.toString() == introspectionEndpoint -> {
+                    request.headers[HttpHeaders.Accept] shouldBe ContentType.Application.IntrospectionJwt.toString()
+                    respond(tokenIntrospectionJwt)
+                }
 
                 else -> respondError(HttpStatusCode.NotFound)
             }
@@ -214,14 +219,10 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             publicContext = issuer,
             engine = mockEngine,
             internalTokenVerificationService = tokenVerificationService,
+            tokenIntrospectionResponseFormat = ContentType.Application.IntrospectionJwt,
         )
 
-        val tokenInfo =
-            adapter.getTokenInfo(
-                "Bearer token",
-                ContentType.Application.IntrospectionJwt.toString(),
-                null
-            ).getOrThrow()
+        val tokenInfo = adapter.getTokenInfo("Bearer token", null).getOrThrow()
         tokenInfo.scope shouldBe "scope"
     }
 
@@ -278,7 +279,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             internalTokenVerificationService = tokenVerificationService,
         )
 
-        adapter.getUserInfo("Bearer wallet-token", listOf(ContentType.Application.Json.toString()).toString(), null)
+        adapter.getUserInfo("Bearer wallet-token", null)
             .getOrThrow() shouldBe userInfoResponse
         userInfoCalls shouldBe 2
     }

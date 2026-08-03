@@ -123,6 +123,17 @@ val OAuth2ClientTest by matrixSuite {
                 .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
             jwtResponse.value.payload.tokenIntrospection.active shouldBe true
         }
+        listOf("", ContentType.Text.Plain.toString()).forEach { acceptHeader ->
+            test("token introspection rejects unsupported Accept header '$acceptHeader'") {
+                shouldThrow<IllegalArgumentException> {
+                    it.server.tokenIntrospection(
+                        acceptHeader,
+                        TokenIntrospectionRequestContent(token = "token"),
+                        null,
+                    ).getOrThrow()
+                }
+            }
+        }
         test("process with pushed authorization request and JAR") {
             val state = uuid4().toString()
             val authnRequest = it.client.createAuthRequestJar(

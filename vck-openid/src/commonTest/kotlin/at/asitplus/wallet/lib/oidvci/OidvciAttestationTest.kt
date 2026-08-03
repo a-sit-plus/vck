@@ -182,7 +182,6 @@ val OidvciAttestationTest by matrixSuite {
                 request.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
                 val credential = it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
-                    acceptHeader = ContentType.Application.Json.toString(),
                     params = request,
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
@@ -232,7 +231,6 @@ val OidvciAttestationTest by matrixSuite {
                 shouldThrow<OAuth2Exception> {
                     it.issuer.credential(
                         authorizationHeader = token.toHttpHeaderValue(),
-                        acceptHeader = ContentType.Application.Json.toString(),
                         params = request,
                         credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                     ).getOrThrow()
@@ -445,7 +443,6 @@ val OidvciAttestationTest by matrixSuite {
                 request.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
                 val credential = it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
-                    acceptHeader = ContentType.Application.Json.toString(),
                     params = request,
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
@@ -536,7 +533,6 @@ val OidvciAttestationTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
-                    acceptHeader = ContentType.Application.Json.toString(),
                     params = WalletService.CredentialRequest.Plain(tamperedRequest),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()

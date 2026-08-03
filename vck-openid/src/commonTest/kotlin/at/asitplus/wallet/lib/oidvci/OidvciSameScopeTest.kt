@@ -183,16 +183,14 @@ val OidvciSameScopeTest by matrixSuite {
             val adapter = object : OAuth2AuthorizationServerAdapter by fixture.authorizationService {
                 override suspend fun validateAccessToken(
                     authorizationHeader: String,
-                    acceptHeader: String,
                     httpRequest: RequestInfo?,
                 ): KmmResult<ValidatedAccessToken> = catching {
-                    fixture.authorizationService.validateAccessToken(authorizationHeader, acceptHeader, httpRequest)
+                    fixture.authorizationService.validateAccessToken(authorizationHeader, httpRequest)
                         .getOrThrow().copy(scope = restrictedScope)
                 }
 
                 override suspend fun getTokenInfo(
                     authorizationHeader: String,
-                    acceptHeader: String,
                     httpRequest: RequestInfo?,
                 ): KmmResult<TokenInfo> = catching {
                     TokenInfo(

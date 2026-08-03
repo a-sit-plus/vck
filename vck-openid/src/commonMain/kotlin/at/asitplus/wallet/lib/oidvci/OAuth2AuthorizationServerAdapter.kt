@@ -6,7 +6,7 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
-import io.ktor.http.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -28,7 +28,6 @@ interface OAuth2AuthorizationServerAdapter {
      */
     suspend fun getTokenInfo(
         authorizationHeader: String,
-        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenInfo>
 
@@ -39,14 +38,12 @@ interface OAuth2AuthorizationServerAdapter {
      */
     suspend fun getUserInfo(
         authorizationHeader: String,
-        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject>
 
     /** Validates the access token sent to [CredentialIssuer.credential]. */
     suspend fun validateAccessToken(
         authorizationHeader: String,
-        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<ValidatedAccessToken>
 
@@ -58,9 +55,9 @@ interface OAuth2AuthorizationServerAdapter {
 /**
  * Internal data class for a token introspection result
  */
+@Serializable
 data class TokenInfo(
     val token: String,
-    val responseFormat: ContentType? = null,
     val authorizationDetails: Set<AuthorizationDetails>? = null,
     val scope: String? = null,
 )

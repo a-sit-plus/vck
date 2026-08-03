@@ -126,7 +126,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
             @Suppress("DEPRECATION")
             it.server.getUserInfo(
                 token.toHttpHeaderValue(),
-                ContentType.Application.Json.toString(),
                 RequestInfo(
                     url = it.resourceUrl,
                     method = HttpMethod.Post,
@@ -150,7 +149,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
             shouldThrow<OAuth2Exception.InvalidToken> {
                 it.server.getUserInfo(
                     "${OpenIdConstants.TOKEN_PREFIX_DPOP}$forged",
-                    ContentType.Application.Json.toString(),
                     null,
                 ).getOrThrow()
             }
@@ -163,7 +161,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
             shouldThrow<OAuth2Exception.InvalidToken> {
                 it.server.getUserInfo(
                     "${OpenIdConstants.TOKEN_PREFIX_DPOP}$expired",
-                    ContentType.Application.Json.toString(),
                     null,
                 ).getOrThrow()
             }
@@ -212,7 +209,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
             @Suppress("DEPRECATION")
             it.server.userInfo(
                 token.toHttpHeaderValue(),
-                ContentType.Application.Json.toString(),
                 RequestInfo(
                     url = it.resourceUrl,
                     method = HttpMethod.Post,
@@ -296,7 +292,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
             // simulate access to protected resource, i.e. verify access token
             it.server.userInfo(
                 refreshedAccessToken.toHttpHeaderValue(),
-                ContentType.Application.Json.toString(),
                 RequestInfo(
                     url = it.resourceUrl,
                     method = HttpMethod.Post,
@@ -604,7 +599,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 it.server.userInfo(
                     token.toHttpHeaderValue(),
-                    ContentType.Application.Json.toString(),
                 ).getOrThrow()
             }
         }
@@ -652,7 +646,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 it.server.userInfo(
                     token.toHttpHeaderValue(),
-                    ContentType.Application.Json.toString(),
                     RequestInfo(
                         url = it.resourceUrl,
                         method = HttpMethod.Post,

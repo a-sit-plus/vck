@@ -4,7 +4,6 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.oidvci.TokenInfo
-import io.ktor.http.*
 import kotlinx.serialization.Serializable
 
 /** Internal class representing issued tokens and tokens presented by clients that have been verified successfully. */
@@ -21,9 +20,8 @@ data class ValidatedAccessToken(
     /** `jti` of the access token, if it is a JWT, to look up the user info stored when it was issued. */
     val jwtId: String? = null,
 ) {
-    fun toTokenInfo(responseFormat: ContentType) = TokenInfo(
+    fun toTokenInfo() = TokenInfo(
         token = token,
-        responseFormat = responseFormat,
         authorizationDetails = authorizationDetails,
         scope = scope,
     )

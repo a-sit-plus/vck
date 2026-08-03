@@ -80,7 +80,6 @@ interface AuthorizationService {
      */
     suspend fun userInfo(
         authorizationHeader: String,
-        acceptHeader: String,
         httpRequest: RequestInfo? = null,
     ): KmmResult<JsonObject>
 

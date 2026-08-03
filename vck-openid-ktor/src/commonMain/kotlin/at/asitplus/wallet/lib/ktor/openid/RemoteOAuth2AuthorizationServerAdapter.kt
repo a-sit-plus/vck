@@ -15,7 +15,6 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
-import at.asitplus.wallet.lib.oauth2.parseAcceptHeaderForTokenIntrospection
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
@@ -30,6 +29,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.serialization.json.JsonObject
+import kotlin.jvm.JvmOverloads
 
 /**
  * Uses an external OAuth 2.0 Authorization Server with a [at.asitplus.wallet.lib.oidvci.CredentialIssuer],
@@ -37,7 +37,7 @@ import kotlinx.serialization.json.JsonObject
  * (after performing token exchange with the Wallet's access token to get a fresh one).
  * Make sure to configure [oauth2Client] to use the correct [OAuth2KtorClient.loadInstanceAttestation].
  */
-class RemoteOAuth2AuthorizationServerAdapter(
+class RemoteOAuth2AuthorizationServerAdapter @JvmOverloads constructor(
     /** Base URL of the remote Authorization Server. */
     override val publicContext: String,
     /** ktor engine to make requests to the verifier. */
@@ -62,6 +62,8 @@ class RemoteOAuth2AuthorizationServerAdapter(
     val internalTokenVerificationService: TokenVerificationService,
     /** Used to provide DPoP nonces for credential requests, which will be verified by [internalTokenVerificationService]. */
     val dpopNonceService: NonceService = DefaultNonceService(),
+    /** Response format requested from the remote token introspection endpoint. */
+    private val tokenIntrospectionResponseFormat: ContentType = ContentType.Application.IntrospectionJwt,
 ) : OAuth2AuthorizationServerAdapter {
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
@@ -81,7 +83,6 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun getTokenInfo(
         authorizationHeader: String,
-        acceptHeader: String,
         httpRequest: RequestInfo?
     ): KmmResult<TokenInfo> = catching {
         val oauthMetadata = _metadata.await()
@@ -90,15 +91,13 @@ class RemoteOAuth2AuthorizationServerAdapter(
             token = token,
             tokenTypeHint = authorizationHeader.split(" ").firstOrNull()
         )
-        val responseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader)
-
         oauth2Client.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
-            responseFormat = responseFormat,
+            responseFormat = tokenIntrospectionResponseFormat,
             request = request,
             token = token,
             popAudience = publicContext,
-        ).toTokenInfo(token, responseFormat)
+        ).toTokenInfo(token)
     }
 
     /**
@@ -108,7 +107,6 @@ class RemoteOAuth2AuthorizationServerAdapter(
      */
     override suspend fun getUserInfo(
         authorizationHeader: String,
-        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
         val userInfoEndpoint = _metadata.await().userInfoEndpoint
@@ -143,7 +141,6 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun validateAccessToken(
         authorizationHeader: String,
-        acceptHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<ValidatedAccessToken> = catching {
         internalTokenVerificationService.validateAccessToken(
@@ -157,9 +154,8 @@ class RemoteOAuth2AuthorizationServerAdapter(
     override suspend fun getDpopNonce() = dpopNonceService.provideNonce()
 }
 
-private fun TokenIntrospectionResponseJson.toTokenInfo(token: String, responseFormat: ContentType) = TokenInfo(
+private fun TokenIntrospectionResponseJson.toTokenInfo(token: String) = TokenInfo(
     token = token,
-    responseFormat = responseFormat,
     scope = this.scope,
     authorizationDetails = this.authorizationDetails,
 )

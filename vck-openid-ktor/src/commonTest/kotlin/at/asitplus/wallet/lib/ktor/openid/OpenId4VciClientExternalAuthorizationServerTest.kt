@@ -195,8 +195,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by matrixSuite {
 
                 request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
-                    val accept = request.headers[HttpHeaders.Accept].shouldNotBeNull()
-                    externalAuthorizationServer.userInfo(authn, accept, request.toRequestInfo()).fold(
+                    externalAuthorizationServer.userInfo(authn, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )
@@ -229,7 +228,6 @@ val OpenId4VciClientExternalAuthorizationServerTest by matrixSuite {
                     val params = joseCompliantSerializer.decodeFromString<CredentialRequestParameters>(requestBody)
                     credentialIssuer.credential(
                         authorizationHeader = authn,
-                        acceptHeader = request.headers[HttpHeaders.Accept].shouldNotBeNull(),
                         params = WalletService.CredentialRequest.Plain(params),
                         credentialDataProvider = credentialDataProvider,
                         request = request.toRequestInfo(),
