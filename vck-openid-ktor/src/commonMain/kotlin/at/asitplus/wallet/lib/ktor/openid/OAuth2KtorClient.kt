@@ -20,8 +20,8 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenIntrospectionRequestContent
-import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
@@ -33,7 +33,6 @@ import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
@@ -694,9 +693,10 @@ private suspend fun parseTokenIntrospectionResponse(
     verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponseJwtPayload>) -> Boolean,
 ): TokenIntrospectionResponseJson = catchingUnwrapped {
     when (responseFormat) {
-        ContentType.Application.Json -> joseCompliantSerializer.decodeFromString<TokenIntrospectionResponseJson>(body)
+        TokenIntrospectionResponseJson.contentType ->
+            joseCompliantSerializer.decodeFromString<TokenIntrospectionResponseJson>(body)
 
-        ContentType.Application.IntrospectionJwt -> JwsCompactTyped<TokenIntrospectionResponseJwtPayload>(body).apply {
+        TokenIntrospectionResponseJwt.contentType -> JwsCompactTyped<TokenIntrospectionResponseJwtPayload>(body).apply {
             require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
         }.payload.tokenIntrospection
 

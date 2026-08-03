@@ -3,9 +3,9 @@ package at.asitplus.openid
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.data.MediaTypes.Application
-import at.asitplus.wallet.lib.data.MediaTypes.Application.INTROSPECTION_JWT
-import at.asitplus.wallet.lib.data.MediaTypes.Application.JSON
+import io.ktor.http.*
 import kotlinx.serialization.KSerializer
 import kotlin.jvm.JvmInline
 
@@ -40,4 +40,13 @@ value class TokenIntrospectionResponseJwt(
             JwsCompactStringSerializer,
             TokenIntrospectionResponseJwtPayload.serializer(),
         )
+
+    companion object {
+        /**
+         * An RS requests a JWT introspection response by sending an
+         * introspection request with an Accept HTTP header field set to
+         * [ContentType.Application.IntrospectionJwt].
+         */
+        val contentType = ContentType.Application.IntrospectionJwt
+    }
 }

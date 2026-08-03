@@ -1,7 +1,9 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.data.MediaTypes.Application
+import io.ktor.http.ContentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -117,4 +119,14 @@ data class TokenIntrospectionResponseJson(
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,
 
-    ) : TokenIntrospectionResponse
+    ) : TokenIntrospectionResponse {
+
+    companion object {
+        /**
+         * An RS requests a JSON introspection response by sending an
+         * introspection request with an Accept HTTP header field set to
+         * [ContentType.Application.Json].
+         */
+        val contentType: ContentType = ContentType.Application.Json
+    }
+}

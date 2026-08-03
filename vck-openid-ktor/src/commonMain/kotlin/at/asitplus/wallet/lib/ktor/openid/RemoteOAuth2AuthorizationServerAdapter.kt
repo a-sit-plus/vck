@@ -6,10 +6,10 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
-import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -63,7 +63,7 @@ class RemoteOAuth2AuthorizationServerAdapter @JvmOverloads constructor(
     /** Used to provide DPoP nonces for credential requests, which will be verified by [internalTokenVerificationService]. */
     val dpopNonceService: NonceService = DefaultNonceService(),
     /** Response format requested from the remote token introspection endpoint. */
-    private val tokenIntrospectionResponseFormat: ContentType = ContentType.Application.IntrospectionJwt,
+    private val tokenIntrospectionResponseFormat: ContentType = TokenIntrospectionResponseJwt.contentType,
 ) : OAuth2AuthorizationServerAdapter {
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {

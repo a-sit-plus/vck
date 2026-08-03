@@ -37,7 +37,6 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
-import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -160,7 +159,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Response format used when the highest-quality supported `Accept` entry is `application/*` or `*/*`.
      * Once a wildcard is selected, lower-quality entries do not further constrain this default.
      */
-    private val defaultTokenIntrospectionResponseFormat: ContentType = ContentType.Application.IntrospectionJwt,
+    private val defaultTokenIntrospectionResponseFormat: ContentType = TokenIntrospectionResponseJwt.contentType,
     /** Used to create and verify `issuer_state` values of credential offers. */
     private val issuerStateService: CodeService = DefaultCodeService(),
     /** Used to create and verify pre-authorized codes, see [providePreAuthorizedCode]. */
@@ -196,8 +195,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
     init {
         require(
-            defaultTokenIntrospectionResponseFormat == ContentType.Application.Json ||
-                defaultTokenIntrospectionResponseFormat == ContentType.Application.IntrospectionJwt
+            defaultTokenIntrospectionResponseFormat == TokenIntrospectionResponseJson.contentType ||
+                defaultTokenIntrospectionResponseFormat == TokenIntrospectionResponseJwt.contentType
         ) { "Unsupported default token introspection response format: $defaultTokenIntrospectionResponseFormat" }
     }
 
@@ -859,9 +858,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         )
 
         when (responseFormat) {
-            ContentType.Application.Json -> response
+            TokenIntrospectionResponseJson.contentType -> response
 
-            ContentType.Application.IntrospectionJwt -> TokenIntrospectionResponseJwt(
+            TokenIntrospectionResponseJwt.contentType -> TokenIntrospectionResponseJwt(
                 signIntrospectionJwt(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
                     TokenIntrospectionResponseJwtPayload(
@@ -925,6 +924,6 @@ private fun parseAcceptHeaderForTokenIntrospection(acceptHeader: String) = accep
     .firstOrNull {
         it == ContentType.Any ||
             it == ContentType.Application.Any ||
-            it == ContentType.Application.Json ||
-            it == ContentType.Application.IntrospectionJwt
+            it == TokenIntrospectionResponseJson.contentType ||
+            it == TokenIntrospectionResponseJwt.contentType
     } ?: throw IllegalArgumentException("Accept header is mandatory to specify answer format")
