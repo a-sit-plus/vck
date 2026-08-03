@@ -87,6 +87,12 @@ val OAuth2ClientDPoPTest by matrixSuite {
                     OpenId4VciAccessToken.serializer(),
                 ).getOrThrow()
 
+            suspend fun introspectJson(token: String) = server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
+                TokenIntrospectionRequestContent(token = token),
+                null,
+            ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+
             suspend fun getCode(state: String): String {
                 val authnRequest = client.createAuthRequestJar(
                     state = state,
@@ -243,13 +249,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 it.refreshToken.shouldNotBeNull()
             }
 
-            it.server.tokenIntrospection(
-                ContentType.Application.Json.toString(),
-                TokenIntrospectionRequestContent(token = token.accessToken),
-                null,
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
 
             @Suppress("DEPRECATION")
             val refreshedAccessToken = it.server.token(
@@ -272,13 +272,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             ).getOrThrow()
             refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
-            it.server.tokenIntrospection(
-                ContentType.Application.Json.toString(),
-                TokenIntrospectionRequestContent(token = refreshedAccessToken.accessToken),
-                null,
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
-                .apply { active shouldBe true }
+            it.introspectJson(refreshedAccessToken.accessToken).active shouldBe true
 
             val dpopForResource = BuildDPoPHeader(
                 signDpop = it.signDpop,
@@ -325,13 +319,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 it.refreshToken.shouldNotBeNull()
             }
 
-            it.server.tokenIntrospection(
-                ContentType.Application.Json.toString(),
-                TokenIntrospectionRequestContent(token = token.accessToken),
-                null,
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
             @Suppress("DEPRECATION")
@@ -587,13 +575,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 it.tokenType shouldBe TOKEN_TYPE_DPOP
             }
 
-            it.server.tokenIntrospection(
-                ContentType.Application.Json.toString(),
-                TokenIntrospectionRequestContent(token = token.accessToken),
-                null,
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
 
             // simulate access to protected resource, i.e. verify access token
             shouldThrow<OAuth2Exception> {
@@ -624,13 +606,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 )
             ).getOrThrow()
 
-            it.server.tokenIntrospection(
-                ContentType.Application.Json.toString(),
-                TokenIntrospectionRequestContent(token = token.accessToken),
-                null,
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
             val dpopForResource = BuildDPoPHeader(

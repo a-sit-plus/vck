@@ -171,6 +171,13 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                     .params?.code.shouldNotBeNull()
 
+                suspend fun introspectionRequestInfo(method: HttpMethod = HttpMethod.Post) = RequestInfo(
+                    url = "https://example.com/",
+                    method = method,
+                    clientAttestation = clientAttestation,
+                    clientAttestationPop = freshPop(),
+                )
+
                 @Suppress("DEPRECATION")
                 suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
                     request = client.createTokenRequestParameters(
@@ -290,13 +297,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             val introspectionResponse = it.server.tokenIntrospection(
                 ContentType.Application.IntrospectionJwt.toString(),
                 TokenIntrospectionRequestContent(token = token.accessToken),
-                RequestInfo(
-                    url = "https://example.com/",
-                    method = HttpMethod.Get,
-                    dpop = null,
-                    clientAttestation = it.clientAttestation,
-                    clientAttestationPop = it.freshPop()
-                )
+                it.introspectionRequestInfo(HttpMethod.Get),
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
 
@@ -558,34 +559,20 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             }
         }
 
-        test("token introspection returns inactive JWT for unknown token") {
-            val introspectionResponse = it.server.tokenIntrospection(
-                ContentType.Application.IntrospectionJwt.toString(),
-                TokenIntrospectionRequestContent(token = "unknown-token"),
-                RequestInfo(
-                    url = "https://example.com/",
-                    method = HttpMethod.Post,
-                    clientAttestation = it.clientAttestation,
-                    clientAttestationPop = it.freshPop(),
-                ),
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+        listOf(
+            ContentType.Application.IntrospectionJwt.toString() to "explicit JWT",
+            "application/*;q=1, application/json;q=0" to "wildcard default",
+        ).forEach { (acceptHeader, description) ->
+            test("token introspection returns inactive JWT for $description") {
+                val introspectionResponse = it.server.tokenIntrospection(
+                    acceptHeader,
+                    TokenIntrospectionRequestContent(token = "unknown-token"),
+                    it.introspectionRequestInfo(),
+                ).getOrThrow()
+                    .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
 
-            introspectionResponse.value.payload.tokenIntrospection.active shouldBe false
-        }
-
-        test("token introspection uses default for highest-quality application media range") {
-            it.server.tokenIntrospection(
-                "application/*;q=1, application/json;q=0",
-                TokenIntrospectionRequestContent(token = "unknown-token"),
-                RequestInfo(
-                    url = "https://example.com/",
-                    method = HttpMethod.Post,
-                    clientAttestation = it.clientAttestation,
-                    clientAttestationPop = it.freshPop(),
-                ),
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+                introspectionResponse.value.payload.tokenIntrospection.active shouldBe false
+            }
         }
 
         test("pushed authorization request with self-signed client attestation JWT") {
