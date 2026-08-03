@@ -156,8 +156,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponseJwtPayload> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /**
-     * Response format used when the highest-quality supported `Accept` entry is `application/*` or `*/*`.
-     * Once a wildcard is selected, lower-quality entries do not further constrain this default.
+     * Response format used when the highest-quality supported `Accept`
+     * entry is [ContentType.Any] or [ContentType.Application.Any].
      */
     private val defaultTokenIntrospectionResponseFormat: ContentType = TokenIntrospectionResponseJwt.contentType,
     /** Used to create and verify `issuer_state` values of credential offers. */
@@ -196,7 +196,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     init {
         require(
             defaultTokenIntrospectionResponseFormat == TokenIntrospectionResponseJson.contentType ||
-                defaultTokenIntrospectionResponseFormat == TokenIntrospectionResponseJwt.contentType
+                    defaultTokenIntrospectionResponseFormat == TokenIntrospectionResponseJwt.contentType
         ) { "Unsupported default token introspection response format: $defaultTokenIntrospectionResponseFormat" }
     }
 
@@ -840,10 +840,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             clientId = null,
             validatedClientKey = validatedClientKey
         ).getOrThrow()?.clientId
-        val responseFormat = when (val acceptedResponseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader)) {
-            ContentType.Any, ContentType.Application.Any -> defaultTokenIntrospectionResponseFormat
-            else -> acceptedResponseFormat
-        }
+        val responseFormat =
+            parseAcceptHeaderForTokenIntrospection(acceptHeader, defaultTokenIntrospectionResponseFormat)
         val response = catchingUnwrapped {
             tokenService.verification.getTokenInfo(request.token)
         }.fold(
@@ -916,14 +914,45 @@ data class PushedAuthorizationRequest(
     val clientBinding: ClientBinding
 )
 
-private fun parseAcceptHeaderForTokenIntrospection(acceptHeader: String) = acceptHeader
-    .let(::parseHeaderValue)
-    .filter { it.quality > 0.0 }
-    .sortedByDescending { it.quality }
-    .map { ContentType.parse(it.value) }
-    .firstOrNull {
-        it == ContentType.Any ||
-            it == ContentType.Application.Any ||
-            it == TokenIntrospectionResponseJson.contentType ||
-            it == TokenIntrospectionResponseJwt.contentType
-    } ?: throw IllegalArgumentException("Accept header is mandatory to specify answer format")
+private fun parseAcceptHeaderForTokenIntrospection(
+    acceptHeader: String,
+    defaultResponseFormat: ContentType,
+): ContentType {
+    val entries = parseHeaderValue(acceptHeader)
+
+    val forbiddenTypes = entries
+        .asSequence()
+        .filter { it.quality == 0.0 }
+        .map { ContentType.parse(it.value) }
+        .toSet()
+
+    val candidates = listOf(
+        TokenIntrospectionResponseJwt.contentType,
+        TokenIntrospectionResponseJson.contentType,
+    ).filterNot { it in forbiddenTypes }
+
+    return entries
+        .asSequence()
+        .filter { it.quality > 0.0 }
+        .sortedByDescending { it.quality }
+        .map { ContentType.parse(it.value) }
+        .firstNotNullOfOrNull { acceptedType ->
+            when (acceptedType) {
+                ContentType.Any,
+                ContentType.Application.Any,
+                    -> defaultResponseFormat.takeIf { it in candidates }
+                    ?: candidates.firstOrNull()
+                    ?: throw IllegalArgumentException(
+                        "The Accept header forbids every supported response format."
+                    )
+
+                TokenIntrospectionResponseJwt.contentType,
+                TokenIntrospectionResponseJson.contentType,
+                    -> acceptedType.takeIf { it in candidates }
+
+                else -> null
+            }
+        } ?: throw IllegalArgumentException(
+        "The Accept header does not contain a supported response format."
+    )
+}
