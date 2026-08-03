@@ -143,7 +143,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             .oauth2Error shouldBe expectedError
     }
 
-    test("getTokenInfo handles inactive token") {
+    test("getTokenInfo handles inactive JSON response when configured") {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
@@ -179,7 +179,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
         }
     }
 
-    test("getTokenInfo handles jwt response") {
+    test("getTokenInfo uses JWT response by default") {
         val tokenIntrospectionJwt = TokenIntrospectionResponseJwt(
             SignJwt<TokenIntrospectionResponseJwtPayload>(
                 keyMaterial = EphemeralKeyWithoutCert(),
@@ -219,7 +219,6 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             publicContext = issuer,
             engine = mockEngine,
             internalTokenVerificationService = tokenVerificationService,
-            tokenIntrospectionResponseFormat = ContentType.Application.IntrospectionJwt,
         )
 
         val tokenInfo = adapter.getTokenInfo("Bearer token", null).getOrThrow()
