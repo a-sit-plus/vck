@@ -914,6 +914,10 @@ data class PushedAuthorizationRequest(
     val clientBinding: ClientBinding
 )
 
+/**
+ * Selects Accept header with the highest quality
+ * also covers fun edge cases such as 'application/token-introspection+jwt;q=0, * / *;q=1'
+ */
 private fun parseAcceptHeaderForTokenIntrospection(
     acceptHeader: String,
     defaultResponseFormat: ContentType,

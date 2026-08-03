@@ -5,6 +5,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.IntrospectionJwt
@@ -130,6 +131,14 @@ val OAuth2ClientTest by matrixSuite {
                 ).getOrThrow()
                     .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
             }
+        }
+        test("token introspection honors a specific rejection over a wildcard") {
+            it.server.tokenIntrospection(
+                "${TokenIntrospectionResponseJwt.contentType};q=0, ${ContentType.Any};q=1",
+                TokenIntrospectionRequestContent(token = "unknown-token"),
+                null,
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
         listOf(
             "",
