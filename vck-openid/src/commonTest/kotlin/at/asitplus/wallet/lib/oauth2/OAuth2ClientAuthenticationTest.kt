@@ -558,6 +558,22 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             }
         }
 
+        test("token introspection returns inactive JWT for unknown token") {
+            val introspectionResponse = it.server.tokenIntrospection(
+                ContentType.Application.IntrospectionJwt.toString(),
+                TokenIntrospectionRequestContent(token = "unknown-token"),
+                RequestInfo(
+                    url = "https://example.com/",
+                    method = HttpMethod.Post,
+                    clientAttestation = it.clientAttestation,
+                    clientAttestationPop = it.freshPop(),
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+
+            introspectionResponse.value.payload.tokenIntrospection.active shouldBe false
+        }
+
         test("pushed authorization request with self-signed client attestation JWT") {
             val state = uuid4().toString()
             val authnRequest = it.client.createAuthRequestJar(

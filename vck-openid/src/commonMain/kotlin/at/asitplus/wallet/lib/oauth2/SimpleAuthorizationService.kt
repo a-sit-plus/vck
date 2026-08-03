@@ -840,9 +840,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                     authorizationDetails = it.authorizationDetails,
                 )
             },
-            onFailure = {
-                TokenIntrospectionResponseJson(active = false)
-            }
+            onFailure = { TokenIntrospectionResponseJson(active = false) },
         )
 
         when (responseFormat) {

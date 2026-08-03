@@ -122,6 +122,15 @@ val OAuth2ClientTest by matrixSuite {
                 ).getOrThrow()
             }
         }
+        test("token introspection returns inactive JSON for unknown token") {
+            it.server.tokenIntrospection(
+                ContentType.Application.Json.toString(),
+                TokenIntrospectionRequestContent(token = "unknown-token"),
+                null,
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+                .active shouldBe false
+        }
         listOf("", ContentType.Text.Plain.toString()).forEach { acceptHeader ->
             test("token introspection rejects unsupported Accept header '$acceptHeader'") {
                 shouldThrow<IllegalArgumentException> {
