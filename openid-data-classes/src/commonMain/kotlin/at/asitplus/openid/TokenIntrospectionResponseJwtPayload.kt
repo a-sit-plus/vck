@@ -27,9 +27,11 @@ data class TokenIntrospectionResponseJwtPayload(
     /** MUST identify the resource server receiving the token introspection response.*/
     @SerialName("aud")
     val audience: String,
+    /** MUST be set to the time when the introspection response was created by the authorization server */
     @SerialName("iat")
     @Serializable(with = InstantLongSerializer::class)
     val iat: Instant,
+    /** A JSON object containing the members of the token introspection response, as specified in [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662) */
     @SerialName("token_introspection")
     val tokenIntrospection: TokenIntrospectionResponseJson,
 )

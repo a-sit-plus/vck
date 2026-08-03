@@ -824,11 +824,11 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         httpRequest: RequestInfo?,
     ): KmmResult<TokenIntrospectionResponse> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()
-        clientAuthenticationService.authenticateClient(
+        val authenticatedResourceServerId = clientAuthenticationService.authenticateClient(
             httpRequest = httpRequest,
             clientId = null,
             validatedClientKey = validatedClientKey
-        ).getOrThrow()
+        ).getOrThrow()?.clientId
         val responseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader)
         val response = catchingUnwrapped {
             tokenService.verification.getTokenInfo(request.token)
@@ -852,8 +852,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                 signIntrospectionJwt(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
                     TokenIntrospectionResponseJwtPayload(
-                        issuer = "foo", //TODO
-                        audience = "bar", //TODO
+                        issuer = publicContext,
+                        audience = authenticatedResourceServerId
+                            ?: throw InvalidClient("client authentication required for JWT token introspection response"),
                         iat = Clock.System.now(),
                         tokenIntrospection = response
                     ),

@@ -5,6 +5,7 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -14,6 +15,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
@@ -285,9 +287,22 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             val token = it.getToken(state, code).apply {
                 authorizationDetails.shouldBeNull()
             }
-            it.introspect(token)
-                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
-                .apply { active shouldBe true }
+            val introspectionResponse = it.server.tokenIntrospection(
+                ContentType.Application.IntrospectionJwt.toString(),
+                TokenIntrospectionRequestContent(token = token.accessToken),
+                RequestInfo(
+                    url = "https://example.com/",
+                    method = HttpMethod.Get,
+                    dpop = null,
+                    clientAttestation = it.clientAttestation,
+                    clientAttestationPop = it.freshPop()
+                )
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+
+            introspectionResponse.value.payload.issuer shouldBe it.server.publicContext
+            introspectionResponse.value.payload.audience shouldBe it.client.clientId
+            introspectionResponse.value.payload.tokenIntrospection.active shouldBe true
         }
 
         test("authorization code is bound to the client id") {

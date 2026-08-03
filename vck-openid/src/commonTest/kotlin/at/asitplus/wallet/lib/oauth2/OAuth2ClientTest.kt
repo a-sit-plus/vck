@@ -5,7 +5,6 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequestContent
 import at.asitplus.openid.TokenIntrospectionResponseJson
-import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.IntrospectionJwt
@@ -105,7 +104,7 @@ val OAuth2ClientTest by matrixSuite {
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
         }
-        test("token introspection JWT response") {
+        test("token introspection JWT response requires authenticated resource server") {
             val preAuth = it.server.providePreAuthorizedCode(user)
                 .shouldNotBeNull()
             val state = uuid4().toString()
@@ -115,13 +114,13 @@ val OAuth2ClientTest by matrixSuite {
                 scope = it.scope
             )
             val token = it.server.token(tokenRequest, null).getOrThrow()
-            val jwtResponse = it.server.tokenIntrospection(
-                ContentType.Application.IntrospectionJwt.toString(),
-                TokenIntrospectionRequestContent(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
-            jwtResponse.value.payload.tokenIntrospection.active shouldBe true
+            shouldThrow<OAuth2Exception.InvalidClient> {
+                it.server.tokenIntrospection(
+                    ContentType.Application.IntrospectionJwt.toString(),
+                    TokenIntrospectionRequestContent(token = token.accessToken),
+                    null
+                ).getOrThrow()
+            }
         }
         listOf("", ContentType.Text.Plain.toString()).forEach { acceptHeader ->
             test("token introspection rejects unsupported Accept header '$acceptHeader'") {
