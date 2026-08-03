@@ -574,6 +574,20 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             introspectionResponse.value.payload.tokenIntrospection.active shouldBe false
         }
 
+        test("token introspection uses default for highest-quality application media range") {
+            it.server.tokenIntrospection(
+                "application/*;q=1, application/json;q=0",
+                TokenIntrospectionRequestContent(token = "unknown-token"),
+                RequestInfo(
+                    url = "https://example.com/",
+                    method = HttpMethod.Post,
+                    clientAttestation = it.clientAttestation,
+                    clientAttestationPop = it.freshPop(),
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+        }
+
         test("pushed authorization request with self-signed client attestation JWT") {
             val state = uuid4().toString()
             val authnRequest = it.client.createAuthRequestJar(

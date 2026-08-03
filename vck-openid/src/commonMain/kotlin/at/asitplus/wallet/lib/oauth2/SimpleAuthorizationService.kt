@@ -156,6 +156,11 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     /** Used to sign JWT introspection responses (RFC 9701). */
     private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponseJwtPayload> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+    /**
+     * Response format used when the highest-quality supported `Accept` entry is `application/*` or `*/*`.
+     * Once a wildcard is selected, lower-quality entries do not further constrain this default.
+     */
+    private val defaultTokenIntrospectionResponseFormat: ContentType = ContentType.Application.IntrospectionJwt,
     /** Used to create and verify `issuer_state` values of credential offers. */
     private val issuerStateService: CodeService = DefaultCodeService(),
     /** Used to create and verify pre-authorized codes, see [providePreAuthorizedCode]. */
@@ -187,6 +192,13 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             JwsAlgorithm.Signature.ES384,
             JwsAlgorithm.Signature.ES512,
         )
+    }
+
+    init {
+        require(
+            defaultTokenIntrospectionResponseFormat == ContentType.Application.Json ||
+                defaultTokenIntrospectionResponseFormat == ContentType.Application.IntrospectionJwt
+        ) { "Unsupported default token introspection response format: $defaultTokenIntrospectionResponseFormat" }
     }
 
     private val _metadata: OAuth2AuthorizationServerMetadata by lazy {
@@ -829,7 +841,10 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             clientId = null,
             validatedClientKey = validatedClientKey
         ).getOrThrow()?.clientId
-        val responseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader)
+        val responseFormat = when (val acceptedResponseFormat = parseAcceptHeaderForTokenIntrospection(acceptHeader)) {
+            ContentType.Any, ContentType.Application.Any -> defaultTokenIntrospectionResponseFormat
+            else -> acceptedResponseFormat
+        }
         val response = catchingUnwrapped {
             tokenService.verification.getTokenInfo(request.token)
         }.fold(
@@ -904,8 +919,12 @@ data class PushedAuthorizationRequest(
 
 private fun parseAcceptHeaderForTokenIntrospection(acceptHeader: String) = acceptHeader
     .let(::parseHeaderValue)
+    .filter { it.quality > 0.0 }
     .sortedByDescending { it.quality }
     .map { ContentType.parse(it.value) }
     .firstOrNull {
-        it == ContentType.Application.Json || it == ContentType.Application.IntrospectionJwt
+        it == ContentType.Any ||
+            it == ContentType.Application.Any ||
+            it == ContentType.Application.Json ||
+            it == ContentType.Application.IntrospectionJwt
     } ?: throw IllegalArgumentException("Accept header is mandatory to specify answer format")

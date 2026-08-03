@@ -131,7 +131,27 @@ val OAuth2ClientTest by matrixSuite {
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .active shouldBe false
         }
-        listOf("", ContentType.Text.Plain.toString()).forEach { acceptHeader ->
+        listOf(ContentType.Any, ContentType.Application.Any).forEach { mediaRange ->
+            test("token introspection uses configured default for media range '$mediaRange'") {
+                val server = SimpleAuthorizationService(
+                    strategy = DummyAuthorizationServiceStrategy(it.scope),
+                    defaultTokenIntrospectionResponseFormat = ContentType.Application.Json,
+                )
+
+                server.tokenIntrospection(
+                    mediaRange.toString(),
+                    TokenIntrospectionRequestContent(token = "unknown-token"),
+                    null,
+                ).getOrThrow()
+                    .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+            }
+        }
+        listOf(
+            "",
+            ContentType.Text.Plain.toString(),
+            "${ContentType.Application.Json};q=0",
+            "${ContentType.Application.IntrospectionJwt};q=0",
+        ).forEach { acceptHeader ->
             test("token introspection rejects unsupported Accept header '$acceptHeader'") {
                 shouldThrow<IllegalArgumentException> {
                     it.server.tokenIntrospection(
