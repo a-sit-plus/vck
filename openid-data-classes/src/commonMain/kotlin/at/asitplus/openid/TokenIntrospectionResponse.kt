@@ -12,15 +12,13 @@ sealed interface TokenIntrospectionResponse {
             defaultResponseFormat: ContentType,
         ): ContentType {
             val entries = parseHeaderValue(acceptHeader ?: ContentType.Any.toString()).map {
-                val parsedContentType = ContentType.parse(it.value)
+                val mediaRange = it.params
+                    .filterNot { parameter -> parameter.name.equals("q", ignoreCase = true) }
+                    .fold(ContentType.parse(it.value)) { contentType, parameter ->
+                        contentType.withParameter(parameter.name, parameter.value)
+                    }
                 AcceptHeaderEntry(
-                    mediaRange = ContentType(
-                        contentType = parsedContentType.contentType,
-                        contentSubtype = parsedContentType.contentSubtype,
-                        parameters = it.params.takeWhile { parameter ->
-                            !parameter.name.equals("q", ignoreCase = true)
-                        },
-                    ),
+                    mediaRange = mediaRange,
                     quality = it.quality,
                 )
             }
