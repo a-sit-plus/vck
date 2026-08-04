@@ -12,14 +12,7 @@ sealed interface TokenIntrospectionResponse {
             defaultResponseFormat: ContentType,
         ): ContentType {
             val entries = parseAndSortContentTypeHeader(acceptHeader ?: ContentType.Any.toString()).map {
-                val parsedMediaRange = ContentType.parse(it.value)
-                ContentType(
-                    contentType = parsedMediaRange.contentType,
-                    contentSubtype = parsedMediaRange.contentSubtype,
-                    parameters = it.params.filterNot { parameter ->
-                        parameter.name.equals("q", ignoreCase = true)
-                    },
-                ) to it.quality
+                ContentType.parse(it.value) to it.quality
             }
 
             val candidatesWithEffectiveQuality = listOf(

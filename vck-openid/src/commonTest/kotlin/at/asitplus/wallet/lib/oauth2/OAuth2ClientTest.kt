@@ -175,6 +175,8 @@ val OAuth2ClientTest by matrixSuite {
             ContentType.Text.Plain.toString(),
             "${ContentType.Application.Json};q=0",
             "${ContentType.Application.IntrospectionJwt};q=0",
+            "${ContentType.Application.Any};q=0, ${ContentType.Any};q=1",
+            "${ContentType.Application.IntrospectionJwt};q=0, ${ContentType.Application.Json};q=0, ${ContentType.Any};q=1",
         ).forEach { acceptHeader ->
             test("token introspection rejects unusable Accept header '$acceptHeader'") {
                 shouldThrow<IllegalArgumentException> {

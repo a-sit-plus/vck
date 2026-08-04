@@ -563,8 +563,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
         listOf(
             ContentType.Application.IntrospectionJwt.toString() to "explicit JWT",
-            "application/*;q=1, application/json;q=0" to "wildcard default",
-            "application/*;q=0.9, application/json;q=0.1" to "wildcard wins"
+            "${ContentType.Application.Any};q=1, ${ContentType.Application.Json};q=0" to "wildcard default",
+            "${ContentType.Application.Any};q=0.9, ${ContentType.Application.Json};q=0.1" to "wildcard wins"
         ).forEach { (acceptHeader, description) ->
             test("token introspection returns inactive JWT for $description") {
                 val introspectionResponse = it.server.tokenIntrospection(
@@ -579,9 +579,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
         }
 
         listOf(
-            "application/json;profile=x, application/token-introspection+jwt;q=0.5" to
+            "${ContentType.Application.Json};profile=x, ${ContentType.Application.IntrospectionJwt};q=0.5" to
                 "implicit JSON quality",
-            "application/json;q=1;profile=x, application/token-introspection+jwt;q=0.5" to
+            "${ContentType.Application.Json};q=1;profile=x, ${ContentType.Application.IntrospectionJwt};q=0.5" to
                 "explicit JSON quality",
         ).forEach { (acceptHeader, description) ->
             test("token introspection returns inactive JSON for $description") {
@@ -602,7 +602,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             testConfig = TestConfig.disable(),
         ) {
             val introspectionResponse = it.server.tokenIntrospection(
-                "application/json;Q=0, application/token-introspection+jwt;q=0.5",
+                "${ContentType.Application.Json};Q=0, ${ContentType.Application.IntrospectionJwt};q=0.5",
                 TokenIntrospectionRequest(token = "unknown-token"),
                 it.introspectionRequestInfo(),
             ).getOrThrow()
