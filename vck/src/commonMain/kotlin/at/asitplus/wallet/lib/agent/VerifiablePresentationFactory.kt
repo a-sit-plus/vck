@@ -48,7 +48,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import io.github.aakira.napier.Napier
 import io.github.z4kn4fein.semver.Version
 import kotlinx.serialization.json.JsonArray
@@ -63,7 +63,7 @@ class VerifiablePresentationFactory(
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> =
         SignJwt(keyMaterial, JwsHeaderNone()),
-    private val mdocZkBackendRegistry: IsoMdocZkBackendRegistry = IsoMdocZkBackendRegistry.Default
+    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine.Default
 ) {
     @Deprecated("Use createVerifiablePresentation(request, isoPresentationParameters) instead")
     suspend fun createVerifiablePresentation(
@@ -190,7 +190,7 @@ class VerifiablePresentationFactory(
     ): CreatePresentationResult.DeviceResponse {
         val zkDocMap = isoPresentationParameters
             .filter { it.zkMetadata is ZkMetadata.IsoMdocZk }
-            .associateWith { mdocZkBackendRegistry.generate(request, it) }
+            .associateWith { mdocZkEngine.generate(request, it) }
 
         val plainDocMap = isoPresentationParameters
             .filter { param ->

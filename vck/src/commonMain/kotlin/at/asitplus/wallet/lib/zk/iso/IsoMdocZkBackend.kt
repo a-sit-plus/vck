@@ -32,5 +32,5 @@ interface IsoMdocZkBackend {
      * [initialize] tries to register a backend and returns Unit if successful and a throwable otherwise.
      * Repeated calls for an already successfully initialized backend MUST succeed.
      */
-    fun initialize(): KmmResult<Unit>
+    suspend fun initialize(): KmmResult<Unit>
 }

@@ -16,7 +16,7 @@ abstract class IsoMdocZkProof protected constructor() {
     abstract val msoX5Chain: List<ByteArray>?
     abstract val timestamp: LocalDate
 
-    abstract fun verify(): Boolean
+    abstract suspend fun verify(): Boolean
 
     fun toZkDocument(): ZkDocument = ZkDocument(
         zkDocumentDataBytes = ByteStringWrapper(

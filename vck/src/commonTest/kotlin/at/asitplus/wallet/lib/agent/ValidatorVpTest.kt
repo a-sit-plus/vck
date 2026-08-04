@@ -37,6 +37,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -102,7 +103,7 @@ val ValidatorVpTest by matrixSuite {
                 val holder = holder
                 val verifiablePresentationFactory = VerifiablePresentationFactory(
                     keyMaterial = holderKeyMaterial,
-                    mdocZkBackendRegistry = IsoMdocZkBackendRegistry()
+                    mdocZkEngine = IsoMdocZkEngine(IsoMdocZkBackendRegistry())
                 )
                 val holderSignVp = SignJwt<VerifiablePresentationJws>(holderKeyMaterial, JwsHeaderCertOrJwk())
                 val verifierId = "urn:${uuid4()}"

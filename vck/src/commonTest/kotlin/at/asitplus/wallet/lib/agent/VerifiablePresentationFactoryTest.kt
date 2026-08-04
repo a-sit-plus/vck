@@ -28,6 +28,7 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
@@ -68,7 +69,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             object {
                 val verifiablePresentationFactory = VerifiablePresentationFactory(
                     keyMaterial = holderKeyMaterial,
-                    mdocZkBackendRegistry = IsoMdocZkBackendRegistry()
+                    mdocZkEngine = IsoMdocZkEngine(IsoMdocZkBackendRegistry())
                 )
                 val sdJwtCredential = sdJwtCredential
                 val isoCredential = isoCredential
