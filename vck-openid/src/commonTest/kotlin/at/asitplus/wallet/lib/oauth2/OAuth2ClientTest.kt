@@ -140,6 +140,23 @@ val OAuth2ClientTest by matrixSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
+        test("token introspection applies a wildcard rejection to every matching response format") {
+            shouldThrow<IllegalArgumentException> {
+                it.server.tokenIntrospection(
+                    "${ContentType.Any};q=1, ${ContentType.Application.Any};q=0",
+                    TokenIntrospectionRequest(token = "unknown-token"),
+                    null,
+                ).getOrThrow()
+            }
+        }
+        test("token introspection compares the effective quality of each response format") {
+            it.server.tokenIntrospection(
+                "${ContentType.Application.Any};q=1, ${TokenIntrospectionResponseJwt.contentType};q=0.5",
+                TokenIntrospectionRequest(token = "unknown-token"),
+                null,
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+        }
         listOf(
             "",
             ContentType.Text.Plain.toString(),

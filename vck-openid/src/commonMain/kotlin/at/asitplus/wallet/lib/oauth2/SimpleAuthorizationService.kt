@@ -156,8 +156,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponseJwtPayload> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /**
-     * Response format used when the highest-quality supported `Accept`
-     * entry is [ContentType.Any] or [ContentType.Application.Any].
+     * Response format used to break ties between equally preferred supported representations,
+     * including ties produced by [ContentType.Any] or [ContentType.Application.Any].
      */
     private val defaultTokenIntrospectionResponseFormat: ContentType = TokenIntrospectionResponseJwt.contentType,
     /** Used to create and verify `issuer_state` values of credential offers. */
@@ -914,49 +914,46 @@ data class PushedAuthorizationRequest(
     val clientBinding: ClientBinding
 )
 
-/**
- * Selects Accept header with the highest quality
- * also covers fun edge cases such as 'application/token-introspection+jwt;q=0, * / *;q=1'
- */
+/** Selects the supported response format with the highest effective quality. */
 private fun parseAcceptHeaderForTokenIntrospection(
     acceptHeader: String,
     defaultResponseFormat: ContentType,
 ): ContentType {
-    val entries = parseHeaderValue(acceptHeader)
+    val entries = parseHeaderValue(acceptHeader).map {
+        ContentType.parse(it.value) to it.quality
+    }
 
-    val forbiddenTypes = entries
-        .asSequence()
-        .filter { it.quality == 0.0 }
-        .map { ContentType.parse(it.value) }
-        .toSet()
-
-    val candidates = listOf(
+    val candidatesWithEffectiveQuality = listOf(
         TokenIntrospectionResponseJwt.contentType,
         TokenIntrospectionResponseJson.contentType,
-    ).filterNot { it in forbiddenTypes }
+    ).mapNotNull { candidate ->
+        entries.mapNotNull { (mediaRange, quality) ->
+            mediaRange.matchingSpecificity(candidate)?.let { it to quality }
+        }.maxByOrNull { it.first }
+            ?.second
+            ?.let { candidate to it }
+    }
 
-    return entries
-        .asSequence()
-        .filter { it.quality > 0.0 }
-        .sortedByDescending { it.quality }
-        .map { ContentType.parse(it.value) }
-        .firstNotNullOfOrNull { acceptedType ->
-            when (acceptedType) {
-                ContentType.Any,
-                ContentType.Application.Any,
-                    -> defaultResponseFormat.takeIf { it in candidates }
-                    ?: candidates.firstOrNull()
-                    ?: throw IllegalArgumentException(
-                        "The Accept header forbids every supported response format."
-                    )
+    val highestQuality = candidatesWithEffectiveQuality
+        .maxOfOrNull { it.second }
+        ?.takeIf { it > 0.0 }
+        ?: throw IllegalArgumentException(
+            "The Accept header does not contain a supported response format."
+        )
 
-                TokenIntrospectionResponseJwt.contentType,
-                TokenIntrospectionResponseJson.contentType,
-                    -> acceptedType.takeIf { it in candidates }
+    val preferredCandidates = candidatesWithEffectiveQuality
+        .filter { it.second == highestQuality }
+        .map { it.first }
 
-                else -> null
-            }
-        } ?: throw IllegalArgumentException(
-        "The Accept header does not contain a supported response format."
-    )
+    return defaultResponseFormat.takeIf { it in preferredCandidates }
+        ?: preferredCandidates.first()
+}
+
+private fun ContentType.matchingSpecificity(candidate: ContentType): Int? = when {
+    contentType.equals(candidate.contentType, ignoreCase = true) &&
+            contentSubtype.equals(candidate.contentSubtype, ignoreCase = true) -> 2
+
+    contentType.equals(candidate.contentType, ignoreCase = true) && contentSubtype == "*" -> 1
+    this == ContentType.Any -> 0
+    else -> null
 }
