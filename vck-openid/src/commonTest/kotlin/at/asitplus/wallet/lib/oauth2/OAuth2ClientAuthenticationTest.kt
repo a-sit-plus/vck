@@ -29,6 +29,8 @@ import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyUserProvider.user
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.disable
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -577,6 +579,21 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
                 introspectionResponse.value.payload.tokenIntrospection.active shouldBe false
             }
+        }
+
+        // TODO Enable when Ktor handles quality parameter names case-insensitively.
+        test(
+            "token introspection quality parameter names are case-insensitive",
+            testConfig = TestConfig.disable(),
+        ) {
+            val introspectionResponse = it.server.tokenIntrospection(
+                "application/json;Q=0, application/token-introspection+jwt;q=0.5",
+                TokenIntrospectionRequest(token = "unknown-token"),
+                it.introspectionRequestInfo(),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+
+            introspectionResponse.value.payload.tokenIntrospection.active shouldBe false
         }
 
         test("pushed authorization request with self-signed client attestation JWT") {

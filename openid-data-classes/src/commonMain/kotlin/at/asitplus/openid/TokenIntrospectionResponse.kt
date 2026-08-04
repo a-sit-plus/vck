@@ -1,7 +1,7 @@
 package at.asitplus.openid
 
 import io.ktor.http.ContentType
-import io.ktor.http.parseHeaderValue
+import io.ktor.http.parseAndSortContentTypeHeader
 
 sealed interface TokenIntrospectionResponse {
 
@@ -11,28 +11,31 @@ sealed interface TokenIntrospectionResponse {
             acceptHeader: String?,
             defaultResponseFormat: ContentType,
         ): ContentType {
-            val entries = parseHeaderValue(acceptHeader ?: ContentType.Any.toString()).map {
-                val mediaRange = it.params
-                    .filterNot { parameter -> parameter.name.equals("q", ignoreCase = true) }
-                    .fold(ContentType.parse(it.value)) { contentType, parameter ->
-                        contentType.withParameter(parameter.name, parameter.value)
-                    }
-                AcceptHeaderEntry(
-                    mediaRange = mediaRange,
-                    quality = it.quality,
-                )
+            val entries = parseAndSortContentTypeHeader(acceptHeader ?: ContentType.Any.toString()).map {
+                val parsedMediaRange = ContentType.parse(it.value)
+                ContentType(
+                    contentType = parsedMediaRange.contentType,
+                    contentSubtype = parsedMediaRange.contentSubtype,
+                    parameters = it.params.filterNot { parameter ->
+                        parameter.name.equals("q", ignoreCase = true)
+                    },
+                ) to it.quality
             }
 
             val candidatesWithEffectiveQuality = listOf(
                 TokenIntrospectionResponseJwt.contentType,
                 TokenIntrospectionResponseJson.contentType,
             ).mapNotNull { candidate ->
-                entries.filter { candidate.match(it.mediaRange) }
-                    .maxWithOrNull(
-                        compareBy<AcceptHeaderEntry> { it.mediaRange.typeSpecificity }
-                            .thenBy { it.mediaRange.parameters.size }
-                    )
-                    ?.quality
+                entries.filter { candidate.match(it.first) }
+                    .reduceOrNull { current, next ->
+                        val currentMediaRange = current.first
+                        val nextMediaRange = next.first
+                        if (
+                            nextMediaRange.match(currentMediaRange) &&
+                            !currentMediaRange.match(nextMediaRange)
+                        ) next else current
+                    }
+                    ?.second
                     ?.let { candidate to it }
             }
 
@@ -50,18 +53,6 @@ sealed interface TokenIntrospectionResponse {
             return defaultResponseFormat.takeIf { it in preferredCandidates }
                 ?: preferredCandidates.first()
         }
-
-        private data class AcceptHeaderEntry(
-            val mediaRange: ContentType,
-            val quality: Double,
-        )
-
-        private val ContentType.typeSpecificity: Int
-            get() = when {
-                contentType == "*" -> 0
-                contentSubtype == "*" -> 1
-                else -> 2
-            }
 
     }
 }
