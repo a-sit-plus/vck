@@ -830,7 +830,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     override suspend fun tokenIntrospection(
-        acceptHeader: String,
+        acceptHeader: String?,
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenIntrospectionResponse> = catching {
@@ -841,7 +841,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             validatedClientKey = validatedClientKey
         ).getOrThrow()?.clientId
         val responseFormat =
-            parseAcceptHeaderForTokenIntrospection(acceptHeader, defaultTokenIntrospectionResponseFormat)
+            TokenIntrospectionResponse.parseAcceptHeader(acceptHeader, defaultTokenIntrospectionResponseFormat)
         val response = catchingUnwrapped {
             tokenService.verification.getTokenInfo(request.token)
         }.fold(
@@ -913,47 +913,3 @@ data class PushedAuthorizationRequest(
     val request: AuthenticationRequestParameters,
     val clientBinding: ClientBinding
 )
-
-/** Selects the supported response format with the highest effective quality. */
-private fun parseAcceptHeaderForTokenIntrospection(
-    acceptHeader: String,
-    defaultResponseFormat: ContentType,
-): ContentType {
-    val entries = parseHeaderValue(acceptHeader).map {
-        ContentType.parse(it.value) to it.quality
-    }
-
-    val candidatesWithEffectiveQuality = listOf(
-        TokenIntrospectionResponseJwt.contentType,
-        TokenIntrospectionResponseJson.contentType,
-    ).mapNotNull { candidate ->
-        entries.mapNotNull { (mediaRange, quality) ->
-            mediaRange.matchingSpecificity(candidate)?.let { it to quality }
-        }.maxByOrNull { it.first }
-            ?.second
-            ?.let { candidate to it }
-    }
-
-    val highestQuality = candidatesWithEffectiveQuality
-        .maxOfOrNull { it.second }
-        ?.takeIf { it > 0.0 }
-        ?: throw IllegalArgumentException(
-            "The Accept header does not contain a supported response format."
-        )
-
-    val preferredCandidates = candidatesWithEffectiveQuality
-        .filter { it.second == highestQuality }
-        .map { it.first }
-
-    return defaultResponseFormat.takeIf { it in preferredCandidates }
-        ?: preferredCandidates.first()
-}
-
-private fun ContentType.matchingSpecificity(candidate: ContentType): Int? = when {
-    contentType.equals(candidate.contentType, ignoreCase = true) &&
-            contentSubtype.equals(candidate.contentSubtype, ignoreCase = true) -> 2
-
-    contentType.equals(candidate.contentType, ignoreCase = true) && contentSubtype == "*" -> 1
-    this == ContentType.Any -> 0
-    else -> null
-}

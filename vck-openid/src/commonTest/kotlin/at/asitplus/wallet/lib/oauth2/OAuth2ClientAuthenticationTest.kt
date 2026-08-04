@@ -562,6 +562,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
         listOf(
             ContentType.Application.IntrospectionJwt.toString() to "explicit JWT",
             "application/*;q=1, application/json;q=0" to "wildcard default",
+            "application/json;profile=x, application/token-introspection+jwt;q=0.5" to
+                "unavailable parameterized JSON",
         ).forEach { (acceptHeader, description) ->
             test("token introspection returns inactive JWT for $description") {
                 val introspectionResponse = it.server.tokenIntrospection(

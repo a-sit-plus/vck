@@ -87,12 +87,12 @@ interface AuthorizationService {
      * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection
      * [RFC 9701](https://datatracker.ietf.org/doc/rfc9701/): JWT Response for OAuth 2.0 Token Introspection
      *
-     * @param acceptHeader as sent from the client as HTTP ACCEPT Header
+     * @param acceptHeader as sent from the client as HTTP `Accept` header, or `null` if the header was omitted
      * @param request as sent from the client as form POST
      * @param httpRequest information about the HTTP request from the client, to validate authentication
      */
     suspend fun tokenIntrospection(
-        acceptHeader: String,
+        acceptHeader: String?,
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo? = null,
     ): KmmResult<TokenIntrospectionResponse>

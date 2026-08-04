@@ -132,6 +132,19 @@ val OAuth2ClientTest by matrixSuite {
                     .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
             }
         }
+        test("token introspection uses configured default when Accept header is missing") {
+            val server = SimpleAuthorizationService(
+                strategy = DummyAuthorizationServiceStrategy(it.scope),
+                defaultTokenIntrospectionResponseFormat = ContentType.Application.Json,
+            )
+
+            server.tokenIntrospection(
+                null,
+                TokenIntrospectionRequest(token = "unknown-token"),
+                null,
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+        }
         test("token introspection honors a specific rejection over a wildcard") {
             it.server.tokenIntrospection(
                 "${TokenIntrospectionResponseJwt.contentType};q=0, ${ContentType.Any};q=1",
