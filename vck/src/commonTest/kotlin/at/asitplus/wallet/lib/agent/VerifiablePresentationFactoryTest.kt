@@ -5,6 +5,8 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.JsonResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
+import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemSpec
+import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemType
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
@@ -26,6 +28,7 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -63,7 +66,10 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             val sdJwtCredential = issueAndStoreSdJwt(holder, holderKeyMaterial, issuer)
             val isoCredential = issueAndStoreIsoMdoc(holder, holderKeyMaterial, issuer)
             object {
-                val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
+                val verifiablePresentationFactory = VerifiablePresentationFactory(
+                    keyMaterial = holderKeyMaterial,
+                    mdocZkBackendRegistry = IsoMdocZkBackendRegistry()
+                )
                 val sdJwtCredential = sdJwtCredential
                 val isoCredential = isoCredential
             }
@@ -267,8 +273,44 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 disclosedIsoClaimNames(namespace) shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_PORTRAIT)
             }
         }
-    }
 
+        "iso createVerifiablePresentation uses disclosedAttributes (dcql query results) and ZKP request with plain fallback" {
+            val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
+
+            it.verifiablePresentationFactory.createVerifiablePresentation(
+                request = presentationRequest(),
+                credential = it.isoCredential,
+                disclosedAttributes = ClaimsQueryResults(
+                    listOf(
+                        IsoMdocResult(namespace, CLAIM_GIVEN_NAME, "Susanne"),
+                        IsoMdocResult(namespace, CLAIM_PORTRAIT, byteArrayOf(1)),
+                    )
+                ),
+                zkMetadata = invalidIsoZkMetaData(zkRequired = false)
+            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>().apply {
+                disclosedIsoClaimNames(namespace) shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_PORTRAIT)
+            }
+        }
+
+        "iso createVerifiablePresentation uses disclosedAttributes (dcql query results) an ZKP request without fallback" {
+            val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
+
+            shouldThrow<PresentationException> {
+                it.verifiablePresentationFactory.createVerifiablePresentation(
+                    request = presentationRequest(),
+                    credential = it.isoCredential,
+                    disclosedAttributes = ClaimsQueryResults(
+                        listOf(
+                            IsoMdocResult(namespace, CLAIM_GIVEN_NAME, "Susanne"),
+                            IsoMdocResult(namespace, CLAIM_PORTRAIT, byteArrayOf(1)),
+                        )
+                    ),
+                    zkMetadata = invalidIsoZkMetaData(zkRequired = true)
+                ).getOrThrow()
+            }
+        }
+
+    }
 }
 
 private fun presentationRequest() = PresentationRequestParameters(
@@ -298,3 +340,25 @@ private fun CreatePresentationResult.DeviceResponse.disclosedIsoClaimNames(names
         ?: emptySet()
 
 private val setOfDefaultSdJwtClaims = setOf("iss", "nbf", "exp", "cnf", "vct", "status", "sub", "iat")
+
+private fun invalidIsoZkMetaData(zkRequired: Boolean) =  ZkMetadata.IsoMdocZk(
+    zkInfo = DCQLIsoMdocZkSystemType(
+        zkRequired = zkRequired,
+        systemSpecs = listOf(
+            DCQLIsoMdocZkSystemSpec(
+                zkSystemId = "test-id-1",
+                system = "non-existant-system",
+                circuitHash = "asdf",
+                numAttributes = 2,
+                version = 12,
+            ),
+            DCQLIsoMdocZkSystemSpec(
+                zkSystemId = "test-id-2",
+                system = "non-existant-system",
+                circuitHash = "qwerty",
+                numAttributes = 3,
+                version = 12,
+            )
+        ),
+    )
+)

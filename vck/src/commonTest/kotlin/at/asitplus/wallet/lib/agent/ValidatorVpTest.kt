@@ -25,7 +25,6 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.VerifiablePresentation
@@ -38,6 +37,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -100,7 +100,10 @@ val ValidatorVpTest by matrixSuite {
                 val validator = validator
 
                 val holder = holder
-                val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
+                val verifiablePresentationFactory = VerifiablePresentationFactory(
+                    keyMaterial = holderKeyMaterial,
+                    mdocZkBackendRegistry = IsoMdocZkBackendRegistry()
+                )
                 val holderSignVp = SignJwt<VerifiablePresentationJws>(holderKeyMaterial, JwsHeaderCertOrJwk())
                 val verifierId = "urn:${uuid4()}"
                 val verifier = NonceChallengeVerifier(

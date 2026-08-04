@@ -10,14 +10,13 @@ import at.asitplus.wallet.lib.agent.IsoPresentationParameters
 import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.ZkMetadata
-import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry.SelectionStrategy
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.update
 
 @OptIn(ExperimentalAtomicApi::class)
 class IsoMdocZkBackendRegistry(
-    private val selectionStrategy: SelectionStrategy
+    private val selectionStrategy: SelectionStrategy = SelectionStrategy.Default
 ) {
     /**
      * Strategy to decide how backends are selected when multiple candidates match a request.

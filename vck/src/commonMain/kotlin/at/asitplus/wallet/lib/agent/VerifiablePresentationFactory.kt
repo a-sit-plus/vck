@@ -48,6 +48,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
 import io.github.aakira.napier.Napier
 import io.github.z4kn4fein.semver.Version
 import kotlinx.serialization.json.JsonArray
@@ -62,6 +63,7 @@ class VerifiablePresentationFactory(
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> =
         SignJwt(keyMaterial, JwsHeaderNone()),
+    private val mdocZkBackendRegistry: IsoMdocZkBackendRegistry = IsoMdocZkBackendRegistry.Default
 ) {
     @Deprecated("Use createVerifiablePresentation(request, isoPresentationParameters) instead")
     suspend fun createVerifiablePresentation(
@@ -185,21 +187,57 @@ class VerifiablePresentationFactory(
     private suspend fun createIsoPresentation(
         request: PresentationRequestParameters,
         isoPresentationParameters: Collection<IsoPresentationParameters>,
-    ) = CreatePresentationResult.DeviceResponse(
-        deviceResponse = DeviceResponse(
-            parsedVersion = Version(1, 0),
-            documents = isoPresentationParameters.map { (credential, requestedClaims) ->
+    ): CreatePresentationResult.DeviceResponse {
+        val zkDocMap = isoPresentationParameters
+            .filter { it.zkMetadata is ZkMetadata.IsoMdocZk }
+            .associateWith { mdocZkBackendRegistry.generate(request, it) }
+
+        val plainDocMap = isoPresentationParameters
+            .filter { param ->
+                val zkResult = zkDocMap[param]
+                val zkMeta = param.zkMetadata
+
+                val isPlain = zkMeta == null
+                val isOptionalZkFailure = zkMeta is ZkMetadata.IsoMdocZk &&
+                        zkResult?.isFailure == true &&
+                        !zkMeta.zkInfo.zkRequired
+
+                isPlain || isOptionalZkFailure
+            }
+            .associateWith { (credential, requestedClaims, _) ->
                 credential.discloseRequestedClaims(requestedClaims, request)
-            }.toTypedArray(),
-            status = 0U,
-        ),
-    )
+            }
+
+        // TODO: Error checking for keys in plainDocMap and zkDocMaps and create DeviceResponse.documentErrors
+        //  For now failures are simply thrown
+        val errors = isoPresentationParameters.associateWith { param ->
+            val plainResult = plainDocMap[param]
+            if (plainResult?.isSuccess == true) {
+                null
+            } else {
+                plainResult?.exceptionOrNull() ?: zkDocMap[param]?.exceptionOrNull()
+            }
+        }.filterValues { it != null }
+        if (errors.isNotEmpty()) {
+            throw errors.values.first()!!
+        }
+
+        return CreatePresentationResult.DeviceResponse(
+            deviceResponse = DeviceResponse(
+                parsedVersion = Version(1, 0),
+                documents = plainDocMap.values.mapNotNull { it.getOrNull() }.toTypedArray(),
+                zkDocuments = zkDocMap.values.mapNotNull { it.getOrNull()?.toZkDocument() }.toTypedArray(),
+                status = 0U,
+            ),
+        )
+    }
+
 
     // allows disclosure of attributes from different namespaces
     private suspend fun StoreEntry.Iso.discloseRequestedClaims(
         requestedClaims: Collection<NormalizedJsonPath>,
         request: PresentationRequestParameters,
-    ): Document {
+    ): KmmResult<Document> = catching {
         // grouping by namespace and all requested claims for that namespace
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
             .mapNotNull { it.toIsoNamespaceAttribute() }
@@ -216,7 +254,7 @@ class VerifiablePresentationFactory(
         val deviceSignature = request.calcIsoDeviceSignaturePlain(input)
             ?: throw PresentationException("calcIsoDeviceSignature not implemented")
 
-        return Document(
+        Document(
             docType = schemeIdentifier,
             issuerSigned = IssuerSigned.fromIssuerSignedItems(
                 namespacedItems = disclosedItems,

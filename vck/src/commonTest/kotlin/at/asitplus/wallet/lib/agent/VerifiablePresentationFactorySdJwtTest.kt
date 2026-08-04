@@ -8,6 +8,7 @@ import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -63,7 +64,10 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
             ).getOrThrow()
 
             object {
-                val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
+                val verifiablePresentationFactory = VerifiablePresentationFactory(
+                    keyMaterial = holderKeyMaterial,
+                    mdocZkBackendRegistry = IsoMdocZkBackendRegistry()
+                )
                 val sdJwtCredential = sdJwtCredential
             }
         }
