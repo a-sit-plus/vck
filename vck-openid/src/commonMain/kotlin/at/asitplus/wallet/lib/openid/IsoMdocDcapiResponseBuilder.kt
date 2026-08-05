@@ -65,15 +65,17 @@ object IsoMdocDcapiResponseBuilder {
         val callingOrigin = isoMdocWalletRequest.callingOrigin.serializeOrigin()
             ?: throw IllegalArgumentException("Invalid calling origin")
 
+        val calcSessionTranscript = { sessionTranscript }
         val presentationResult = holder.createPresentation(
             request = PresentationRequestParameters(
                 nonce = isoMdocRequest.encryptionInfo.encryptionParameters.nonce
                     ?.encodeToString(Base64UrlStrict) ?: throw IllegalArgumentException("no nonce"),
                 audience = callingOrigin,
+                calcIsoSessionTranscript = calcSessionTranscript,
                 calcIsoDeviceSignaturePlain = { input ->
                     val deviceAuthentication = DeviceAuthentication(
                         type = DeviceAuthentication.TYPE,
-                        sessionTranscript = sessionTranscript,
+                        sessionTranscript = calcSessionTranscript(),
                         docType = input.docType,
                         namespaces = input.deviceNameSpaceBytes
                     )

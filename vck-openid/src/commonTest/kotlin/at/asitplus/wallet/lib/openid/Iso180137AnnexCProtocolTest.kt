@@ -39,7 +39,6 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -47,7 +46,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
-import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.uuid4
 import io.github.z4kn4fein.semver.Version
@@ -308,10 +306,12 @@ private suspend fun createWalletResponse(
         )
     )
     val signer = SignCoseDetached<ByteArray>(keyMaterial = holderKeyMaterial)
+    val calcIsoSessionTranscript = { sessionTranscript }
     val deviceResponse = holder.createDefaultPresentation(
         request = PresentationRequestParameters(
             nonce = uuid4().toString(), // not relevant for mdoc device authentication
             audience = origin,
+            calcIsoSessionTranscript = calcIsoSessionTranscript,
             calcIsoDeviceSignaturePlain = { input ->
                 signer(
                     protectedHeader = null,
@@ -320,7 +320,7 @@ private suspend fun createWalletResponse(
                         ByteStringWrapper(
                             DeviceAuthentication(
                                 type = DeviceAuthentication.TYPE,
-                                sessionTranscript = sessionTranscript,
+                                sessionTranscript = calcIsoSessionTranscript(),
                                 docType = input.docType,
                                 namespaces = input.deviceNameSpaceBytes,
                             )

@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -37,11 +38,14 @@ class NonceChallengeVerifier @JvmOverloads constructor(
         transactionData: List<TransactionDataBase64Url>? = null,
         calcIsoDeviceSignaturePlain: suspend (IsoDeviceSignatureInput) -> CoseSigned<ByteArray>? = { null },
         returnOneDeviceResponse: Boolean = false,
+        calcIsoSessionTranscript: suspend () -> SessionTranscript = { throw IllegalStateException(
+            "Session transcript calculation callback was not provided. This is required for ISO mDoc presentations.") },
     ) = PresentationRequestParameters(
         nonce = provideNonce(),
         audience = verifierId,
         transactionData = transactionData,
         calcIsoDeviceSignaturePlain = calcIsoDeviceSignaturePlain,
+        calcIsoSessionTranscript = calcIsoSessionTranscript,
         returnOneDeviceResponse = returnOneDeviceResponse,
     )
 

@@ -46,13 +46,16 @@ data class PresentationRequestParameters(
     val returnOneDeviceResponse: Boolean = false,
 
     /**
-     * Optional callback to calculate the ISO mDoc Session Transcript.
+     * Callback to calculate the ISO mDoc Session Transcript.
      *
      * This is a callback because calculating the Session Transcript might fail for non-mDoc presentations.
      * By using a callback, we ensure that it's only calculated when an ISO mDoc is actually
-     * part of the presentation, avoiding unnecessary failures for SD-JWT or W3C VC presentations.
+     * part of the presentation, avoiding unnecessary failures, e.g., for SD-JWT presentations.
      */
-    val calcSessionTranscript: (suspend () -> SessionTranscript)? = null,
+    val calcIsoSessionTranscript: (suspend () -> SessionTranscript) = {
+        throw IllegalStateException("Session transcript calculation callback was not provided. " +
+                "This is required for ISO mDoc presentations.")
+    },
 ) {
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms

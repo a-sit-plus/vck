@@ -82,7 +82,7 @@ internal class PresentationFactory(
             nonce = nonce,
             audience = state.audience,
             transactionData = state.request.parameters.transactionData,
-            calcSessionTranscript = sessionTranscriptCallback,
+            calcIsoSessionTranscript = sessionTranscriptCallback,
             calcIsoDeviceSignaturePlain = {
                 calcDeviceSignature(
                     sessionTranscriptCallback = sessionTranscriptCallback,
