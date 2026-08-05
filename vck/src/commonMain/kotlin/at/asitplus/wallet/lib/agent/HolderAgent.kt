@@ -46,7 +46,7 @@ class HolderAgent @JvmOverloads constructor(
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
-    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine.Default,
+    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(
             keyMaterial = keyMaterial,

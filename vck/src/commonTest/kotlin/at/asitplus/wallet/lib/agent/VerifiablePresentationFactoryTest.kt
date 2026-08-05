@@ -28,8 +28,8 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -63,14 +63,15 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val holder = HolderAgent(
                 keyMaterial = holderKeyMaterial,
+                // Ensure a clean ZK backend registry is being used for these tests.
+                // By default, IsoMdocZkEngine uses IsoMdocZkBackendRegistry.Default, which is a global singleton.
+                // In a test environment, this can lead to state leakage between tests if backends are registered.
+                mdocZkEngine = IsoMdocZkEngine(IsoMdocZkBackendRegistry())
             )
             val sdJwtCredential = issueAndStoreSdJwt(holder, holderKeyMaterial, issuer)
             val isoCredential = issueAndStoreIsoMdoc(holder, holderKeyMaterial, issuer)
             object {
-                val verifiablePresentationFactory = VerifiablePresentationFactory(
-                    keyMaterial = holderKeyMaterial,
-                    mdocZkEngine = IsoMdocZkEngine(IsoMdocZkBackendRegistry())
-                )
+                val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
                 val sdJwtCredential = sdJwtCredential
                 val isoCredential = isoCredential
             }

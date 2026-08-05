@@ -23,6 +23,7 @@ import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.iso.ZkDocument
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
@@ -63,7 +64,7 @@ class VerifiablePresentationFactory(
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> =
         SignJwt(keyMaterial, JwsHeaderNone()),
-    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine.Default
+    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine()
 ) {
     @Deprecated("Use createVerifiablePresentation(request, isoPresentationParameters) instead")
     suspend fun createVerifiablePresentation(
@@ -188,46 +189,34 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         isoPresentationParameters: Collection<IsoPresentationParameters>,
     ): CreatePresentationResult.DeviceResponse {
-        val zkDocMap = isoPresentationParameters
-            .filter { it.zkMetadata is ZkMetadata.IsoMdocZk }
-            .associateWith { mdocZkEngine.generate(request, it) }
+        suspend fun disclosePlainDocument(param: IsoPresentationParameters) = param.credential
+            .discloseRequestedClaims(param.claims, request)
+            .getOrThrow()
 
-        val plainDocMap = isoPresentationParameters
-            .filter { param ->
-                val zkResult = zkDocMap[param]
-                val zkMeta = param.zkMetadata
+        val plainDocuments = mutableListOf<Document>()
+        val zkDocuments = mutableListOf<ZkDocument>()
 
-                val isPlain = zkMeta == null
-                val isOptionalZkFailure = zkMeta is ZkMetadata.IsoMdocZk &&
-                        zkResult?.isFailure == true &&
-                        !zkMeta.zkInfo.zkRequired
-
-                isPlain || isOptionalZkFailure
-            }
-            .associateWith { (credential, requestedClaims, _) ->
-                credential.discloseRequestedClaims(requestedClaims, request)
-            }
-
-        // TODO: Error checking for keys in plainDocMap and zkDocMaps and create DeviceResponse.documentErrors
-        //  For now failures are simply thrown
-        val errors = isoPresentationParameters.associateWith { param ->
-            val plainResult = plainDocMap[param]
-            if (plainResult?.isSuccess == true) {
-                null
+        isoPresentationParameters.forEach { param ->
+            val zkMetadata = param.zkMetadata
+            if (zkMetadata is ZkMetadata.IsoMdocZk) {
+                mdocZkEngine.generate(request, param).fold(
+                    onSuccess = { zkDocuments += it.toZkDocument() },
+                    onFailure = { error ->
+                        if (zkMetadata.zkInfo.zkRequired) throw error
+                        plainDocuments += disclosePlainDocument(param)
+                    }
+                )
             } else {
-                plainResult?.exceptionOrNull() ?: zkDocMap[param]?.exceptionOrNull()
+                plainDocuments += disclosePlainDocument(param)
             }
-        }.filterValues { it != null }
-        if (errors.isNotEmpty()) {
-            throw errors.values.first()!!
         }
 
         return CreatePresentationResult.DeviceResponse(
             deviceResponse = DeviceResponse(
                 parsedVersion = Version(1, 0),
-                documents = plainDocMap.values.mapNotNull { it.getOrNull() }.toTypedArray(),
-                zkDocuments = zkDocMap.values.mapNotNull { it.getOrNull()?.toZkDocument() }.toTypedArray(),
-                status = 0U,
+                documents = plainDocuments.toTypedArray(),
+                zkDocuments = zkDocuments.toTypedArray(),
+                status = 0u
             ),
         )
     }

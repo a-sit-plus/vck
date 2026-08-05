@@ -34,6 +34,11 @@ class IsoMdocZkBackendRegistry {
      * Ensures the backend is successfully initialized and its system parameters are globally registered
      * with [ZkSystemParamRegistry] before committing it to the available pool.
      *
+     * Multiple backends for the same [IsoMdocZkBackend.systemName] can be registered. This is useful if
+     * different backends support different versions or configurations of the same ZK system.
+     * However, their [IsoMdocZkBackend.paramSerializers] must be compatible; otherwise, an
+     * [IllegalStateException] will be thrown during registration.
+     *
      * Once registered, the backend remains operational and cannot be unregistered.
      */
     suspend fun register(backend: IsoMdocZkBackend): KmmResult<Unit> = catching {
