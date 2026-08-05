@@ -2,17 +2,16 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.catchingUnwrapped
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.signum.indispensable.cosef.CoseKey
-import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
+import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidator
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
@@ -40,9 +39,24 @@ class HolderAgent @JvmOverloads constructor(
     override val keyMaterial: KeyMaterial,
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val validator: Validator = Validator(),
-    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(validator = validator),
-    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(validator = validator),
-    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(validator = validator),
+    /**
+     * Certificates of the issuers we trust, e.g. extracted from an ETSI trust list. When set, credentials whose
+     * issuer certificate is not signed by one of these are rejected on [storeCredential]. When null, issuer
+     * signatures are only verified against the key the credential asserts itself, i.e. no trust decision is made.
+     */
+    trustedIssuers: TrustedIssuerCertificates? = null,
+    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(
+        vcJwsInputValidator = VcJwsInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
+        validator = validator,
+    ),
+    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(
+        sdJwtInputValidator = SdJwtInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
+        validator = validator,
+    ),
+    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(
+        verifyCoseSignature = issuerCoseVerifier(trustedIssuers),
+        validator = validator,
+    ),
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
@@ -95,8 +109,7 @@ class HolderAgent @JvmOverloads constructor(
             }
 
             is Holder.StoreCredentialInput.Iso -> {
-                val validated =
-                    validatorMdoc.verifyIsoCred(credential.issuerSigned, credential.extractIssuerKey()).getOrThrow()
+                val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned).getOrThrow()
                 subjectCredentialStore.storeCredential(
                     issuerSigned = validated.issuerSigned,
                     scheme = credential.scheme,
@@ -108,11 +121,6 @@ class HolderAgent @JvmOverloads constructor(
         }
     }
 
-    private fun Holder.StoreCredentialInput.Iso.extractIssuerKey(): CoseKey? =
-        issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-            catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
-                ?.toCoseKey()?.getOrNull()
-        }
 
 
     /**

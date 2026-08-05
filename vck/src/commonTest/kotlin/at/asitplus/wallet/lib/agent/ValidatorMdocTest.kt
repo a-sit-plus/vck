@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceSigned
@@ -8,7 +7,6 @@ import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -62,14 +60,7 @@ val ValidatorMdocTest by matrixSuite {
                     }
                 }
 
-            val issuerKey: CoseKey? =
-                credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
-                        ?.toCoseKey()
-                        ?.getOrNull()
-                }
-
-            it.validator.verifyIsoCred(credential.issuerSigned, issuerKey).getOrThrow()
+            it.validator.verifyIsoCred(credential.issuerSigned).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
         }
 
@@ -112,14 +103,7 @@ val ValidatorMdocTest by matrixSuite {
             val credential = issueIsoMdoc(it.issuer, it.verifierKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
-            val issuerKey: CoseKey? =
-                credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-                    catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
-                        ?.toCoseKey()
-                        ?.getOrNull()
-                }
-
-            val value = it.validator.verifyIsoCred(credential.issuerSigned, issuerKey).getOrThrow()
+            val value = it.validator.verifyIsoCred(credential.issuerSigned).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
 
             it.issuerCredentialStore.setStatus(

@@ -18,6 +18,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -62,6 +63,12 @@ val AgentSdJwtTest by matrixSuite {
             )
             val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+            // HAIP requires the status list token to be signed by a certificate that is not self-signed
+            val statusListCa = TestCertificateAuthority()
+            val caSignedStatusListIssuer = StatusListAgent(
+                keyMaterial = statusListCa.issue("Test Status List Issuer"),
+                issuerCredentialStore = issuerCredentialStore,
+            )
 
             val validator = ValidatorSdJwt(
                 validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
@@ -87,6 +94,8 @@ val AgentSdJwtTest by matrixSuite {
                 val holderCredentialStore = holderCredentialStore
                 val holderKeyMaterial = holderKeyMaterial
                 val statusListIssuer = statusListIssuer
+                val statusListCa = statusListCa
+                val caSignedStatusListIssuer = caSignedStatusListIssuer
                 val verifierId = "urn:${uuid4()}"
                 val verifier = NonceChallengeVerifier(
                     verifierId = verifierId,
@@ -232,12 +241,14 @@ val AgentSdJwtTest by matrixSuite {
         "sd-jwt vc request verified with HAIP status list rules" {
             val haipTokenStatusResolver = TokenStatusResolverImpl(
                 resolveStatusListToken = { _ ->
-                    it.statusListIssuer.provideStatusListToken(
+                    it.caSignedStatusListIssuer.provideStatusListToken(
                         listOf(StatusListTokenMediaType.Jwt),
                         Clock.System.now(),
                     ).second
                 },
-                verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(),
+                verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(
+                    trustedIssuers = { setOf(it.statusListCa.certificate()) },
+                ),
             )
 
             val haipVerifier = NonceChallengeVerifier(
@@ -269,6 +280,39 @@ val AgentSdJwtTest by matrixSuite {
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 .freshnessSummary.tokenStatusValidationResult
                 .shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
+        }
+
+        "sd-jwt vc request rejected with HAIP status list rules and an untrusted issuer" {
+            val haipTokenStatusResolver = TokenStatusResolverImpl(
+                resolveStatusListToken = { _ ->
+                    it.caSignedStatusListIssuer.provideStatusListToken(
+                        listOf(StatusListTokenMediaType.Jwt),
+                        Clock.System.now(),
+                    ).second
+                },
+                verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(
+                    trustedIssuers = { setOf(TestCertificateAuthority().certificate()) },
+                ),
+            )
+
+            presentAndVerifySdJwt(it.holder, it.verifierId, haipTokenStatusResolver)
+                .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
+        }
+
+        "sd-jwt vc request rejected with HAIP status list rules and a self-signed status list certificate" {
+            val haipTokenStatusResolver = TokenStatusResolverImpl(
+                resolveStatusListToken = { _ ->
+                    // the default StatusListAgent key is self-signed, which HAIP forbids
+                    it.statusListIssuer.provideStatusListToken(
+                        listOf(StatusListTokenMediaType.Jwt),
+                        Clock.System.now(),
+                    ).second
+                },
+                verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(),
+            )
+
+            presentAndVerifySdJwt(it.holder, it.verifierId, haipTokenStatusResolver)
+                .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
         }
 
         "sd-jwt vc request rejected without HAIP status list certificate chain" {
@@ -323,6 +367,37 @@ val AgentSdJwtTest by matrixSuite {
                 .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
         }
     }
+}
+
+/** Presents the stored SD-JWT to a verifier using [tokenStatusResolver], and returns the status of the token. */
+private suspend fun presentAndVerifySdJwt(
+    holder: Holder,
+    verifierId: String,
+    tokenStatusResolver: TokenStatusResolver,
+): TokenStatusValidationResult {
+    val verifier = NonceChallengeVerifier(
+        verifierId = verifierId,
+        verifier = VerifierAgent(
+            identifier = verifierId,
+            validatorSdJwt = ValidatorSdJwt(
+                validator = Validator(tokenStatusResolver = tokenStatusResolver),
+            ),
+        ),
+    )
+    val presentationParameters = holder.createDefaultPresentation(
+        request = verifier.createPresentationRequest(),
+        credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+            buildDCQLQuery(
+                DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+            ),
+        )
+    ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+    val vp = presentationParameters.verifiablePresentations.values.first().first()
+        .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+    return verifier.verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
+        .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+        .freshnessSummary.tokenStatusValidationResult
 }
 
 private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuery(

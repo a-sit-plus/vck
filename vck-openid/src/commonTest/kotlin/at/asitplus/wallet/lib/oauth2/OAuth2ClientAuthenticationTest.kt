@@ -13,10 +13,12 @@ import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -36,7 +38,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
     fixture {
         runBlocking {
-            val attesterBackend = SignJwt<JsonWebToken>(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk())
+            val walletProviderCa = TestCertificateAuthority()
+            val walletProviderCaCert = walletProviderCa.certificate()
+            val attesterBackend = SignJwt<JsonWebToken>(walletProviderCa.issue(), JwsHeaderCertOrJwk())
             val clientKey = EphemeralKeyWithSelfSignedCert()
             val client = OAuth2Client()
             val clientAttestation = BuildClientAttestationJwt(
@@ -56,10 +60,14 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             object {
                 val scope = randomString()
                 val client = client
+                val walletProviderCa = walletProviderCa
                 var server = SimpleAuthorizationService(
                     strategy = DummyAuthorizationServiceStrategy(scope),
                     clientAuthenticationService = ClientAuthenticationService(
                         enforceClientAuthentication = true,
+                        verifyJwsObject = VerifyJwsObjectTrustedCertificate(
+                            trustedIssuers = { setOf(walletProviderCaCert) }
+                        ),
                     )
                 )
                 val clientKey = clientKey
@@ -137,7 +145,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             )
 
             it.clientAttestation = BuildClientAttestationJwt(
-                SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                SignJwt(it.walletProviderCa.issue(), JwsHeaderCertOrJwk()),
                 clientId = "wrong client id",
                 clientKey = it.clientKey.jsonWebKey
             )
@@ -155,19 +163,48 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             }
         }
 
-        test("pushed authorization request with client attestation JWT not trusted") {
+        test("pushed authorization request with client attestation JWT of an untrusted wallet provider") {
             val state = uuid4().toString()
             val authnRequest = it.client.createAuthRequestJar(
                 state = state,
                 scope = it.scope,
             )
 
+            // the attestation is signed by a certificate of it.walletProviderCa, which is not on this trust list
             it.server = SimpleAuthorizationService(
                 strategy = DummyAuthorizationServiceStrategy(it.scope),
                 clientAuthenticationService = ClientAuthenticationService(
                     enforceClientAuthentication = true,
-                    verifyClientAttestationJwt = { false }
+                    verifyJwsObject = VerifyJwsObjectTrustedCertificate(
+                        trustedIssuers = { setOf(TestCertificateAuthority().certificate()) }
+                    ),
                 ),
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.server.par(
+                    authnRequest,
+                    RequestInfo(
+                        url = "https://example.com/",
+                        method = HttpMethod.Post,
+                        clientAttestation = it.clientAttestation,
+                        clientAttestationPop = it.clientAttestationPop
+                    )
+                ).getOrThrow()
+            }
+        }
+
+        test("pushed authorization request with self-signed client attestation JWT") {
+            val state = uuid4().toString()
+            val authnRequest = it.client.createAuthRequestJar(
+                state = state,
+                scope = it.scope,
+            )
+
+            it.clientAttestation = BuildClientAttestationJwt(
+                SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                clientId = it.client.clientId,
+                clientKey = it.clientKey.jsonWebKey
             )
 
             shouldThrow<OAuth2Exception> {

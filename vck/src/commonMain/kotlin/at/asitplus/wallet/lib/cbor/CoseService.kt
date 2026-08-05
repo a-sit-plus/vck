@@ -13,11 +13,14 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.mac.mac
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.TrustedIssuerCertificates
+import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
 import at.asitplus.wallet.lib.agent.VerifyMac
 import at.asitplus.wallet.lib.agent.VerifyMacFun
 import at.asitplus.wallet.lib.agent.VerifySignature
@@ -402,6 +405,41 @@ class VerifyCoseSignatureTrusted<P : Any> @JvmOverloads constructor(
             verifyCoseSignature(coseSigned, coseKey, externalAad, detachedPayload).getOrNull()
         }
     }
+}
+
+/**
+ * Verifies COSE signatures against a fixed list of certificates of trusted issuers, supplied by [trustedIssuers],
+ * e.g. extracted from an ETSI trust list.
+ *
+ * The certificate transported in [CoseHeader.certificateChain] has to be signed by one of those certificates,
+ * see [requireTrustedSigningCertificate] for the exact rules. A [CoseHeader.kid] is ignored, a [CoseSigned]
+ * without a certificate chain can never be verified by this.
+ *
+ * Use this to verify the `issuerAuth` of an mdoc, i.e. the [at.asitplus.iso.MobileSecurityObject] signed by the
+ * issuer.
+ */
+class VerifyCoseSignatureTrustedCertificate<P : Any> @JvmOverloads constructor(
+    val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
+    val trustedIssuers: TrustedIssuerCertificates,
+) : VerifyCoseSignatureFun<P> {
+    override suspend operator fun invoke(
+        coseSigned: CoseSigned<P>,
+        externalAad: ByteArray,
+        detachedPayload: ByteArray?,
+    ) = catching {
+        val signingCertificate = coseSigned.certificateChain()
+            .requireTrustedSigningCertificate(trustedIssuers)
+        val issuerKey = signingCertificate.decodedPublicKey.getOrThrow().toCoseKey().getOrThrow()
+        verifyCoseSignature(coseSigned, issuerKey, externalAad, detachedPayload).getOrThrow()
+    }
+
+    /** Certificates are transported DER-encoded in COSE headers, in contrast to JWS headers. */
+    private fun CoseSigned<*>.certificateChain(): CertificateChain? =
+        (protectedHeader.certificateChain ?: unprotectedHeader?.certificateChain)?.map {
+            X509Certificate.decodeFromDerSafe(it).getOrElse { throwable ->
+                throw IllegalArgumentException("Could not parse certificate from COSE header", throwable)
+            }
+        }
 }
 
 fun interface VerifyCoseSignatureWithKeyFun<P> {

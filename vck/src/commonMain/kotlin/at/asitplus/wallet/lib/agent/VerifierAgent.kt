@@ -7,6 +7,8 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
+import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
+import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidator
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -23,9 +25,24 @@ class VerifierAgent @JvmOverloads constructor(
      * identifier of the key, but can be anything, e.g. a URL.
      */
     private val identifier: String,
-    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(),
-    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(),
-    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(),
+    /**
+     * Certificates of the issuers we trust, e.g. extracted from an ETSI trust list. When set, credentials whose
+     * issuer certificate is not signed by one of these are rejected. When null, issuer signatures are only
+     * verified against the key the credential asserts itself, i.e. no trust decision is made.
+     *
+     * Note that holder signatures, i.e. the presentation itself and its key binding, are self-asserted by
+     * design and stay unaffected by this.
+     */
+    trustedIssuers: TrustedIssuerCertificates? = null,
+    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(
+        vcJwsInputValidator = VcJwsInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
+    ),
+    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(
+        sdJwtInputValidator = SdJwtInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
+    ),
+    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(
+        verifyCoseSignature = issuerCoseVerifier(trustedIssuers),
+    ),
 ) : Verifier {
 
     override suspend fun verifyPresentationSdJwt(

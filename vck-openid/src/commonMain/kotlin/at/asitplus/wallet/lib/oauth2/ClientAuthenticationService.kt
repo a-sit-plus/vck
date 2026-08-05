@@ -27,10 +27,19 @@ import kotlin.time.Duration.Companion.minutes
 class ClientAuthenticationService @JvmOverloads constructor(
     /** Enforce client authentication as defined in OpenID4VC HAIP, i.e. with wallet attestations */
     private val enforceClientAuthentication: Boolean = false,
-    /** Used to verify client attestation JWTs */
+    /**
+     * Used to verify client attestation JWTs. Client attestations are required to carry an `x5c`, so pass
+     * [at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate] with the certificates of the trusted wallet
+     * providers to establish trust in the attestation. The default only verifies the attestation against the
+     * certificate it carries itself, i.e. it makes no trust decision.
+     */
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     /** Used to verify client attestation JWTs */
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
+    @Deprecated(
+        "Pass VerifyJwsObjectTrustedCertificate with the trusted wallet provider certificates as " +
+                "verifyJwsObject instead, which evaluates the x5c of the attestation against them."
+    )
     /** Callback to verify the client attestation JWT against a set of trusted roots */
     private val verifyClientAttestationJwt: (suspend (JwsCompactTyped<JsonWebToken>) -> Boolean) = { true },
     /** Clock used to verify WIA and WIA PoP timestamps. */
@@ -67,6 +76,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
                 throw InvalidClient("client attestation JWT not verified", it)
             }
 
+            @Suppress("DEPRECATION")
             if (!verifyClientAttestationJwt.invoke(instanceAttestation)) {
                 throw InvalidClient("client attestation not verified")
             }

@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.agent.validation.mdoc
 
-import at.asitplus.signum.indispensable.cosef.CoseKey
-
 data class MdocInputValidationSummary(
     val integrityValidationSummary: IntegrityValidationSummary,
 ) {
@@ -11,20 +9,13 @@ data class MdocInputValidationSummary(
 
     val error = integrityValidationSummary.error
 
+    // ponytail: only one implementation left, since the issuer key is now resolved during verification instead
+    // of being passed in, kept sealed to leave room for further integrity checks
     sealed interface IntegrityValidationSummary {
         val isSuccess: Boolean
         val error: Throwable?
 
-        data object IntegrityNotValidated
-            : IntegrityValidationSummary {
-            override val isSuccess: Boolean
-                get() = false
-            override val error: Throwable?
-                get() = IllegalArgumentException("No issuer key")
-        }
-
         data class IntegrityValidationResult(
-            val issuerKey: CoseKey,
             override val isSuccess: Boolean,
             override val error: Throwable?,
         ) : IntegrityValidationSummary

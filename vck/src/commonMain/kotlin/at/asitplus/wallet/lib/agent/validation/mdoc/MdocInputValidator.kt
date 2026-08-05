@@ -2,29 +2,27 @@ package at.asitplus.wallet.lib.agent.validation.mdoc
 
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.MobileSecurityObject
-import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocInputValidationSummary.IntegrityValidationSummary
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import io.github.aakira.napier.Napier
 
 class MdocInputValidator(
-    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> =
-        VerifyCoseSignatureWithKey(),
+    /**
+     * Verifies the signature of the issuer on [IssuerSigned.issuerAuth], resolving the issuer key itself.
+     * Pass [at.asitplus.wallet.lib.cbor.VerifyCoseSignatureTrustedCertificate] to require the issuer to be
+     * trusted, the default only verifies against the certificate transported in the COSE headers.
+     */
+    private val verifyCoseSignature: VerifyCoseSignatureFun<MobileSecurityObject> = VerifyCoseSignature(),
 ) {
-    suspend operator fun invoke(it: IssuerSigned, issuerKey: CoseKey?) = MdocInputValidationSummary(
-        integrityValidationSummary = if (issuerKey == null) {
-            IntegrityValidationSummary.IntegrityNotValidated
-        } else {
-            val verifyCoseSignatureWithKey = verifyCoseSignatureWithKey(it.issuerAuth, issuerKey, byteArrayOf(), null)
+    suspend operator fun invoke(it: IssuerSigned) = MdocInputValidationSummary(
+        integrityValidationSummary = verifyCoseSignature(it.issuerAuth, byteArrayOf(), null).let { result ->
             IntegrityValidationSummary.IntegrityValidationResult(
-                issuerKey = issuerKey,
-                isSuccess = verifyCoseSignatureWithKey.isSuccess,
-                error = verifyCoseSignatureWithKey.exceptionOrNull(),
+                isSuccess = result.isSuccess,
+                error = result.exceptionOrNull(),
             )
         },
     ).also {
         Napier.d("MdocInputValidator: Result: $it")
     }
 }
-

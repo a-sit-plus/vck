@@ -27,7 +27,6 @@ import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.signum.indispensable.requireSupported
 import at.asitplus.signum.indispensable.symmetric.AuthCapability
 import at.asitplus.signum.indispensable.symmetric.KeyType
 import at.asitplus.signum.indispensable.symmetric.NonceTrait
@@ -46,16 +45,17 @@ import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
-import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.signum.supreme.sign.Verifier
-import at.asitplus.signum.supreme.sign.verifierFor
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PublishedKeyMaterial
+import at.asitplus.wallet.lib.agent.TrustedIssuerCertificates
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
+import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
+import at.asitplus.wallet.lib.etsi.isIssuerOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -492,6 +492,10 @@ fun interface PublicJsonWebKeyLookup {
 /**
  * Assumes that truststore is populated by x509 certificates
  */
+@Deprecated(
+    "Trusted certificates are not selected per signed object, use TrustedIssuerCertificates instead",
+    ReplaceWith("at.asitplus.wallet.lib.agent.TrustedIssuerCertificates")
+)
 fun interface TrustStoreLookup {
     suspend operator fun invoke(
         jwsObject: JwsCompact,
@@ -601,45 +605,47 @@ class VerifyJwsSignatureWithCnf @JvmOverloads constructor(
  */
 class VerifyStatusListTokenHAIP @JvmOverloads constructor(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
-    /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
-    val trustStoreLookup: TrustStoreLookup = TrustStoreLookup { null },
+    /** Certificates of trusted issuers of status list tokens, if trust in the issuer shall be evaluated */
+    val trustedIssuers: TrustedIssuerCertificates? = null,
 ) : VerifyJwsObjectFun {
 
     override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
-        val trustStore: Set<X509Certificate>? = trustStoreLookup(jwsObject)
-        val certChain: CertificateChain? = jwsObject.jwsHeader.certificateChain
-        val signingCert: X509Certificate = certChain?.first() ?: throw Exception("Certificate Chain MUST not be empty")
-        signingCert.decodedPublicKey.getOrThrow().let { key ->
-            require(verifyJwsSignature(jwsObject, key).isSuccess) { "Invalid Signature" }
-        }
-        require(!signingCert.isSelfSigned()) {
-            "The certificate signing the request MUST NOT be self-signed"
-        }
-        if (trustStore != null) {
-            require(certChain.intersect(trustStore.toSet()).isEmpty()) {
-                "The certificate chain must not contain any trusted certificates"
+        val certChain: CertificateChain = jwsObject.jwsHeader.certificateChain
+            ?: throw IllegalArgumentException("Certificate Chain MUST not be empty")
+        // HAIP requires the signing certificate to be issued by a trust anchor, so direct trust is not an option
+        val signingCert = trustedIssuers
+            ?.let { certChain.requireTrustedSigningCertificate(it, allowDirectTrust = false) }
+            ?: certChain.leaf.also {
+                require(it.isIssuerOf(it).isFailure) {
+                    "The certificate signing the request MUST NOT be self-signed"
+                }
             }
-
-            require(validCertPath(certChain, trustStore)) {
-                "Certificate path to trusted Certs could not be established"
-            }
-        }
-        Verifier.Success
+        verifyJwsSignature(jwsObject, signingCert.decodedPublicKey.getOrThrow()).getOrThrow()
     }
+}
 
-    private fun validCertPath(certChain: List<X509Certificate>, trustStore: Set<X509Certificate>): Boolean =
-        TODO("require cert path to trust anchor (Not implemented in Signum yet)")
-
-    private fun X509Certificate.isSelfSigned(): Boolean =
-        signatureAlgorithm.let {
-            it.requireSupported()
-            it.verifierFor(decodedPublicKey.getOrThrow()).transform { verifier ->
-                verifier.verify(
-                    SignatureInput(rawSignature.content),
-                    decodedSignature.getOrThrow()
-                )
-            }.isSuccess
-        }
+/**
+ * Verifies a JWS against a fixed list of certificates of trusted issuers, supplied by [trustedIssuers], e.g.
+ * extracted from an ETSI trust list.
+ *
+ * The certificate transported in [JwsHeader.certificateChain] has to be signed by one of those certificates,
+ * see [requireTrustedSigningCertificate] for the exact rules. Any other key material asserted by the JWS
+ * ([JwsHeader.jsonWebKey], [JwsHeader.keyId], [JwsHeader.jsonWebKeySetUrl]) is ignored, a JWS without `x5c`
+ * can never be verified by this.
+ *
+ * Use this to verify issuer signatures on credentials, i.e. the SD-JWT or VC-JWS signed by the issuer. Note
+ * that holder signatures (key binding, proof of possession, a signed presentation) are self-asserted by design,
+ * so [VerifyJwsObject] is the correct choice for those.
+ */
+class VerifyJwsObjectTrustedCertificate @JvmOverloads constructor(
+    val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
+    val trustedIssuers: TrustedIssuerCertificates,
+) : VerifyJwsObjectFun {
+    override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
+        val signingCertificate = jwsObject.jwsHeader.certificateChain
+            .requireTrustedSigningCertificate(trustedIssuers)
+        verifyJwsSignature(jwsObject, signingCertificate.decodedPublicKey.getOrThrow()).getOrThrow()
+    }
 }
 
 fun interface VerifyJwsObjectFun {
