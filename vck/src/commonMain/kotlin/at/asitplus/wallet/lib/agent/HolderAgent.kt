@@ -44,7 +44,7 @@ class HolderAgent @JvmOverloads constructor(
      * issuer certificate is not signed by one of these are rejected on [storeCredential]. When null, issuer
      * signatures are only verified against the key the credential asserts itself, i.e. no trust decision is made.
      */
-    trustedIssuers: TrustedIssuerCertificates? = null,
+    trustedIssuers: TrustedCertificates? = null,
     private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(
         vcJwsInputValidator = VcJwsInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
         validator = validator,

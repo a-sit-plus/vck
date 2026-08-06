@@ -33,7 +33,7 @@ class VerifierAgent @JvmOverloads constructor(
      * Note that holder signatures, i.e. the presentation itself and its key binding, are self-asserted by
      * design and stay unaffected by this.
      */
-    trustedIssuers: TrustedIssuerCertificates? = null,
+    trustedIssuers: TrustedCertificates? = null,
     private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(
         vcJwsInputValidator = VcJwsInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
     ),

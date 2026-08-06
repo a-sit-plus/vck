@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
 import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.Signer
@@ -31,9 +32,12 @@ class TestCertificateAuthority(
     suspend fun certificate(): X509Certificate = certificateFor(name, name, key.publicKey, key)
 
     /** Key material whose [KeyMaterial.getCertificate] is issued by this authority. */
-    suspend fun issue(subjectName: String = "Test Issuer ${Random.nextInt()}"): KeyMaterial =
+    suspend fun issue(
+        subjectName: String = "Test Issuer ${Random.nextInt()}",
+        extensions: List<X509CertificateExtension> = listOf(),
+    ): KeyMaterial =
         EphemeralKeyWithoutCert().let {
-            KeyWithFixedCert(it, certificateFor(subjectName, name, it.publicKey, key))
+            KeyWithFixedCert(it, certificateFor(subjectName, name, it.publicKey, key, extensions))
         }
 
     private suspend fun certificateFor(
@@ -41,6 +45,7 @@ class TestCertificateAuthority(
         issuerName: String,
         publicKey: CryptoPublicKey,
         issuerKey: KeyMaterial,
+        extensions: List<X509CertificateExtension> = listOf(),
     ): X509Certificate {
         val algorithm = issuerKey.signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
         val notBefore = Clock.System.now().truncateToSeconds()
@@ -53,6 +58,7 @@ class TestCertificateAuthority(
             validUntil = Asn1Time((notBefore + validity).truncateToSeconds()),
             signatureAlgorithm = algorithm,
             publicKey = publicKey,
+            extensions = extensions,
         )
         val signature = issuerKey.sign(tbsCertificate.encodeToDer()).asKmmResult().getOrThrow()
         return X509Certificate(tbsCertificate, algorithm, signature)

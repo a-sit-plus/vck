@@ -21,8 +21,6 @@ data class AuthorizationResponsePreparationState(
     val clientMetadata: RelyingPartyMetadata?,
     /** Extracted from [request], probably fetched remotely. */
     val jsonWebKeys: Collection<JsonWebKey>?,
-    /** Whether the request object has been verified (if it was signed at all) */
-    val requestObjectVerified: Boolean?,
     val verifierInfo: List<VerifierInfo>?,
     /** Audience of the presentation to create */
     val audience: String,

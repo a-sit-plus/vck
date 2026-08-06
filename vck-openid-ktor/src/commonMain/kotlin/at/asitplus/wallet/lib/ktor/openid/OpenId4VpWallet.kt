@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.openid.DcApiHolder
 import at.asitplus.wallet.lib.openid.DcApiPreparationState
 import at.asitplus.wallet.lib.openid.Iso180137AnnexCHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.RelyingPartyTrust
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -54,6 +55,8 @@ class OpenId4VpWallet(
     allowedDcApiOriginSchemes: suspend () -> Set<String> = {
         OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES
     },
+    /** How to establish trust in the relying party, to be passed on to [OpenId4VpHolder]. */
+    relyingPartyTrust: RelyingPartyTrust? = null,
 ) {
 
     sealed interface AuthenticationResult
@@ -99,7 +102,7 @@ class OpenId4VpWallet(
             }
         },
         randomSource = randomSource,
-        requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
+        relyingPartyTrust = relyingPartyTrust,
         allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
     )
 

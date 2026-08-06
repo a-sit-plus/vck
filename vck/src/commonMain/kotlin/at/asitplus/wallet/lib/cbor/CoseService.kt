@@ -19,7 +19,7 @@ import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.mac.mac
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.TrustedIssuerCertificates
+import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
 import at.asitplus.wallet.lib.agent.VerifyMac
 import at.asitplus.wallet.lib.agent.VerifyMacFun
@@ -420,7 +420,7 @@ class VerifyCoseSignatureTrusted<P : Any> @JvmOverloads constructor(
  */
 class VerifyCoseSignatureTrustedCertificate<P : Any> @JvmOverloads constructor(
     val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
-    val trustedIssuers: TrustedIssuerCertificates,
+    val trustedIssuers: TrustedCertificates,
 ) : VerifyCoseSignatureFun<P> {
     override suspend operator fun invoke(
         coseSigned: CoseSigned<P>,

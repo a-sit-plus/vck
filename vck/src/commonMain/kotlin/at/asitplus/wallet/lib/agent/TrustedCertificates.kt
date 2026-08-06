@@ -23,7 +23,7 @@ import kotlin.time.Instant
  * [at.asitplus.wallet.lib.cbor.VerifyCoseSignatureTrustedCertificate] to decide whether the certificate
  * transported with a credential or token belongs to an issuer we trust.
  */
-fun interface TrustedIssuerCertificates {
+fun interface TrustedCertificates {
     suspend operator fun invoke(): Set<X509Certificate>
 }
 
@@ -34,14 +34,14 @@ fun interface TrustedIssuerCertificates {
  * Do not use this for holder signatures, i.e. key binding, proof of possession or a signed presentation,
  * those are self-asserted by design.
  */
-fun issuerJwsVerifier(trustedIssuers: TrustedIssuerCertificates?): VerifyJwsObjectFun =
+fun issuerJwsVerifier(trustedIssuers: TrustedCertificates?): VerifyJwsObjectFun =
     trustedIssuers?.let { VerifyJwsObjectTrustedCertificate(trustedIssuers = it) } ?: VerifyJwsObject()
 
 /**
  * How to verify the issuer's signature on a COSE-based credential, i.e. the `issuerAuth` of an mdoc:
  * Against [trustedIssuers] if there are any, otherwise against the certificate transported in the COSE headers.
  */
-fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedIssuerCertificates?): VerifyCoseSignatureFun<P> =
+fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCoseSignatureFun<P> =
     trustedIssuers?.let { VerifyCoseSignatureTrustedCertificate<P>(trustedIssuers = it) } ?: VerifyCoseSignature()
 
 /**
@@ -58,8 +58,8 @@ fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedIssuerCertificates?): Ve
  */
 // ponytail: single hop only, we don't build a certificate path, and we don't evaluate keyUsage or
 // basicConstraints -- Signum 3.24.0 exposes no typed X.509 extensions, revisit once it does
-internal suspend fun CertificateChain?.requireTrustedSigningCertificate(
-    trustedIssuers: TrustedIssuerCertificates,
+suspend fun CertificateChain?.requireTrustedSigningCertificate(
+    trustedIssuers: TrustedCertificates,
     at: Instant = Clock.System.now(),
     /** Whether a chain of exactly one self-signed certificate contained in [trustedIssuers] counts as trusted. */
     allowDirectTrust: Boolean = true,

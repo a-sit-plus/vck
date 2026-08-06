@@ -1,15 +1,27 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.catching
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsGeneral
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
+import at.asitplus.wallet.lib.agent.VerifySignature
+import at.asitplus.wallet.lib.agent.VerifySignatureFun
+import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
+import at.asitplus.wallet.lib.jws.VerifyJwsSignature
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.utils.DefaultMapStore
@@ -21,6 +33,10 @@ import kotlin.coroutines.cancellation.CancellationException
 internal class AuthorizationRequestValidator(
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     private val allowedDcApiOriginSchemes: suspend () -> Set<String>,
+    /** How to establish trust in the relying party, see [RelyingPartyTrust]. Trust is not evaluated when null. */
+    private val relyingPartyTrust: RelyingPartyTrust? = null,
+    private val verifySignature: VerifySignatureFun = VerifySignature(),
+    private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(verifySignature),
 ) {
     @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateAuthorizationRequest(
@@ -31,6 +47,12 @@ internal class AuthorizationRequestValidator(
                 throw InvalidRequest("invalid response_type: $it")
             }
         } ?: throw InvalidRequest("response_type is null")
+
+        // The deprecated RequestObjectJwsVerifier only ever applies to this subtype. Enforced here rather than in
+        // the holder, so that it holds for the two-step flow as well.
+        if (request is RequestParametersFrom.Jws && !request.verified) {
+            throw InvalidRequest("Request object verification failed")
+        }
 
         if (request.parameters.responseMode.isAnyDcApi()) {
             request.validateDcApi()
@@ -45,6 +67,12 @@ internal class AuthorizationRequestValidator(
         if (clientIdScheme is ClientIdScheme.RedirectUri) {
             request.parameters.verifyRedirectUrl()
         }
+        if (clientIdScheme is ClientIdScheme.VerifierAttestation) {
+            request.verifyClientIdSchemeVerifierAttestation()
+        }
+        if (clientIdScheme is ClientIdScheme.PreRegistered) {
+            request.verifyClientIdSchemePreRegistered()
+        }
         if (request.isFromRequestObject()) {
             request.parameters.walletNonce?.let {
                 if (walletNonceMapStore.remove(it) != it) {
@@ -52,7 +80,104 @@ internal class AuthorizationRequestValidator(
                 }
             }
         }
-        // TODO Verifier Attestation JWT from OpenId4VP 11. also redirect_uri in there
+    }
+
+    /**
+     * Verifies the signature on a signed request object against [publicKey], which the caller has established as
+     * belonging to the relying party named in the `client_id`.
+     *
+     * For a request carrying several signatures, i.e. a multi-signed DC API request, one of them has to be the
+     * relying party's.
+     */
+    @Throws(OAuth2Exception::class)
+    private suspend fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyRequestObjectSignature(
+        publicKey: CryptoPublicKey,
+    ) {
+        val verified = when (val jws = jwsTyped.jws) {
+            is JwsCompact -> verifyJwsSignature(jws, publicKey).isSuccess
+
+            is JwsGeneral -> jws.jwsHeaders.indices.any { index ->
+                (jws.jwsHeaders[index].algorithm as? JwsAlgorithm.Signature)?.let { algorithm ->
+                    verifySignature(
+                        jws.signatureInputs[index], jws.signatures[index], algorithm.algorithm, publicKey
+                    ).isSuccess
+                } == true
+            }
+
+            else -> throw InvalidRequest("Unsupported request object signature: $jws")
+        }
+        if (!verified) {
+            throw InvalidRequest("Request object signature not verified")
+        }
+    }
+
+    /**
+     * The Client Identifier MUST equal the `sub` of the verifier attestation JWT, which MUST be issued by a party
+     * we trust and be transported in the `jwt` JOSE header, and the request MUST be signed with the key from its
+     * `cnf` claim. See [OpenID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
+     */
+    @Throws(OAuth2Exception::class)
+    private suspend fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeVerifierAttestation() {
+        val signedRequest = this as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
+            ?: throw InvalidRequest("verifier_attestation client_id_scheme requires a signed request object")
+        val attestation = (signedRequest.jwsTyped.jws as? JwsCompact)?.jwsHeader?.attestationJwt
+            ?: throw InvalidRequest("verifier_attestation client_id_scheme requires a jwt in the JOSE header")
+
+        relyingPartyTrust?.let { trust ->
+            val verifyAttestation = if (attestation.jwsHeader.certificateChain != null) {
+                VerifyJwsObjectTrustedCertificate(
+                    verifyJwsSignature = verifyJwsSignature,
+                    trustedIssuers = trust.verifierAttesterCertificates
+                        ?: throw InvalidRequest("no trusted verifier attester certificates configured"),
+                )
+            } else {
+                val trustedKeys = trust.verifierAttesterKeys
+                    ?: throw InvalidRequest("no trusted verifier attester keys configured")
+                VerifyJwsObjectTrusted(verifyJwsSignature) { trustedKeys() }
+            }
+            verifyAttestation(attestation).getOrElse {
+                throw InvalidRequest("verifier attestation not issued by a trusted party", it)
+            }
+        }
+
+        val attestationPayload: JsonWebToken = attestation.typed<JsonWebToken, JwsCompact>().payload
+        if (attestationPayload.subject != parameters.clientIdWithoutPrefix) {
+            throw InvalidRequest(
+                "client_id ${parameters.clientIdWithoutPrefix} not matching sub ${attestationPayload.subject}"
+            )
+        }
+        // ponytail: `redirect_uris` in the attestation is not checked, JsonWebToken does not model that claim
+        val confirmedKey = attestationPayload.confirmationClaim?.jsonWebKey?.toCryptoPublicKey()?.getOrNull()
+            ?: throw InvalidRequest("verifier attestation has no key in cnf")
+        signedRequest.verifyRequestObjectSignature(confirmedKey)
+    }
+
+    /**
+     * The Client Identifier needs to be known to the wallet in advance, so it is looked up in
+     * [RelyingPartyTrust.preRegisteredClients], and a signed request has to be signed by one of the keys registered
+     * for it.
+     */
+    @Throws(OAuth2Exception::class)
+    private suspend fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemePreRegistered() {
+        val trust = relyingPartyTrust ?: return
+        // The wallet authenticates an unsigned DC API client through the platform-provided calling origin, and any
+        // client_id it carries is ignored, so there is nothing to look up, see validateDcApi
+        if (this is RequestParametersFrom.OpenId4VpDcApiUnsigned) return
+        val clientId = parameters.clientIdWithoutPrefix
+            ?: throw InvalidRequest("client_id is null")
+        val lookup = trust.preRegisteredClients
+            ?: throw InvalidRequest("no pre-registered relying parties configured")
+        val registeredKeys = lookup(clientId)?.takeIf { it.isNotEmpty() }
+            ?: throw InvalidRequest("client_id $clientId is not a pre-registered relying party")
+
+        val signedRequest = this as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
+            ?: return // an unsigned request from a known client identifier, nothing to verify against
+        if (registeredKeys.none { key ->
+                key.toCryptoPublicKey().getOrNull()
+                    ?.let { catching { signedRequest.verifyRequestObjectSignature(it) }.isSuccess } == true
+            }) {
+            throw InvalidRequest("Request object not signed by a key registered for $clientId")
+        }
     }
 
     private suspend fun RequestParametersFrom<AuthenticationRequestParameters>.validateDcApi() {
@@ -112,7 +237,7 @@ internal class AuthorizationRequestValidator(
         (this == ClientIdScheme.X509SanDns) || (this == ClientIdScheme.X509Hash)
 
     @Throws(OAuth2Exception::class)
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
+    private suspend fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
         val signedRequest = this as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
             ?: throw InvalidRequest("x509 client_id_scheme requires a signed request object")
 
@@ -132,11 +257,21 @@ internal class AuthorizationRequestValidator(
                 responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost(),
                 responseModeIsDcApi = parameters.responseMode.isAnyDcApi(),
             )
+
             ClientIdScheme.X509Hash -> signedRequest.verifyX509SanHash(leaf)
             // checked before calling this method
             else -> throw InvalidRequest("Unexpected clientIdScheme $clientIdScheme")
         }
-        // TODO ETSI trust chain validation should happen here (policy OIDs, EKU, trust list, etc.)
+        // The checks above only bind the client_id to the certificate, anyone may mint a certificate carrying a
+        // foreign DNS name, so the chain has to lead to a trust anchor known out-of-band
+        relyingPartyTrust?.let { trust ->
+            val trustedRelyingParties = trust.certificates
+                ?: throw InvalidRequest("no trusted relying party certificates configured")
+            certChain.requireTrustedSigningCertificate(trustedRelyingParties)
+        }
+        signedRequest.verifyRequestObjectSignature(leaf.decodedPublicKey.getOrElse {
+            throw InvalidRequest("Could not read key from certificate in x5c", it)
+        })
     }
 
     private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanDns(

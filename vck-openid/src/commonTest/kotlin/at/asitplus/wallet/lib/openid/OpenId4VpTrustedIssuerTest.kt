@@ -8,7 +8,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
-import at.asitplus.wallet.lib.agent.TrustedIssuerCertificates
+import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -61,7 +61,7 @@ private suspend fun holderWithSdJwtFrom(ca: TestCertificateAuthority): HolderAge
     }
 }
 
-private fun verifierTrusting(trustedIssuers: TrustedIssuerCertificates): OpenId4VpVerifier {
+private fun verifierTrusting(trustedIssuers: TrustedCertificates): OpenId4VpVerifier {
     val clientId = "https://example.com/rp/${uuid4()}"
     return OpenId4VpVerifier(
         clientIdScheme = ClientIdScheme.RedirectUri(clientId),

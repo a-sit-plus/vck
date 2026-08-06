@@ -95,11 +95,22 @@ class OpenId4VpHolder @JvmOverloads constructor(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+    @Deprecated(
+        "Superseded by relyingPartyTrust, which is evaluated per client identifier scheme in " +
+                "AuthorizationRequestValidator, covers DC API and multi-signed requests, applies to both the " +
+                "one-shot and the two-step flow, and reports why a request was rejected."
+    )
     /**
      * Need to verify the request object serialized as a JWS,
      * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
+    /**
+     * How to establish trust in the relying party sending an authorization request, see [RelyingPartyTrust].
+     * When null, the signature of a signed request object is still verified against the key its client identifier
+     * scheme establishes, but no trust decision is made, i.e. any relying party is accepted.
+     */
+    private val relyingPartyTrust: RelyingPartyTrust? = null,
     /** Stores our nonce used when fetching authn requests using POST. */
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     /** Source for random bytes, i.e., nonces for encrypted responses. */
@@ -134,6 +145,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private val authorizationRequestValidator = AuthorizationRequestValidator(
         walletNonceMapStore = walletNonceMapStore,
         allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
+        relyingPartyTrust = relyingPartyTrust,
     )
     private val authenticationResponseFactory = AuthenticationResponseFactory(
         encryptResponse = encryptJarm,
@@ -242,8 +254,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> = catching {
         val preparationState = startAuthorizationResponsePreparation(request).getOrThrow()
-        if (preparationState.requestObjectVerified == false)
-            throw InvalidRequest("Request object verification failed")
         finalizeAuthorizationResponseParameters(
             state = preparationState,
         ).getOrElse {
@@ -297,7 +307,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
             clientMetadata = params.parameters.clientMetadata,
             jsonWebKeys = jsonWebKeys,
-            requestObjectVerified = (params as? RequestParametersFrom.Jws)?.verified,
             verifierInfo = params.parameters.verifierInfo,
             audience = params.extractAudience(jsonWebKeys)
         )

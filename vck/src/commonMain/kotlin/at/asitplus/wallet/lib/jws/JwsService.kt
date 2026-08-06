@@ -51,7 +51,7 @@ import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PublishedKeyMaterial
-import at.asitplus.wallet.lib.agent.TrustedIssuerCertificates
+import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
@@ -493,8 +493,8 @@ fun interface PublicJsonWebKeyLookup {
  * Assumes that truststore is populated by x509 certificates
  */
 @Deprecated(
-    "Trusted certificates are not selected per signed object, use TrustedIssuerCertificates instead",
-    ReplaceWith("at.asitplus.wallet.lib.agent.TrustedIssuerCertificates")
+    "Trusted certificates are not selected per signed object, use TrustedCertificates instead",
+    ReplaceWith("at.asitplus.wallet.lib.agent.TrustedCertificates")
 )
 fun interface TrustStoreLookup {
     suspend operator fun invoke(
@@ -606,7 +606,7 @@ class VerifyJwsSignatureWithCnf @JvmOverloads constructor(
 class VerifyStatusListTokenHAIP @JvmOverloads constructor(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
     /** Certificates of trusted issuers of status list tokens, if trust in the issuer shall be evaluated */
-    val trustedIssuers: TrustedIssuerCertificates? = null,
+    val trustedIssuers: TrustedCertificates? = null,
 ) : VerifyJwsObjectFun {
 
     override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
@@ -639,7 +639,7 @@ class VerifyStatusListTokenHAIP @JvmOverloads constructor(
  */
 class VerifyJwsObjectTrustedCertificate @JvmOverloads constructor(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
-    val trustedIssuers: TrustedIssuerCertificates,
+    val trustedIssuers: TrustedCertificates,
 ) : VerifyJwsObjectFun {
     override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
         val signingCertificate = jwsObject.jwsHeader.certificateChain
