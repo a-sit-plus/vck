@@ -543,7 +543,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
@@ -571,7 +570,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = androidCallingOrigin,
@@ -599,7 +597,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(signedRequest.jws.toJwsFlattened())),
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
@@ -626,7 +623,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(signedRequest.jws.toJwsFlattened())),
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = "https://evil.example.com",  // does not match expectedOrigins
@@ -648,7 +644,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = "https://evil.example.com",  // does not match expectedOrigins
@@ -669,7 +664,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
@@ -691,7 +685,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = ftpOrigin,
@@ -714,7 +707,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = httpOrigin,
@@ -738,7 +730,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             )
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = withoutExpectedOrigins,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,

@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 
@@ -36,4 +38,12 @@ class RelyingPartyTrust(
      * `pre-registered` client identifier scheme. Return `null` for an unknown client identifier.
      */
     val preRegisteredClients: (suspend (clientId: String) -> Set<JsonWebKey>?)? = null,
+    /**
+     * Consulted for client identifier schemes this library does not evaluate natively, i.e. `entity_id`
+     * (OpenID Federation), `did`, and anything unrecognised. Throw to reject the request.
+     *
+     * In contrast to the deprecated [at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier] this receives the
+     * whole request, so it also covers DC API and multi-signed requests, and it states why it rejected one.
+     */
+    val custom: (suspend (RequestParametersFrom<AuthenticationRequestParameters>) -> Unit)? = null,
 )

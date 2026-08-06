@@ -46,7 +46,8 @@ Release 8.0.0 (unreleased):
     - For `x509_san_dns` and `x509_hash`, validate the `x5c` chain against `RelyingPartyTrust.certificates`
     - Implement the `verifier_attestation` client identifier scheme
     - Enforce the `pre-registered` client identifier scheme against `RelyingPartyTrust.preRegisteredClients`
-    - Requests using a scheme for which no trust material is configured are rejected. `redirect_uri`, `entity_id` and `did` are not covered.
+    - Requests using a scheme for which no trust material is configured are rejected. `redirect_uri` is not covered; `entity_id` and `did` are handed to `RelyingPartyTrust.custom`, and pass unevaluated when it is null
+    - `RequestParser` no longer verifies anything and lost its `requestObjectJwsVerifier` parameter, so parsing a request is purely parsing. Consequently `RequestParametersSigned.verified` is removed, with the `verified` property of `Jws`, `OpenId4VpDcApiSigned` and `OpenId4VpDcApiMultiSigned` and its serialized form. Stored JSON still carrying `"verified"` deserializes fine, as unknown keys are ignored
 - Deprecations:
     - Remove code deprecated in 7.0.0, e.g. various `Iso180137AnnexC*` and related classes
     - Deprecate all classes used for Presentation Exchange requests and so on, e.g., `CredentialPresentationRequest.PresentationExchangeRequest` or `PresentationExchangeCredentialDisclosure` or `CredentialPresentation.PresentationExchangePresentation`
@@ -56,7 +57,7 @@ Release 8.0.0 (unreleased):
     - `NonceChallengeVerifier` does not implement `Verifier` and `NonceService` anymore, so a presentation cannot be verified without accounting for the challenge it answers; use the `ChallengeSession` from `consumeChallenge()`, or the properties `verifier` for challenge-free verification and `nonceService` for raw nonce access
     - Deprecate passing `publicKeyLookup` to `VerifyJwsObject` and `VerifyCoseSignature`, callers are rerouted to the trusted variants, use `VerifyJwsObjectTrusted` resp. `VerifyCoseSignatureTrusted` explicitly, or drop the parameter to keep verifying against the asserted key
     - Deprecate `TrustStoreLookup`, as trusted certificates are not selected per signed object, replaced by `TrustedCertificates`
-    - Deprecate `RequestObjectJwsVerifier` and the `requestObjectJwsVerifier` parameter of `OpenId4VpHolder`, superseded by `RelyingPartyTrust`
+    - Deprecate `RequestObjectJwsVerifier` and the `requestObjectJwsVerifier` parameter of `OpenId4VpHolder`, superseded by `RelyingPartyTrust`. **It is no longer invoked**: verifying a request object needs to know where to load the relying party's key from, which depends on the client identifier scheme, so it moved to `AuthorizationRequestValidator`. Supplying one now logs a warning and has no effect, so migrate to `relyingPartyTrust` &mdash; `preRegisteredClients` for the pre-registered case, `custom` for schemes this library does not evaluate natively. To be removed in 9.0.0
     - Deprecate `ClientAuthenticationService.verifyClientAttestationJwt`, which never validated the `x5c` it required; pass `VerifyJwsObjectTrustedCertificate` with the trusted wallet provider certificates as `verifyJwsObject` instead
 - Refactorings:
     - In `MdocInputValidator` and `ValidatorMdoc` replace `verifyCoseSignatureWithKey` with a `VerifyCoseSignatureFun<MobileSecurityObject>`, which resolves the issuer key from the COSE headers itself. Consequently `MdocInputValidator.invoke()` and `ValidatorMdoc.verifyIsoCred()` lose their `issuerKey` parameter, `MdocInputValidationSummary.IntegrityValidationSummary.IntegrityValidationResult` loses its `issuerKey` property, and `IntegrityNotValidated` is removed

@@ -120,7 +120,6 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = JwsTyped(serializedRequest),
-                verified = false,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
@@ -146,7 +145,6 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val compactTyped = JwsTyped<AuthenticationRequestParameters>(serializedRequest)
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(compactTyped.jws.toJwsFlattened())),
-                verified = false,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"

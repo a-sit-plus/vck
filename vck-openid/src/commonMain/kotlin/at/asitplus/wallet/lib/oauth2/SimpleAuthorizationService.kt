@@ -133,8 +133,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     private val requestParser: RequestParser = RequestParser(
         /** By default, do not retrieve authn requests referenced by `request_uri`. */
         remoteResourceRetriever = { null },
-        /** Trust all JWS signatures, client will be authenticated anyway. */
-        requestObjectJwsVerifier = { true },
         /** Not necessary to load the authn request referenced by `request_uri`. */
         buildRequestObjectParameters = { null }
     ),

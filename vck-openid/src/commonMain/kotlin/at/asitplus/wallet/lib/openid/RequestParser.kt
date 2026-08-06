@@ -31,10 +31,7 @@ class RequestParser(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    /**
-     * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
-     */
+    @Deprecated("No longer used, decision moved to `AuthorizationRequestValidator`")
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _: Any -> true },
     /**
      * Callback to load [RequestObjectParameters] when loading a request object by reference (e.g. from `request_uri`)
@@ -112,7 +109,6 @@ class RequestParser(
                 RequestParametersFrom.Jws(
                     jws = jws.jws,
                     parameters = jws.payload,
-                    verified = requestObjectJwsVerifier.invoke(jws),
                     parent = (parent as? RequestParametersFrom.Uri)?.url
                 )
             }

@@ -48,12 +48,6 @@ internal class AuthorizationRequestValidator(
             }
         } ?: throw InvalidRequest("response_type is null")
 
-        // The deprecated RequestObjectJwsVerifier only ever applies to this subtype. Enforced here rather than in
-        // the holder, so that it holds for the two-step flow as well.
-        if (request is RequestParametersFrom.Jws && !request.verified) {
-            throw InvalidRequest("Request object verification failed")
-        }
-
         if (request.parameters.responseMode.isAnyDcApi()) {
             request.validateDcApi()
         }
@@ -61,17 +55,16 @@ internal class AuthorizationRequestValidator(
         if (request.parameters.responseMode.isAnyDirectPost()) {
             request.parameters.verifyResponseModeDirectPost()
         }
-        if (clientIdScheme.isAnyX509()) {
-            request.verifyClientIdSchemeX509()
-        }
-        if (clientIdScheme is ClientIdScheme.RedirectUri) {
-            request.parameters.verifyRedirectUrl()
-        }
-        if (clientIdScheme is ClientIdScheme.VerifierAttestation) {
-            request.verifyClientIdSchemeVerifierAttestation()
-        }
-        if (clientIdScheme is ClientIdScheme.PreRegistered) {
-            request.verifyClientIdSchemePreRegistered()
+        // A client identifier names exactly one scheme, so these are mutually exclusive
+        when {
+            clientIdScheme.isAnyX509() -> request.verifyClientIdSchemeX509()
+            clientIdScheme is ClientIdScheme.RedirectUri -> request.parameters.verifyRedirectUrl()
+            clientIdScheme is ClientIdScheme.VerifierAttestation -> request.verifyClientIdSchemeVerifierAttestation()
+            clientIdScheme is ClientIdScheme.PreRegistered -> request.verifyClientIdSchemePreRegistered()
+            // No client_id at all, e.g. an unsigned DC API request authenticated by its calling origin
+            clientIdScheme == null -> Unit
+            // `entity_id`, `did` and anything unrecognised, which we cannot evaluate ourselves
+            else -> relyingPartyTrust?.custom?.invoke(request)
         }
         if (request.isFromRequestObject()) {
             request.parameters.walletNonce?.let {

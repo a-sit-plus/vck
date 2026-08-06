@@ -49,6 +49,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
+import io.github.aakira.napier.Napier
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
@@ -95,21 +96,9 @@ class OpenId4VpHolder @JvmOverloads constructor(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    @Deprecated(
-        "Superseded by relyingPartyTrust, which is evaluated per client identifier scheme in " +
-                "AuthorizationRequestValidator, covers DC API and multi-signed requests, applies to both the " +
-                "one-shot and the two-step flow, and reports why a request was rejected."
-    )
-    /**
-     * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
-     */
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
-    /**
-     * How to establish trust in the relying party sending an authorization request, see [RelyingPartyTrust].
-     * When null, the signature of a signed request object is still verified against the key its client identifier
-     * scheme establishes, but no trust decision is made, i.e. any relying party is accepted.
-     */
+    @Deprecated("No longer invoked. Replace with `relyingPartyTrust` for use in `AuthorizationRequestValidator`")
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
+    /** How to establish trust in the relying party sending an authorization request, or `null` for trusting all. */
     private val relyingPartyTrust: RelyingPartyTrust? = null,
     /** Stores our nonce used when fetching authn requests using POST. */
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
@@ -192,7 +181,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
     }
 
     private val requestParser: RequestParser =
-        RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
+        RequestParser(remoteResourceRetriever) {
             RequestObjectParameters(
                 metadata = metadata,
                 nonce = uuid4().toString().also { walletNonceMapStore.put(it, it) })

@@ -418,27 +418,8 @@ val PreRegisteredClientTest by matrixSuite {
             }
         }
 
-        "test with request object not verified" {
-            val requestUrl = "https://www.example.com/request/${uuid4()}"
-            val (authRequestUrlWithRequestUri, jar) = it.verifierOid4vp.createAuthnRequest(
-                requestOptionsAtomicAttribute(),
-                CreationOptions.SignedRequestByReference(it.walletUrl, requestUrl)
-            ).getOrThrow()
-            jar.shouldNotBeNull()
-
-            it.holderOid4vp = OpenId4VpHolder(
-                holder = it.holderAgent,
-                remoteResourceRetriever = {
-                    if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-                },
-                requestObjectJwsVerifier = { _ -> false },
-                randomSource = RandomSource.Default,
-            )
-
-            shouldThrow<OAuth2Exception> {
-                it.holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
-            }
-        }
+        // "test with request object not verified" removed: it injected a RequestObjectJwsVerifier returning
+        // false, which is no longer invoked. Rejecting a relying party is covered by OpenId4VpRelyingPartyTrustTest.
     }
 }
 

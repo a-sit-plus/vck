@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
@@ -23,6 +25,8 @@ import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -145,6 +149,24 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
             .message.shouldNotBeNull() shouldContain "not a pre-registered relying party"
     }
 
+    // `entity_id` needs an OpenID Federation trust chain, which this library does not implement, and
+    // ClientIdScheme models no such scheme either, so the request is hand-built rather than made by a verifier
+    "a scheme this library does not evaluate is handed to the custom hook" {
+        var seen: String? = null
+        validate(ENTITY_ID_CLIENT_ID, RelyingPartyTrust(custom = { seen = it.parameters.clientId }))
+        seen.shouldNotBeNull() shouldContain "rp.example.com"
+
+        validate(
+            ENTITY_ID_CLIENT_ID,
+            RelyingPartyTrust(custom = { throw IllegalArgumentException("federation trust chain not established") }),
+        ).exceptionOrNull().shouldNotBeNull()
+            .message.shouldNotBeNull() shouldContain "federation trust chain"
+    }
+
+    "a scheme this library does not evaluate passes when no custom hook is configured" {
+        validate(ENTITY_ID_CLIENT_ID, RelyingPartyTrust(certificates = { setOf() })).getOrThrow()
+    }
+
     "a scheme without configured trust material is rejected" {
         val relyingParty = EphemeralKeyWithoutCert()
         val scheme = ClientIdScheme.PreRegistered("some-${uuid4()}", REDIRECT_URI)
@@ -157,6 +179,20 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
 
 private const val CLIENT_ID_DNS = "example.com"
 private const val REDIRECT_URI = "https://example.com/rp"
+private const val ENTITY_ID_CLIENT_ID = "entity_id:https://rp.example.com"
+
+/** Runs an unsigned authorization request naming [clientId] through the wallet's request validation. */
+private suspend fun validate(clientId: String, trust: RelyingPartyTrust) = runCatchingToResult {
+    val request = AuthenticationRequestParameters(
+        responseType = OpenIdConstants.VP_TOKEN,
+        clientId = clientId,
+        redirectUrl = REDIRECT_URI,
+        nonce = uuid4().toString(),
+    ).encodeToParameters().formUrlEncode()
+
+    OpenId4VpHolder(relyingPartyTrust = trust, randomSource = RandomSource.Default)
+        .startAuthorizationResponsePreparation("https://wallet.example.com/?$request").getOrThrow()
+}
 
 private fun subjectAltNameDns(dnsName: String) = listOf(
     X509CertificateExtension(

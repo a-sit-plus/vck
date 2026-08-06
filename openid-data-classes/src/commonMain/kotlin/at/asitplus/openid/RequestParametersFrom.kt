@@ -32,7 +32,6 @@ sealed class RequestParametersFrom<S : RequestParameters> {
      */
     sealed class RequestParametersSigned<T : RequestParameters> : RequestParametersFrom<T>() {
         abstract val jwsTyped: JwsTyped<*, T>
-        abstract val verified: Boolean
     }
 
     /**
@@ -66,8 +65,6 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         val jws: JWS,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
-        @SerialName(SerialNames.VERIFIED)
-        override val verified: Boolean,
         @SerialName(SerialNames.PARENT)
         val parent: Url? = null,
     ) : RequestParametersSigned<T>() {
@@ -80,8 +77,6 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @Serializable(with = JwsGeneralAuthParamSerializer::class)
         @SerialName(SerialNames.JWS)
         override val jwsTyped: JwsGeneralTyped<AuthenticationRequestParameters>,
-        @SerialName(SerialNames.VERIFIED)
-        override val verified: Boolean = false,
         @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
         @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
@@ -109,8 +104,6 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @Serializable(JwsCompactAuthParamSerializer::class)
         @SerialName(SerialNames.JWS)
         override val jwsTyped: JwsCompactTyped<AuthenticationRequestParameters>,
-        @SerialName(SerialNames.VERIFIED)
-        override val verified: Boolean = false,
         @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
         @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
@@ -219,7 +212,6 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         const val URL = "url"
         const val PARENT = "parent"
         const val PARAMETERS = "parameters"
-        const val VERIFIED = "verified"
     }
 
 }
