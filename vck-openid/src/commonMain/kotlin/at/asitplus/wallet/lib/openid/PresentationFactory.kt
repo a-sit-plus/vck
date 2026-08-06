@@ -3,19 +3,12 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.ClaimFormat
-import at.asitplus.iso.DeviceAuthentication
-import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.iso.SessionTranscript
-import at.asitplus.iso.wrapInCborTag
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.IdToken
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -32,12 +25,6 @@ import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
-import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.encodeToByteArray
-import kotlin.coroutines.cancellation.CancellationException
 
 internal class PresentationFactory(
     private val supportedAlgorithms: Set<SignatureAlgorithm>,
@@ -83,12 +70,6 @@ internal class PresentationFactory(
             audience = state.audience,
             transactionData = state.request.parameters.transactionData,
             calcIsoSessionTranscript = sessionTranscriptCallback,
-            calcIsoDeviceSignaturePlain = {
-                calcDeviceSignature(
-                    sessionTranscriptCallback = sessionTranscriptCallback,
-                    docType = it.docType,
-                )
-            }
         )
 
         holder.createPresentation(
@@ -110,27 +91,6 @@ internal class PresentationFactory(
             is DeviceRetrievalParameters ->
                 throw InvalidRequest("ISO Device Retrieval responses are not OpenID4VP presentations")
         }
-    }
-
-    /**
-     * Performs calculation of the [SessionTranscript] and [DeviceAuthentication], according to OpenID4VP 1.0
-     */
-    @Throws(PresentationException::class, CancellationException::class)
-    private suspend fun calcDeviceSignature(
-        sessionTranscriptCallback: suspend () -> SessionTranscript,
-        docType: String,
-    ): CoseSigned<ByteArray> = signDeviceAuthDetached(
-        protectedHeader = null,
-        unprotectedHeader = null,
-        payload = DeviceAuthentication(
-            type = DeviceAuthentication.TYPE,
-            sessionTranscript = sessionTranscriptCallback.invoke(),
-            docType = docType,
-            namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        ).wrap(),
-        serializer = ByteArraySerializer()
-    ).getOrElse {
-        throw PresentationException("signDeviceAuthDetached failed", it)
     }
 
     internal fun calcSessionTranscript(
@@ -160,13 +120,6 @@ internal class PresentationFactory(
     } else {
         throw PresentationException("Neither dcApiRequest nor clientId is set")
     }
-
-    private fun DeviceAuthentication.wrap(): ByteArray = coseCompliantSerializer
-        .encodeToByteArray(ByteStringWrapper(this))
-        .wrapInCborTag(24)
-        .also {
-            Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}")
-        }
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyResponseType() {

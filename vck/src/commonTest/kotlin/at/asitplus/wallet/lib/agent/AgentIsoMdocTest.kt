@@ -7,6 +7,7 @@ import at.asitplus.iso.Document
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.MobileSecurityObject
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
@@ -18,13 +19,11 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstrain
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
-import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -49,7 +48,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.builtins.ByteArraySerializer
 
 val AgentIsoMdocTest by matrixSuite {
 
@@ -78,7 +76,7 @@ val AgentIsoMdocTest by matrixSuite {
             if (mode == IsoRevocationMode.STATUS_LIST) {
                 "device retrieval: creates one device response with the requested claim" {
                     val request = it.verifier.createPresentationRequest(
-                        calcIsoDeviceSignaturePlain = simpleSigner(it.signer),
+                        calcIsoSessionTranscript = simpleTranscriptCallback,
                     )
                     val result = it.holder.createDefaultPresentation(
                         request = request,
@@ -99,7 +97,7 @@ val AgentIsoMdocTest by matrixSuite {
                 "device retrieval: rejects a request for a missing data element" {
                     it.holder.createDefaultPresentation(
                         request = it.verifier.createPresentationRequest(
-                            calcIsoDeviceSignaturePlain = simpleSigner(it.signer),
+                            calcIsoSessionTranscript = simpleTranscriptCallback,
                         ),
                         credentialPresentationRequest = CredentialPresentationRequest.IsoDeviceRetrieval(
                             isoDeviceRequest("not_in_the_credential")
@@ -120,7 +118,7 @@ val AgentIsoMdocTest by matrixSuite {
 
                     it.holder.createDefaultPresentation(
                         request = it.verifier.createPresentationRequest(
-                            calcIsoDeviceSignaturePlain = simpleSigner(it.signer),
+                            calcIsoSessionTranscript = simpleTranscriptCallback,
                         ),
                         credentialPresentationRequest = request,
                     ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.DeviceRetrievalParameters>()
@@ -196,7 +194,7 @@ val AgentIsoMdocTest by matrixSuite {
 
                     val firstVp = it.createDcqlDeviceResponse(CLAIM_GIVEN_NAME)
                     val secondRequest = it.verifier.createPresentationRequest(
-                        calcIsoDeviceSignaturePlain = simpleSigner(SignCose(keyMaterial = secondHolderKeyMaterial)),
+                        calcIsoSessionTranscript = simpleTranscriptCallback,
                     )
                     val secondVp = PresentedIsoResponse(
                         request = secondRequest,
@@ -286,7 +284,6 @@ private data class IsoMdocFixture(
     val holder: HolderAgent,
     val verifier: NonceChallengeVerifier,
     val verifierId: String,
-    val signer: SignCose<ByteArray>,
 )
 
 private suspend fun createIsoMdocFixture(mode: IsoRevocationMode): IsoMdocFixture {
@@ -329,7 +326,6 @@ private suspend fun createIsoMdocFixture(mode: IsoRevocationMode): IsoMdocFixtur
             verifier = VerifierAgent(identifier = verifierId, validatorMdoc = validator),
         ),
         verifierId = verifierId,
-        signer = SignCose(keyMaterial = holderKeyMaterial),
     )
 }
 
@@ -358,7 +354,7 @@ private data class PresentedIsoResponse(
 )
 
 private suspend fun IsoMdocFixture.createDcqlDeviceResponse(vararg attributeNames: String) =
-    verifier.createPresentationRequest(calcIsoDeviceSignaturePlain = simpleSigner(signer)).let { request ->
+    verifier.createPresentationRequest(calcIsoSessionTranscript = simpleTranscriptCallback).let { request ->
         PresentedIsoResponse(
             request = request,
             response = createDcqlDeviceResponse(
@@ -437,16 +433,12 @@ private fun Verifier.VerifyPresentationResult.SuccessIso.assertRevocationInvalid
         tokenStatusValidationResult.shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
     }
 }
-
-private fun simpleSigner(
-    signer: SignCose<ByteArray>
-): suspend (IsoDeviceSignatureInput) -> CoseSigned<ByteArray>? = { input ->
-    signer(
-        protectedHeader = null,
-        unprotectedHeader = null,
-        payload = input.docType.encodeToByteArray(),
-        serializer = ByteArraySerializer()
-    ).getOrThrow()
+// Simple Session Transcript (mostly empty)
+private val simpleTranscriptCallback: () -> SessionTranscript = {
+    SessionTranscript.forQr(
+        deviceEngagementBytes = byteArrayOf(),
+        eReaderKeyBytes = byteArrayOf(),
+    )
 }
 
 private fun SubjectCredentialStore.StoreEntry.Iso.mdocStatusListIndex(): ULong =

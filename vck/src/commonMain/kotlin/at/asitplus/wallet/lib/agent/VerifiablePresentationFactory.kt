@@ -17,13 +17,16 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
+import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.ZkDocument
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
@@ -31,11 +34,16 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
+import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -52,6 +60,8 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import io.github.aakira.napier.Napier
 import io.github.z4kn4fein.semver.Version
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -64,7 +74,12 @@ class VerifiablePresentationFactory(
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> =
         SignJwt(keyMaterial, JwsHeaderNone()),
-    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine()
+    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
+    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+        keyMaterial = keyMaterial,
+        protectedHeaderModifier = CoseHeaderNone(),
+        unprotectedHeaderModifier = CoseHeaderNone()
+    )
 ) {
     @Deprecated("Use createVerifiablePresentation(request, isoPresentationParameters) instead")
     suspend fun createVerifiablePresentation(
@@ -240,8 +255,11 @@ class VerifiablePresentationFactory(
 
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         val input = IsoDeviceSignatureInput(schemeIdentifier, deviceNameSpaceBytes)
-        val deviceSignature = request.calcIsoDeviceSignaturePlain(input)
-            ?: throw PresentationException("calcIsoDeviceSignature not implemented")
+        val deviceSignature = request.calcIsoDeviceSignaturePlain(input) ?: run {
+            val sessionTranscript = request.calcIsoSessionTranscript()
+                ?: throw PresentationException("calcIsoSessionTranscript not implemented")
+            calculateDeviceSignature(input, sessionTranscript)
+        }
 
         Document(
             docType = schemeIdentifier,
@@ -256,6 +274,31 @@ class VerifiablePresentationFactory(
                 )
             )
         )
+    }
+
+    private suspend fun calculateDeviceSignature(
+        input: IsoDeviceSignatureInput,
+        sessionTranscript: SessionTranscript,
+    ):  CoseSigned<ByteArray> {
+        val deviceAuthentication = DeviceAuthentication(
+            type = DeviceAuthentication.TYPE,
+            sessionTranscript = sessionTranscript,
+            docType = input.docType,
+            namespaces = input.deviceNameSpaceBytes
+        )
+        val deviceAuthenticationBytes = coseCompliantSerializer
+            .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
+            .wrapInCborTag(24)
+        Napier.d("Device authentication signature input is ${deviceAuthenticationBytes.toHexString()}")
+        return signDeviceAuthDetached(
+            protectedHeader = null,
+            unprotectedHeader = null,
+            payload = deviceAuthenticationBytes,
+            serializer = ByteArraySerializer()
+        ).getOrElse { e ->
+            Napier.w("Could not create DeviceAuth for presentation", e)
+            throw PresentationException(e)
+        }
     }
 
     /** Returns map of first element (namespace) to second element (attribute name) */

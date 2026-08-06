@@ -13,6 +13,9 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
+import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
@@ -46,13 +49,19 @@ class HolderAgent @JvmOverloads constructor(
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
+    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+        keyMaterial = keyMaterial,
+        protectedHeaderModifier = CoseHeaderNone(),
+        unprotectedHeaderModifier = CoseHeaderNone()
+    ),
     private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(
             keyMaterial = keyMaterial,
             signVerifiablePresentation = signVerifiablePresentation,
             signKeyBinding = signKeyBinding,
-            mdocZkEngine = mdocZkEngine
+            mdocZkEngine = mdocZkEngine,
+            signDeviceAuthDetached = signDeviceAuthDetached
         ),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {

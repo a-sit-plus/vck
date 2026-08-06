@@ -38,6 +38,7 @@ data class PresentationRequestParameters(
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
      */
+    @Deprecated("Compute Device Signature using the calcIsoSessionTranscript callback.")
     val calcIsoDeviceSignaturePlain: (suspend (input: IsoDeviceSignatureInput) -> CoseSigned<ByteArray>?) = { null },
     @Deprecated(
         "Only applies to deprecated Presentation Exchange. DCQL uses `DCQLCredentialQuery.multiple`; " +
@@ -46,16 +47,15 @@ data class PresentationRequestParameters(
     val returnOneDeviceResponse: Boolean = false,
 
     /**
-     * Callback to calculate the ISO mDoc Session Transcript.
+     * Handle calculating Session Transcript for ISO mDocs, as this depends on the transport protocol
+     * (OpenID4VP with ISO/IEC 18013-7)
      *
-     * This is a callback because calculating the Session Transcript might fail for non-mDoc presentations.
+     * Deferred because calculation of a Session Transcript might fail for non-mDoc presentations.
      * By using a callback, we ensure that it's only calculated when an ISO mDoc is actually
      * part of the presentation, avoiding unnecessary failures, e.g., for SD-JWT presentations.
      */
-    val calcIsoSessionTranscript: (suspend () -> SessionTranscript) = {
-        throw IllegalStateException("Session transcript calculation callback was not provided. " +
-                "This is required for ISO mDoc presentations.")
-    },
+    val calcIsoSessionTranscript: (suspend () -> SessionTranscript?) = { null },
+
 ) {
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms

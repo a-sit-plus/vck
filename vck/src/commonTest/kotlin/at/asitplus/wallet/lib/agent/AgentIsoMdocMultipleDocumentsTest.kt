@@ -11,6 +11,7 @@ import at.asitplus.iso.Document
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.MobileSecurityObject
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
@@ -24,11 +25,9 @@ import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -52,7 +51,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
-import kotlinx.serialization.builtins.ByteArraySerializer
 
 val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
 
@@ -105,13 +103,12 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
                     validatorMdoc = validator,
                 ),
             )
-            val signer = SignCose<ByteArray>(keyMaterial = holderKeyMaterial)
         }
     } - {
 
         test("dcql: multiple credentials should be multiple device responses for remote presentation") { scope ->
             val request = scope.verifier.createPresentationRequest(
-                calcIsoDeviceSignaturePlain = simpleSigner(scope.signer),
+                calcIsoSessionTranscript = simpleTranscriptCallback
             )
             val presentationRequest = CredentialPresentationRequest.DCQLRequest(
                 DCQLQuery(
@@ -171,7 +168,7 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
 
             val result = scope.holder.createPresentation(
                 request = scope.verifier.createPresentationRequest(
-                    calcIsoDeviceSignaturePlain = simpleSigner(scope.signer),
+                    calcIsoSessionTranscript = simpleTranscriptCallback,
                     returnOneDeviceResponse = true,
                 ),
                 credentialPresentation = PresentationExchangePresentation(presentationRequest),
@@ -184,7 +181,7 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
 
         test("device retrieval: multiple document requests produce one device response") {
             val request = it.verifier.createPresentationRequest(
-                calcIsoDeviceSignaturePlain = simpleSigner(it.signer),
+                calcIsoSessionTranscript = simpleTranscriptCallback,
             )
             val result = it.holder.createDefaultPresentation(
                 request = request,
@@ -257,15 +254,12 @@ private fun isoMdocCredentialQuery(
     ),
 )
 
-private fun simpleSigner(
-    signer: SignCose<ByteArray>
-): suspend (IsoDeviceSignatureInput) -> CoseSigned<ByteArray>? = { input ->
-    signer(
-        protectedHeader = null,
-        unprotectedHeader = null,
-        payload = input.docType.encodeToByteArray(),
-        serializer = ByteArraySerializer()
-    ).getOrThrow()
+// Simple Session Transcript (mostly empty)
+private val simpleTranscriptCallback: () -> SessionTranscript = {
+    SessionTranscript.forQr(
+        deviceEngagementBytes = byteArrayOf(),
+        eReaderKeyBytes = byteArrayOf(),
+    )
 }
 
 // No OpenID4VP, no need to verify the device signature

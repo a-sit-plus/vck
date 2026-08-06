@@ -5,29 +5,23 @@ import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
 import at.asitplus.dcapi.DCAPIInfo
 import at.asitplus.dcapi.EncryptedResponse
 import at.asitplus.dcapi.EncryptedResponseData
-import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
-import at.asitplus.iso.wrapInCborTag
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
 
 /** Low-level ISO/IEC 18013-7 Annex C device-response construction used by [Iso180137AnnexCHolder]. */
@@ -65,31 +59,12 @@ object IsoMdocDcapiResponseBuilder {
         val callingOrigin = isoMdocWalletRequest.callingOrigin.serializeOrigin()
             ?: throw IllegalArgumentException("Invalid calling origin")
 
-        val calcSessionTranscript = { sessionTranscript }
         val presentationResult = holder.createPresentation(
             request = PresentationRequestParameters(
                 nonce = isoMdocRequest.encryptionInfo.encryptionParameters.nonce
                     ?.encodeToString(Base64UrlStrict) ?: throw IllegalArgumentException("no nonce"),
                 audience = callingOrigin,
-                calcIsoSessionTranscript = calcSessionTranscript,
-                calcIsoDeviceSignaturePlain = { input ->
-                    val deviceAuthentication = DeviceAuthentication(
-                        type = DeviceAuthentication.TYPE,
-                        sessionTranscript = calcSessionTranscript(),
-                        docType = input.docType,
-                        namespaces = input.deviceNameSpaceBytes
-                    )
-
-                    val deviceAuthenticationBytes = coseCompliantSerializer
-                        .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
-                        .wrapInCborTag(24)
-                    Napier.d("Device authentication signature input is ${deviceAuthenticationBytes.toHexString()}")
-                    signDeviceAuthDetached(null, null, deviceAuthenticationBytes, ByteArraySerializer())
-                        .getOrElse { e ->
-                            Napier.w("Could not create DeviceAuth for presentation", e)
-                            throw PresentationException(e)
-                        }
-                },
+                calcIsoSessionTranscript = { sessionTranscript },
                 returnOneDeviceResponse = true,
             ),
             credentialPresentation = credentialPresentation,
