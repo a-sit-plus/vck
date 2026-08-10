@@ -2,7 +2,10 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
+import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
+import io.ktor.client.request.HttpRequestData
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
@@ -32,3 +35,9 @@ private fun resourceServerProvidedNonce(response: HttpResponse): String? =
     response.takeIf {
         response.headers.getAll(HttpHeaders.WWWAuthenticate)?.any { it.contains(USE_DPOP_NONCE) } == true
     }?.let { response.headers[HttpHeaders.DPoPNonce] }
+
+fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
+    url = url.toString(),
+    method = method,
+    headers = headers,
+)

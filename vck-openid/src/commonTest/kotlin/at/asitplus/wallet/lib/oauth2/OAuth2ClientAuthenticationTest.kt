@@ -108,6 +108,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                     randomSource = RandomSource.Default
                 )
 
+                @Suppress("DEPRECATION")
                 suspend fun par(
                     clientAttestation: JwsCompactTyped<JsonWebToken> = this.clientAttestation,
                     clientAttestationPop: JwsCompactTyped<JsonWebToken> = this.clientAttestationPop,
@@ -121,6 +122,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                     )
                 ).getOrThrow()
 
+                @Suppress("DEPRECATION")
                 suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
                     request = client.createTokenRequestParameters(
                         state = state,
@@ -130,18 +132,17 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                     httpRequest = RequestInfo(
                         url = "https://example.com/",
                         method = HttpMethod.Post,
-                        dpop = null,
                         clientAttestation = this.clientAttestation,
                         clientAttestationPop = freshPop()
                     )
                 ).getOrThrow()
 
+                @Suppress("DEPRECATION")
                 suspend fun introspect(token: TokenResponseParameters) = server.tokenIntrospection(
                     TokenIntrospectionRequest(token = token.accessToken),
                     RequestInfo(
                         url = "https://example.com/",
                         method = HttpMethod.Get,
-                        dpop = null,
                         clientAttestation = this.clientAttestation,
                         clientAttestationPop = freshPop()
                     )
@@ -161,6 +162,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 state = state,
                 scope = it.scope,
             )
+            @Suppress("DEPRECATION")
             val parResponse = it.server.par(
                 authnRequest,
                 RequestInfo(
@@ -350,6 +352,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 clientKey = it.clientKey.jsonWebKey
             )
 
+            @Suppress("DEPRECATION")
             shouldThrow<OAuth2Exception> {
                 it.server.par(
                     authnRequest,
@@ -428,6 +431,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 scope = it.scope,
             )
 
+            @Suppress("DEPRECATION")
             shouldThrow<OAuth2Exception> {
                 it.server.par(
                     authnRequest,

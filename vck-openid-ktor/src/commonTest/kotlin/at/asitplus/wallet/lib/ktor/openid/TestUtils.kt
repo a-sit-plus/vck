@@ -12,8 +12,6 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
@@ -30,7 +28,7 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
-import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.ResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
@@ -62,20 +60,6 @@ object TestUtils {
         },
         status = HttpStatusCode.BadRequest
     ).also { Napier.w("Server error: ${throwable.message}", throwable) }
-
-    fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
-        url = url.toString(),
-        method = method,
-        dpop = headers["DPoP"]
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { JwsCompactTyped<JsonWebToken>(it) },
-        clientAttestation = headers["OAuth-Client-Attestation"]
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { JwsCompactTyped<JsonWebToken>(it) },
-        clientAttestationPop = headers["OAuth-Client-Attestation-PoP"]
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { JwsCompactTyped<JsonWebToken>(it) }
-    )
 
     fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
 

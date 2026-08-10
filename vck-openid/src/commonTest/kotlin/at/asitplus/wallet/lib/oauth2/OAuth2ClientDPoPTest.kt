@@ -60,7 +60,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
     } - {
         test("authorization code flow with DPoP") {
             val code = it.getCode(it.state)
-
+            @Suppress("DEPRECATION")
             val token = it.server.token(
                 request = it.client.createTokenRequestParameters(
                     state = it.state,
@@ -97,6 +97,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             )
 
             // simulate access to protected resource, i.e. verify access token
+            @Suppress("DEPRECATION")
             it.server.userInfo(
                 token.toHttpHeaderValue(),
                 RequestInfo(
@@ -111,6 +112,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
         test("authorization code flow with DPoP and refresh token") {
             val code = it.getCode(it.state)
 
+            @Suppress("DEPRECATION")
             val token = it.server.token(
                 request = it.client.createTokenRequestParameters(
                     state = it.state,
@@ -139,6 +141,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
                 .apply { active shouldBe true }
 
+            @Suppress("DEPRECATION")
             val refreshedAccessToken = it.server.token(
                 request = it.client.createTokenRequestParameters(
                     state = it.state,
@@ -174,6 +177,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 randomSource = RandomSource.Default,
             )
 
+            @Suppress("DEPRECATION")
             // simulate access to protected resource, i.e. verify access token
             it.server.userInfo(
                 refreshedAccessToken.toHttpHeaderValue(),
@@ -188,6 +192,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
         test("authorization code flow with DPoP and refresh token, but wrong key in DPoP proof") {
             val code = it.getCode(it.state)
 
+            @Suppress("DEPRECATION")
             val token = it.server.token(
                 request = it.client.createTokenRequestParameters(
                     state = it.state,
@@ -217,6 +222,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 .apply { active shouldBe true }
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
+            @Suppress("DEPRECATION")
             shouldThrow<OAuth2Exception.InvalidDpopProof> {
                 it.server.token(
                     request = it.client.createTokenRequestParameters(
@@ -241,7 +247,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
         test("authorization code flow with DPoP and wrong URL") {
             val code = it.getCode(it.state)
-
+            @Suppress("DEPRECATION")
             shouldThrow<OAuth2Exception> {
                 it.server.token(
                     request = it.client.createTokenRequestParameters(
@@ -265,7 +271,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
         test("authorization code flow with DPoP and wrong nonce") {
             val code = it.getCode(it.state)
-
+            @Suppress("DEPRECATION")
             shouldThrow<OAuth2Exception> {
                 it.server.token(
                     request = it.client.createTokenRequestParameters(
@@ -304,7 +310,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
         test("authorization code flow without DPoP for resource") {
             val code = it.getCode(it.state)
-
+            @Suppress("DEPRECATION")
             val token = it.server.token(
                 request = it.client.createTokenRequestParameters(
                     state = it.state,
@@ -343,7 +349,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
         test("authorization code flow with DPoP from other key") {
             val code = it.getCode(it.state)
-
+            @Suppress("DEPRECATION")
             val token = it.server.token(
                 request = it.client.createTokenRequestParameters(
                     state = it.state,
@@ -379,6 +385,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             )
 
             // simulate access to protected resource, i.e. verify access token
+            @Suppress("DEPRECATION")
             shouldThrow<OAuth2Exception> {
                 it.server.userInfo(
                     token.toHttpHeaderValue(),

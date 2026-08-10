@@ -31,8 +31,12 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oauth2.DPoP
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
+import at.asitplus.wallet.lib.oauth2.OAuthClientAttestation
+import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationPop
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
@@ -577,18 +581,6 @@ class OAuth2KtorClient(
     private fun OAuth2AuthorizationServerMetadata.supportsClientAuth(): Boolean =
         tokenEndPointAuthMethodsSupported?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
 }
-
-val HttpHeaders.OAuthClientAttestation: String
-    get() = "OAuth-Client-Attestation"
-
-val HttpHeaders.OAuthClientAttestationPop: String
-    get() = "OAuth-Client-Attestation-PoP"
-
-val HttpHeaders.DPoP: String
-    get() = "DPoP"
-
-val HttpHeaders.DPoPNonce: String
-    get() = "DPoP-Nonce"
 
 private val HttpResponse.dpopNonce: String?
     get() = headers[HttpHeaders.DPoPNonce]
