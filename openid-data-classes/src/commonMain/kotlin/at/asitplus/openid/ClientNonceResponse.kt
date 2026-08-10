@@ -3,6 +3,8 @@ package at.asitplus.openid
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+// TODO Copy for Attestation Challenge Response
+
 @Serializable
 data class ClientNonceResponse(
     /**

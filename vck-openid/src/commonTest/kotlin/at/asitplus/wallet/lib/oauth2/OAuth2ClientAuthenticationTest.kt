@@ -50,6 +50,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             )
 
             val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(clientKey, JwsHeaderNone())
+            // TODO Need support for nonce/challenge
             val clientAttestationPop = BuildClientAttestationPoPJwt(
                 signJwt = signClientAttestationPop,
                 clientId = client.clientId,

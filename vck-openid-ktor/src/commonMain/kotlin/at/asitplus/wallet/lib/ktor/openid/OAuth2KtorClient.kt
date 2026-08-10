@@ -59,7 +59,7 @@ import kotlin.time.Duration
  * Supported features:
  *  * Token requests and responses
  *  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
- *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+ *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  *  * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126)
  *  * [JSON Web Token (JWT) Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701)
  *  * [EUDI TS3 Wallet Unit Attestation 1.5.2](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
@@ -109,6 +109,8 @@ class OAuth2KtorClient(
          * satisfies `client_status.exp - current time >= preferred_client_status_period.` */
         val preferredClientStatusPeriod: Duration?,
     )
+
+    // TODO: Also need to store challenge from Attestation-Based Client Auth
 
     /**
      * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce
@@ -547,7 +549,7 @@ class OAuth2KtorClient(
                     signJwt = SignJwt(keyMaterial, JwsHeaderNone()),
                     clientId = oAuth2Client.clientId,
                     audience = authorizationServer,
-                    nonce = null // TODO: Add nonce after backend implementation is ready
+                    nonce = null // TODO: Read challenge like for DPoP
                 )
             }.getOrThrow()
             wia.jws to pop.jws

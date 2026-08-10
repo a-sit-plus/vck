@@ -21,7 +21,7 @@ import kotlin.time.Duration.Companion.minutes
  * Simple client authentication service for an OAuth2.0 AS.
  *
  * Implemented from:
- * * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
+ * * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  * * [EUDI TS3 Wallet Unit Attestation 1.5.2](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
  */
 class ClientAuthenticationService @JvmOverloads constructor(
@@ -52,6 +52,8 @@ class ClientAuthenticationService @JvmOverloads constructor(
      */
     private val issuerIdentifier: String? = null,
 ) {
+
+    // TODO Add challenge service here
 
     /**
      * Authenticates the client as defined in OpenID4VC HAIP, i.e. with client attestation JWT.
@@ -137,6 +139,7 @@ class ClientAuthenticationService @JvmOverloads constructor(
             throw InvalidClient("client_status expiration in past: ${clientStatus.expiration}")
         }
         if (payload.confirmationClaim == null) {
+            // TODO Validate this is an asymmetric key
             throw InvalidClient("client attestation has no cnf")
         }
     }
@@ -164,6 +167,9 @@ class ClientAuthenticationService @JvmOverloads constructor(
         if (payload.expiration == null || payload.expiration!! < (clock.now() - timeLeeway)) {
             throw InvalidClient("client attestation PoP expired: ${payload.expiration}")
         }
+        // TODO Verify other fields
+        // TODO Need to verify challenge
+        // TODO Validate signature against CNF key
     }
 
 }

@@ -75,7 +75,7 @@ import kotlin.time.Duration.Companion.minutes
  * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126),
  * [Proof Key for Code Exchange by OAuth Public Clients](https://datatracker.ietf.org/doc/html/rfc7636),
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449),
- * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
+ * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  * [OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
  * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
  */
@@ -112,6 +112,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * requests to that URI (which starts with [publicContext]) to [getTokenInfo].
      */
     private val introspectionEndpointPath: String = "/introspect",
+    // TODO Add challenge endpoint path for Attestation-Based Client Auth
     /** Associates issuer_state with credential offers. */
     private val issuerStateToCredentialOffer: MapStore<String, CredentialOffer> = DefaultMapStore(),
     /** Associates issued codes with the auth request from the client. */
@@ -533,6 +534,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         val response = token(request, httpRequest).getOrThrow()
         ResponseWithDpopNonce(response, tokenService.dpopNonce())
     }
+
+    // TODO Challenge endpoint for Attestation-Based Client Auth
 
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
         if (codeVerifier == null) {

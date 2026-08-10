@@ -48,6 +48,8 @@ Release 8.0.0 (unreleased):
     - Enforce the `pre-registered` client identifier scheme against `RelyingPartyTrust.preRegisteredClients`
     - Requests using a scheme for which no trust material is configured are rejected. `redirect_uri` is not covered; `entity_id` and `did` are handed to `RelyingPartyTrust.custom`, and pass unevaluated when it is null
     - `RequestParser` no longer verifies anything and lost its `requestObjectJwsVerifier` parameter, so parsing a request is purely parsing. Consequently `RequestParametersSigned.verified` is removed, with the `verified` property of `Jws`, `OpenId4VpDcApiSigned` and `OpenId4VpDcApiMultiSigned` and its serialized form. Stored JSON still carrying `"verified"` deserializes fine, as unknown keys are ignored
+- OAuth 2.0:
+    - Update implementation of [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html) to Draft 10 from 2026-07-06
 - Deprecations:
     - Remove code deprecated in 7.0.0, e.g. various `Iso180137AnnexC*` and related classes
     - Deprecate all classes used for Presentation Exchange requests and so on, e.g., `CredentialPresentationRequest.PresentationExchangeRequest` or `PresentationExchangeCredentialDisclosure` or `CredentialPresentation.PresentationExchangePresentation`

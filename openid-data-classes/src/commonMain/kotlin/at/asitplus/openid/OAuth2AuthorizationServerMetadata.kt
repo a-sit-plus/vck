@@ -363,6 +363,8 @@ data class OAuth2AuthorizationServerMetadata(
     @SerialName("code_challenge_methods_supported")
     val codeChallengeMethodsSupported: Set<String>? = null,
 
+    // TODO Support for challenge endpoint and pop methods
+
     /**
      * The Authorization Server SHOULD communicate supported algorithms for client attestations by using
      * [clientAttestationSigningAlgValuesSupportedStrings] and [clientAttestationPopSigningAlgValuesSupportedStrings]
@@ -373,7 +375,7 @@ data class OAuth2AuthorizationServerMetadata(
      * [clientAttestationPopSigningAlgValuesSupportedStrings] in its published metadata if the
      * [tokenEndPointAuthMethodsSupported] includes `attest_jwt_client_auth`.
      * See
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#name-authorization-server-metada)
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-authorization-server-and-re)
      */
     @SerialName("client_attestation_pop_signing_alg_values_supported")
     val clientAttestationPopSigningAlgValuesSupportedStrings: Set<String>? = null,
@@ -388,7 +390,7 @@ data class OAuth2AuthorizationServerMetadata(
      * [clientAttestationPopSigningAlgValuesSupportedStrings] in its published metadata if the
      * [tokenEndPointAuthMethodsSupported] includes `attest_jwt_client_auth`.
      * See
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#name-authorization-server-metada)
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-authorization-server-and-re)
      */
     @SerialName("client_attestation_signing_alg_values_supported")
     val clientAttestationSigningAlgValuesSupportedStrings: Set<String>? = null,

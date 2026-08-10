@@ -55,7 +55,7 @@ object BuildClientAttestationJwt {
     /**
      * Client attestation JWT, issued by the backend service to a client, which can be sent to an OAuth2 Authorization
      * Server if needed, e.g. as HTTP header `OAuth-Client-Attestation`, see
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
      *
      * @param clientId OAuth 2.0 client ID of the wallet
      * @param clientKey key to be attested, i.e. included in a [ConfirmationClaim]
@@ -114,7 +114,7 @@ object BuildClientAttestationPoPJwt {
     /**
      * Client attestation PoP JWT, issued by the client, which can be sent to an OAuth2 Authorization Server if needed,
      * e.g. as HTTP header `OAuth-Client-Attestation-PoP`, see
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
      *
      * @param clientId OAuth 2.0 client ID of the wallet
      * @param audience The RFC8414 issuer identifier URL of the authorization server MUST be used
@@ -132,11 +132,14 @@ object BuildClientAttestationPoPJwt {
         randomSource: RandomSource = RandomSource.Secure
     ): JwsCompactTyped<JsonWebToken> = signJwt(
         type = JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
+        // TODO Validate fields against latest draft
         payload = JsonWebToken(
             issuer = clientId,
             audience = audience,
             jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
+            // Setting both fields here, this changed in draft 10 of OAuth 2.0 Attestation-Based Client Auth
             nonce = nonce,
+            challenge = nonce,
             issuedAt = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue,
             expiration = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue + lifetime,
         ).also {
