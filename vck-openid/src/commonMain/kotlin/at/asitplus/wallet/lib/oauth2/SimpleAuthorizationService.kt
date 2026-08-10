@@ -124,12 +124,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     private val requestUriToPushedAuthorizationRequest: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     /** Service to create and validate access tokens. */
     private val tokenService: TokenService = TokenService.bearer(),
-    /** Handles client authentication in [par] and [token]. */
-    private val clientAuthenticationService: ClientAuthenticationService = ClientAuthenticationService(
-        enforceClientAuthentication = false,
-        verifyClientAttestationJwt = { true },
-        issuerIdentifier = publicContext
-    ),
+    /** Handles client authentication in [par] and [token]. Defaults to [NoopClientAuthenticationService]! */
+    private val clientAuthenticationService: ClientAuthenticationService = NoopClientAuthenticationService,
     /** Used to parse requests from clients, e.g., when using JWT-Secured Authorization Requests (RFC 9101) */
     private val requestParser: RequestParser = RequestParser(
         /** By default, do not retrieve authn requests referenced by `request_uri`. */

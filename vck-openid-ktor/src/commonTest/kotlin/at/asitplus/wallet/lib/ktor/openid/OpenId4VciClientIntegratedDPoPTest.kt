@@ -22,9 +22,8 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondIncludingDpopNonce
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.toRequestInfo
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
-import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
+import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
@@ -83,9 +82,7 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
                 authorizationEndpointPath = authorizationEndpointPath,
                 tokenEndpointPath = tokenEndpointPath,
                 pushedAuthorizationRequestEndpointPath = parEndpointPath,
-                clientAuthenticationService = ClientAuthenticationService(
-                    enforceClientAuthentication = true,
-                ),
+                clientAuthenticationService = AttestationBasedClientAuthenticationService(),
                 tokenService = TokenService.jwt(
                     issueRefreshTokens = true
                 ),

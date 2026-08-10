@@ -39,10 +39,9 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.toRequestInfo
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifyIsoMdocCredential
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
-import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
+import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
@@ -140,8 +139,7 @@ val OpenId4VciClientExternalAuthorizationServerTest by matrixSuite {
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
             userInfoEndpointPath = userInfoEndpointPath,
             introspectionEndpointPath = introspectionEndpointPath,
-            clientAuthenticationService = ClientAuthenticationService(
-                enforceClientAuthentication = true,
+            clientAuthenticationService = AttestationBasedClientAuthenticationService(
                 issuerIdentifier = if (validatePopAudience) authServerPublicContext else null,
             ),
             tokenService = tokenService,

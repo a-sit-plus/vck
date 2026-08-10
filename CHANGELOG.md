@@ -62,6 +62,7 @@ Release 8.0.0 (unreleased):
     - Deprecate `RequestObjectJwsVerifier` and the `requestObjectJwsVerifier` parameter of `OpenId4VpHolder`, superseded by `RelyingPartyTrust`. **It is no longer invoked**: verifying a request object needs to know where to load the relying party's key from, which depends on the client identifier scheme, so it moved to `AuthorizationRequestValidator`. Supplying one now logs a warning and has no effect, so migrate to `relyingPartyTrust` &mdash; `preRegisteredClients` for the pre-registered case, `custom` for schemes this library does not evaluate natively. To be removed in 9.0.0
     - Deprecate `ClientAuthenticationService.verifyClientAttestationJwt`, which never validated the `x5c` it required; pass `VerifyJwsObjectTrustedCertificate` with the trusted wallet provider certificates as `verifyJwsObject` instead
     - Deprecate constructor in `RequestInfo` taking single values for some HTTP headers, replace with constructor taking in all HTTP headers
+    - Deprecate constructor parameter `enforceClientAuthentication` in `AttestationBasedClientAuthenticationService` as the new default is `true`. Callers might use a `NoopClientAuthenticationService`
 - Refactorings:
     - In `MdocInputValidator` and `ValidatorMdoc` replace `verifyCoseSignatureWithKey` with a `VerifyCoseSignatureFun<MobileSecurityObject>`, which resolves the issuer key from the COSE headers itself. Consequently `MdocInputValidator.invoke()` and `ValidatorMdoc.verifyIsoCred()` lose their `issuerKey` parameter, `MdocInputValidationSummary.IntegrityValidationSummary.IntegrityValidationResult` loses its `issuerKey` property, and `IntegrityNotValidated` is removed
     - `ValidatorMdoc.verifyDocument()` no longer extracts the issuer certificate itself, but delegates to `MdocInputValidator` like the credential path does
@@ -72,6 +73,7 @@ Release 8.0.0 (unreleased):
     - Add method `getCertificateChain` to class `KeyStoreMaterial`
     - In `NonceChallengeVerifier` add `consumeChallenge()`, which consumes the challenge of the request an authentication response refers to and returns a `NonceChallengeVerifier.ChallengeSession` to verify all presentations of that response with, as used by `OpenId4VpVerifier` and `DcApiVerifier`
     - Add main constructor to `RequestInfo` that takes in all HTTP headers for future extensions to client authentication methods
+    - Rename existing `ClientAuthenticationService` to `AttestationBasedClientAuthenticationService` and extract an interface
  - Dependencies:
     - Update to [Signum 3.25.0](https://github.com/a-sit-plus/signum/releases/tag/3.25.0) for HPKE support
 

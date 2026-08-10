@@ -73,12 +73,10 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 var server = SimpleAuthorizationService(
                     publicContext = AUTHORIZATION_SERVER,
                     strategy = DummyAuthorizationServiceStrategy(scope),
-                    clientAuthenticationService = ClientAuthenticationService(
-                        enforceClientAuthentication = true,
-                        verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                            trustedIssuers = { setOf(walletProviderCaCert) }
-                        ),
-                    )
+clientAuthenticationService = AttestationBasedClientAuthenticationService(
+    verifyJwsObject = VerifyJwsObjectTrustedCertificate(
+        trustedIssuers = { setOf(walletProviderCaCert) }
+    ),)
                 )
                 val clientKey = clientKey
                 var clientAttestation = clientAttestation
@@ -377,14 +375,15 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             it.server = SimpleAuthorizationService(
                 publicContext = AUTHORIZATION_SERVER,
                 strategy = DummyAuthorizationServiceStrategy(it.scope),
-                clientAuthenticationService = ClientAuthenticationService(
-                    enforceClientAuthentication = true,
-                    verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                        trustedIssuers = { setOf(TestCertificateAuthority().certificate()) }
-                    ),
+    clientAuthenticationService = AttestationBasedClientAuthenticationService(
+
+        verifyJwsObject = VerifyJwsObjectTrustedCertificate(
+            trustedIssuers = { setOf(TestCertificateAuthority().certificate()) }
+        ),
                 ),
             )
 
+            @Suppress("DEPRECATION")
             shouldThrow<OAuth2Exception> {
                 it.server.par(
                     authnRequest,
@@ -412,6 +411,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             )
 
             shouldThrow<OAuth2Exception> {
+                @Suppress("DEPRECATION")
                 it.server.par(
                     authnRequest,
                     RequestInfo(
