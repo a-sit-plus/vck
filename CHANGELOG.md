@@ -68,6 +68,8 @@ Release 8.0.0 (unreleased):
     - In `CredentialToBeIssued.Iso` add a property to specify the digest algorithm to be used in the MSO
     - Add method `getCertificateChain` to class `KeyStoreMaterial`
     - In `NonceChallengeVerifier` add `consumeChallenge()`, which consumes the challenge of the request an authentication response refers to and returns a `NonceChallengeVerifier.ChallengeSession` to verify all presentations of that response with, as used by `OpenId4VpVerifier` and `DcApiVerifier`
+ - Dependencies:
+    - Update to [Signum 3.25.0](https://github.com/a-sit-plus/signum/releases/tag/3.25.0) for HPKE support
 
 Release 7.0.0:
 - Credential definitions:

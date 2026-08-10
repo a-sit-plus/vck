@@ -3,7 +3,7 @@
 kotlin = "2.3.0"
 agp = "8.12.3"
 testballoon = "1.0.0-K2.3.0"
-signum = "3.24.0"
+signum = "3.25.0"
 supreme = "0.15.0"
 uuid = "0.8.1"
 jsonpath = "3.0.0"
