@@ -14,6 +14,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -33,6 +34,12 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
+
+/** RFC 8414 issuer identifier of the AS under test, i.e. the required `aud` of client attestation PoP JWTs. */
+private const val AUTHORIZATION_SERVER = "https://wallet.a-sit.at/authorization-server"
 
 val OAuth2ClientAuthenticationTest by matrixSuite {
 
@@ -54,7 +61,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             val clientAttestationPop = BuildClientAttestationPoPJwt(
                 signJwt = signClientAttestationPop,
                 clientId = client.clientId,
-                audience = "some server",
+                audience = AUTHORIZATION_SERVER,
                 randomSource = RandomSource.Default
             )
 
@@ -62,7 +69,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 val scope = randomString()
                 val client = client
                 val walletProviderCa = walletProviderCa
+                val attesterBackend = attesterBackend
                 var server = SimpleAuthorizationService(
+                    publicContext = AUTHORIZATION_SERVER,
                     strategy = DummyAuthorizationServiceStrategy(scope),
                     clientAuthenticationService = ClientAuthenticationService(
                         enforceClientAuthentication = true,
@@ -74,6 +83,43 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 val clientKey = clientKey
                 var clientAttestation = clientAttestation
                 val clientAttestationPop = clientAttestationPop
+                val signClientAttestationPop = signClientAttestationPop
+
+                suspend fun signPop(payload: JsonWebToken) = signClientAttestationPop(
+                    type = JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
+                    payload = payload,
+                    serializer = JsonWebToken.serializer(),
+                ).getOrThrow()
+
+                suspend fun signAttestation(payload: JsonWebToken) = attesterBackend(
+                    type = JwsContentTypeConstants.CLIENT_ATTESTATION_JWT,
+                    payload = payload,
+                    serializer = JsonWebToken.serializer(),
+                ).getOrThrow()
+
+                /**
+                 * A conformant client sends a fresh PoP per request (draft-10 5.1: "Clients MUST generate JWTs
+                 * for each target"), so every request in a multi-step flow needs its own `jti`.
+                 */
+                suspend fun freshPop() = BuildClientAttestationPoPJwt(
+                    signJwt = signClientAttestationPop,
+                    clientId = client.clientId,
+                    audience = AUTHORIZATION_SERVER,
+                    randomSource = RandomSource.Default
+                )
+
+                suspend fun par(
+                    clientAttestation: JwsCompactTyped<JsonWebToken> = this.clientAttestation,
+                    clientAttestationPop: JwsCompactTyped<JsonWebToken> = this.clientAttestationPop,
+                ) = server.par(
+                    client.createAuthRequestJar(state = uuid4().toString(), scope = scope),
+                    RequestInfo(
+                        url = "https://example.com/",
+                        method = HttpMethod.Post,
+                        clientAttestation = clientAttestation,
+                        clientAttestationPop = clientAttestationPop,
+                    )
+                ).getOrThrow()
 
                 suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
                     request = client.createTokenRequestParameters(
@@ -86,7 +132,18 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                         method = HttpMethod.Post,
                         dpop = null,
                         clientAttestation = this.clientAttestation,
-                        clientAttestationPop = clientAttestationPop
+                        clientAttestationPop = freshPop()
+                    )
+                ).getOrThrow()
+
+                suspend fun introspect(token: TokenResponseParameters) = server.tokenIntrospection(
+                    TokenIntrospectionRequest(token = token.accessToken),
+                    RequestInfo(
+                        url = "https://example.com/",
+                        method = HttpMethod.Get,
+                        dpop = null,
+                        clientAttestation = this.clientAttestation,
+                        clientAttestationPop = freshPop()
                     )
                 ).getOrThrow()
             }
@@ -124,18 +181,160 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             val token = it.getToken(state, code).apply {
                 authorizationDetails.shouldBeNull()
             }
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                RequestInfo(
-                    url = "https://example.com/",
-                    method = HttpMethod.Get,
-                    dpop = null,
-                    clientAttestation = it.clientAttestation,
-                    clientAttestationPop = it.clientAttestationPop
-                )
-            ).getOrThrow()
+            it.introspect(token)
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
                 .apply { active shouldBe true }
+        }
+
+        test("client attestation PoP does not contain iss") {
+            it.clientAttestationPop.payload.issuer.shouldBeNull()
+        }
+
+        test("client attestation PoP does not contain exp") {
+            it.clientAttestationPop.payload.expiration.shouldBeNull()
+        }
+
+        test("client attestation PoP uses challenge instead of nonce") {
+            val challenge = randomString()
+            val pop = BuildClientAttestationPoPJwt(
+                signJwt = it.signClientAttestationPop,
+                clientId = it.client.clientId,
+                audience = "some server",
+                nonce = challenge,
+                randomSource = RandomSource.Default,
+            )
+
+            pop.payload.challenge shouldBe challenge
+            pop.payload.nonce.shouldBeNull()
+        }
+
+        test("reject client attestation with secret material in cnf jwk") {
+            val clientAttestation = BuildClientAttestationJwt(
+                signJwt = it.attesterBackend,
+                clientId = it.client.clientId,
+                clientKey = it.clientKey.jsonWebKey.copy(k = byteArrayOf(1)),
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestation = clientAttestation)
+            }
+        }
+
+        test("reject client attestation without cnf") {
+            val clientAttestation = it.signAttestation(it.clientAttestation.payload.copy(confirmationClaim = null))
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestation = clientAttestation)
+            }
+        }
+
+        test("accept client attestation with iss, removed in draft 8 but tolerated") {
+            val clientAttestation = it.signAttestation(
+                it.clientAttestation.payload.copy(issuer = "https://attester.example")
+            )
+
+            it.par(clientAttestation = clientAttestation)
+        }
+
+        test("accept client attestation PoP with iss and exp, removed in draft 8 and 6 but tolerated") {
+            val pop = it.signPop(
+                it.clientAttestationPop.payload.copy(
+                    issuer = it.client.clientId,
+                    expiration = Clock.System.now() + 10.minutes,
+                )
+            )
+
+            it.par(clientAttestationPop = pop)
+        }
+
+        test("reject client attestation PoP with iss of another client") {
+            val pop = it.signPop(
+                it.clientAttestationPop.payload.copy(issuer = "https://attacker.example")
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = pop)
+            }
+        }
+
+        test("reject expired client attestation PoP") {
+            val pop = it.signPop(
+                it.clientAttestationPop.payload.copy(expiration = Clock.System.now() - 1.hours)
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = pop)
+            }
+        }
+
+        test("reject client attestation PoP without jti") {
+            val pop = it.signPop(it.clientAttestationPop.payload.copy(jwtId = null))
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = pop)
+            }
+        }
+
+        test("reject client attestation PoP for another audience") {
+            val pop = it.signPop(
+                it.clientAttestationPop.payload.copy(audience = "https://attacker.example")
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = pop)
+            }
+        }
+
+        test("reject client attestation PoP without aud") {
+            val pop = it.signPop(it.clientAttestationPop.payload.copy(audience = null))
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = pop)
+            }
+        }
+
+        test("reject stale client attestation PoP") {
+            val pop = it.signPop(
+                it.clientAttestationPop.payload.copy(issuedAt = Clock.System.now() - 1.hours)
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = pop)
+            }
+        }
+
+        test("reject client attestation PoP without iat") {
+            val pop = it.signPop(it.clientAttestationPop.payload.copy(issuedAt = null))
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = pop)
+            }
+        }
+
+        test("reject client attestation PoP with unsupported algorithm") {
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = it.clientAttestationPop.withHeaderAlg(JwsAlgorithm.Signature.RS256))
+            }
+        }
+
+        test("reject client attestation PoP not signed by the cnf key") {
+            val pop = SignJwt<JsonWebToken>(EphemeralKeyWithSelfSignedCert(), JwsHeaderNone())(
+                JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
+                it.clientAttestationPop.payload,
+                JsonWebToken.serializer(),
+            ).getOrThrow()
+
+            shouldThrow<OAuth2Exception> {
+                it.par(clientAttestationPop = pop)
+            }
+        }
+
+        test("reject replayed client attestation PoP") {
+            it.par()
+
+            shouldThrow<OAuth2Exception> {
+                it.par()
+            }
         }
 
         test("pushed authorization request with wrong client attestation JWT") {
@@ -173,6 +372,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
             // the attestation is signed by a certificate of it.walletProviderCa, which is not on this trust list
             it.server = SimpleAuthorizationService(
+                publicContext = AUTHORIZATION_SERVER,
                 strategy = DummyAuthorizationServiceStrategy(it.scope),
                 clientAuthenticationService = ClientAuthenticationService(
                     enforceClientAuthentication = true,
@@ -270,16 +470,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                RequestInfo(
-                    url = "https://example.com/",
-                    method = HttpMethod.Get,
-                    dpop = null,
-                    clientAttestation = it.clientAttestation,
-                    clientAttestationPop = it.clientAttestationPop
-                )
-            ).getOrThrow()
+            it.introspect(token)
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
                 .apply { active shouldBe true }
         }
