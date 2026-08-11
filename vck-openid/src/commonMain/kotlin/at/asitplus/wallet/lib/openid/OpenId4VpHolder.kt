@@ -80,6 +80,9 @@ class OpenId4VpHolder @JvmOverloads constructor(
     /** Advertised in [metadata] and compared against holder's requirements. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     /** Signs the session transcript for mDoc responses. */
+    @Deprecated("signDeviceAuthDetached no longer has any effect because ISO Device signature" +
+            "creation has been moved into Holder's credential presentation. " +
+            "Signing function can be overridden in HolderAgent instead.")
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     @Deprecated("Support for SIOPv2 has been removed")
@@ -139,12 +142,8 @@ class OpenId4VpHolder @JvmOverloads constructor(
         encryptResponse = encryptJarm,
         randomSource = randomSource
     )
-    @Suppress("DEPRECATION")
-    private val presentationFactory = PresentationFactory(
-        supportedAlgorithms = supportedAlgorithms,
-        signDeviceAuthDetached = signDeviceAuthDetached,
-        signIdToken = signIdToken
-    )
+
+    private val presentationFactory = PresentationFactory(supportedAlgorithms)
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(

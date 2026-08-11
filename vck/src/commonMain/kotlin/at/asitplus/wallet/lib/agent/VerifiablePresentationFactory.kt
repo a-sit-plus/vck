@@ -255,6 +255,8 @@ class VerifiablePresentationFactory(
 
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         val input = IsoDeviceSignatureInput(schemeIdentifier, deviceNameSpaceBytes)
+
+        @Suppress("DEPRECATION")
         val deviceSignature = request.calcIsoDeviceSignaturePlain(input) ?: run {
             val sessionTranscript = request.calcIsoSessionTranscript()
                 ?: throw PresentationException("calcIsoSessionTranscript not implemented")

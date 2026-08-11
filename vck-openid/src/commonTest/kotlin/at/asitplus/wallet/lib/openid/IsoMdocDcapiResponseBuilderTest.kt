@@ -158,7 +158,6 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             credentialPresentation = fixture.presentationRequestBuilder.toIsoDeviceRetrievalRequest()
                 .toCredentialPresentation() as CredentialPresentation.IsoDeviceRetrievalPresentation,
             isoMdocWalletRequest = fixture.walletRequest,
-            keyMaterial = holderKey,
             holder = holderAgent,
         )
 
@@ -211,7 +210,6 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             credentialPresentation = fixture.presentationRequestBuilder.toIsoDeviceRetrievalRequest()
                 .toCredentialPresentation() as CredentialPresentation.IsoDeviceRetrievalPresentation,
             isoMdocWalletRequest = fixture.walletRequest,
-            keyMaterial = holderKey,
             holder = holderAgent,
         )
 

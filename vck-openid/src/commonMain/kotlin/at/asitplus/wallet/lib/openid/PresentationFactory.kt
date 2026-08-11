@@ -28,10 +28,18 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 
 internal class PresentationFactory(
     private val supportedAlgorithms: Set<SignatureAlgorithm>,
-    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray>,
-    @Deprecated("Support for SIOPv2 has been removed")
-    private val signIdToken: SignJwtFun<IdToken>,
 ) {
+
+    @Deprecated(
+        message = "signDeviceAuthDetached is no longer used, because Iso Device Signature has been moved into" +
+                " Holder's presentation creation. Support for SIOPv2 has been removed",
+        replaceWith = ReplaceWith( expression = "PresentationFactory(supportedAlgorithms)", ),
+    )
+    constructor(
+        supportedAlgorithms: Set<SignatureAlgorithm>,
+        signDeviceAuthDetached:  SignCoseDetachedFun<ByteArray>,
+        signIdToken: SignJwtFun<IdToken>
+    ) : this(supportedAlgorithms)
 
     private val dcApiSessionTranscript = DcApiSessionTranscriptCalculator()
     private val urlSessionTranscript = UrlSessionTranscriptCalculator()

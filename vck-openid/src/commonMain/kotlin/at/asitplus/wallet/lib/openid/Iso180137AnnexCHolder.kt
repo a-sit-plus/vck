@@ -25,9 +25,18 @@ import kotlin.jvm.JvmOverloads
 class Iso180137AnnexCHolder @JvmOverloads constructor(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val holder: Holder = HolderAgent(keyMaterial),
-    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
-        SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
 ) {
+    @Deprecated(
+        message = "signDeviceAuthDetached is no longer explicitly used by " +
+                "IsoMdocDcapiResponseBuilder.buildEncryptedResponse and has been removed",
+        replaceWith = ReplaceWith( expression = "Iso180137AnnexCHolder(keyMaterial, holder)", ),
+    )
+    constructor(keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+                holder: Holder = HolderAgent(keyMaterial),
+                signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+                    keyMaterial, CoseHeaderNone(), CoseHeaderNone()
+                )
+    ) : this(keyMaterial, holder)
 
     /** Adapts the Annex C device request to the presentation model used by VC-K's credential matcher. */
     fun createPresentationRequest(
@@ -60,9 +69,7 @@ class Iso180137AnnexCHolder @JvmOverloads constructor(
         IsoMdocDcapiResponseBuilder.buildEncryptedResponse(
             credentialPresentation = credentialPresentation,
             isoMdocWalletRequest = request,
-            keyMaterial = keyMaterial,
             holder = holder,
-            signDeviceAuthDetached = signDeviceAuthDetached,
         )
     }
 }

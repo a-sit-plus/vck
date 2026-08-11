@@ -49,10 +49,7 @@ object IsoMdocDcapiResponseBuilder {
     suspend fun buildEncryptedResponse(
         credentialPresentation: CredentialPresentation.IsoDeviceRetrievalPresentation,
         isoMdocWalletRequest: RequestParametersFrom.IsoMdocDcApi,
-        keyMaterial: KeyMaterial,
         holder: Holder,
-        signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
-            SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
     ): EncryptedResponse {
         val sessionTranscript = sessionTranscriptFor(isoMdocWalletRequest)
         val isoMdocRequest = isoMdocWalletRequest.parameters.isoMdocRequest
@@ -95,4 +92,20 @@ object IsoMdocDcapiResponseBuilder {
         )
         return EncryptedResponse(TYPE_DCAPI, encryptedResponseData)
     }
+
+    @Deprecated(
+        message = "signDeviceAuthDetached and keyMaterial are no longer needed and have been removed" +
+                " because Iso DeviceSignature computation has been moved into Holder's presentation creation.",
+        replaceWith = ReplaceWith(
+            expression = "buildEncryptedResponse(credentialPresentation, isoMdocWalletRequest, holder)",
+        )
+    )
+    suspend fun buildEncryptedResponse(
+        credentialPresentation: CredentialPresentation.IsoDeviceRetrievalPresentation,
+        isoMdocWalletRequest: RequestParametersFrom.IsoMdocDcApi,
+        keyMaterial: KeyMaterial,
+        holder: Holder,
+        signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
+            SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
+    ) = buildEncryptedResponse(credentialPresentation, isoMdocWalletRequest, holder)
 }
