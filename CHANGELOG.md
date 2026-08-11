@@ -29,6 +29,8 @@ Release 8.0.0 (unreleased):
     - In ISO data classes like `DeviceResponse`, `DeviceRequest`, `MobileSecurityObject` replace the String `version` with a typed `parsedVersion` from [kotlin-semver](https://github.com/z4kn4fein/kotlin-semver)
     - In ISO data class `MobileSecurityObject` replace the String `digestAlgorithm` with a typed `digest` from Signum
     - In `CredentialToBeIssued.Iso` add a property to specify the digest algorithm to be used in the MSO
+- Misc:
+    - Add method `getCertificateChain` to class `KeyStoreMaterial`
 
 Release 7.0.0:
 - Credential definitions:
