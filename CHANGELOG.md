@@ -6,6 +6,10 @@ Release 8.0.0 (unreleased):
 - Credentials:
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject
+- Verifiable Presentations:
+    - Compute ISO mDoc `DeviceAuthentication` signatures automatically using the `calcIsoSessionTranscript` callback instead of requiring `calcIsoDeviceSignaturePlain` 
+    - Replace `PresentationRequestParameters.calcIsoDeviceSignaturePlain` with the PresentationRequestParameters.calcIsoSessionTranscript` callback to return a nullable `SessionTranscript?`. DeviceSignature and DeviceAuth is now calculated based on the Transcript.
+    - Add optional `signDeviceAuthDetached` parameter to `HolderAgent` and `VerifiablePresentationFactory` to centralize ISO mDoc device authentication within the holder
 - OpenID for Verifiable Presentations:
     - Remove support for Presentation Exchange, since OpenID4VP 1.0 only supports DCQL
     - Implement direct presentation requests and responses according to ISO 18013-5 Device Retrieval with new subtypes `CredentialPresentationRequest.IsoDeviceRetrieval`, `CredentialPresentation.IsoDeviceRetrievalPresentation`, `IsoDeviceRetrievalMatchingResult` for `CredentialMatchingResult`, `HolderIsoDeviceRetrievalQueryMatchingResult` for `HolderPresentationRequestMatchingResult`, and `PresentationResponseParameters.DeviceRetrievalParameters`
@@ -32,6 +36,7 @@ Release 8.0.0 (unreleased):
     - Add `VerifyJwsObjectTrusted` and `VerifyCoseSignatureTrusted`, where the supplied keys are the only accepted signers
     - Note that neither builds a certificate path to a trust anchor, they compare public keys
     - In `ValidatorSdJwt.verifyVpSdJwt()` reject presentations whose SD-JWT carries no `cnf`: the key binding JWT used to be verified against a key asserted in its own header in that case, which proves nothing about the holder
+    - Delegate ISO mDoc device authentication calculation directly to the holder during OpenID4VP and DCAPI presentation creation
 - Deprecations:
     - Remove code deprecated in 7.0.0, e.g. various `Iso180137AnnexC*` and related classes
     - Deprecate all classes used for Presentation Exchange requests and so on, e.g., `CredentialPresentationRequest.PresentationExchangeRequest` or `PresentationExchangeCredentialDisclosure` or `CredentialPresentation.PresentationExchangePresentation`
@@ -40,6 +45,9 @@ Release 8.0.0 (unreleased):
     - In `NonceChallengeVerifier` deprecate `verifyPresentationSdJwt()`, `verifyPresentationVcJwt()` and `verifyPresentationIsoMdoc()`, which take the challenge from the presentation itself, to be replaced with `consumeChallenge()` and the returned `ChallengeSession`
     - `NonceChallengeVerifier` does not implement `Verifier` and `NonceService` anymore, so a presentation cannot be verified without accounting for the challenge it answers; use the `ChallengeSession` from `consumeChallenge()`, or the properties `verifier` for challenge-free verification and `nonceService` for raw nonce access
     - Deprecate passing `publicKeyLookup` to `VerifyJwsObject` and `VerifyCoseSignature`, callers are rerouted to the trusted variants, use `VerifyJwsObjectTrusted` resp. `VerifyCoseSignatureTrusted` explicitly, or drop the parameter to keep verifying against the asserted key
+    - Deprecate `PresentationRequestParameters.calcIsoDeviceSignaturePlain` in favor of computing device signatures automatically via `calcIsoSessionTranscript`
+    - Deprecate the `NonceChallengeVerifier.createPresentationRequest()` overload accepting `calcIsoDeviceSignaturePlain`
+    - Deprecate `signDeviceAuthDetached` parameter in `buildEncryptedResponse()`, `OpenId4VpHolder`, and `Iso180137AnnexCHolder`, as device authentication signature functions are now managed internally by the holder
 - Refactorings:
     - In ISO data classes like `DeviceResponse`, `DeviceRequest`, `MobileSecurityObject` replace the String `version` with a typed `parsedVersion` from [kotlin-semver](https://github.com/z4kn4fein/kotlin-semver)
     - In ISO data class `MobileSecurityObject` replace the String `digestAlgorithm` with a typed `digest` from Signum
