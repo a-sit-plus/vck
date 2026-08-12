@@ -8,7 +8,8 @@ Release 8.0.0 (unreleased):
     - no more build hacks
 - OpenID-KTOR:
     - Change the return type of `OAuth2KtorClient.callTokenIntrospection()` to `TokenIntrospectionResponseJson`
-    - Require the desired response `ContentType` when calling `OAuth2KtorClient.callTokenIntrospection()`
+    - Accept requested token introspection response media ranges as a `List<ContentType>` in `OAuth2KtorClient.callTokenIntrospection()` and `RemoteOAuth2AuthorizationServerAdapter`, supporting multiple formats and quality parameters
+    - Parse token introspection responses according to their actual HTTP `Content-Type`
     - Update `verifyTokenIntrospectionJwt` to receive `TokenIntrospectionResponseJwtPayload`
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input

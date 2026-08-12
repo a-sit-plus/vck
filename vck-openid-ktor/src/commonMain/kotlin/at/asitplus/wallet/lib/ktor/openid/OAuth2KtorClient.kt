@@ -487,7 +487,7 @@ class OAuth2KtorClient(
         request,
         token,
         popAudience,
-        ContentType.Application.Json,
+        listOf(ContentType.Application.Json),
         retryCount,
         issuerMetadata,
     )
@@ -501,14 +501,14 @@ class OAuth2KtorClient(
         request: TokenIntrospectionRequest,
         token: String,
         popAudience: String,
-        requestedFormat: ContentType,
+        requestedResponseFormats: List<ContentType>,
         retryCount: Int = 0,
         issuerMetadata: IssuerMetadata? = null,
     ): TokenIntrospectionResponseJson = oauthMetadata.introspectionEndpoint?.let { url ->
         Napier.i("callTokenIntrospection: $url with $request")
         val response = try {
             client.request {
-                accept(requestedFormat)
+                requestedResponseFormats.forEach { accept(it) }
                 url(url)
                 method = HttpMethod.Post
                 setBody(FormDataContent(parameters {
@@ -529,7 +529,7 @@ class OAuth2KtorClient(
                     request = request,
                     token = token,
                     popAudience = popAudience,
-                    requestedFormat = requestedFormat,
+                    requestedResponseFormats = requestedResponseFormats,
                     retryCount = retryCount + 1,
                     issuerMetadata = issuerMetadata,
                 )
@@ -539,7 +539,7 @@ class OAuth2KtorClient(
         updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
         parseTokenIntrospectionResponse(
             body = response.bodyAsText(),
-            requestedFormat = requestedFormat,
+            responseContentType = response.contentType(),
             verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
         ).also {
             if (!it.active) {
@@ -707,10 +707,10 @@ data class TokenResponseWithDpopNonce(
 
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
-    requestedFormat: ContentType,
+    responseContentType: ContentType?,
     verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponseJwtPayload>) -> Boolean,
 ): TokenIntrospectionResponseJson = catchingUnwrapped {
-    when (requestedFormat) {
+    when (responseContentType?.withoutParameters()) {
         TokenIntrospectionResponseJson.contentType ->
             joseCompliantSerializer.decodeFromString<TokenIntrospectionResponseJson>(body)
 
@@ -718,7 +718,9 @@ private suspend fun parseTokenIntrospectionResponse(
             require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
         }.payload.tokenIntrospection
 
-        else -> throw OAuth2Exception.InvalidRequest("Introspection for $requestedFormat is not defined.")
+        else -> throw OAuth2Exception.InvalidRequest(
+            "Token introspection response content type $responseContentType is not supported."
+        )
     }
 }.getOrElse {
     throw InvalidToken("Token introspection response could not be parsed", it)

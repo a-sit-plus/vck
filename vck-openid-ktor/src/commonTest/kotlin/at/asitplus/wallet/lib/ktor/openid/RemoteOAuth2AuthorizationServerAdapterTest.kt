@@ -155,7 +155,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                 )
 
                 request.url.toString() == introspectionEndpoint -> {
-                    request.headers[HttpHeaders.Accept] shouldBe ContentType.Application.Json.toString()
+                    request.headers.getAll(HttpHeaders.Accept) shouldBe listOf(ContentType.Application.Json.toString())
                     respond(
                         joseCompliantSerializer.encodeToString(TokenIntrospectionResponseJson(active = false)),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -170,7 +170,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             publicContext = issuer,
             engine = mockEngine,
             internalTokenVerificationService = tokenVerificationService,
-            tokenIntrospectionResponseFormat = ContentType.Application.Json,
+            tokenIntrospectionResponseFormats = listOf(ContentType.Application.Json),
         )
 
         shouldThrow<InvalidToken> {
@@ -207,7 +207,10 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                 )
 
                 request.url.toString() == introspectionEndpoint -> {
-                    request.headers[HttpHeaders.Accept] shouldBe ContentType.Application.IntrospectionJwt.toString()
+                    request.headers.getAll(HttpHeaders.Accept) shouldBe listOf(
+                        ContentType.Application.IntrospectionJwt.toString(),
+                        ContentType.Application.Json.toString(),
+                    )
                     respond(tokenIntrospectionJwt)
                 }
 

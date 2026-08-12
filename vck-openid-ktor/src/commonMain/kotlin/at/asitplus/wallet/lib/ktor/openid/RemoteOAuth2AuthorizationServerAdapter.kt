@@ -62,8 +62,9 @@ class RemoteOAuth2AuthorizationServerAdapter @JvmOverloads constructor(
     val internalTokenVerificationService: TokenVerificationService,
     /** Used to provide DPoP nonces for credential requests, which will be verified by [internalTokenVerificationService]. */
     val dpopNonceService: NonceService = DefaultNonceService(),
-    /** Response format requested from the remote token introspection endpoint. */
-    private val tokenIntrospectionResponseFormat: ContentType = TokenIntrospectionResponseJwt.contentType,
+    /** Response media ranges sent to the remote token introspection endpoint. */
+    private val tokenIntrospectionResponseFormats: List<ContentType> =
+        listOf(TokenIntrospectionResponseJwt.contentType),
 ) : OAuth2AuthorizationServerAdapter {
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
@@ -96,7 +97,7 @@ class RemoteOAuth2AuthorizationServerAdapter @JvmOverloads constructor(
             request = request,
             token = token,
             popAudience = publicContext,
-            requestedFormat = tokenIntrospectionResponseFormat,
+            requestedResponseFormats = tokenIntrospectionResponseFormats,
         ).toTokenInfo(token)
     }
 

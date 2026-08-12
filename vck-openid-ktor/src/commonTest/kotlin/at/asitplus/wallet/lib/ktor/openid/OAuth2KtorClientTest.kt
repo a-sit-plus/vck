@@ -206,7 +206,9 @@ val OAuth2KtorClientTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenIntrospectionRequest =
                         requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
-                    val acceptHeader: String = request.headers[HttpHeaders.Accept].shouldNotBeNull()
+                    val acceptHeader: String = request.headers.getAll(HttpHeaders.Accept)
+                        .shouldNotBeNull()
+                        .joinToString(", ")
                     authorizationService.tokenIntrospection(
                         request = params,
                         acceptHeader = acceptHeader,
@@ -309,7 +311,41 @@ val OAuth2KtorClientTest by matrixSuite {
                 ),
                 token = tokenResponse.params.accessToken,
                 popAudience = authorizationService.publicContext,
-                requestedFormat = ContentType.Application.IntrospectionJwt,
+                requestedResponseFormats = listOf(ContentType.Application.IntrospectionJwt),
+            ).active shouldBe true
+        }
+    }
+
+    test("token introspection supports an Accept header with multiple media ranges") {
+        with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = false)) {
+            val authorizationResult = client.startAuthorization(
+                oauthMetadata = authorizationService.metadata(),
+                authorizationServer = authorizationService.publicContext,
+                scope = requestedScope,
+            ).getOrThrow()
+            val httpClient = HttpClient(mockEngine) { followRedirects = false }
+            val authCodeUrl = httpClient.get(authorizationResult.url).headers[HttpHeaders.Location].shouldNotBeNull()
+            val tokenResponse = client.requestTokenWithAuthCode(
+                oauthMetadata = authorizationService.metadata(),
+                url = authCodeUrl,
+                authorizationServer = authorizationService.publicContext,
+                state = authorizationResult.state,
+                scope = requestedScope,
+                authorizationDetails = setOf()
+            ).getOrThrow()
+
+            client.callTokenIntrospection(
+                oauthMetadata = authorizationService.metadata(),
+                request = TokenIntrospectionRequest(
+                    token = tokenResponse.params.accessToken,
+                    tokenTypeHint = tokenResponse.params.tokenType,
+                ),
+                token = tokenResponse.params.accessToken,
+                popAudience = authorizationService.publicContext,
+                requestedResponseFormats = listOf(
+                    ContentType.Application.Json,
+                    ContentType.Application.IntrospectionJwt.withParameter("q", "0.5"),
+                ),
             ).active shouldBe true
         }
     }
@@ -764,11 +800,3 @@ val OAuth2KtorClientTest by matrixSuite {
         }
     }
 }
-
-private fun HttpRequestData.parseAcceptHeaderForTokenIntrospection(): ContentType =
-    headers[HttpHeaders.Accept]
-        ?.let(::parseHeaderValue)
-        ?.sortedByDescending { it.quality }
-        ?.map { ContentType.parse(it.value) }?.firstOrNull {
-            it == ContentType.Application.Json || it == ContentType.Application.IntrospectionJwt
-        } ?: throw IllegalArgumentException("Accept header is mandatory to specify answer format")
