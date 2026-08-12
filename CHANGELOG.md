@@ -6,6 +6,10 @@ Release 8.0.0 (unreleased):
     - no more conventions plugin submodule
     - no more version catalog messing around
     - no more build hacks
+- OpenID-KTOR:
+    - Change the return type of `OAuth2KtorClient.callTokenIntrospection()` to `TokenIntrospectionResponseJson`
+    - Require the desired response `ContentType` when calling `OAuth2KtorClient.callTokenIntrospection()`
+    - Update `verifyTokenIntrospectionJwt` to receive `TokenIntrospectionResponseJwtPayload`
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input
 - Credentials:

@@ -3,6 +3,7 @@ package at.asitplus.openid
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.data.MediaTypes.Application
 import io.ktor.http.*
@@ -26,7 +27,7 @@ value class TokenIntrospectionResponseJwt(
 
     override fun toString(): String = value.toString()
 
-    //Only necessary because we cannot tag the class as @Serializable
+    //Only necessary because we do not want to tag the class as @Serializable
     object Serializer :
         KSerializer<TokenIntrospectionResponseJwt> by
         TransformingSerializerTemplate<TokenIntrospectionResponseJwt, JwsCompactTyped<TokenIntrospectionResponseJwtPayload>>(
@@ -48,5 +49,8 @@ value class TokenIntrospectionResponseJwt(
          * [ContentType.Application.IntrospectionJwt].
          */
         val contentType = ContentType.Application.IntrospectionJwt
+
+        operator fun invoke(jwtString: String): TokenIntrospectionResponseJwt =
+            TokenIntrospectionResponseJwt(JwsTyped(jwtString))
     }
 }
