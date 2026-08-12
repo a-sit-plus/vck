@@ -539,7 +539,7 @@ class OAuth2KtorClient(
         updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
         parseTokenIntrospectionResponse(
             body = response.bodyAsText(),
-            responseFormat = requestedFormat,
+            requestedFormat = requestedFormat,
             verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
         ).also {
             if (!it.active) {
@@ -707,10 +707,10 @@ data class TokenResponseWithDpopNonce(
 
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
-    responseFormat: ContentType,
+    requestedFormat: ContentType,
     verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponseJwtPayload>) -> Boolean,
 ): TokenIntrospectionResponseJson = catchingUnwrapped {
-    when (responseFormat) {
+    when (requestedFormat) {
         TokenIntrospectionResponseJson.contentType ->
             joseCompliantSerializer.decodeFromString<TokenIntrospectionResponseJson>(body)
 
@@ -718,7 +718,7 @@ private suspend fun parseTokenIntrospectionResponse(
             require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
         }.payload.tokenIntrospection
 
-        else -> throw OAuth2Exception.InvalidRequest("Introspection for $responseFormat is not defined.")
+        else -> throw OAuth2Exception.InvalidRequest("Introspection for $requestedFormat is not defined.")
     }
 }.getOrElse {
     throw InvalidToken("Token introspection response could not be parsed", it)
