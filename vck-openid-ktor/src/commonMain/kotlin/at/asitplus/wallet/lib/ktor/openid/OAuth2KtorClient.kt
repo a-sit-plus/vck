@@ -474,6 +474,24 @@ class OAuth2KtorClient(
         )
     } ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
 
+    @Deprecated("New required parameter")
+    suspend fun callTokenIntrospection(
+        oauthMetadata: OAuth2AuthorizationServerMetadata,
+        request: TokenIntrospectionRequest,
+        token: String,
+        popAudience: String,
+        retryCount: Int = 0,
+        issuerMetadata: IssuerMetadata? = null,
+    ): TokenIntrospectionResponseJson = callTokenIntrospection(
+        oauthMetadata,
+        request,
+        token,
+        popAudience,
+        ContentType.Application.Json,
+        retryCount,
+        issuerMetadata,
+    )
+
     /**
      * Calls the token introspection endpoint ([OAuth2AuthorizationServerMetadata.introspectionEndpoint])
      * to check whether the given token is active, returns [TokenIntrospectionResponseJson] on success, otherwise throws [InvalidToken].
