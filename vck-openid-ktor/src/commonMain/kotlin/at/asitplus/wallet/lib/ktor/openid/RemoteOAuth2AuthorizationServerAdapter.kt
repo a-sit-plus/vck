@@ -96,7 +96,7 @@ class RemoteOAuth2AuthorizationServerAdapter @JvmOverloads constructor(
             request = request,
             token = token,
             popAudience = publicContext,
-            responseFormat = tokenIntrospectionResponseFormat,
+            requestedFormat = tokenIntrospectionResponseFormat,
         ).toTokenInfo(token)
     }
 

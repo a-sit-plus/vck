@@ -207,7 +207,11 @@ val OAuth2KtorClientTest by matrixSuite {
                     val params: TokenIntrospectionRequest =
                         requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
                     val acceptHeader: String = request.headers[HttpHeaders.Accept].shouldNotBeNull()
-                    authorizationService.tokenIntrospection(params, request.toRequestInfo(), acceptHeader).fold(
+                    authorizationService.tokenIntrospection(
+                        request = params,
+                        acceptHeader = acceptHeader,
+                        httpRequest = request.toRequestInfo(),
+                    ).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) },
                     )
@@ -305,7 +309,7 @@ val OAuth2KtorClientTest by matrixSuite {
                 ),
                 token = tokenResponse.params.accessToken,
                 popAudience = authorizationService.publicContext,
-                responseFormat = ContentType.Application.IntrospectionJwt,
+                requestedFormat = ContentType.Application.IntrospectionJwt,
             ).active shouldBe true
         }
     }

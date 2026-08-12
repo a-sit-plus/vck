@@ -205,9 +205,9 @@ val OpenId4VciClientExternalAuthorizationServerTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params = requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
                     externalAuthorizationServer.tokenIntrospection(
-                        params,
-                        request.toRequestInfo(),
-                        request.headers[HttpHeaders.Accept].shouldNotBeNull()
+                        request = params,
+                        acceptHeader = request.headers[HttpHeaders.Accept].shouldNotBeNull(),
+                        httpRequest = request.toRequestInfo(),
                     ).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }

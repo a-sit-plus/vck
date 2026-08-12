@@ -501,14 +501,14 @@ class OAuth2KtorClient(
         request: TokenIntrospectionRequest,
         token: String,
         popAudience: String,
-        responseFormat: ContentType,
+        requestedFormat: ContentType,
         retryCount: Int = 0,
         issuerMetadata: IssuerMetadata? = null,
     ): TokenIntrospectionResponseJson = oauthMetadata.introspectionEndpoint?.let { url ->
         Napier.i("callTokenIntrospection: $url with $request")
         val response = try {
             client.request {
-                accept(responseFormat)
+                accept(requestedFormat)
                 url(url)
                 method = HttpMethod.Post
                 setBody(FormDataContent(parameters {
@@ -529,7 +529,7 @@ class OAuth2KtorClient(
                     request = request,
                     token = token,
                     popAudience = popAudience,
-                    responseFormat = responseFormat,
+                    requestedFormat = requestedFormat,
                     retryCount = retryCount + 1,
                     issuerMetadata = issuerMetadata,
                 )
@@ -539,7 +539,7 @@ class OAuth2KtorClient(
         updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
         parseTokenIntrospectionResponse(
             body = response.bodyAsText(),
-            responseFormat = responseFormat,
+            responseFormat = requestedFormat,
             verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
         ).also {
             if (!it.active) {
