@@ -93,10 +93,10 @@ class RemoteOAuth2AuthorizationServerAdapter @JvmOverloads constructor(
         )
         oauth2Client.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
-            responseFormat = tokenIntrospectionResponseFormat,
             request = request,
             token = token,
             popAudience = publicContext,
+            responseFormat = tokenIntrospectionResponseFormat,
         ).toTokenInfo(token)
     }
 

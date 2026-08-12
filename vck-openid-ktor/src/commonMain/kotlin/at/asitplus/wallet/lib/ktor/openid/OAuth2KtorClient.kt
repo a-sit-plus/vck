@@ -480,10 +480,10 @@ class OAuth2KtorClient(
      */
     suspend fun callTokenIntrospection(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
-        responseFormat: ContentType,
         request: TokenIntrospectionRequest,
         token: String,
         popAudience: String,
+        responseFormat: ContentType,
         retryCount: Int = 0,
         issuerMetadata: IssuerMetadata? = null,
     ): TokenIntrospectionResponseJson = oauthMetadata.introspectionEndpoint?.let { url ->
@@ -508,10 +508,10 @@ class OAuth2KtorClient(
             return@let error.updateDpopNonceOrAttestationChallengeAndRetry(url, retryCount) {
                 callTokenIntrospection(
                     oauthMetadata = oauthMetadata,
-                    responseFormat = responseFormat,
                     request = request,
                     token = token,
                     popAudience = popAudience,
+                    responseFormat = responseFormat,
                     retryCount = retryCount + 1,
                     issuerMetadata = issuerMetadata,
                 )

@@ -34,9 +34,8 @@ val OAuth2ClientTest by matrixSuite {
             )
 
             suspend fun introspectJson(token: String) = server.tokenIntrospection(
-                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequest(token = token),
-                null,
+                acceptHeader = ContentType.Application.Json.toString(),
             ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
     } - {
@@ -108,9 +107,8 @@ val OAuth2ClientTest by matrixSuite {
         test("token introspection JWT response requires authenticated resource server") {
             shouldThrow<OAuth2Exception.InvalidClient> {
                 it.server.tokenIntrospection(
-                    ContentType.Application.IntrospectionJwt.toString(),
                     TokenIntrospectionRequest(token = "unknown-token"),
-                    null
+                    acceptHeader = ContentType.Application.IntrospectionJwt.toString()
                 ).getOrThrow()
             }
         }
@@ -125,9 +123,8 @@ val OAuth2ClientTest by matrixSuite {
                 )
 
                 server.tokenIntrospection(
-                    mediaRange.toString(),
                     TokenIntrospectionRequest(token = "unknown-token"),
-                    null,
+                    acceptHeader = mediaRange.toString(),
                 ).getOrThrow()
                     .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
             }
@@ -139,34 +136,30 @@ val OAuth2ClientTest by matrixSuite {
             )
 
             server.tokenIntrospection(
-                null,
                 TokenIntrospectionRequest(token = "unknown-token"),
-                null,
+                acceptHeader = null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
         test("token introspection honors a specific rejection over a wildcard") {
             it.server.tokenIntrospection(
-                "${TokenIntrospectionResponseJwt.contentType};q=0, ${ContentType.Any};q=1",
                 TokenIntrospectionRequest(token = "unknown-token"),
-                null,
+                acceptHeader = "${TokenIntrospectionResponseJwt.contentType};q=0, ${ContentType.Any};q=1",
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
         test("token introspection applies a wildcard rejection to every matching response format") {
             shouldThrow<IllegalArgumentException> {
                 it.server.tokenIntrospection(
-                    "${ContentType.Any};q=1, ${ContentType.Application.Any};q=0",
                     TokenIntrospectionRequest(token = "unknown-token"),
-                    null,
+                    acceptHeader = "${ContentType.Any};q=1, ${ContentType.Application.Any};q=0",
                 ).getOrThrow()
             }
         }
         test("token introspection compares the effective quality of each response format") {
             it.server.tokenIntrospection(
-                "${ContentType.Application.Any};q=1, ${TokenIntrospectionResponseJwt.contentType};q=0.5",
                 TokenIntrospectionRequest(token = "unknown-token"),
-                null,
+                acceptHeader = "${ContentType.Application.Any};q=1, ${TokenIntrospectionResponseJwt.contentType};q=0.5",
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
@@ -181,9 +174,8 @@ val OAuth2ClientTest by matrixSuite {
             test("token introspection rejects unusable Accept header '$acceptHeader'") {
                 shouldThrow<IllegalArgumentException> {
                     it.server.tokenIntrospection(
-                        acceptHeader,
                         TokenIntrospectionRequest(token = "token"),
-                        null,
+                        acceptHeader = acceptHeader,
                     ).getOrThrow()
                 }
             }

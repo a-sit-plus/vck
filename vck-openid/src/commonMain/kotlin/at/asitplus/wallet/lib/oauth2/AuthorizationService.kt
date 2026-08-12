@@ -92,8 +92,8 @@ interface AuthorizationService {
      * @param httpRequest information about the HTTP request from the client, to validate authentication
      */
     suspend fun tokenIntrospection(
-        acceptHeader: String?,
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo? = null,
+        acceptHeader: String?,
     ): KmmResult<TokenIntrospectionResponse>
 }

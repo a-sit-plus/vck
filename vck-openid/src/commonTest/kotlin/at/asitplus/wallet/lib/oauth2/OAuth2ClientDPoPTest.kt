@@ -88,9 +88,8 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 ).getOrThrow()
 
             suspend fun introspectJson(token: String) = server.tokenIntrospection(
-                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequest(token = token),
-                null,
+                acceptHeader = ContentType.Application.Json.toString(),
             ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
 
             suspend fun getCode(state: String): String {
@@ -196,9 +195,8 @@ val OAuth2ClientDPoPTest by matrixSuite {
             }
 
             it.server.tokenIntrospection(
-                ContentType.Application.Json.toString(),
                 TokenIntrospectionRequest(token = token.accessToken),
-                null,
+                acceptHeader = ContentType.Application.Json.toString(),
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }

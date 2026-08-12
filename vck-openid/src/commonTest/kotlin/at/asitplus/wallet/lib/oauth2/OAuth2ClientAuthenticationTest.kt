@@ -197,14 +197,14 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
                 @Suppress("DEPRECATION")
                 suspend fun introspect(token: TokenResponseParameters) = server.tokenIntrospection(
-                    ContentType.Application.Json.toString(),
                     TokenIntrospectionRequest(token = token.accessToken),
                     RequestInfo(
                         url = "https://example.com/",
                         method = HttpMethod.Get,
                         clientAttestation = this.clientAttestation,
                         clientAttestationPop = freshPop()
-                    )
+                    ),
+                    ContentType.Application.Json.toString(),
                 ).getOrThrow()
             }
         }
@@ -297,9 +297,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 authorizationDetails.shouldBeNull()
             }
             val introspectionResponse = it.server.tokenIntrospection(
-                ContentType.Application.IntrospectionJwt.toString(),
                 TokenIntrospectionRequest(token = token.accessToken),
                 it.introspectionRequestInfo(HttpMethod.Get),
+                ContentType.Application.IntrospectionJwt.toString(),
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
 
@@ -568,9 +568,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
         ).forEach { (acceptHeader, description) ->
             test("token introspection returns inactive JWT for $description") {
                 val introspectionResponse = it.server.tokenIntrospection(
-                    acceptHeader,
                     TokenIntrospectionRequest(token = "unknown-token"),
                     it.introspectionRequestInfo(),
+                    acceptHeader,
                 ).getOrThrow()
                     .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
 
@@ -586,9 +586,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
         ).forEach { (acceptHeader, description) ->
             test("token introspection returns inactive JSON for $description") {
                 val introspectionResponse = it.server.tokenIntrospection(
-                    acceptHeader,
                     TokenIntrospectionRequest(token = "unknown-token"),
                     it.introspectionRequestInfo(),
+                    acceptHeader,
                 ).getOrThrow()
                     .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
 
@@ -602,9 +602,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             testConfig = TestConfig.disable(),
         ) {
             val introspectionResponse = it.server.tokenIntrospection(
-                "${ContentType.Application.Json};Q=0, ${ContentType.Application.IntrospectionJwt};q=0.5",
                 TokenIntrospectionRequest(token = "unknown-token"),
                 it.introspectionRequestInfo(),
+                "${ContentType.Application.Json};Q=0, ${ContentType.Application.IntrospectionJwt};q=0.5",
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
 

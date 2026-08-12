@@ -830,9 +830,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     override suspend fun tokenIntrospection(
-        acceptHeader: String?,
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo?,
+        acceptHeader: String?,
     ): KmmResult<TokenIntrospectionResponse> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()
         val authenticatedResourceServerId = clientAuthenticationService.authenticateClient(
