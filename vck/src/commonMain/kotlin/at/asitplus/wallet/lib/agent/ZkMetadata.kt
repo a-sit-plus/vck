@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.iso.ZkInfo
+import at.asitplus.iso.ZkRequest
 
 /**
  * Defines metadata for zero-knowledge presentations and a method to evaluate compatibility
@@ -9,7 +9,7 @@ import at.asitplus.iso.ZkInfo
 sealed interface ZkMetadata {
     fun isCompatibleWith(credential: SubjectCredentialStore.StoreEntry): Boolean
 
-    data class IsoMdocZk(val zkInfo: ZkInfo) : ZkMetadata {
+    data class IsoMdocZk(val zkRequest: ZkRequest) : ZkMetadata {
         override fun isCompatibleWith(credential: SubjectCredentialStore.StoreEntry) = credential is SubjectCredentialStore.StoreEntry.Iso
     }
 }

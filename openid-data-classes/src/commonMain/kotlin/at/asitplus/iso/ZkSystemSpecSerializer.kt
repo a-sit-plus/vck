@@ -51,7 +51,7 @@ object ZkSystemSpecSerializer : KSerializer<ZkSystemSpec> {
         }
 
         return ZkSystemSpec(
-            zkSystemId = zkSystemId ?: error("Missing zkSystemId"),
+            id = zkSystemId ?: error("Missing zkSystemId"),
             system = system ?: error("Missing system"),
             params = params ?: error("Missing params"),
         )
@@ -60,7 +60,7 @@ object ZkSystemSpecSerializer : KSerializer<ZkSystemSpec> {
     override fun serialize(encoder: Encoder, value: ZkSystemSpec) {
         ZkSystemParamsMapSerializer(value.system).let { paramsSerializer ->
             encoder.encodeStructure(descriptor) {
-                encodeStringElement(descriptor, 0, value.zkSystemId)
+                encodeStringElement(descriptor, 0, value.id)
                 encodeStringElement(descriptor, 1, value.system)
                 encodeSerializableElement(descriptor, 2, paramsSerializer, value.params)
             }
