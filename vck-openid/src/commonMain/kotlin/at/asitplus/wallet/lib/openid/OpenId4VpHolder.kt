@@ -230,11 +230,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
         createAuthnResponse(parse(input)).getOrThrow()
     }
 
-    @Suppress("UNCHECKED_CAST")
     private suspend fun parse(
         input: String,
     ) = requestParser.parseRequestParameters(input)
-        .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+        .getOrThrow().requireAuthenticationRequest()
 
     @Deprecated("Use createAuthnErrorResponse with AuthorizationResponsePreparationState parameter")
     suspend fun createAuthnErrorResponse(
@@ -448,6 +447,18 @@ class OpenId4VpHolder @JvmOverloads constructor(
         } else null
 
 }
+
+/**
+ * The type argument of [RequestParametersFrom] is erased, so casting it can never fail on its own: guard the cast with
+ * the runtime type of the parameters, so that a request we can not process in OpenID4VP, e.g. an RQES signature
+ * request, or a JAR request that has not been resolved into an authorization request, is reported as an OAuth 2.0
+ * error instead of failing with a [ClassCastException] somewhere inside request validation.
+ */
+@Suppress("UNCHECKED_CAST")
+private fun RequestParametersFrom<*>.requireAuthenticationRequest(): RequestParametersFrom<AuthenticationRequestParameters> =
+    if (parameters is AuthenticationRequestParameters)
+        this as RequestParametersFrom<AuthenticationRequestParameters>
+    else throw InvalidRequest("not an authorization request: ${parameters::class.simpleName}")
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =
     certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()

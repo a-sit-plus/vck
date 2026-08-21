@@ -74,8 +74,21 @@ class RequestParser(
             ?: parseFromJson(null)
             ?: throw InvalidRequest("parse error: $this")
 
+    /**
+     * Resolves a JAR request, i.e. the request object referenced in `request_uri` or carried in `request`, into the
+     * request parameters it holds. A JAR request we can not resolve is an error: passing it on unresolved would look
+     * like a successfully parsed request, but carry none of the parameters it is supposed to transport.
+     */
     private suspend fun RequestParametersFrom<out RequestParameters>.extractRequest(): RequestParametersFrom<*> =
-        (this.parameters as? JarRequestParameters)?.let { extractRequest(it, this) } ?: this
+        (this.parameters as? JarRequestParameters)?.let { jar ->
+            (extractRequest(jar, this)
+                ?: throw InvalidRequest("request contains neither `request` nor `request_uri`"))
+                // RFC 9101, 6.2: the request object must not contain `request` or `request_uri` itself
+                .also { resolved ->
+                    if (resolved.parameters is JarRequestParameters)
+                        throw InvalidRequest("request object must not contain `request` or `request_uri`")
+                }
+        } ?: this
 
     private fun String.parseFromParameters(): RequestParametersFrom<*>? = catchingUnwrapped {
         Url(this).let {
@@ -97,6 +110,13 @@ class RequestParser(
         RequestParametersFrom.Json(this, params, (parent as? RequestParametersFrom.Uri)?.url, decryptedFrom)
     }.getOrNull()
 
+    /**
+     * Resolves the request object of the JAR request in [parameters], either from `request`, or by fetching the
+     * `request_uri` with [remoteResourceRetriever].
+     *
+     * Returns `null` only if the request carries neither of the two, and throws if the request object can not be
+     * retrieved, or is not a valid request object.
+     */
     suspend fun extractRequest(
         parameters: JarRequestParameters,
         parent: RequestParametersFrom<out RequestParameters>?,
@@ -111,18 +131,18 @@ class RequestParser(
         // only the POST request to the request URI endpoint has a channel for these, see OpenID4VP 1.0, 5.10, and it
         // is built once per request, since it carries the key the verifier shall encrypt this very request to
         val requestObjectParameters = if (method == HttpMethod.Post) buildRequestObjectParameters() else null
-        remoteResourceRetriever(parameters.resourceRetrieverInput(uri, method, requestObjectParameters))?.let {
-            val expectedKeyId = requestObjectParameters.expectedEncryptionKeyId()
-            val fromJwe = it.parseAsJweRequest(parent, expectedKeyId)
-            // a non-null `expectedKeyId` means we advertised a key in `wallet_metadata`, i.e. this was the POST fetch,
-            // the only flow in which the verifier had the chance to encrypt at all
-            if (fromJwe == null && requireEncryptedRequests && expectedKeyId != null)
-                throw InvalidRequest("request object from $uri is not encrypted, but we require encryption")
-            (fromJwe
-                ?: it.parseAsJwsRequest(parent)
-                ?: throw InvalidRequest("request_uri content not a valid request object: $uri"))
-                .also { request -> request.requireWalletNonce(requestObjectParameters?.walletNonce) }
-        }
+        val content = remoteResourceRetriever(parameters.resourceRetrieverInput(uri, method, requestObjectParameters))
+            ?: throw InvalidRequest("could not retrieve request object from request_uri: $uri")
+        val expectedKeyId = requestObjectParameters.expectedEncryptionKeyId()
+        val fromJwe = content.parseAsJweRequest(parent, expectedKeyId)
+        // a non-null `expectedKeyId` means we advertised a key in `wallet_metadata`, i.e. this was the POST fetch,
+        // the only flow in which the verifier had the chance to encrypt at all
+        if (fromJwe == null && requireEncryptedRequests && expectedKeyId != null)
+            throw InvalidRequest("request object from $uri is not encrypted, but we require encryption")
+        (fromJwe
+            ?: content.parseAsJwsRequest(parent)
+            ?: throw InvalidRequest("request_uri content not a valid request object: $uri"))
+            .also { request -> request.requireWalletNonce(requestObjectParameters?.walletNonce) }
     }
 
     /** The `kid` of the encryption key we have advertised in `wallet_metadata` for this very request. */

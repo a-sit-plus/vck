@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JarRequestParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -15,6 +17,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
@@ -177,6 +180,17 @@ val OpenIdRequestParserTests by matrixSuite {
             }
         }
 
+        "request by reference that can not be retrieved is rejected" { requestParser ->
+            // This parser has no retriever, so there is no request object at all: the unresolved JAR request must
+            // not be reported as a successfully parsed authorization request
+            val input =
+                "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890&client_id=s6BhdRkqt3"
+
+            requestParser.parseRequestParameters(input)
+                .exceptionOrNull().shouldNotBeNull()
+                .message.shouldNotBeNull() shouldContain "https://client.example.org/req/1234567890"
+        }
+
     }
 
     fixture {
@@ -216,6 +230,36 @@ val OpenIdRequestParserTests by matrixSuite {
                     joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
                 ).shouldBe(this)
             }
+        }
+
+    }
+
+    // RFC 9101, 6.2: a request object must not contain `request` or `request_uri` itself
+    val nestedJarJws = runBlocking {
+        SignJwt<RequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
+            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+            JarRequestParameters(
+                clientId = "s6BhdRkqt3",
+                requestUri = "https://client.example.org/req/nested",
+            ),
+            RequestParameters.serializer()
+        ).getOrThrow().toString()
+    }
+
+    fixture {
+        RequestParser(
+            remoteResourceRetriever = {
+                if (it.url == "https://client.example.org/req/1234567890") nestedJarJws else null
+            }
+        )
+    } - {
+        "request object nesting another request_uri is rejected" { requestParser ->
+            val input =
+                "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890&client_id=s6BhdRkqt3"
+
+            requestParser.parseRequestParameters(input)
+                .exceptionOrNull().shouldNotBeNull()
+                .message.shouldNotBeNull() shouldContain "request_uri"
         }
 
     }
