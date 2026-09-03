@@ -21,7 +21,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.ContentType
+import io.ktor.http.*
 
 val OAuth2ClientTest by matrixSuite {
     fixture {
@@ -33,9 +33,15 @@ val OAuth2ClientTest by matrixSuite {
                 strategy = DummyAuthorizationServiceStrategy(scope),
             )
 
+            fun introspectionRequestInfo(acceptHeader: String) = RequestInfo(
+                url = "https://example.com/introspect",
+                method = HttpMethod.Post,
+                headers = headers { set(HttpHeaders.Accept, acceptHeader) },
+            )
+
             suspend fun introspectJson(token: String) = server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token),
-                acceptHeader = ContentType.Application.Json.toString(),
+                httpRequest = introspectionRequestInfo(ContentType.Application.Json.toString()),
             ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
     } - {
@@ -108,7 +114,7 @@ val OAuth2ClientTest by matrixSuite {
             shouldThrow<OAuth2Exception.InvalidClient> {
                 it.server.tokenIntrospection(
                     TokenIntrospectionRequest(token = "unknown-token"),
-                    acceptHeader = ContentType.Application.IntrospectionJwt.toString()
+                    httpRequest = it.introspectionRequestInfo(ContentType.Application.IntrospectionJwt.toString()),
                 ).getOrThrow()
             }
         }
@@ -124,7 +130,7 @@ val OAuth2ClientTest by matrixSuite {
 
                 server.tokenIntrospection(
                     TokenIntrospectionRequest(token = "unknown-token"),
-                    acceptHeader = mediaRange.toString(),
+                    httpRequest = it.introspectionRequestInfo(mediaRange.toString()),
                 ).getOrThrow()
                     .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
             }
@@ -137,29 +143,35 @@ val OAuth2ClientTest by matrixSuite {
 
             server.tokenIntrospection(
                 TokenIntrospectionRequest(token = "unknown-token"),
-                acceptHeader = null,
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
         test("token introspection honors a specific rejection over a wildcard") {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = "unknown-token"),
-                acceptHeader = "${TokenIntrospectionResponseJwt.contentType};q=0, ${ContentType.Any};q=1",
+                httpRequest = it.introspectionRequestInfo(
+                    "${TokenIntrospectionResponseJwt.contentType};q=0, ${ContentType.Any};q=1",
+                ),
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
         test("token introspection applies a wildcard rejection to every matching response format") {
-            shouldThrow<IllegalArgumentException> {
+            shouldThrow<OAuth2Exception.InvalidRequest> {
                 it.server.tokenIntrospection(
                     TokenIntrospectionRequest(token = "unknown-token"),
-                    acceptHeader = "${ContentType.Any};q=1, ${ContentType.Application.Any};q=0",
+                    httpRequest = it.introspectionRequestInfo(
+                        "${ContentType.Any};q=1, ${ContentType.Application.Any};q=0",
+                    ),
                 ).getOrThrow()
             }
         }
         test("token introspection compares the effective quality of each response format") {
             it.server.tokenIntrospection(
                 TokenIntrospectionRequest(token = "unknown-token"),
-                acceptHeader = "${ContentType.Application.Any};q=1, ${TokenIntrospectionResponseJwt.contentType};q=0.5",
+                httpRequest = it.introspectionRequestInfo(
+                    "${ContentType.Application.Any};q=1, " +
+                            "${TokenIntrospectionResponseJwt.contentType};q=0.5",
+                ),
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
@@ -172,10 +184,10 @@ val OAuth2ClientTest by matrixSuite {
             "${ContentType.Application.IntrospectionJwt};q=0, ${ContentType.Application.Json};q=0, ${ContentType.Any};q=1",
         ).forEach { acceptHeader ->
             test("token introspection rejects unusable Accept header '$acceptHeader'") {
-                shouldThrow<IllegalArgumentException> {
+                shouldThrow<OAuth2Exception.InvalidRequest> {
                     it.server.tokenIntrospection(
                         TokenIntrospectionRequest(token = "token"),
-                        acceptHeader = acceptHeader,
+                        httpRequest = it.introspectionRequestInfo(acceptHeader),
                     ).getOrThrow()
                 }
             }

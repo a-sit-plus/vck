@@ -11,7 +11,6 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -84,25 +83,16 @@ interface AuthorizationService {
         httpRequest: RequestInfo? = null,
     ): KmmResult<JsonObject>
 
-    @Deprecated("New required parameter")
-    suspend fun tokenIntrospection(
-        request: TokenIntrospectionRequest,
-        httpRequest: RequestInfo? = null,
-    ): KmmResult<TokenIntrospectionResponse> = tokenIntrospection(
-        request, ContentType.Application.Json.toString(), httpRequest
-    )
-
     /**
      * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection
      * [RFC 9701](https://datatracker.ietf.org/doc/rfc9701/): JWT Response for OAuth 2.0 Token Introspection
      *
      * @param request as sent from the client as form POST
-     * @param acceptHeader as sent from the client as HTTP `Accept` header, or `null` if the header was omitted
-     * @param httpRequest information about the HTTP request from the client, to validate authentication
+     * @param httpRequest information about the HTTP request from the client, including its `Accept` header, to
+     * validate authentication and negotiate the response format
      */
     suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,
-        acceptHeader: String?,
         httpRequest: RequestInfo? = null,
     ): KmmResult<TokenIntrospectionResponse>
 }

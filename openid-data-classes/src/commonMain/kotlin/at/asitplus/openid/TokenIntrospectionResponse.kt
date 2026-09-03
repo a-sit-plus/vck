@@ -1,5 +1,7 @@
 package at.asitplus.openid
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import io.ktor.http.ContentType
 import io.ktor.http.parseAndSortContentTypeHeader
 
@@ -10,7 +12,7 @@ sealed interface TokenIntrospectionResponse {
         fun parseAcceptHeader(
             acceptHeader: String?,
             defaultResponseFormat: ContentType,
-        ): ContentType {
+        ): KmmResult<ContentType> = catching {
             val entries = parseAndSortContentTypeHeader(acceptHeader ?: ContentType.Any.toString()).map {
                 ContentType.parse(it.value) to it.quality
             }
@@ -43,7 +45,7 @@ sealed interface TokenIntrospectionResponse {
                 .filter { it.second == highestQuality }
                 .map { it.first }
 
-            return defaultResponseFormat.takeIf { it in preferredCandidates }
+            defaultResponseFormat.takeIf { it in preferredCandidates }
                 ?: preferredCandidates.first()
         }
 

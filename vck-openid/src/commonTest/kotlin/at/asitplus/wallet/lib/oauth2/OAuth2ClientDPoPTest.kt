@@ -89,7 +89,13 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
             suspend fun introspectJson(token: String) = server.tokenIntrospection(
                 TokenIntrospectionRequest(token = token),
-                acceptHeader = ContentType.Application.Json.toString(),
+                httpRequest = RequestInfo(
+                    url = "https://example.com/introspect",
+                    method = HttpMethod.Post,
+                    headers = headers {
+                        set(HttpHeaders.Accept, ContentType.Application.Json.toString())
+                    },
+                ),
             ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
 
             suspend fun getCode(state: String): String {
@@ -194,11 +200,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 it.tokenType shouldBe TOKEN_TYPE_DPOP
             }
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                acceptHeader = ContentType.Application.Json.toString(),
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+            it.introspectJson(token.accessToken)
                 .apply { active shouldBe true }
 
             val dpopForResource = BuildDPoPHeader(

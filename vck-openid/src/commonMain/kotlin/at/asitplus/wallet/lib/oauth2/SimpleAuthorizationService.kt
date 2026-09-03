@@ -831,7 +831,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
     override suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,
-        acceptHeader: String?,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenIntrospectionResponse> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()
@@ -840,8 +839,10 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             clientId = null,
             validatedClientKey = validatedClientKey
         ).getOrThrow()?.clientId
-        val responseFormat =
-            TokenIntrospectionResponse.parseAcceptHeader(acceptHeader, defaultTokenIntrospectionResponseFormat)
+        val responseFormat = TokenIntrospectionResponse.parseAcceptHeader(
+            httpRequest?.acceptHeader,
+            defaultTokenIntrospectionResponseFormat,
+        ).getOrElse { throw InvalidRequest("accept_header invalid", it) }
         val response = catchingUnwrapped {
             tokenService.verification.getTokenInfo(request.token)
         }.fold(

@@ -20,7 +20,7 @@ Release 8.0.0 (unreleased):
     - Support JWT token introspection responses according to RFC 9701 using `application/token-introspection+jwt` content negotiation; `RemoteOAuth2AuthorizationServerAdapter` requests JWT responses by default and can be configured to use RFC 7662 JSON responses
     - Apply the most-specific matching `Accept` media range when negotiating token introspection responses, including wildcard exclusions, media-range parameters, and omitted headers
     - BREAKING: Replace `TokenIntrospectionResult`, `TokenIntrospectionResponse`, and `TokenIntrospectionJwtResponse` with sealed `TokenIntrospectionResponse`, `TokenIntrospectionResponseJson`, `TokenIntrospectionResponseJwtPayload`, and typed `TokenIntrospectionResponseJwt`
-    - Select Token Introspection response format with the HTTP `Accept` header instead of the `response_format` request parameter
+    - Select Token Introspection response format with the HTTP `Accept` header from `RequestInfo.acceptHeader` instead of the `response_format` request parameter
 - Verifiable Presentations:
     - Compute ISO mDoc `DeviceAuthentication` signatures automatically using the `calcIsoSessionTranscript` callback instead of requiring `calcIsoDeviceSignaturePlain` 
     - Replace `PresentationRequestParameters.calcIsoDeviceSignaturePlain` with the `PresentationRequestParameters.calcIsoSessionTranscript` callback to return a nullable `SessionTranscript`. DeviceSignature and DeviceAuth is now calculated based on the Transcript.

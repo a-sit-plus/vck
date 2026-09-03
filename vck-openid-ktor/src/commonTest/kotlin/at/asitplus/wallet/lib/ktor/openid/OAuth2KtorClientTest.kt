@@ -206,12 +206,8 @@ val OAuth2KtorClientTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenIntrospectionRequest =
                         requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
-                    val acceptHeader: String = request.headers.getAll(HttpHeaders.Accept)
-                        .shouldNotBeNull()
-                        .joinToString(", ")
                     authorizationService.tokenIntrospection(
                         request = params,
-                        acceptHeader = acceptHeader,
                         httpRequest = request.toRequestInfo(),
                     ).fold(
                         onSuccess = { respond(it) },
