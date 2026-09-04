@@ -6,8 +6,6 @@ organized and where to make changes see [ARCHITECTURE.md](ARCHITECTURE.md).
 ## Prerequisites
 
 * JDK 17.
-* Clone recursively, or at least init and update the `conventions-vclib/gradle-conventions-plugin` submodule
-  manually — the build won't load without it.
 * Set the path to an Android SDK in `local.properties`, or the project will fail to load.
 
 Build conventions (source sets, targets, publishing) come from the composite build under `conventions-vclib/`
