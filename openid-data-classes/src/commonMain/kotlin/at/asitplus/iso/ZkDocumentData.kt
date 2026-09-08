@@ -1,45 +1,78 @@
 package at.asitplus.iso
 
-import kotlin.time.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.cbor.ByteString
-import kotlinx.serialization.cbor.CborLabel
 import kotlinx.serialization.cbor.ValueTags
+import kotlin.time.Instant
 
 /**
  * Part of the ISO/IEC 18013-5:2026 standard: ZKP Mdoc response (10.3.4)
  */
 @Serializable
 data class ZkDocumentData (
-    @SerialName("docType")
+    @SerialName(PROP_DOC_TYPE)
     val docType: String,
-    @SerialName("zkSystemId")
+    @SerialName(PROP_ZK_SYSTEM_ID)
     val zkSystemId: String,
-    @SerialName("timestamp")
+    @SerialName(PROP_TIME_STAMP)
     @ValueTags(0u)
     val timestamp: Instant,
-    @SerialName("issuerSigned")
+    @SerialName(PROP_ZK_ISSUER_SIGNED)
     @Serializable(with = NamespacedZkSignedListSerializer::class)
     val issuerSigned: Map<String, @Contextual ZkSignedList>? = null,
-    @SerialName("deviceSigned")
+    @SerialName(PROP_ZK_DEVICE_SIGNED)
     @Serializable(with = NamespacedZkSignedListSerializer::class)
     val deviceSigned: Map<String, @Contextual ZkSignedList>? = null,
-    /**
-     * This header parameter contains an ordered array of X.509 certificates. The certificates are to be ordered
-     * starting with the certificate containing the end-entity key followed by the certificate that signed it, and so
-     * on. There is no requirement for the entire chain to be present in the element if there is reason to believe that
-     * the relying party already has, or can locate, the missing certificates. This means that the relying party is
-     * still required to do path building but that a candidate path is proposed in this header parameter.
-     *
-     * This header parameter allows for a single X.509 certificate or a chain of X.509 certificates to be carried in
-     * the message.
-     *
-     * See [RFC9360](https://datatracker.ietf.org/doc/html/rfc9360)
-     */
-    @CborLabel(33)
-    @SerialName("msoX5chain")
-    @ByteString
+    @SerialName(PROP_CERT_CHAIN)
+    @Serializable(with = NormalizedX509Serializer::class)
     val certificateChain: List<ByteArray>? = null,
-)
+) {
+    init {
+        require(certificateChain == null || certificateChain.isNotEmpty()) {
+            "Certificate chain must be null or contain at least one certificate."
+        }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ZkDocumentData) return false
+
+        if (docType != other.docType) return false
+        if (zkSystemId != other.zkSystemId) return false
+        if (timestamp != other.timestamp) return false
+        if (issuerSigned != other.issuerSigned) return false
+        if (deviceSigned != other.deviceSigned) return false
+
+        if (certificateChain == null && other.certificateChain != null) return false
+        if (certificateChain != null && other.certificateChain == null) return false
+        if (certificateChain != null && other.certificateChain != null) {
+            if (certificateChain.size != other.certificateChain.size) return false
+            for (i in certificateChain.indices) {
+                if (!certificateChain[i].contentEquals(other.certificateChain[i])) return false
+            }
+        }
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = docType.hashCode()
+        result = 31 * result + zkSystemId.hashCode()
+        result = 31 * result + timestamp.hashCode()
+        result = 31 * result + issuerSigned.hashCode()
+        result = 31 * result + deviceSigned.hashCode()
+        result = 31 * result + (certificateChain?.sumOf { it.contentHashCode() } ?: 0)
+        return result
+    }
+
+    companion object {
+        internal const val PROP_CERT_CHAIN = "msoX5chain"
+        internal const val PROP_DOC_TYPE = "docType"
+        internal const val PROP_ZK_SYSTEM_ID = "zkSystemId"
+        internal const val PROP_TIME_STAMP = "timestamp"
+        internal const val PROP_ZK_ISSUER_SIGNED = "issuerSigned"
+        internal const val PROP_ZK_DEVICE_SIGNED = "deviceSigned"
+
+    }
+}

@@ -419,7 +419,7 @@ Useful focused tests:
   `vck-openid-ktor/src/commonTest/kotlin/at/asitplus/wallet/lib/ktor/openid/RemoteCredentialMetadataRegistryTest.kt`
 - ISO mDoc ZKP wire models:
   `openid-data-classes/src/commonTest/kotlin/at/asitplus/iso/ZkSystemSpecSerializerTest.kt` and
-  `vck/src/commonTest/kotlin/at/asitplus/wallet/lib/cbor/ZkDocumentSerializationTest.kt`
+  `openid-data-classes/src/commonTest/kotlin/at/asitplus/iso/ZkDocumentSerializerTest.kt`
 
 For Gradle commands (module-scoped tasks, `--tests` filtering, the root-`compileKotlin` ambiguity caveat) and the
 rest of the build/test setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
