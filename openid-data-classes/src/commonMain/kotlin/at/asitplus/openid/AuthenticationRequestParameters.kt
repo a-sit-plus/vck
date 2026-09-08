@@ -3,6 +3,7 @@ package at.asitplus.openid
 import at.asitplus.csc.Hashes
 import at.asitplus.csc.enums.SignatureQualifier
 import at.asitplus.csc.serializers.HashesSerializer
+import at.asitplus.data.NonEmptyList
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
@@ -348,7 +349,7 @@ data class AuthenticationRequestParameters(
      * End-User consent dialog
      */
     @SerialName("verifier_info")
-    val verifierInfo: List<VerifierInfo>? = null
+    val verifierInfo: NonEmptyList<VerifierInfo>? = null
 ) : RequestParameters() {
     init {
         responseType?.let {
