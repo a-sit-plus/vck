@@ -78,5 +78,5 @@ data class WrpPayload(
     val intermediary: WrpIntermediary? = null,
 
     @SerialName("exp")
-    val exp: Long,
+    val exp: Long? = null,
 )
