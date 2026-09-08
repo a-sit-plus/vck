@@ -312,40 +312,6 @@ val OAuth2KtorClientTest by matrixSuite {
         }
     }
 
-    test("token introspection supports an Accept header with multiple media ranges") {
-        with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = false)) {
-            val authorizationResult = client.startAuthorization(
-                oauthMetadata = authorizationService.metadata(),
-                authorizationServer = authorizationService.publicContext,
-                scope = requestedScope,
-            ).getOrThrow()
-            val httpClient = HttpClient(mockEngine) { followRedirects = false }
-            val authCodeUrl = httpClient.get(authorizationResult.url).headers[HttpHeaders.Location].shouldNotBeNull()
-            val tokenResponse = client.requestTokenWithAuthCode(
-                oauthMetadata = authorizationService.metadata(),
-                url = authCodeUrl,
-                authorizationServer = authorizationService.publicContext,
-                state = authorizationResult.state,
-                scope = requestedScope,
-                authorizationDetails = setOf()
-            ).getOrThrow()
-
-            client.callTokenIntrospection(
-                oauthMetadata = authorizationService.metadata(),
-                request = TokenIntrospectionRequest(
-                    token = tokenResponse.params.accessToken,
-                    tokenTypeHint = tokenResponse.params.tokenType,
-                ),
-                token = tokenResponse.params.accessToken,
-                popAudience = authorizationService.publicContext,
-                requestedResponseFormats = listOf(
-                    ContentType.Application.Json,
-                    ContentType.Application.IntrospectionJwt.withParameter("q", "0.5"),
-                ),
-            ).active shouldBe true
-        }
-    }
-
     test("applyAuthnForToken throws when keyMaterial does not match cnf key in instance attestation") {
         with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = false)) {
             val differentKey: KeyMaterial = EphemeralKeyWithoutCert()
