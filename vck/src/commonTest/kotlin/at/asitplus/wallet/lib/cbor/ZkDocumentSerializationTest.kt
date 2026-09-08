@@ -4,6 +4,7 @@ import at.asitplus.iso.ZkDocument
 import at.asitplus.iso.ZkDocumentData
 import at.asitplus.iso.ZkSignedItem
 import at.asitplus.iso.ZkSignedList
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -11,6 +12,8 @@ import com.benasher44.uuid.uuid4
 import io.kotest.matchers.equals.shouldBeEqual
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToByteArray
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 val ZkDocumentSerializationTest by matrixSuite {
 
@@ -20,7 +23,7 @@ val ZkDocumentSerializationTest by matrixSuite {
                 ZkDocumentData(
                     docType = uuid4().toString(),
                     zkSystemId = uuid4().toString(),
-                    timestamp = LocalDate.parse("2026-01-01"),
+                    timestamp = Clock.System.now().truncateToSeconds(),
                     issuerSigned = mapOf(
                         uuid4().toString() to ZkSignedList(
                             mutableListOf(
