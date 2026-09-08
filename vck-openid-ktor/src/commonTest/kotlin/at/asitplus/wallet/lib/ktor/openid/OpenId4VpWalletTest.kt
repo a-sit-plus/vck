@@ -24,6 +24,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -92,6 +93,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
 
@@ -195,7 +197,7 @@ val OpenId4VpWalletTest by matrixSuite {
 
                 ISO_MDOC -> CredentialToBeIssued.Iso(
                     issuerSignedItems = attributes.map { it.toIssuerSignedItem() },
-                    expiration = Clock.System.now().plus(1.minutes),
+                    expiration = Clock.System.now().plus(1.minutes).truncateToSeconds(),
                     scheme = scheme as IsoMdocCredentialScheme,
                     subjectPublicKey = keyMaterial.publicKey,
                     userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
@@ -569,7 +571,7 @@ private fun DCQLClaimsPathPointer.getFirstName(): String =
 // If the countdownLatch has been unlocked, the correct credential has been posted to the RP, and we're done!
 private suspend fun assertPresentation(countdownLatch: Mutex) {
     withContext(Dispatchers.Default.limitedParallelism(1)) {
-        withTimeout(5000) {
+        withTimeout(5000.milliseconds) {
             countdownLatch.lock()
         }
     }
