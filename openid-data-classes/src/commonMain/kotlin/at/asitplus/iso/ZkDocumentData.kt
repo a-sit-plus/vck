@@ -1,6 +1,6 @@
 package at.asitplus.iso
 
-import kotlinx.datetime.LocalDate
+import kotlin.time.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -18,8 +18,8 @@ data class ZkDocumentData (
     @SerialName("zkSystemId")
     val zkSystemId: String,
     @SerialName("timestamp")
-    @ValueTags(1004u)
-    val timestamp: LocalDate,
+    @ValueTags(0u)
+    val timestamp: Instant,
     @SerialName("issuerSigned")
     @Serializable(with = NamespacedZkSignedListSerializer::class)
     val issuerSigned: Map<String, @Contextual ZkSignedList>? = null,
