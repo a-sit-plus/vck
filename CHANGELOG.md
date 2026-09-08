@@ -8,6 +8,10 @@ Release 8.0.0 (unreleased):
     - no more build hacks
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input
+- ISO mdoc data classes:
+  - BREAKING: Update `ZkDocumentData.timestamp` type to `Instant` instead of `DateTime` to conform to upcoming ISO-18013-5 draft
+  - Add support for correctly (de-)serializing RFC9360-conformant single-chain cbor-encoded `ZkDocumentData`
+  - Add missing equality overrides for `ZkDocumentData`, `ZkSignedItem`
 - ISO mDoc Zero-Knowledge Proofs:
   - Add the `ZkRequest`-based ISO mDoc ZK presentation path and convert DCQL ZK metadata into
   `ZkRequest` for holder-side proof generation
