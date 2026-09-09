@@ -21,10 +21,9 @@ Agent-only operating notes:
 
 - Treat dirty worktree changes as user work. Do not revert, overwrite, or clean them up unless explicitly asked.
 - When a VC-K build that includes the `../signum` composite build fails, verify that both projects use the same
-  conventions-plugin version. This usually means updating `conventions-vclib/gradle-conventions-plugin/` to the
-  commit on that submodule's `main` branch whose version matches Signum's conventions-plugin version. Then apply
-  every upgrade or migration introduced by that conventions-plugin version to both VC-K and the current consuming
-  project before diagnosing the build further.
+  conventions-plugin version. Update whichever project uses the older version, then apply every upgrade or migration
+  introduced by that conventions-plugin version to both VC-K and the current consuming project before diagnosing the
+  build further.
 - For Kotlin refactors, prefer symbol-aware navigation through IDEA MCP / Kotlin LSP when available.
 - Do not infer current protocol support from deprecated compatibility types, or feature completeness from
   preparation-only abstractions such as the ISO mDoc ZKP types. Confirm the active path in `ARCHITECTURE.md`, the
