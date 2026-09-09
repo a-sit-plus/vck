@@ -26,6 +26,8 @@ Release 8.0.0 (unreleased):
       and update the ZK integration APIs to use `ZkSystemSpec`
     - Remove the unused `ZkInfo` and `ZkSystem` preparation abstractions
   - Credentials:
+    - Add `WalletRelyingParty` ETSI data classes for `WRPAC` and `WRPRC` validation
+- Credentials:
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject
     - Preserve and validate every status mechanism when a credential's `status` object contains both `status_list` and `identifier_list`; combined values are exposed through `StatusListInfo.tokenStatusInfo` while the 7.0.1 `RevocationListInfo` properties and singleton behavior remain compatible
@@ -118,6 +120,7 @@ Release 8.0.0 (unreleased):
     - Add `T.encodeToFormUrlEncoded()` and `String.toFormParameters()`
     - Deprecate `FormParameters.decodeFromUrlQuery()`: its receiver is already decoded in nearly all call sites, so it decoded percent-encoding a second time and mangled every value containing a percent sign. This fixes parsing credential offers, authentication requests and authentication responses carrying such values
     - Split the payload with `io.ktor.http.parseQueryString()` instead of by hand, which drops names without a value instead of throwing, and reads `+` as a space in URL queries too
+    - Add `WrprcValidator`, `WrpacValidator` and `WrpChainValidator` to validate WRPAC and WRPRC during presentation.
 - OAuth 2.0:
     - Update implementation of [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html) to Draft 10 from 2026-07-06
     - Support DPoP combined mode, advertised with `dpop_combined` in `client_attestation_pop_methods_supported` to combine client authentication with DPoP proofs from RFC 9449
