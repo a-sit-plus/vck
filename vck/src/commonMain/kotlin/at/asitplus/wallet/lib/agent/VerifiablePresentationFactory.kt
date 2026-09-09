@@ -215,7 +215,7 @@ class VerifiablePresentationFactory(
             val zkMetadata = param.zkMetadata
             if (zkMetadata is ZkMetadata.IsoMdocZk) {
                 mdocZkEngine.generate(request, param, keyMaterial).fold(
-                    onSuccess = { zkDocuments += it.toZkDocument() },
+                    onSuccess = { zkDocuments += it.zkDocument },
                     onFailure = { error ->
                         if (zkMetadata.zkRequest.zkRequired) throw error
                         plainDocuments += disclosePlainDocument(param)

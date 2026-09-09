@@ -111,13 +111,13 @@ interface IsoMdocZkBackend {
      * @param zkDocument The document containing the proof data.
      * @param sessionTranscript The session transcript used to bind the proof to the current session.
      * @param zkSystemSpec The ZK system specification relevant for this proof.
-     * @return The loaded [IsoMdocZkProof] instance ready for verification.
+     * @return The loaded [IsoMdocZkProof] instance with embedded verification logic.
      */
     fun load(
         zkDocument: ZkDocument,
         sessionTranscript: SessionTranscript,
         zkSystemSpec: ZkSystemSpec
-    ): IsoMdocZkProof
+    ): KmmResult<IsoMdocZkProof>
 
     /**
      * attempts to register a backend and returns [Unit] if successful and a [Throwable] otherwise.

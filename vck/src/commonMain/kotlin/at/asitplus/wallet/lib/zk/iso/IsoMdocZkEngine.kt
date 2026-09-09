@@ -94,7 +94,7 @@ class IsoMdocZkEngine @JvmOverloads constructor(
         val backend = selectionStrategy.selectForLoad(matchingBackends)
             ?: throw PresentationException("No backend found for ZK system: $zkSystemId")
 
-        backend.load(zkDocument, sessionTranscript, zkSystemSpec)
+        backend.load(zkDocument, sessionTranscript, zkSystemSpec).getOrThrow()
     }
 
     private fun findSupportedBackends(
