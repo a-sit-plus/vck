@@ -43,6 +43,8 @@ Release 8.0.0 (unreleased):
     - Fix decoding of form-encoded parameters whose value is a JSON string, e.g. `wallet_metadata` posted to the request URI endpoint
     - Send `wallet_metadata` and `wallet_nonce` only when fetching the request object with `request_uri_method=post`
     - Terminate request processing if the request object does not carry back the `wallet_nonce` we sent, as required by OpenID4VP 1.0, Section 5.10.1
+    - Reject a JAR request whose request object can not be retrieved from `request_uri`, that carries neither `request` nor `request_uri`, or whose request object nests another `request`/`request_uri` (RFC 9101, Section 6.2), with `invalid_request` in `RequestParser`
+    - In `OpenId4VpHolder` reject requests that are not authorization requests, e.g. RQES signature requests, with `invalid_request` instead of failing with a `ClassCastException` during request validation
     - Pass `requireEncryptedRequests = true` to `OpenId4VpHolder` to reject a plain request object served at a `request_uri` fetched with POST
     - Add `decryptedFrom` to `RequestParametersFrom.Jws` and `RequestParametersFrom.Json`, holding the header of the JWE a request was decrypted from, and `requestWasEncrypted` to `AuthorizationResponsePreparationState`
     - Reject request objects that are not a JWS (and optionally encrypted) per RFC 9101, Section 4

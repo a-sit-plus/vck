@@ -380,6 +380,27 @@ val PreRegisteredClientTest by matrixSuite {
                 }
         }
 
+        "test with request object from request_uri that can not be retrieved should fail" {
+            val requestUrl = "https://www.example.com/request/${uuid4()}"
+            val (authRequestUrlWithRequestUri, jar) = it.verifierOid4vp.createAuthnRequest(
+                requestOptionsAtomicAttribute(),
+                CreationOptions.SignedRequestByReference(it.walletUrl, requestUrl)
+            ).getOrThrow()
+            jar.shouldNotBeNull()
+
+            it.holderOid4vp = OpenId4VpHolder(
+                holder = it.holderAgent,
+                // Answers a different URL only, i.e. the request object for `requestUrl` can not be retrieved
+                remoteResourceRetriever = { null },
+                randomSource = RandomSource.Default,
+            )
+
+            it.holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri)
+                .exceptionOrNull().shouldNotBeNull()
+                .shouldBeInstanceOf<OAuth2Exception.InvalidRequest>()
+                .message.shouldNotBeNull() shouldContain requestUrl
+        }
+
         "test with request object from request_uri contains wallet_nonce, but not in store should fail" {
             val requestUrl = "https://www.example.com/request/${uuid4()}"
             val (authRequestUrlWithRequestUri, jar) = it.verifierOid4vp.createAuthnRequest(
