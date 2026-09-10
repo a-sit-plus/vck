@@ -339,23 +339,23 @@ private fun CreatePresentationResult.DeviceResponse.disclosedIsoClaimNames(names
 private val setOfDefaultSdJwtClaims = setOf("iss", "nbf", "exp", "cnf", "vct", "status", "sub", "iat")
 
 private fun invalidIsoZkMetaData(zkRequired: Boolean) =  ZkMetadata.IsoMdocZk(
-    zkInfo = DCQLIsoMdocZkSystemType(
+    zkRequest = DCQLIsoMdocZkSystemType(
         zkRequired = zkRequired,
         systemSpecs = listOf(
             DCQLIsoMdocZkSystemSpec(
-                zkSystemId = "test-id-1",
+                id = "test-id-1",
                 system = "non-existant-system",
                 circuitHash = "asdf",
                 numAttributes = 2,
                 version = 12,
             ),
             DCQLIsoMdocZkSystemSpec(
-                zkSystemId = "test-id-2",
+                id = "test-id-2",
                 system = "non-existant-system",
                 circuitHash = "qwerty",
                 numAttributes = 3,
                 version = 12,
             )
         ),
-    )
+    ).also{ it.validate() }.toZkRequest()
 )
