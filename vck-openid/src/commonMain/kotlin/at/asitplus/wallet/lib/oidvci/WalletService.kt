@@ -198,24 +198,37 @@ class WalletService @JvmOverloads constructor(
      * which may contain a direct [CredentialOffer] or a URI pointing to it.
      */
     suspend fun parseCredentialOffer(input: String): KmmResult<CredentialOffer> = catching {
-        catchingUnwrapped {
-            input.extractParams().fetchCredentialOffer()
-        }.getOrNull() ?: catchingUnwrapped {
-            joseCompliantSerializer.decodeFromString<CredentialOffer>(input)
-        }.getOrElse {
-            throw InvalidRequest("could not parse credential offer", it)
+        if (input.trimStart().startsWith("{")) {
+            catchingUnwrapped {
+                joseCompliantSerializer.decodeFromString<CredentialOffer>(input)
+            }.getOrElse {
+                throw InvalidRequest("could not parse credential offer", it)
+            }
+        } else {
+            val parameters = catchingUnwrapped { input.extractParams() }.getOrElse {
+                throw InvalidRequest("could not parse credential offer URL", it)
+            }
+            parameters.fetchCredentialOffer()
         }
     }
 
     private fun String.extractParams(): CredentialOfferUrlParameters =
         Url(this).parameters.flattenEntries().toMap().decodeFromUrlQuery<CredentialOfferUrlParameters>()
 
-    private suspend fun CredentialOfferUrlParameters.fetchCredentialOffer(
-
-    ): CredentialOffer? = credentialOffer?.let { joseCompliantSerializer.decodeFromJsonElement<CredentialOffer>(it) }
-        ?: credentialOfferUrl
-            ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
-            ?.let { parseCredentialOffer(it).getOrNull() }
+    private suspend fun CredentialOfferUrlParameters.fetchCredentialOffer(): CredentialOffer {
+        credentialOffer?.let { offer ->
+            return catchingUnwrapped {
+                joseCompliantSerializer.decodeFromJsonElement<CredentialOffer>(offer)
+            }.getOrElse {
+                throw InvalidRequest("could not parse embedded credential offer", it)
+            }
+        }
+        val uri = credentialOfferUrl
+            ?: throw InvalidRequest("credential offer URL contains neither credential_offer nor credential_offer_uri")
+        val response = remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
+            ?: throw InvalidRequest("credential offer retrieval returned no response")
+        return parseCredentialOffer(response).getOrThrow()
+    }
 
 
     /**
