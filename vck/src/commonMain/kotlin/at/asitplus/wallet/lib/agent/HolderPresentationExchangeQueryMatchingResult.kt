@@ -12,6 +12,7 @@ typealias InputDescriptorMatching = Map<ConstraintField, NodeList>
  * indices to actual credentials and exposes the matching JSON paths for disclosure selection.
  */
 @Suppress("DEPRECATION")
+@Deprecated("Support for Presentation Exchange has been removed from OpenID4VP; use DCQL or DeviceRequest")
 data class HolderPresentationExchangeQueryMatchingResult<Credential: Any>(
     override val credentials: List<Credential>,
     val queryMatchingResult: PresentationExchangeQueryMatchingResult

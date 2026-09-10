@@ -91,6 +91,10 @@ data class OpenId4VpRequestOptions(
 ) : RequestOptions {
 
     init {
+        @Suppress("DEPRECATION")
+        require(presentationRequest !is PresentationExchangeRequest) {
+            "Presentation Exchange is not supported by OpenID4VP; use DCQL"
+        }
         if (!transactionData.isNullOrEmpty()) {
             val transactionIds = transactionData.map { it.credentialIds.toList() }.flatten().toSet()
             @Suppress("DEPRECATION") val credentialIds = when (presentationRequest) {

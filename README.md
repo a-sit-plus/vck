@@ -59,12 +59,11 @@ VC-K provides full implementations of the OpenID protocol family for credential 
     - Same device and cross-device flows
     - Response modes: `direct_post` and `direct_post.jwt`
     - Request objects by value or reference
-    - Presentation definitions and submissions
     - Verifier attestations
     - `verifier_info` attestations with profile-defined formats (for example `registration_cert`)
     - Signed and/or encrypted responses
     - Digital Credential Query Language (DCQL)
-    - Presentation Exchange
+    - ISO DeviceRequest presentation for direct ISO 18013-5 and DC API transports
     - See classes `OpenId4VpVerifier` and `OpenId4VpHolder`
 
 ## EUDI Wallet Compatibility

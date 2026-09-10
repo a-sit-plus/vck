@@ -60,6 +60,10 @@ internal class PresentationFactory(
         if (credentialPresentation is CredentialPresentation.IsoDeviceRetrievalPresentation) {
             throw InvalidRequest("ISO Device Retrieval responses are not OpenID4VP presentations")
         }
+        @Suppress("DEPRECATION")
+        if (credentialPresentation is CredentialPresentation.PresentationExchangePresentation) {
+            throw InvalidRequest("Presentation Exchange presentations are not supported by OpenID4VP")
+        }
         val sessionTranscriptCallback = suspend {
             calcSessionTranscript(
                 clientId = state.request.parameters.clientId,

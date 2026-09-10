@@ -97,6 +97,7 @@ sealed interface PresentationResponseParameters {
 
     }
 
+    @Deprecated("Support for Presentation Exchange has been removed from OpenID4VP; use DCQL or DeviceRequest")
     data class PresentationExchangeParameters(
         val presentationResults: List<CreatePresentationResult>,
         @Deprecated("Presentation Exchange is deprecated, use DCQL or DeviceRequest instead")

@@ -316,6 +316,9 @@ class OpenId4VpHolder @JvmOverloads constructor(
     suspend fun startAuthorizationResponsePreparation(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
+        require(params.parameters.presentationDefinition == null && params.parameters.presentationDefinitionUrl == null) {
+            "presentation_definition and presentation_definition_uri are not supported by OpenID4VP 1.0; use dcql_query"
+        }
         authorizationRequestValidator.validateAuthorizationRequest(params)
         val loadedKeys = (params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
             ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(params.parameters.clientId))?.keys)
@@ -361,6 +364,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
         state: AuthorizationResponsePreparationState,
         credentialPresentation: CredentialPresentation? = null,
     ): KmmResult<AuthenticationResponse> = catching {
+        @Suppress("DEPRECATION")
+        if (credentialPresentation is CredentialPresentation.PresentationExchangePresentation) {
+            throw InvalidRequest("Presentation Exchange presentations are not supported by OpenID4VP")
+        }
         with(state) {
             val presentation = credentialPresentation ?: credentialPresentationRequest?.toCredentialPresentation()
             val resultContainer = presentation?.let {

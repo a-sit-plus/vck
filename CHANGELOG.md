@@ -16,7 +16,7 @@ Release 8.0.0 (unreleased):
     - Replace `PresentationRequestParameters.calcIsoDeviceSignaturePlain` with the `PresentationRequestParameters.calcIsoSessionTranscript` callback to return a nullable `SessionTranscript`. DeviceSignature and DeviceAuth is now calculated based on the Transcript.
     - Add optional `signDeviceAuthDetached` parameter to `HolderAgent` and `VerifiablePresentationFactory` to centralize ISO mDoc device authentication within the holder
 - OpenID for Verifiable Presentations:
-    - Remove support for Presentation Exchange, since OpenID4VP 1.0 only supports DCQL
+    - Reject Presentation Exchange requests and presentations at every OpenID4VP entry point, since OpenID4VP 1.0 only supports DCQL; retain the deprecated non-OpenID compatibility APIs
     - Implement direct presentation requests and responses according to ISO 18013-5 Device Retrieval with new subtypes `CredentialPresentationRequest.IsoDeviceRetrieval`, `CredentialPresentation.IsoDeviceRetrievalPresentation`, `IsoDeviceRetrievalMatchingResult` for `CredentialMatchingResult`, `HolderIsoDeviceRetrievalQueryMatchingResult` for `HolderPresentationRequestMatchingResult`, and `PresentationResponseParameters.DeviceRetrievalParameters`
     - Add `DeviceRequestCredentialDisclosure`, `IsoDeviceRetrievalQueryMatchingResult`, `IsoDeviceRetrievalCredentialMatch`, and `IsoDeviceRetrievalClaimMatch` for ISO submission and matching details
     - Match every `DocRequest` against stored mdocs, requiring all requested data elements while preserving repeated docTypes and multiple matching credentials; validate explicit submissions and create a single, possibly multi-document `DeviceResponse`
