@@ -23,32 +23,32 @@ open class ZkSignedItemSerializer(private val namespace: String) :
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("ZkSignedItem") {
         element(ZkSignedItem.PROP_ELEMENT_ID, String.serializer().descriptor)
-        element(ZkSignedItem.PROP_ELEMENT_VALUE, String.serializer().descriptor)
+        element(ZkSignedItem.PROP_ELEMENT_VALUE, buildClassSerialDescriptor("AnyFallback"))
     }
 
     override fun serialize(encoder: Encoder, value: ZkSignedItem) {
-        encoder.encodeStructure(descriptor) {
-            encodeStringElement(descriptor, 0, value.elementIdentifier)
-            encodeAnything(value, 1)
-        }
-    }
-
-    private fun CompositeEncoder.encodeAnything(value: ZkSignedItem, index: Int) {
         val elementValueSerializer = buildElementValueSerializer(namespace, value.elementValue, value.elementIdentifier)
-        val descriptor = buildClassSerialDescriptor("ZkSignedItem") {
+        val dynamicDescriptor = buildClassSerialDescriptor("ZkSignedItem") {
             element(ZkSignedItem.PROP_ELEMENT_ID, String.serializer().descriptor)
             element(ZkSignedItem.PROP_ELEMENT_VALUE, elementValueSerializer.descriptor, value.elementValue.annotations())
         }
 
+        encoder.encodeStructure(dynamicDescriptor) {
+            encodeStringElement(dynamicDescriptor, 0, value.elementIdentifier)
+            encodeAnything(dynamicDescriptor, value, 1)
+        }
+    }
+
+    private fun CompositeEncoder.encodeAnything(dynamicDescriptor: SerialDescriptor, value: ZkSignedItem, index: Int) {
         when (val it = value.elementValue) {
-            is String -> encodeStringElement(descriptor, index, it)
-            is Int -> encodeIntElement(descriptor, index, it)
-            is Long -> encodeLongElement(descriptor, index, it)
-            is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
-            is Instant -> encodeSerializableElement(descriptor, index, InstantStringSerializer, it)
-            is Boolean -> encodeBooleanElement(descriptor, index, it)
-            is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
-            else -> CborCredentialSerializer.encode(namespace, value.elementIdentifier, descriptor, index, this, it)
+            is String -> encodeStringElement(dynamicDescriptor, index, it)
+            is Int -> encodeIntElement(dynamicDescriptor, index, it)
+            is Long -> encodeLongElement(dynamicDescriptor, index, it)
+            is LocalDate -> encodeSerializableElement(dynamicDescriptor, index, LocalDate.serializer(), it)
+            is Instant -> encodeSerializableElement(dynamicDescriptor, index, InstantStringSerializer, it)
+            is Boolean -> encodeBooleanElement(dynamicDescriptor, index, it)
+            is ByteArray -> encodeSerializableElement(dynamicDescriptor, index, ByteArraySerializer(), it)
+            else -> CborCredentialSerializer.encode(namespace, value.elementIdentifier, dynamicDescriptor, index, this, it)
         }
     }
 
@@ -57,24 +57,25 @@ open class ZkSignedItemSerializer(private val namespace: String) :
      * see [RFC 8949 3.4.1](https://datatracker.ietf.org/doc/html/rfc8949#name-standard-date-time-string) for [Instant]
      * (or "date-time"), see [RFC 8943](https://datatracker.ietf.org/doc/html/rfc8943) for [LocalDate] (or "full-date")
      */
-    @OptIn(ExperimentalUnsignedTypes::class)
-    private fun Any.annotations() =
-        when (this) {
-            is LocalDate -> listOf(ValueTags(1004uL))
-            is Instant -> listOf(ValueTags(0uL))
-            else -> emptyList()
-        }
+    private fun Any.annotations(): List<Annotation> = when (this) {
+        is LocalDate -> listOf(ValueTags(1004uL))
+        is Instant -> listOf(ValueTags(0uL))
+        else -> emptyList()
+    }
 
 
     override fun deserialize(decoder: Decoder): ZkSignedItem {
         var elementIdentifier: String? = null
         var elementValue: Any? = null
-        coseCompliantSerializer
         decoder.decodeStructure(descriptor) {
             while (true) {
-                val name = decodeStringElement(descriptor, 0)
+                val name = runCatching { decodeStringElement(descriptor, 0) }.getOrElse { break }
                 // Don't call decodeElementIndex, as it would check for tags. this would break decodeAnything
                 val index = descriptor.getElementIndex(name)
+                if (index == CompositeDecoder.UNKNOWN_NAME) {
+                    continue
+                }
+
                 when (name) {
                     ZkSignedItem.PROP_ELEMENT_ID -> elementIdentifier = decodeStringElement(descriptor, index)
                     ZkSignedItem.PROP_ELEMENT_VALUE -> elementValue = decodeAnything(index, elementIdentifier)
@@ -87,8 +88,8 @@ open class ZkSignedItemSerializer(private val namespace: String) :
             }
         }
         return ZkSignedItem(
-            elementIdentifier = elementIdentifier!!,
-            elementValue = elementValue!!
+            elementIdentifier = requireNotNull(elementIdentifier) { "Missing elementIdentifier" },
+            elementValue = requireNotNull(elementValue) { "Missing elementValue" }
         )
     }
 
@@ -100,7 +101,7 @@ open class ZkSignedItemSerializer(private val namespace: String) :
         // discriminate technically, this should be a good thing though, because otherwise we'd consume more from the
         // input
         elementIdentifier?.let {
-            CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)
+            CborCredentialSerializer.decode(descriptor, index, this, it, namespace)
                 ?.let { return it }
         }
 

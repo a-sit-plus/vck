@@ -8,7 +8,23 @@ Release 8.0.0 (unreleased):
     - no more build hacks
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input
-- Credentials:
+- ISO mdoc data classes:
+  - BREAKING: Update `ZkDocumentData.timestamp` type to `Instant` instead of `DateTime` to conform to upcoming ISO-18013-5 draft
+  - Add support for correctly (de-)serializing RFC9360-conformant single-chain cbor-encoded `ZkDocumentData`
+  - Add missing equality overrides for `ZkDocumentData`, `ZkSignedItem`
+- ISO mDoc Zero-Knowledge Proofs:
+  - Add the `ZkRequest`-based ISO mDoc ZK presentation path and convert DCQL ZK metadata into
+  `ZkRequest` for holder-side proof generation
+    - Add the `IsoMdocZkBackend`, `IsoMdocZkBackendRegistry`, `IsoMdocZkEngine`, and `IsoMdocZkProof` extension layer
+      for application- and library-provided proving systems
+    - Add holder-side ZK proof generation and optional plain-mDoc fallback through `VerifiablePresentationFactory`
+    - Add backend routing for ISO mDoc ZK system specifications, including application-defined proving systems and
+      backend-specific parameter serializers
+    - BREAKING: Rename `ZkSystemSpec.zkSystemId` to `id` while retaining `zkSystemId` on the wire
+    - Rename `ZkMetadata.IsoMdocZk.zkInfo` to `zkRequest`, change DCQL ZK numeric parameters from `Int` to `Long`,
+      and update the ZK integration APIs to use `ZkSystemSpec`
+    - Remove the unused `ZkInfo` and `ZkSystem` preparation abstractions
+  - Credentials:
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject
 - Verifiable Presentations:

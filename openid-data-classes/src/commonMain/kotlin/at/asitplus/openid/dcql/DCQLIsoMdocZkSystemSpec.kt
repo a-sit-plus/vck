@@ -1,6 +1,6 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.iso.ZkSystem
+import at.asitplus.iso.ZkSystemSpec
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,28 +11,30 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DCQLIsoMdocZkSystemSpec (
     @SerialName(PROP_ID)
-    override val zkSystemId: String,
+    val id: String,
 
     @SerialName(PROP_SYSTEM)
-    override val system: String,
+    val system: String,
 
     @SerialName(PROP_CIRCUIT_HASH)
     val circuitHash: String,
 
     @SerialName(PROP_NUM_ATTRIBUTES)
-    val numAttributes: Int,
+    val numAttributes: Long,
 
     @SerialName(PROP_VERSION)
-    val version: Int,
+    val version: Long,
 
     @SerialName(PROP_BLOCK_ENC_HASH)
-    val blockEncHash: Int? = null,
+    val blockEncHash: Long? = null,
 
     @SerialName(PROP_BLOCK_ENC_SIG)
-    val blockEncSig: Int? = null,
-): ZkSystem {
-    override val params: Map<String, Any>
-        get() = buildMap {
+    val blockEncSig: Long? = null,
+) {
+    fun toZkSystemSpec() = ZkSystemSpec(
+        id = id,
+        system = system,
+        params = buildMap {
             put(PROP_CIRCUIT_HASH, circuitHash)
             put(PROP_NUM_ATTRIBUTES, numAttributes)
             put(PROP_VERSION, version)
@@ -40,6 +42,7 @@ data class DCQLIsoMdocZkSystemSpec (
             blockEncHash?.let{ put(PROP_BLOCK_ENC_HASH, it) }
             blockEncSig?.let{ put(PROP_BLOCK_ENC_SIG, it) }
         }
+    )
 
     companion object {
         const val PROP_ID = "id"
