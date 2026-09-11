@@ -66,7 +66,7 @@ class LoTEFilterService {
     /**
      * Core extraction logic handling both Issuance and Revocation based on [ServiceKind].
      */
-    fun extractTrustedCertificates(
+    private fun extractTrustedCertificates(
         lote: ListOfTrustedEntities,
         profile: LoteProfile,
         kind: ServiceKind = ServiceKind.ISSUANCE
@@ -104,7 +104,9 @@ class LoTEFilterService {
 
         val matchesLoteType = profile.matchesLoteType(listAndSchemeInformation.loteType?.toString())
         val matchesStatus = profile.matchesStatusDeterminationApproach(listAndSchemeInformation.statusDeterminationApproach?.toString())
-        val matchesRules = profile.matchesSchemeCommunityRules(listAndSchemeInformation.schemeTypeCommunityRules?.toString())
+        val matchesRules = listAndSchemeInformation.schemeTypeCommunityRules?.any { rule ->
+            profile.matchesSchemeCommunityRules(rule.uniformResourceIdentifier.toString())
+        } ?: false
 
         return matchesLoteType && matchesStatus && matchesRules
     }
