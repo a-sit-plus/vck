@@ -1,6 +1,37 @@
 package at.asitplus.wallet.lib.etsi
 
+import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_FETCH_URL
+import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_SCHEME_COMMUNITY_RULES
+import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_SCHEME_TYPE
+import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_STATUS_DETERMINATION_APPROACH
+import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_SVC_TYPE_ISSUANCE
+import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_SVC_TYPE_REVOCATION
+import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_FETCH_URL
+import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_SCHEME_COMMUNITY_RULES
+import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_SCHEME_TYPE
+import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_STATUS_DETERMINATION_APPROACH
+import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_SVC_TYPE_ISSUANCE
+import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_SVC_TYPE_REVOCATION
+import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_FETCH_URL
+import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_SCHEME_COMMUNITY_RULES
+import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_SCHEME_TYPE
+import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_STATUS_DETERMINATION_APPROACH
+import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_SVC_TYPE_ISSUANCE
+import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_SVC_TYPE_REVOCATION
+import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_FETCH_URL
+import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_SCHEME_COMMUNITY_RULES
+import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_SCHEME_TYPE
+import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_STATUS_DETERMINATION_APPROACH
+import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_SVC_TYPE_ISSUANCE
+import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_SVC_TYPE_REVOCATION
+import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_FETCH_URL
+import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SCHEME_COMMUNITY_RULES
+import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SCHEME_TYPE
+import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_STATUS_DETERMINATION_APPROACH
+import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SVC_TYPE_ISSUANCE
+import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SVC_TYPE_REVOCATION
 import at.asitplus.etsi.EtsiX509CertificateSerializer
+import at.asitplus.etsi.ListAndSchemeInformation
 import at.asitplus.etsi.ListOfTrustedEntities
 import at.asitplus.etsi.TEName
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
@@ -9,38 +40,73 @@ import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.Serializable
 
+enum class ServiceKind { ISSUANCE, REVOCATION }
+
 /**
  * Service to filter and extract trusted X.509 certificates from an ETSI List of Trusted Entities (LoTE)
  */
 class LoTEFilterService {
 
     /**
-     * Extracts certificates matching the requested service type identifier where
-     * the certificate's subject organization aligns with the trusted provider's registered names
+     * Extracts certificates matching the requested service type identifier for Issuance.
      */
-    fun extractTrustedCertificates(sourceUrl: String, lote: ListOfTrustedEntities, criteria: LoTEFilterCriteria): List<TrustedCertificate> {
+    fun extractIssuanceCertificates(
+        lote: ListOfTrustedEntities,
+        profile: LoteProfile
+    ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.ISSUANCE)
+
+    /**
+     * Extracts certificates matching the requested service type identifier for Revocation.
+     */
+    fun extractRevocationCertificates(
+        lote: ListOfTrustedEntities,
+        profile: LoteProfile
+    ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.REVOCATION)
+
+    /**
+     * Core extraction logic handling both Issuance and Revocation based on [ServiceKind].
+     */
+    fun extractTrustedCertificates(
+        lote: ListOfTrustedEntities,
+        profile: LoteProfile,
+        kind: ServiceKind = ServiceKind.ISSUANCE
+    ): List<TrustedCertificate> {
+        if (!checkListAndSchemeInformation(lote.listAndSchemeInformation, profile)) {
+            return emptyList()
+        }
+
+        val (matcher, targetServiceType) = when (kind) {
+            ServiceKind.ISSUANCE -> profile::matchesServiceTypeIssuance to profile.serviceTypeIdentifierIssuance
+            ServiceKind.REVOCATION -> profile::matchesServiceTypeRevocation to profile.serviceTypeIdentifierRevocation
+        }
+
         val entities = lote.trustedEntitiesList ?: return emptyList()
-        val loteType = lote.listAndSchemeInformation?.loteType?.toString()
         return entities.flatMap { entity ->
             val providerName = entity.trustedEntityInformation.teName
 
             entity.trustedEntityServices
                 .filter { service ->
-                    val serviceTypeId = service.serviceInformation.serviceTypeIdentifier?.string
-
-                    if (serviceTypeId != null) {
-                        // Field is present. Check if it matches type
-                        serviceTypeId.contains(criteria.expectedServiceType.type, ignoreCase = true)
-                    } else {
-                        // Field is absent. The services inherit the list's default type
-                        loteType?.contains(criteria.expectedServiceType.type, ignoreCase = true) == true ||
-                        sourceUrl.contains(criteria.expectedServiceType.type, ignoreCase = true)
-                    }
+                    matcher(service.serviceInformation.serviceTypeIdentifier?.string)
                 }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
                 .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
-                .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType) }
+                .map { cert -> TrustedCertificate(cert, providerName, targetServiceType) }
         }
+    }
+    /**
+     * Validates that the List and Scheme Information metadata aligns with the expected [LoteProfile].
+     */
+    private fun checkListAndSchemeInformation(
+        listAndSchemeInformation: ListAndSchemeInformation?,
+        profile: LoteProfile
+    ): Boolean {
+        if (listAndSchemeInformation == null) return false
+
+        val matchesLoteType = profile.matchesLoteType(listAndSchemeInformation.loteType?.toString())
+        val matchesStatus = profile.matchesStatusDeterminationApproach(listAndSchemeInformation.statusDeterminationApproach?.toString())
+        val matchesRules = profile.matchesSchemeCommunityRules(listAndSchemeInformation.schemeTypeCommunityRules?.toString())
+
+        return matchesLoteType && matchesStatus && matchesRules
     }
 
     /**
@@ -69,36 +135,102 @@ class LoTEFilterService {
 data class TrustedCertificate(
     val certificate: @Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?,
     val providerName: TEName,
-    val serviceType: LoTEServiceType
+    val serviceType: String
 )
 
-data class LoTEFilterCriteria(
-    val expectedServiceType: LoTEServiceType,
-)
-
-enum class LoTEServiceType(
-    val type: String,
-    val fileName: String,
-    private val identifiers: List<String> = emptyList()
+sealed class LoteProfile(
+    val fetchUrl: String,
+    val loteType: String,
+    val statusDeterminationApproach: String,
+    val schemeCommunityRules: String,
+    val serviceTypeIdentifierIssuance: String,
+    val serviceTypeIdentifierRevocation: String,
 ) {
-    PID("pid", "pid-providers.json", listOf("urn:eudi:pid:", "eu.europa.ec.eudi.pid.")),
-    MDL("mdl", "mdl-providers.json", listOf("org.iso.18013.5.1.mDL")),
-    WRPAC("wrpac", "wrpac-providers.json"),
-    WALLET("wallet", "wallet-providers.json"),
-    EAA("eaa", "pub-eaa-providers.json");
 
-    fun defaultUrl(baseUrl: String = DEFAULT_BASE_URL) = "$baseUrl/$fileName"
+    fun matchesLoteType(loteTypeUri: String?): Boolean {
+        if (loteTypeUri.isNullOrBlank()) return false
+        return loteTypeUri.equals(loteType, ignoreCase = true)
+    }
+
+    fun matchesStatusDeterminationApproach(approachUri: String?): Boolean {
+        if (approachUri.isNullOrBlank()) return false
+        return approachUri.equals(statusDeterminationApproach, ignoreCase = true)
+    }
+
+    fun matchesSchemeCommunityRules(rulesUri: String?): Boolean {
+        if (rulesUri.isNullOrBlank()) return false
+        return rulesUri.equals(schemeCommunityRules, ignoreCase = true)
+    }
+
+    fun matchesServiceTypeIssuance(serviceTypeUri: String?): Boolean {
+        if (serviceTypeUri.isNullOrBlank()) return false
+        return serviceTypeUri.equals(serviceTypeIdentifierIssuance, ignoreCase = true)
+    }
+
+    fun matchesServiceTypeRevocation(serviceTypeUri: String?): Boolean {
+        if (serviceTypeUri.isNullOrBlank()) return false
+        return serviceTypeUri.equals(serviceTypeIdentifierRevocation, ignoreCase = true)
+    }
+
+    data object PID : LoteProfile(
+        fetchUrl = EU_PID_PROVIDERS_FETCH_URL,
+        loteType = EU_PID_PROVIDERS_SCHEME_TYPE,
+        statusDeterminationApproach = EU_PID_PROVIDERS_STATUS_DETERMINATION_APPROACH,
+        schemeCommunityRules = EU_PID_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        serviceTypeIdentifierIssuance = EU_PID_PROVIDERS_SVC_TYPE_ISSUANCE,
+        serviceTypeIdentifierRevocation = EU_PID_PROVIDERS_SVC_TYPE_REVOCATION
+    )
+
+    data object mDL : LoteProfile(
+        fetchUrl = EU_mDL_PROVIDERS_FETCH_URL,
+        loteType = EU_mDL_PROVIDERS_SCHEME_TYPE,
+        statusDeterminationApproach = EU_mDL_PROVIDERS_STATUS_DETERMINATION_APPROACH,
+        schemeCommunityRules = EU_mDL_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        serviceTypeIdentifierIssuance = EU_mDL_PROVIDERS_SVC_TYPE_ISSUANCE,
+        serviceTypeIdentifierRevocation = EU_mDL_PROVIDERS_SVC_TYPE_REVOCATION
+    )
+
+    data object WRPAC : LoteProfile(
+        fetchUrl = EU_WRPAC_PROVIDERS_FETCH_URL,
+        loteType = EU_WRPAC_PROVIDERS_SCHEME_TYPE,
+        statusDeterminationApproach = EU_WRPAC_PROVIDERS_STATUS_DETERMINATION_APPROACH,
+        schemeCommunityRules = EU_WRPAC_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        serviceTypeIdentifierIssuance = EU_WRPAC_PROVIDERS_SVC_TYPE_ISSUANCE,
+        serviceTypeIdentifierRevocation = EU_WRPAC_PROVIDERS_SVC_TYPE_REVOCATION
+    )
+
+    data object WALLET : LoteProfile(
+        fetchUrl = EU_WALLET_PROVIDERS_FETCH_URL,
+        loteType = EU_WALLET_PROVIDERS_SCHEME_TYPE,
+        statusDeterminationApproach = EU_WALLET_PROVIDERS_STATUS_DETERMINATION_APPROACH,
+        schemeCommunityRules = EU_WALLET_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        serviceTypeIdentifierIssuance = EU_WALLET_PROVIDERS_SVC_TYPE_ISSUANCE,
+        serviceTypeIdentifierRevocation = EU_WALLET_PROVIDERS_SVC_TYPE_REVOCATION
+    )
+
+    data object EAA : LoteProfile(
+        fetchUrl = EU_PUB_EAA_PROVIDERS_FETCH_URL,
+        loteType = EU_PUB_EAA_PROVIDERS_SCHEME_TYPE,
+        statusDeterminationApproach = EU_PUB_EAA_PROVIDERS_STATUS_DETERMINATION_APPROACH,
+        schemeCommunityRules = EU_PUB_EAA_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        serviceTypeIdentifierIssuance = EU_PUB_EAA_PROVIDERS_SVC_TYPE_ISSUANCE,
+        serviceTypeIdentifierRevocation = EU_PUB_EAA_PROVIDERS_SVC_TYPE_REVOCATION
+    )
 
     companion object {
-        const val DEFAULT_BASE_URL = "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw"
-        val defaultUrls = entries.map { it.defaultUrl() }
 
-        fun fromSchemeIdentifier(schemeIdentifier: String?): LoTEServiceType {
-            if (schemeIdentifier.isNullOrBlank()) return EAA
+        val defaultUrls: List<String> by lazy {
+            listOf(PID, mDL, WRPAC, WALLET, EAA).map { it.fetchUrl }
+        }
 
-            return entries.firstOrNull { entry ->
-                entry.identifiers.any { schemeIdentifier.contains(it, ignoreCase = true) }
-            } ?: EAA
+        fun fromSchemeIdentifier(identifier: String?): LoteProfile {
+            if (identifier.isNullOrBlank()) return EAA
+
+            return when {
+                identifier.contains("pid", ignoreCase = true) -> PID
+                identifier.contains("mdl", ignoreCase = true) -> mDL
+                else -> EAA
+            }
         }
     }
 }
