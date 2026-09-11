@@ -5,17 +5,20 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
-import at.asitplus.openid.TokenIntrospectionJwtResponse
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
+import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
@@ -30,6 +33,7 @@ import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Clock
 
 val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
 
@@ -139,7 +143,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             .oauth2Error shouldBe expectedError
     }
 
-    test("getTokenInfo handles inactive token") {
+    test("getTokenInfo handles inactive JSON response when configured") {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
@@ -150,10 +154,13 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString() == introspectionEndpoint -> respond(
-                    joseCompliantSerializer.encodeToString(TokenIntrospectionResponse(active = false)),
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                )
+                request.url.toString() == introspectionEndpoint -> {
+                    request.headers.getAll(HttpHeaders.Accept) shouldBe listOf(ContentType.Application.Json.toString())
+                    respond(
+                        joseCompliantSerializer.encodeToString(TokenIntrospectionResponseJson(active = false)),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
 
                 else -> respondError(HttpStatusCode.NotFound)
             }
@@ -163,22 +170,31 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             publicContext = issuer,
             engine = mockEngine,
             internalTokenVerificationService = tokenVerificationService,
+            tokenIntrospectionResponseFormats = listOf(ContentType.Application.Json),
         )
 
         shouldThrow<InvalidToken> {
-            adapter.getTokenInfo("Bearer token", null).getOrThrow()
+            adapter.getTokenInfo("Bearer token", null)
+                .getOrThrow()
         }
     }
 
-    test("getTokenInfo handles jwt response") {
-        val signedJwt = SignJwt<TokenIntrospectionResponse>(
-            keyMaterial = EphemeralKeyWithoutCert(),
-            headerModifier = JwsHeaderNone()
-        ).invoke(
-            JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
-            TokenIntrospectionResponse(active = true, scope = "scope"),
-            TokenIntrospectionResponse.serializer()
-        ).getOrThrow().jws.toString()
+    test("getTokenInfo uses JWT response by default") {
+        val tokenIntrospectionJwt = TokenIntrospectionResponseJwt(
+            SignJwt<TokenIntrospectionResponseJwtPayload>(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                headerModifier = JwsHeaderNone(),
+            ).invoke(
+                JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
+                TokenIntrospectionResponseJwtPayload(
+                    issuer = issuer,
+                    audience = "foo", // TODO
+                    iat = Clock.System.now(),
+                    tokenIntrospection = TokenIntrospectionResponseJson(active = true, scope = "scope"),
+                ),
+                TokenIntrospectionResponseJwtPayload.serializer(),
+            ).getOrThrow()
+        )
 
         val mockEngine = MockEngine { request ->
             when {
@@ -190,10 +206,13 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString() == introspectionEndpoint -> respond(
-                    joseCompliantSerializer.encodeToString(TokenIntrospectionJwtResponse(jwt = signedJwt)),
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                )
+                request.url.toString() == introspectionEndpoint -> {
+                    request.headers.getAll(HttpHeaders.Accept) shouldBe listOf(
+                        ContentType.Application.IntrospectionJwt.toString(),
+                        ContentType.Application.Json.toString(),
+                    )
+                    respond(tokenIntrospectionJwt)
+                }
 
                 else -> respondError(HttpStatusCode.NotFound)
             }
@@ -262,7 +281,8 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             internalTokenVerificationService = tokenVerificationService,
         )
 
-        adapter.getUserInfo("Bearer wallet-token", null).getOrThrow() shouldBe userInfoResponse
+        adapter.getUserInfo("Bearer wallet-token", null)
+            .getOrThrow() shouldBe userInfoResponse
         userInfoCalls shouldBe 2
     }
 }

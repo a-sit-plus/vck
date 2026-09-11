@@ -3,13 +3,12 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
-import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -22,6 +21,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.*
 
 val OAuth2ClientTest by matrixSuite {
     fixture {
@@ -32,6 +32,17 @@ val OAuth2ClientTest by matrixSuite {
                 requirePushedAuthorizationRequests = false,
                 strategy = DummyAuthorizationServiceStrategy(scope),
             )
+
+            fun introspectionRequestInfo(acceptHeader: String) = RequestInfo(
+                url = "https://example.com/introspect",
+                method = HttpMethod.Post,
+                headers = headers { set(HttpHeaders.Accept, acceptHeader) },
+            )
+
+            suspend fun introspectJson(token: String) = server.tokenIntrospection(
+                TokenIntrospectionRequest(token = token),
+                httpRequest = introspectionRequestInfo(ContentType.Application.Json.toString()),
+            ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
         }
     } - {
         test("process with pre-authorized code") {
@@ -97,30 +108,89 @@ val OAuth2ClientTest by matrixSuite {
             val token = it.server.token(tokenRequest, null).getOrThrow().apply {
                 authorizationDetails.shouldBeNull()
             }
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
         }
-        test("token introspection JWT response") {
-            val preAuth = it.server.providePreAuthorizedCode(user)
-                .shouldNotBeNull()
-            val state = uuid4().toString()
-            val tokenRequest = it.client.createTokenRequestParameters(
-                state = state,
-                authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
-                scope = it.scope
+        test("token introspection JWT response requires authenticated resource server") {
+            shouldThrow<OAuth2Exception.InvalidClient> {
+                it.server.tokenIntrospection(
+                    TokenIntrospectionRequest(token = "unknown-token"),
+                    httpRequest = it.introspectionRequestInfo(ContentType.Application.IntrospectionJwt.toString()),
+                ).getOrThrow()
+            }
+        }
+        test("token introspection returns inactive JSON for unknown token") {
+            it.introspectJson("unknown-token").active shouldBe false
+        }
+        listOf(ContentType.Any, ContentType.Application.Any).forEach { mediaRange ->
+            test("token introspection uses configured default for media range '$mediaRange'") {
+                val server = SimpleAuthorizationService(
+                    strategy = DummyAuthorizationServiceStrategy(it.scope),
+                    defaultTokenIntrospectionResponseFormat = ContentType.Application.Json,
+                )
+
+                server.tokenIntrospection(
+                    TokenIntrospectionRequest(token = "unknown-token"),
+                    httpRequest = it.introspectionRequestInfo(mediaRange.toString()),
+                ).getOrThrow()
+                    .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+            }
+        }
+        test("token introspection uses configured default when Accept header is missing") {
+            val server = SimpleAuthorizationService(
+                strategy = DummyAuthorizationServiceStrategy(it.scope),
+                defaultTokenIntrospectionResponseFormat = ContentType.Application.Json,
             )
-            val token = it.server.token(tokenRequest, null).getOrThrow()
-            val jwtResponse = it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken, responseFormat = ResponseFormat.JWT),
-                null
+
+            server.tokenIntrospection(
+                TokenIntrospectionRequest(token = "unknown-token"),
             ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
-            val parsed = JwsCompactTyped<TokenIntrospectionResponse>(jwtResponse.jwt)
-            parsed.payload.active shouldBe true
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+        }
+        test("token introspection honors a specific rejection over a wildcard") {
+            it.server.tokenIntrospection(
+                TokenIntrospectionRequest(token = "unknown-token"),
+                httpRequest = it.introspectionRequestInfo(
+                    "${TokenIntrospectionResponseJwt.contentType};q=0, ${ContentType.Any};q=1",
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+        }
+        test("token introspection applies a wildcard rejection to every matching response format") {
+            shouldThrow<OAuth2Exception.InvalidRequest> {
+                it.server.tokenIntrospection(
+                    TokenIntrospectionRequest(token = "unknown-token"),
+                    httpRequest = it.introspectionRequestInfo(
+                        "${ContentType.Any};q=1, ${ContentType.Application.Any};q=0",
+                    ),
+                ).getOrThrow()
+            }
+        }
+        test("token introspection compares the effective quality of each response format") {
+            it.server.tokenIntrospection(
+                TokenIntrospectionRequest(token = "unknown-token"),
+                httpRequest = it.introspectionRequestInfo(
+                    "${ContentType.Application.Any};q=1, " +
+                            "${TokenIntrospectionResponseJwt.contentType};q=0.5",
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+        }
+        listOf(
+            "",
+            ContentType.Text.Plain.toString(),
+            "${ContentType.Application.Json};q=0",
+            "${ContentType.Application.IntrospectionJwt};q=0",
+            "${ContentType.Application.Any};q=0, ${ContentType.Any};q=1",
+            "${ContentType.Application.IntrospectionJwt};q=0, ${ContentType.Application.Json};q=0, ${ContentType.Any};q=1",
+        ).forEach { acceptHeader ->
+            test("token introspection rejects unusable Accept header '$acceptHeader'") {
+                shouldThrow<OAuth2Exception.InvalidRequest> {
+                    it.server.tokenIntrospection(
+                        TokenIntrospectionRequest(token = "token"),
+                        httpRequest = it.introspectionRequestInfo(acceptHeader),
+                    ).getOrThrow()
+                }
+            }
         }
         test("process with pushed authorization request and JAR") {
             val state = uuid4().toString()
@@ -145,12 +215,7 @@ val OAuth2ClientTest by matrixSuite {
             val token = it.server.token(tokenRequest, null).getOrThrow().apply {
                 authorizationDetails.shouldBeNull()
             }
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
         }
         test("process with authorization code flow, and JAR") {
             val state = uuid4().toString()
@@ -172,12 +237,7 @@ val OAuth2ClientTest by matrixSuite {
             val token = it.server.token(tokenRequest, null).getOrThrow().apply {
                 authorizationDetails.shouldBeNull()
             }
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
         }
 
         test("process with authorization code flow, front channel") {
@@ -245,12 +305,7 @@ val OAuth2ClientTest by matrixSuite {
                 scope.shouldBe(scope)
             }
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
         }
 
         /**

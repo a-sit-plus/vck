@@ -6,11 +6,21 @@ Release 8.0.0 (unreleased):
     - no more conventions plugin submodule
     - no more version catalog messing around
     - no more build hacks
+- OpenID-KTOR:
+    - Change the return type of `OAuth2KtorClient.callTokenIntrospection()` to `TokenIntrospectionResponseJson`
+    - Accept requested token introspection response media ranges as a `List<ContentType>` in `OAuth2KtorClient.callTokenIntrospection()` and `RemoteOAuth2AuthorizationServerAdapter`, supporting multiple formats and quality parameters
+    - Parse token introspection responses according to their actual HTTP `Content-Type`
+    - Update `verifyTokenIntrospectionJwt` to receive `TokenIntrospectionResponseJwtPayload`
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input
 - Credentials:
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject
+- OAuth 2.0:
+    - Support JWT token introspection responses according to RFC 9701 using `application/token-introspection+jwt` content negotiation; `RemoteOAuth2AuthorizationServerAdapter` requests JWT responses by default and can be configured to use RFC 7662 JSON responses
+    - Apply the most-specific matching `Accept` media range when negotiating token introspection responses, including wildcard exclusions, media-range parameters, and omitted headers
+    - BREAKING: Replace `TokenIntrospectionResult`, `TokenIntrospectionResponse`, and `TokenIntrospectionJwtResponse` with sealed `TokenIntrospectionResponse`, `TokenIntrospectionResponseJson`, `TokenIntrospectionResponseJwtPayload`, and typed `TokenIntrospectionResponseJwt`
+    - Select Token Introspection response format with the HTTP `Accept` header from `RequestInfo.acceptHeader` instead of the `response_format` request parameter
 - Verifiable Presentations:
     - Compute ISO mDoc `DeviceAuthentication` signatures automatically using the `calcIsoSessionTranscript` callback instead of requiring `calcIsoDeviceSignaturePlain` 
     - Replace `PresentationRequestParameters.calcIsoDeviceSignaturePlain` with the `PresentationRequestParameters.calcIsoSessionTranscript` callback to return a nullable `SessionTranscript`. DeviceSignature and DeviceAuth is now calculated based on the Transcript.

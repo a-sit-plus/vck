@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -205,7 +206,10 @@ val OAuth2KtorClientTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenIntrospectionRequest =
                         requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
-                    authorizationService.tokenIntrospection(params, request.toRequestInfo()).fold(
+                    authorizationService.tokenIntrospection(
+                        request = params,
+                        httpRequest = request.toRequestInfo(),
+                    ).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) },
                     )
@@ -300,10 +304,10 @@ val OAuth2KtorClientTest by matrixSuite {
                 request = TokenIntrospectionRequest(
                     token = tokenResponse.params.accessToken,
                     tokenTypeHint = tokenResponse.params.tokenType,
-                    responseFormat = TokenIntrospectionRequest.ResponseFormat.JWT,
                 ),
                 token = tokenResponse.params.accessToken,
                 popAudience = authorizationService.publicContext,
+                requestedResponseFormats = listOf(ContentType.Application.IntrospectionJwt),
             ).active shouldBe true
         }
     }
@@ -421,7 +425,6 @@ val OAuth2KtorClientTest by matrixSuite {
             }
         }
     }
-
     test("fetches advertised attestation challenge for the PAR PoP") {
         with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = true)) {
             client.startAuthorization(

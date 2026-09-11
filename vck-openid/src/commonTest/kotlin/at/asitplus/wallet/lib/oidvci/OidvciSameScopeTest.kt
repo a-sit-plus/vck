@@ -193,7 +193,10 @@ val OidvciSameScopeTest by matrixSuite {
                     authorizationHeader: String,
                     httpRequest: RequestInfo?,
                 ): KmmResult<TokenInfo> = catching {
-                    TokenInfo(token = token.accessToken, scope = requiredScope)
+                    TokenInfo(
+                        token = token.accessToken,
+                        scope = requiredScope,
+                    )
                 }
             }
             val issuer = CredentialIssuer(

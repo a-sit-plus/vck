@@ -5,7 +5,7 @@ import at.asitplus.KmmResult
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResult
+import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -85,12 +85,14 @@ interface AuthorizationService {
 
     /**
      * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection
+     * [RFC 9701](https://datatracker.ietf.org/doc/rfc9701/): JWT Response for OAuth 2.0 Token Introspection
      *
      * @param request as sent from the client as form POST
-     * @param httpRequest information about the HTTP request from the client, to validate authentication
+     * @param httpRequest information about the HTTP request from the client, including its `Accept` header, to
+     * validate authentication and negotiate the response format
      */
     suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo? = null,
-    ): KmmResult<TokenIntrospectionResult>
+    ): KmmResult<TokenIntrospectionResponse>
 }

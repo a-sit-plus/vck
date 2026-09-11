@@ -4,7 +4,8 @@ import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -14,6 +15,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.data.IntrospectionJwt
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
@@ -27,6 +29,8 @@ import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyUserProvider.user
 import com.benasher44.uuid.uuid4
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.disable
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -169,6 +173,22 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                     .params?.code.shouldNotBeNull()
 
+                suspend fun introspectionRequestInfo(
+                    method: HttpMethod = HttpMethod.Post,
+                    acceptHeader: String? = null,
+                ): RequestInfo {
+                    val clientAttestationPop = freshPop()
+                    return RequestInfo(
+                        url = "https://example.com/",
+                        method = method,
+                        headers = headers {
+                            set(HttpHeaders.OAuthClientAttestation, clientAttestation.toString())
+                            set(HttpHeaders.OAuthClientAttestationPop, clientAttestationPop.toString())
+                            acceptHeader?.let { set(HttpHeaders.Accept, it) }
+                        },
+                    )
+                }
+
                 @Suppress("DEPRECATION")
                 suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
                     request = client.createTokenRequestParameters(
@@ -186,13 +206,11 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
                 @Suppress("DEPRECATION")
                 suspend fun introspect(token: TokenResponseParameters) = server.tokenIntrospection(
-                    TokenIntrospectionRequest(token = token.accessToken),
-                    RequestInfo(
-                        url = "https://example.com/",
+                    request = TokenIntrospectionRequest(token = token.accessToken),
+                    httpRequest = introspectionRequestInfo(
                         method = HttpMethod.Get,
-                        clientAttestation = this.clientAttestation,
-                        clientAttestationPop = freshPop()
-                    )
+                        acceptHeader = ContentType.Application.Json.toString(),
+                    ),
                 ).getOrThrow()
             }
         }
@@ -284,9 +302,18 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             val token = it.getToken(state, code).apply {
                 authorizationDetails.shouldBeNull()
             }
-            it.introspect(token)
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            val introspectionResponse = it.server.tokenIntrospection(
+                request = TokenIntrospectionRequest(token = token.accessToken),
+                httpRequest = it.introspectionRequestInfo(
+                    method = HttpMethod.Get,
+                    acceptHeader = ContentType.Application.IntrospectionJwt.toString(),
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+
+            introspectionResponse.value.payload.issuer shouldBe it.server.publicContext
+            introspectionResponse.value.payload.audience shouldBe it.client.clientId
+            introspectionResponse.value.payload.tokenIntrospection.active shouldBe true
         }
 
         test("authorization code is bound to the client id") {
@@ -542,6 +569,54 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             }
         }
 
+        listOf(
+            ContentType.Application.IntrospectionJwt.toString() to "explicit JWT",
+            "${ContentType.Application.Any};q=1, ${ContentType.Application.Json};q=0" to "wildcard default",
+            "${ContentType.Application.Any};q=0.9, ${ContentType.Application.Json};q=0.1" to "wildcard wins",
+            "${ContentType.Application.Json};profile=x, ${ContentType.Application.IntrospectionJwt};q=0.5" to
+                "unsupported JSON media parameter",
+        ).forEach { (acceptHeader, description) ->
+            test("token introspection returns inactive JWT for $description") {
+                val introspectionResponse = it.server.tokenIntrospection(
+                    request = TokenIntrospectionRequest(token = "unknown-token"),
+                    httpRequest = it.introspectionRequestInfo(acceptHeader = acceptHeader),
+                ).getOrThrow()
+                    .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+
+                introspectionResponse.value.payload.tokenIntrospection.active shouldBe false
+            }
+        }
+
+        test("token introspection ignores Accept extensions after the quality parameter") {
+            val introspectionResponse = it.server.tokenIntrospection(
+                request = TokenIntrospectionRequest(token = "unknown-token"),
+                httpRequest = it.introspectionRequestInfo(
+                    acceptHeader = "${ContentType.Application.Json};q=1;profile=x, " +
+                            "${ContentType.Application.IntrospectionJwt};q=0.5",
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+
+            introspectionResponse.active shouldBe false
+        }
+
+        // TODO Enable when Ktor handles quality parameter names case-insensitively.
+        test(
+            "token introspection quality parameter names are case-insensitive",
+            testConfig = TestConfig.disable(),
+        ) {
+            val introspectionResponse = it.server.tokenIntrospection(
+                request = TokenIntrospectionRequest(token = "unknown-token"),
+                httpRequest = it.introspectionRequestInfo(
+                    acceptHeader = "${ContentType.Application.Json};Q=0, " +
+                            "${ContentType.Application.IntrospectionJwt};q=0.5",
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJwt>()
+
+            introspectionResponse.value.payload.tokenIntrospection.active shouldBe false
+        }
+
         test("pushed authorization request with self-signed client attestation JWT") {
             val state = uuid4().toString()
             val authnRequest = it.client.createAuthRequestJar(
@@ -611,7 +686,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             }
 
             it.introspect(token)
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
                 .apply { active shouldBe true }
         }
 
