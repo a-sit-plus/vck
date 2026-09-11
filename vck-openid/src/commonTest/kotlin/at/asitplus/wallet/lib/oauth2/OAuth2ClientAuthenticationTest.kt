@@ -572,7 +572,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
         listOf(
             ContentType.Application.IntrospectionJwt.toString() to "explicit JWT",
             "${ContentType.Application.Any};q=1, ${ContentType.Application.Json};q=0" to "wildcard default",
-            "${ContentType.Application.Any};q=0.9, ${ContentType.Application.Json};q=0.1" to "wildcard wins"
+            "${ContentType.Application.Any};q=0.9, ${ContentType.Application.Json};q=0.1" to "wildcard wins",
+            "${ContentType.Application.Json};profile=x, ${ContentType.Application.IntrospectionJwt};q=0.5" to
+                "unsupported JSON media parameter",
         ).forEach { (acceptHeader, description) ->
             test("token introspection returns inactive JWT for $description") {
                 val introspectionResponse = it.server.tokenIntrospection(
@@ -585,21 +587,17 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             }
         }
 
-        listOf(
-            "${ContentType.Application.Json};profile=x, ${ContentType.Application.IntrospectionJwt};q=0.5" to
-                "implicit JSON quality",
-            "${ContentType.Application.Json};q=1;profile=x, ${ContentType.Application.IntrospectionJwt};q=0.5" to
-                "explicit JSON quality",
-        ).forEach { (acceptHeader, description) ->
-            test("token introspection returns inactive JSON for $description") {
-                val introspectionResponse = it.server.tokenIntrospection(
-                    request = TokenIntrospectionRequest(token = "unknown-token"),
-                    httpRequest = it.introspectionRequestInfo(acceptHeader = acceptHeader),
-                ).getOrThrow()
-                    .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+        test("token introspection ignores Accept extensions after the quality parameter") {
+            val introspectionResponse = it.server.tokenIntrospection(
+                request = TokenIntrospectionRequest(token = "unknown-token"),
+                httpRequest = it.introspectionRequestInfo(
+                    acceptHeader = "${ContentType.Application.Json};q=1;profile=x, " +
+                            "${ContentType.Application.IntrospectionJwt};q=0.5",
+                ),
+            ).getOrThrow()
+                .shouldBeInstanceOf<TokenIntrospectionResponseJson>()
 
-                introspectionResponse.active shouldBe false
-            }
+            introspectionResponse.active shouldBe false
         }
 
         // TODO Enable when Ktor handles quality parameter names case-insensitively.

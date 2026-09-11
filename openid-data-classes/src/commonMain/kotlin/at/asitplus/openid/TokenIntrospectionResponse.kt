@@ -14,7 +14,12 @@ sealed interface TokenIntrospectionResponse {
             defaultResponseFormat: ContentType,
         ): KmmResult<ContentType> = catching {
             val entries = parseAndSortContentTypeHeader(acceptHeader ?: ContentType.Any.toString()).map {
-                ContentType.parse(it.value) to it.quality
+                val parsedContentType = ContentType.parse(it.value)
+                ContentType(
+                    parsedContentType.contentType,
+                    parsedContentType.contentSubtype,
+                    it.params.takeWhile { parameter -> !parameter.name.equals("q", ignoreCase = true) },
+                ) to it.quality
             }
 
             val candidatesWithEffectiveQuality = listOf(
