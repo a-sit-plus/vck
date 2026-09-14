@@ -30,10 +30,12 @@ import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SCHEME_TYPE
 import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_STATUS_DETERMINATION_APPROACH
 import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SVC_TYPE_ISSUANCE
 import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SVC_TYPE_REVOCATION
+import at.asitplus.etsi.EtsiCountryCode
 import at.asitplus.etsi.EtsiX509CertificateSerializer
 import at.asitplus.etsi.ListAndSchemeInformation
 import at.asitplus.etsi.ListOfTrustedEntities
 import at.asitplus.etsi.TEName
+import at.asitplus.rfc3986uri.Rfc3986UniformResourceIdentifier
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
@@ -103,12 +105,14 @@ class LoTEFilterService {
         if (listAndSchemeInformation == null) return false
 
         val matchesLoteType = profile.matchesLoteType(listAndSchemeInformation.loteType?.toString())
-        val matchesStatus = profile.matchesStatusDeterminationApproach(listAndSchemeInformation.statusDeterminationApproach?.toString())
-        val matchesRules = listAndSchemeInformation.schemeTypeCommunityRules?.any { rule ->
-            profile.matchesSchemeCommunityRules(rule.uniformResourceIdentifier.toString())
-        } ?: false
+        val matchesStatus =
+            profile.matchesStatusDeterminationApproach(listAndSchemeInformation.statusDeterminationApproach?.toString())
+        val matchesRules = profile.matchesSchemeCommunityRules(
+            listAndSchemeInformation.schemeTypeCommunityRules?.map { it.uniformResourceIdentifier }
+        )
+        val matchesTerritory = profile.matchesSchemeTerritory(listAndSchemeInformation.schemeTerritory)
 
-        return matchesLoteType && matchesStatus && matchesRules
+        return matchesLoteType && matchesStatus && matchesRules && matchesTerritory
     }
 
     /**
@@ -144,9 +148,10 @@ sealed class LoteProfile(
     val fetchUrl: String,
     val loteType: String,
     val statusDeterminationApproach: String,
-    val schemeCommunityRules: String,
+    val schemeCommunityRules: List<Rfc3986UniformResourceIdentifier>,
     val serviceTypeIdentifierIssuance: String,
     val serviceTypeIdentifierRevocation: String,
+    val schemeCountryCode: EtsiCountryCode = EtsiCountryCode("EU")
 ) {
 
     fun matchesLoteType(loteTypeUri: String?): Boolean {
@@ -159,9 +164,10 @@ sealed class LoteProfile(
         return approachUri.equals(statusDeterminationApproach, ignoreCase = true)
     }
 
-    fun matchesSchemeCommunityRules(rulesUri: String?): Boolean {
-        if (rulesUri.isNullOrBlank()) return false
-        return rulesUri.equals(schemeCommunityRules, ignoreCase = true)
+    fun matchesSchemeCommunityRules(rulesUri: List<Rfc3986UniformResourceIdentifier>?): Boolean {
+        if (rulesUri.isNullOrEmpty()) return false
+        if (rulesUri.size != schemeCommunityRules.size) return false
+        return rulesUri.toSet() == schemeCommunityRules.toSet()
     }
 
     fun matchesServiceTypeIssuance(serviceTypeUri: String?): Boolean {
@@ -174,11 +180,16 @@ sealed class LoteProfile(
         return serviceTypeUri.equals(serviceTypeIdentifierRevocation, ignoreCase = true)
     }
 
+    fun matchesSchemeTerritory(countryCode: EtsiCountryCode?): Boolean {
+        if (countryCode == null) return false
+        return countryCode.string.equals(schemeCountryCode.string, ignoreCase = true)
+    }
+
     data object PID : LoteProfile(
         fetchUrl = EU_PID_PROVIDERS_FETCH_URL,
         loteType = EU_PID_PROVIDERS_SCHEME_TYPE,
         statusDeterminationApproach = EU_PID_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = EU_PID_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_PID_PROVIDERS_SCHEME_COMMUNITY_RULES)),
         serviceTypeIdentifierIssuance = EU_PID_PROVIDERS_SVC_TYPE_ISSUANCE,
         serviceTypeIdentifierRevocation = EU_PID_PROVIDERS_SVC_TYPE_REVOCATION
     )
@@ -187,7 +198,7 @@ sealed class LoteProfile(
         fetchUrl = EU_mDL_PROVIDERS_FETCH_URL,
         loteType = EU_mDL_PROVIDERS_SCHEME_TYPE,
         statusDeterminationApproach = EU_mDL_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = EU_mDL_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_mDL_PROVIDERS_SCHEME_COMMUNITY_RULES)),
         serviceTypeIdentifierIssuance = EU_mDL_PROVIDERS_SVC_TYPE_ISSUANCE,
         serviceTypeIdentifierRevocation = EU_mDL_PROVIDERS_SVC_TYPE_REVOCATION
     )
@@ -196,7 +207,7 @@ sealed class LoteProfile(
         fetchUrl = EU_WRPAC_PROVIDERS_FETCH_URL,
         loteType = EU_WRPAC_PROVIDERS_SCHEME_TYPE,
         statusDeterminationApproach = EU_WRPAC_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = EU_WRPAC_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_WRPAC_PROVIDERS_SCHEME_COMMUNITY_RULES)),
         serviceTypeIdentifierIssuance = EU_WRPAC_PROVIDERS_SVC_TYPE_ISSUANCE,
         serviceTypeIdentifierRevocation = EU_WRPAC_PROVIDERS_SVC_TYPE_REVOCATION
     )
@@ -205,7 +216,7 @@ sealed class LoteProfile(
         fetchUrl = EU_WALLET_PROVIDERS_FETCH_URL,
         loteType = EU_WALLET_PROVIDERS_SCHEME_TYPE,
         statusDeterminationApproach = EU_WALLET_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = EU_WALLET_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_WALLET_PROVIDERS_SCHEME_COMMUNITY_RULES)),
         serviceTypeIdentifierIssuance = EU_WALLET_PROVIDERS_SVC_TYPE_ISSUANCE,
         serviceTypeIdentifierRevocation = EU_WALLET_PROVIDERS_SVC_TYPE_REVOCATION
     )
@@ -214,7 +225,7 @@ sealed class LoteProfile(
         fetchUrl = EU_PUB_EAA_PROVIDERS_FETCH_URL,
         loteType = EU_PUB_EAA_PROVIDERS_SCHEME_TYPE,
         statusDeterminationApproach = EU_PUB_EAA_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = EU_PUB_EAA_PROVIDERS_SCHEME_COMMUNITY_RULES,
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_PUB_EAA_PROVIDERS_SCHEME_COMMUNITY_RULES)),
         serviceTypeIdentifierIssuance = EU_PUB_EAA_PROVIDERS_SVC_TYPE_ISSUANCE,
         serviceTypeIdentifierRevocation = EU_PUB_EAA_PROVIDERS_SVC_TYPE_REVOCATION
     )
