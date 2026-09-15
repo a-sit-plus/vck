@@ -77,9 +77,9 @@ interface IsoMdocZkBackend {
     /**
      * Generates an [IsoMdocZkProof] using this backend.
      *
-     * This method evaluates the provided list of requested [zkSystemSpecs] and automatically
-     * selects the most appropriate system that fits the presentation request. If none of the
-     * provided specifications are supported by this backend, the operation will return an error.
+     * This method evaluates the provided list of requested [requestedZkSystemSpecs] and automatically
+     * selects the most appropriate system that fits the presentation request. If this backend supports none of the
+     * provided specifications, the operation will return an error.
      *
      * **Hint:** While this method handles system selection internally, callers operating in a
      * multi-backend environment may want to pre-evaluate backends using [supports]. Doing so
@@ -89,7 +89,7 @@ interface IsoMdocZkBackend {
      * @param request The parameters of the presentation request.
      * @param credential The ISO mDoc credential to prove statements about.
      * @param requestedClaims The set of claims (as JSON Paths) to be disclosed in the proof.
-     * @param zkSystemSpecs The list of ZK systems requested by the verifier to evaluate.
+     * @param requestedZkSystemSpecs The list of ZK systems requested by the verifier to evaluate.
      * @param keyMaterial Key material used for holder binding purposes.
      * @return A [KmmResult] containing the generated [IsoMdocZkProof] on success, or an error if
      * no provided system specs are supported or generation fails.
@@ -98,7 +98,7 @@ interface IsoMdocZkBackend {
         request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry.Iso,
         requestedClaims: Collection<NormalizedJsonPath>,
-        zkSystemSpecs: List<ZkSystemSpec>,
+        requestedZkSystemSpecs: List<ZkSystemSpec>,
         keyMaterial: KeyMaterial,
     ): KmmResult<IsoMdocZkProof>
 

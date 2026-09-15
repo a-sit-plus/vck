@@ -57,7 +57,7 @@ class IsoMdocZkEngine @JvmOverloads constructor(
             request = request,
             credential = isoParameters.credential,
             requestedClaims = isoParameters.claims,
-            zkSystemSpecs = supportedSystems,
+            requestedZkSystemSpecs = supportedSystems,
             keyMaterial = keyMaterial,
         ).getOrThrow()
     }
