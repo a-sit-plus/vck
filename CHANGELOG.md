@@ -81,7 +81,6 @@ Release 8.0.0 (unreleased):
     - Requests using a scheme for which no trust material is configured are rejected. This includes `entity_id` and `did`, which are handed to `RelyingPartyTrust.Custom` and rejected when none is configured, so that a relying party cannot bypass the configured trust anchors by naming itself with a scheme this library does not evaluate natively. Only `redirect_uri` is not covered, as it forbids signed requests anyway
     - `RequestParser` no longer verifies anything and lost its `requestObjectJwsVerifier` parameter, so parsing a request is purely parsing. Consequently `RequestParametersSigned.verified` is removed, with the `verified` property of `Jws`, `OpenId4VpDcApiSigned` and `OpenId4VpDcApiMultiSigned` and its serialized form. Stored JSON still carrying `"verified"` deserializes fine, as unknown keys are ignored
 - Trust List filtering:
-    - Add `ETSI19602.kt` with LoTE scheme constants (fetch URLs, scheme types, status approaches, community rules, service type identifiers) per profile
     - Replace `LoTEServiceType`/`LoTEFilterCriteria` with `LoteProfile`, a sealed class defining PID, mDL, WRPAC, WALLET, and EAA profiles with built-in matching against scheme type, status approach, community rules URIs, and country code
     - Add support for LoTEs with issuance and revocation certificates
 - OAuth 2.0:
@@ -126,6 +125,8 @@ Release 8.0.0 (unreleased):
     - Deprecate constructor parameter `enforceClientAuthentication` in `AttestationBasedClientAuthenticationService` as the new default is `true`. Callers might use a `NoopClientAuthenticationService`
     - Deprecate `TokenService.readUserInfo()`, since it does not prove possession of the key the access token is bound to. Replace with `TokenService.validateAccessToken()`, which validates the access token including the DPoP proof and returns the user info in `ValidatedAccessToken.userInfoExtended`
     - Deprecate constructor parameter `signDpop` in `OAuth2KtorClient`, replace by setting `dpopKeyMaterial`
+    - Deprecate `LoTEFilterCriteria` and `LoTEServiceType`, replace by `LoteProfile`
+    - Deprecate `LoTEFilterService.extractTrustedCertificates()`, replace by `LoTEFilterService.extractIssuanceCertificates()` and `LoTEFilterService.extractRevocationCertificates()`
 - Refactorings:
     - In `MdocInputValidator` and `ValidatorMdoc` replace `verifyCoseSignatureWithKey` with a `VerifyCoseSignatureFun<MobileSecurityObject>`, which resolves the issuer key from the COSE headers itself. Consequently `MdocInputValidator.invoke()` and `ValidatorMdoc.verifyIsoCred()` lose their `issuerKey` parameter, `MdocInputValidationSummary.IntegrityValidationSummary.IntegrityValidationResult` loses its `issuerKey` property, and `IntegrityNotValidated` is removed
     - `ValidatorMdoc.verifyDocument()` no longer extracts the issuer certificate itself, but delegates to `MdocInputValidator` like the credential path does

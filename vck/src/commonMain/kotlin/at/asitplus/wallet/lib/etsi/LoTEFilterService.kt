@@ -1,35 +1,5 @@
 package at.asitplus.wallet.lib.etsi
 
-import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_FETCH_URL
-import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_SCHEME_COMMUNITY_RULES
-import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_SCHEME_TYPE
-import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_STATUS_DETERMINATION_APPROACH
-import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_SVC_TYPE_ISSUANCE
-import at.asitplus.etsi.ETSI19602.EU_PID_PROVIDERS_SVC_TYPE_REVOCATION
-import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_FETCH_URL
-import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_SCHEME_COMMUNITY_RULES
-import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_SCHEME_TYPE
-import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_STATUS_DETERMINATION_APPROACH
-import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_SVC_TYPE_ISSUANCE
-import at.asitplus.etsi.ETSI19602.EU_PUB_EAA_PROVIDERS_SVC_TYPE_REVOCATION
-import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_FETCH_URL
-import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_SCHEME_COMMUNITY_RULES
-import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_SCHEME_TYPE
-import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_STATUS_DETERMINATION_APPROACH
-import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_SVC_TYPE_ISSUANCE
-import at.asitplus.etsi.ETSI19602.EU_WALLET_PROVIDERS_SVC_TYPE_REVOCATION
-import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_FETCH_URL
-import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_SCHEME_COMMUNITY_RULES
-import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_SCHEME_TYPE
-import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_STATUS_DETERMINATION_APPROACH
-import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_SVC_TYPE_ISSUANCE
-import at.asitplus.etsi.ETSI19602.EU_WRPAC_PROVIDERS_SVC_TYPE_REVOCATION
-import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_FETCH_URL
-import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SCHEME_COMMUNITY_RULES
-import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SCHEME_TYPE
-import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_STATUS_DETERMINATION_APPROACH
-import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SVC_TYPE_ISSUANCE
-import at.asitplus.etsi.ETSI19602.EU_mDL_PROVIDERS_SVC_TYPE_REVOCATION
 import at.asitplus.etsi.EtsiCountryCode
 import at.asitplus.etsi.EtsiX509CertificateSerializer
 import at.asitplus.etsi.ListAndSchemeInformation
@@ -183,7 +153,6 @@ sealed class LoteProfile(
     val serviceTypeIdentifierRevocation: String,
     val schemeCountryCode: EtsiCountryCode = EtsiCountryCode("EU")
 ) {
-
     fun matchesLoteType(loteTypeUri: String?): Boolean {
         if (loteTypeUri.isNullOrBlank()) return false
         return loteTypeUri.equals(loteType, ignoreCase = true)
@@ -216,51 +185,52 @@ sealed class LoteProfile(
     }
 
     data object PID : LoteProfile(
-        fetchUrl = EU_PID_PROVIDERS_FETCH_URL,
-        loteType = EU_PID_PROVIDERS_SCHEME_TYPE,
-        statusDeterminationApproach = EU_PID_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_PID_PROVIDERS_SCHEME_COMMUNITY_RULES)),
-        serviceTypeIdentifierIssuance = EU_PID_PROVIDERS_SVC_TYPE_ISSUANCE,
-        serviceTypeIdentifierRevocation = EU_PID_PROVIDERS_SVC_TYPE_REVOCATION
+        fetchUrl = "${BASE_FETCH_URL}/pid-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUPIDProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/PIDProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/PIDProviders/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/PID/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/PID/Revocation"
     )
 
     data object mDL : LoteProfile(
-        fetchUrl = EU_mDL_PROVIDERS_FETCH_URL,
-        loteType = EU_mDL_PROVIDERS_SCHEME_TYPE,
-        statusDeterminationApproach = EU_mDL_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_mDL_PROVIDERS_SCHEME_COMMUNITY_RULES)),
-        serviceTypeIdentifierIssuance = EU_mDL_PROVIDERS_SVC_TYPE_ISSUANCE,
-        serviceTypeIdentifierRevocation = EU_mDL_PROVIDERS_SVC_TYPE_REVOCATION
+        fetchUrl = "${BASE_FETCH_URL}/mdl-providers.json",
+        loteType = "http://trust.ec.europa.eu/lists/mDL/mDLProvidersListType",
+        statusDeterminationApproach = "http://trust.ec.europa.eu/lists/mDL/mDLProvidersListStatusDetn",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://trust.ec.europa.eu/lists/mDL/schemerules")),
+        serviceTypeIdentifierIssuance = "http://trust.ec.europa.eu/lists/mDL/SvcType/Issuance",
+        serviceTypeIdentifierRevocation = "http://trust.ec.europa.eu/lists/mDL/SvcType/Revocation"
     )
 
     data object WRPAC : LoteProfile(
-        fetchUrl = EU_WRPAC_PROVIDERS_FETCH_URL,
-        loteType = EU_WRPAC_PROVIDERS_SCHEME_TYPE,
-        statusDeterminationApproach = EU_WRPAC_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_WRPAC_PROVIDERS_SCHEME_COMMUNITY_RULES)),
-        serviceTypeIdentifierIssuance = EU_WRPAC_PROVIDERS_SVC_TYPE_ISSUANCE,
-        serviceTypeIdentifierRevocation = EU_WRPAC_PROVIDERS_SVC_TYPE_REVOCATION
+        fetchUrl = "${BASE_FETCH_URL}/wrpac-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUWRPACProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/WRPACProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WRPACProvidersList/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WRPAC/Revocation"
     )
 
     data object WALLET : LoteProfile(
-        fetchUrl = EU_WALLET_PROVIDERS_FETCH_URL,
-        loteType = EU_WALLET_PROVIDERS_SCHEME_TYPE,
-        statusDeterminationApproach = EU_WALLET_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_WALLET_PROVIDERS_SCHEME_COMMUNITY_RULES)),
-        serviceTypeIdentifierIssuance = EU_WALLET_PROVIDERS_SVC_TYPE_ISSUANCE,
-        serviceTypeIdentifierRevocation = EU_WALLET_PROVIDERS_SVC_TYPE_REVOCATION
+        fetchUrl = "${BASE_FETCH_URL}/wallet-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUWalletProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/WalletProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WalletProvidersList/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WalletSolution/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WalletSolution/Revocation"
     )
 
     data object EAA : LoteProfile(
-        fetchUrl = EU_PUB_EAA_PROVIDERS_FETCH_URL,
-        loteType = EU_PUB_EAA_PROVIDERS_SCHEME_TYPE,
-        statusDeterminationApproach = EU_PUB_EAA_PROVIDERS_STATUS_DETERMINATION_APPROACH,
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier(EU_PUB_EAA_PROVIDERS_SCHEME_COMMUNITY_RULES)),
-        serviceTypeIdentifierIssuance = EU_PUB_EAA_PROVIDERS_SVC_TYPE_ISSUANCE,
-        serviceTypeIdentifierRevocation = EU_PUB_EAA_PROVIDERS_SVC_TYPE_REVOCATION
+        fetchUrl = "${BASE_FETCH_URL}/pub-eaa-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUPubEAAProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/PubEAAProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/PubEAAProvidersList/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/PubEAA/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/PubEAA/Revocation"
     )
 
     companion object {
+        private const val BASE_FETCH_URL = "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw"
 
         val defaultUrls: List<String> by lazy {
             listOf(PID, mDL, WRPAC, WALLET, EAA).map { it.fetchUrl }
