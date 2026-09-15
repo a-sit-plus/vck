@@ -80,6 +80,10 @@ Release 8.0.0 (unreleased):
     - Enforce the `pre-registered` client identifier scheme against `RelyingPartyTrust.PreRegisteredClients`
     - Requests using a scheme for which no trust material is configured are rejected. This includes `entity_id` and `did`, which are handed to `RelyingPartyTrust.Custom` and rejected when none is configured, so that a relying party cannot bypass the configured trust anchors by naming itself with a scheme this library does not evaluate natively. Only `redirect_uri` is not covered, as it forbids signed requests anyway
     - `RequestParser` no longer verifies anything and lost its `requestObjectJwsVerifier` parameter, so parsing a request is purely parsing. Consequently `RequestParametersSigned.verified` is removed, with the `verified` property of `Jws`, `OpenId4VpDcApiSigned` and `OpenId4VpDcApiMultiSigned` and its serialized form. Stored JSON still carrying `"verified"` deserializes fine, as unknown keys are ignored
+- Trust List filtering:
+    - Add `ETSI19602.kt` with LoTE scheme constants (fetch URLs, scheme types, status approaches, community rules, service type identifiers) per profile
+    - Replace `LoTEServiceType`/`LoTEFilterCriteria` with `LoteProfile`, a sealed class defining PID, mDL, WRPAC, WALLET, and EAA profiles with built-in matching against scheme type, status approach, community rules URIs, and country code
+    - Add support for LoTEs with issuance and revocation certificates
 - OAuth 2.0:
     - Update implementation of [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html) to Draft 10 from 2026-07-06
     - Support DPoP combined mode, advertised with `dpop_combined` in `client_attestation_pop_methods_supported` to combine client authentication with DPoP proofs from RFC 9449
