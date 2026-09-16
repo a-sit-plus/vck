@@ -49,7 +49,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFunInput
 import at.asitplus.wallet.lib.oidvci.TokenInfo
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.openid.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.RequestParser
 import at.asitplus.wallet.lib.utils.DefaultMapStore

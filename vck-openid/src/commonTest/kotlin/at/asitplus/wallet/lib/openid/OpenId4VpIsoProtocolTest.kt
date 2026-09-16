@@ -15,7 +15,7 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.CreationOptions.Query
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.mdl.MDL_DOCTYPE

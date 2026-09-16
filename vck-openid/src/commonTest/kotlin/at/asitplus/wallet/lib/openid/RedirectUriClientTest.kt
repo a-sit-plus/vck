@@ -28,9 +28,9 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.encodeToParameters
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -321,7 +321,7 @@ val RedirectUriClientTest by matrixSuite {
             val authnRequestUrlParams = Url(authnRequest.url).encodedQuery
 
             val parsedAuthnRequest: AuthenticationRequestParameters =
-                authnRequestUrlParams.decodeFromUrlQuery()
+                authnRequestUrlParams.decodeFromFormUrlEncoded()
             val authnResponse = it.holderOid4vp.createAuthnResponse(
                 RequestParametersFrom.Uri(
                     Url(authnRequestUrlParams),

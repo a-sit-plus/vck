@@ -85,6 +85,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
+import at.asitplus.openid.decodeFromQuery
 
 /**
  * Client service to retrieve credentials using OID4VCI
@@ -215,7 +216,7 @@ class WalletService @JvmOverloads constructor(
     }
 
     private fun String.extractParams(): CredentialOfferUrlParameters =
-        Url(this).parameters.flattenEntries().toMap().decodeFromUrlQuery<CredentialOfferUrlParameters>()
+        Url(this).decodeFromQuery<CredentialOfferUrlParameters>()
 
     private suspend fun CredentialOfferUrlParameters.fetchCredentialOffer(): CredentialOffer {
         credentialOffer?.let { offer ->

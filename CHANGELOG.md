@@ -102,6 +102,15 @@ Release 8.0.0 (unreleased):
 - Trust List filtering:
     - Replace `LoTEServiceType`/`LoTEFilterCriteria` with `LoteProfile`, a sealed class defining PID, mDL, WRPAC, WALLET, and EAA profiles with built-in matching against scheme type, status approach, community rules URIs, and country code
     - Add support for LoTEs with issuance and revocation certificates
+- Form-url-encoded parameters:
+    - Extract the sketch in `SerializerSketch.kt` of `vck-openid` into a documented API in `FormUrlEncoding.kt`, covered by `FormUrlEncodingTest`
+    - Move it from `at.asitplus.wallet.lib.oidvci` in `vck-openid` to `at.asitplus.openid` in `openid-data-classes`, next to the parameter classes it encodes, since it is specific to neither issuance nor presentation. The previous declarations remain as deprecated forwarders
+    - Rename `Parameters` to `FormParameters`, to disambiguate it from `io.ktor.http.Parameters`
+    - Replace `String.decodeFromPostBody()` and `String.decodeFromUrlQuery()`, which were two names for the same thing, with `String.decodeFromFormUrlEncoded()`
+    - Add `Url.decodeFromQuery()`, `Url.decodeFromFragment()` and `Url.decodeFromFragmentOrQuery()`, which read the parameters off a URL instead of leaving that to callers
+    - Add `T.encodeToFormUrlEncoded()` and `String.toFormParameters()`
+    - Deprecate `FormParameters.decodeFromUrlQuery()`: its receiver is already decoded in nearly all call sites, so it decoded percent-encoding a second time and mangled every value containing a percent sign. This fixes parsing credential offers, authentication requests and authentication responses carrying such values
+    - Split the payload with `io.ktor.http.parseQueryString()` instead of by hand, which drops names without a value instead of throwing, and reads `+` as a space in URL queries too
 - OAuth 2.0:
     - Update implementation of [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html) to Draft 10 from 2026-07-06
     - Support DPoP combined mode, advertised with `dpop_combined` in `client_attestation_pop_methods_supported` to combine client authentication with DPoP proofs from RFC 9449

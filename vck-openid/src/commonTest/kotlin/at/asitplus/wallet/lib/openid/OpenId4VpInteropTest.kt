@@ -35,7 +35,7 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull

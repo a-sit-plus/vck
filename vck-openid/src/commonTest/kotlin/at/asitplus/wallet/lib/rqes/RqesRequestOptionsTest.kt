@@ -20,7 +20,8 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.toTransactionData
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import io.ktor.http.Url
+import at.asitplus.openid.decodeFromQuery
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
@@ -46,7 +47,7 @@ val RqesRequestOptionsTest by matrixSuite {
         test("Authentication request contains transactionData") {
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_256))
             it.verifierOid4Vp.createAuthnRequest(requestOptions, CreationOptions.Query("https://example.com"))
-                .getOrThrow().url.decodeFromUrlQuery<AuthenticationRequestParameters>().apply {
+                .getOrThrow().url.let { Url(it) }.decodeFromQuery<AuthenticationRequestParameters>().apply {
                     val dcqlId = dcqlQuery.shouldNotBeNull().credentials.first().id
                     transactionData.shouldNotBeNull().first().toTransactionData().apply {
                         transactionDataHashAlgorithms shouldNotBe null

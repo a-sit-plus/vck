@@ -48,8 +48,8 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.ProofValidator
 import at.asitplus.wallet.lib.oidvci.WalletService
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.decode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -133,7 +133,7 @@ val OpenId4VciClientTest by matrixSuite {
 
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
+                    val authnRequest: RequestParameters = requestBody.decodeFromFormUrlEncoded()
                     authorizationService.par(authnRequest, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
@@ -145,8 +145,8 @@ val OpenId4VciClientTest by matrixSuite {
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
                     val authnRequest: RequestParameters =
-                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery()
-                        else requestBody.decodeFromPostBody()
+                        if (requestBody.isEmpty()) queryParameters.decode()
+                        else requestBody.decodeFromFormUrlEncoded()
                     authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
                         onSuccess = { respondRedirect(it.url) },
                         onFailure = { respondOAuth2Error(it) }
@@ -155,7 +155,7 @@ val OpenId4VciClientTest by matrixSuite {
 
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
+                    val params: TokenRequestParameters = requestBody.decodeFromFormUrlEncoded<TokenRequestParameters>()
                     authorizationService.token(params, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
