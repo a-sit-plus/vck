@@ -114,6 +114,18 @@ val OpenIdRequestParserTests by matrixSuite {
         RequestParser()
     } - {
 
+        "URL request preserves JSON-shaped string parameters" { requestParser ->
+            val input = "https://example.com?client_id=client&state=%7B%7D&nonce=%5B&user_hint=null"
+            requestParser.parseRequestParameters(input).getOrThrow().parameters shouldBe
+                    AuthenticationRequestParameters(clientId = "client", state = "{}", nonce = "[", userHint = "null")
+        }
+
+        "URL request ignores unknown parameters with malformed JSON values" { requestParser ->
+            val input = "https://example.com?client_id=client&extension=%7B"
+            requestParser.parseRequestParameters(input).getOrThrow().parameters shouldBe
+                    AuthenticationRequestParameters(clientId = "client")
+        }
+
         "request in URL parameters" { requestParser ->
             val input = URLBuilder("https://example.com").apply {
                 authnRequest.encodeToParameters().forEach {

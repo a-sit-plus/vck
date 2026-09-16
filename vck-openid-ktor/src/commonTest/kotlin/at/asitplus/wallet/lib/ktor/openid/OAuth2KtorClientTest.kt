@@ -41,7 +41,8 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.openid.decodeFromFormUrlEncoded
-import at.asitplus.openid.decode
+import at.asitplus.openid.RequestParametersSerializer
+import at.asitplus.openid.toFormParameters
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -151,7 +152,8 @@ val OAuth2KtorClientTest by matrixSuite {
                         )
                     }
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authnRequest: RequestParameters = requestBody.decodeFromFormUrlEncoded()
+                    val authnRequest: RequestParameters =
+                        RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
                         onSuccess = {
                             if (provideChallengeOnParSuccess) {
@@ -182,8 +184,8 @@ val OAuth2KtorClientTest by matrixSuite {
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
                     val authnRequest: RequestParameters =
-                        if (requestBody.isEmpty()) queryParameters.decode()
-                        else requestBody.decodeFromFormUrlEncoded()
+                        if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
+                        else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
                         onSuccess = { respondRedirect(it.url) },
                         onFailure = { respondOAuth2Error(it) }

@@ -8,6 +8,7 @@ import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -21,11 +22,8 @@ import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.openid.decodeFromQuery
-import at.asitplus.openid.jsonForParameters
+import at.asitplus.openid.toFormParameters
 import io.ktor.http.*
-import io.ktor.util.*
-import kotlinx.serialization.json.JsonObject
 
 class RequestParser(
     /**
@@ -94,10 +92,7 @@ class RequestParser(
         Url(this).let {
             RequestParametersFrom.Uri(
                 url = it,
-                parameters = jsonForParameters.decodeFromJsonElement(
-                    RequestParameters.serializer(),
-                    it.decodeFromQuery<JsonObject>()
-                )
+                parameters = RequestParametersSerializer.decodeFormParameters(it.encodedQuery.toFormParameters())
             )
         }
     }.getOrNull()

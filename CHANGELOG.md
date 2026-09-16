@@ -103,6 +103,8 @@ Release 8.0.0 (unreleased):
     - Replace `LoTEServiceType`/`LoTEFilterCriteria` with `LoteProfile`, a sealed class defining PID, mDL, WRPAC, WALLET, and EAA profiles with built-in matching against scheme type, status approach, community rules URIs, and country code
     - Add support for LoTEs with issuance and revocation certificates
 - Form-url-encoded parameters:
+    - Preserve opaque string parameters when decoding polymorphic requests, and ignore unknown object parameters before parsing their values as JSON
+    - Use `RequestParametersSerializer.decodeFormParameters()` to decode form parameters whose concrete request type is determined by their parameter names
     - Extract the sketch in `SerializerSketch.kt` of `vck-openid` into a documented API in `FormUrlEncoding.kt`, covered by `FormUrlEncodingTest`
     - Move it from `at.asitplus.wallet.lib.oidvci` in `vck-openid` to `at.asitplus.openid` in `openid-data-classes`, next to the parameter classes it encodes, since it is specific to neither issuance nor presentation. The previous declarations remain as deprecated forwarders
     - Rename `Parameters` to `FormParameters`, to disambiguate it from `io.ktor.http.Parameters`
