@@ -10,6 +10,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -57,6 +58,7 @@ fun FormParameters.formUrlEncode(): String = map { (k, v) -> k to v }.formUrlEnc
  *
  * Values are interpreted by the shape of [T]: members declared as strings keep their value verbatim, all others are
  * read as JSON, so that objects, arrays, numbers and booleans survive the round-trip through [encodeToParameters].
+ * For polymorphic types, select a concrete deserializer first so its descriptor describes the form fields.
  *
  * @throws SerializationException if the parameters do not describe a valid [T]
  */
@@ -112,10 +114,14 @@ inline fun <reified T> Url.decodeFromFragmentOrQuery(): T? = when {
 /**
  * Maps [FormParameters] onto the [JsonObject] they describe, guided by [descriptor]:
  * members declared as strings keep their content verbatim, all others are read as JSON.
+ * Unknown object members are ignored before their values are parsed; map keys remain unrestricted.
  */
 internal fun FormParameters.toJsonObject(descriptor: SerialDescriptor): JsonObject = JsonObject(
     buildMap {
         this@toJsonObject.forEach { (name, value) ->
+            if ((descriptor.kind == StructureKind.CLASS || descriptor.kind == StructureKind.OBJECT)
+                && descriptor.getElementIndex(name) == CompositeDecoder.UNKNOWN_NAME
+            ) return@forEach
             value.toJsonElement(descriptor.isStringElement(name))?.let { put(name, it) }
         }
     }

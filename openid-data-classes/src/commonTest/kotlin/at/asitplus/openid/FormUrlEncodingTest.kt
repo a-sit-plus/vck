@@ -10,6 +10,8 @@ import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Pins the contract of the `application/x-www-form-urlencoded` (de)serialization in `FormUrlEncoding.kt`, which carries
@@ -59,6 +61,52 @@ val FormUrlEncodingTest by matrixSuite {
     test("unknown parameters are ignored") {
         mapOf("string" to "foo", "not_a_member" to "bar").decode<TestParameters>() shouldBe
                 TestParameters(string = "foo")
+    }
+
+    "unknown parameters are ignored before parsing their values" - {
+        listOf("{", "[").asData() test { value ->
+            mapOf("string" to "foo", "extension" to value).formUrlEncode()
+                .decodeFromFormUrlEncoded(TestParameters.serializer()) shouldBe TestParameters(string = "foo")
+        }
+    }
+
+    test("malformed JSON in a known object parameter is still rejected") {
+        shouldThrow<SerializationException> {
+            "nested=%7B".decodeFromFormUrlEncoded<TestParameters>()
+        }
+    }
+
+    test("map and JSON object targets retain arbitrary parameter names") {
+        val params = mapOf("extension" to "foo")
+        params.decode<Map<String, String>>() shouldBe params
+        params.decode<JsonObject>()["extension"]?.jsonPrimitive?.content shouldBe "foo"
+    }
+
+    test("polymorphic authentication requests preserve opaque strings") {
+        val input = AuthenticationRequestParameters(clientId = "client", state = "{}", nonce = "[", userHint = "null")
+        RequestParametersSerializer.decodeFormParameters(input.encodeToParameters()) shouldBe input
+        RequestParametersSerializer.decodeFormParameters(input.encodeToFormUrlEncoded().toFormParameters()) shouldBe input
+    }
+
+    test("polymorphic JAR requests preserve opaque strings and ignore unknown parameters") {
+        val input = JarRequestParameters(clientId = "client", requestUri = "https://example.com/request", state = "{}")
+        RequestParametersSerializer.decodeFormParameters(input.encodeToParameters() + ("extension" to "[")) shouldBe input
+    }
+
+    test("polymorphic signature requests use their own fields") {
+        val input = SignatureRequestParameters(
+            responseType = "code", clientId = "client", state = "{}",
+            documentDigests = emptyList(), documentLocations = emptyList(),
+        )
+        RequestParametersSerializer.decodeFormParameters(input.encodeToParameters()) shouldBe input
+    }
+
+    test("an incomplete signature request must not fall back to an authentication request") {
+        shouldThrow<SerializationException> {
+            RequestParametersSerializer.decodeFormParameters(
+                "response_type=code&client_id=client&documentDigests=".toFormParameters()
+            )
+        }
     }
 
     test("null members are omitted") {

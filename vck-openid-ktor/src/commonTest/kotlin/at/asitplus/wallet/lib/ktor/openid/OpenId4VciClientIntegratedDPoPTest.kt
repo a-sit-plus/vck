@@ -33,7 +33,8 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.openid.decodeFromFormUrlEncoded
-import at.asitplus.openid.decode
+import at.asitplus.openid.RequestParametersSerializer
+import at.asitplus.openid.toFormParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.fail
@@ -113,7 +114,8 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
 
                     request.url.fullPath.startsWith(parEndpointPath) -> {
                         val requestBody = request.body.toByteArray().decodeToString()
-                        val authnRequest: RequestParameters = requestBody.decodeFromFormUrlEncoded<RequestParameters>()
+                        val authnRequest: RequestParameters =
+                            RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                         authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
                             onSuccess = { respondIncludingDpopNonce(it) },
                             onFailure = { respondOAuth2Error(it) }
@@ -125,8 +127,8 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
                         val queryParameters: Map<String, String> =
                             request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
                         val authnRequest: RequestParameters =
-                            if (requestBody.isEmpty()) queryParameters.decode<RequestParameters>()
-                            else requestBody.decodeFromFormUrlEncoded<RequestParameters>()
+                            if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
+                            else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                         authorizationService.authorize(authnRequest) { this.catching { TestUtils.dummyUser() } }.fold(
                             onSuccess = { respondRedirect(it.url) },
                             onFailure = { fail("$authorizationEndpointPath should not return an error") }

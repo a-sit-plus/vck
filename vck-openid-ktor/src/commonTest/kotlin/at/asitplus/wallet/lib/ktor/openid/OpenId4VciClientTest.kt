@@ -49,7 +49,8 @@ import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.ProofValidator
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.openid.decodeFromFormUrlEncoded
-import at.asitplus.openid.decode
+import at.asitplus.openid.RequestParametersSerializer
+import at.asitplus.openid.toFormParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -133,7 +134,8 @@ val OpenId4VciClientTest by matrixSuite {
 
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authnRequest: RequestParameters = requestBody.decodeFromFormUrlEncoded()
+                    val authnRequest: RequestParameters =
+                        RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.par(authnRequest, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
@@ -145,8 +147,8 @@ val OpenId4VciClientTest by matrixSuite {
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
                     val authnRequest: RequestParameters =
-                        if (requestBody.isEmpty()) queryParameters.decode()
-                        else requestBody.decodeFromFormUrlEncoded()
+                        if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
+                        else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
                         onSuccess = { respondRedirect(it.url) },
                         onFailure = { respondOAuth2Error(it) }
