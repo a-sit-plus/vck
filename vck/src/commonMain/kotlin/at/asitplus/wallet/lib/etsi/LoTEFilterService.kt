@@ -62,14 +62,11 @@ class LoTEFilterService {
                 }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
                 .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
-                .map { cert -> TrustedCertificate(cert, providerName, targetServiceType) }
+                .map { cert -> TrustedCertificate(cert, providerName, LoTEServiceType.fromSchemeIdentifier(targetServiceType), targetServiceType) }
         }
     }
 
-    @Deprecated(
-        "Replaced with extractIssuanceCertificates/extractRevocationCertificates, which take a LoteProfile instead of LoTEFilterCriteria",
-        ReplaceWith("extractIssuanceCertificates(lote, profile)")
-    )
+    @Deprecated("Replaced with extractIssuanceCertificates/extractRevocationCertificates, which take a LoteProfile instead of LoTEFilterCriteria")
     fun extractTrustedCertificates(sourceUrl: String, lote: ListOfTrustedEntities, criteria: LoTEFilterCriteria): List<TrustedCertificate> {
         val entities = lote.trustedEntitiesList ?: return emptyList()
         val loteType = lote.listAndSchemeInformation?.loteType?.toString()
@@ -91,7 +88,7 @@ class LoTEFilterService {
                 }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
                 .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
-                .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType.type) }
+                .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType) }
         }
     }
 
@@ -138,10 +135,16 @@ class LoTEFilterService {
     }
 }
 
+/** `serviceType` property should be removed in future */
 data class TrustedCertificate(
     val certificate: @Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?,
     val providerName: TEName,
-    val serviceType: String
+    @Deprecated(
+        "Kept only for compatibility. Use serviceTypeIdentifier instead",
+        ReplaceWith("serviceTypeIdentifier")
+    )
+    val serviceType: LoTEServiceType,
+    val serviceTypeIdentifier: String = serviceType.type
 )
 
 sealed class LoteProfile(
@@ -169,7 +172,7 @@ sealed class LoteProfile(
         return rulesUri.toSet() == schemeCommunityRules.toSet()
     }
 
-    fun matchesServiceTypeIssuance(serviceTypeUri: String?): Boolean {
+    open fun matchesServiceTypeIssuance(serviceTypeUri: String?): Boolean {
         if (serviceTypeUri.isNullOrBlank()) return false
         return serviceTypeUri.equals(serviceTypeIdentifierIssuance, ignoreCase = true)
     }
@@ -200,7 +203,14 @@ sealed class LoteProfile(
         schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://trust.ec.europa.eu/lists/mDL/schemerules")),
         serviceTypeIdentifierIssuance = "http://trust.ec.europa.eu/lists/mDL/SvcType/Issuance",
         serviceTypeIdentifierRevocation = "http://trust.ec.europa.eu/lists/mDL/SvcType/Revocation"
-    )
+    ) {
+        // Not in the spec (https://eidas.ec.europa.eu/efda/wallet/lists-of-trusted-entities/mdl-providers), but present in DIGIT's LOTE.
+        private val legacyIssuanceIdentifier = "http://uri.etsi.org/19602/SvcType/mDL/Issuance"
+
+        override fun matchesServiceTypeIssuance(serviceTypeUri: String?) =
+            serviceTypeUri.equals(serviceTypeIdentifierIssuance, ignoreCase = true) ||
+                    serviceTypeUri.equals(legacyIssuanceIdentifier, ignoreCase = true)
+    }
 
     data object WRPAC : LoteProfile(
         fetchUrl = "${BASE_FETCH_URL}/wrpac-providers.json",
@@ -231,6 +241,8 @@ sealed class LoteProfile(
 
     companion object {
         private const val BASE_FETCH_URL = "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw"
+        private val PID_IDENTIFIER_PREFIXES = listOf("urn:eudi:pid:", "eu.europa.ec.eudi.pid.")
+        private val MDL_IDENTIFIER_PREFIXES = listOf("org.iso.18013.5.1.mDL")
 
         val defaultUrls: List<String> by lazy {
             listOf(PID, mDL, WRPAC, WALLET, EAA).map { it.fetchUrl }
@@ -240,8 +252,8 @@ sealed class LoteProfile(
             if (identifier.isNullOrBlank()) return EAA
 
             return when {
-                identifier.contains("pid", ignoreCase = true) -> PID
-                identifier.contains("mdl", ignoreCase = true) -> mDL
+                PID_IDENTIFIER_PREFIXES.any { identifier.startsWith(it, ignoreCase = true) } -> PID
+                MDL_IDENTIFIER_PREFIXES.any { identifier.startsWith(it, ignoreCase = true) } -> mDL
                 else -> EAA
             }
         }
