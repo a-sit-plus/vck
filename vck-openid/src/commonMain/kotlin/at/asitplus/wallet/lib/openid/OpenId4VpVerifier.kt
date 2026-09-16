@@ -30,7 +30,7 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.openid.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme.CertificateHash
 import at.asitplus.wallet.lib.openid.ClientIdScheme.CertificateSanDns
 import at.asitplus.wallet.lib.openid.ClientIdScheme.RedirectUri

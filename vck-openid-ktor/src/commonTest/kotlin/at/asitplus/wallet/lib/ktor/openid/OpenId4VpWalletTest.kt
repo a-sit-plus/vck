@@ -60,7 +60,7 @@ import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
@@ -238,7 +238,7 @@ val OpenId4VpWalletTest by matrixSuite {
                             val queryParameters: Map<String, String> =
                                 request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
                             val requestObjectParameters = if (requestBody.isNotEmpty())
-                                requestBody.decodeFromPostBody<RequestObjectParameters>()
+                                requestBody.decodeFromFormUrlEncoded<RequestObjectParameters>()
                             else RequestObjectParameters(
                                 walletMetadataString = queryParameters["wallet_metadata"],
                                 walletNonce = queryParameters["wallet_nonce"]

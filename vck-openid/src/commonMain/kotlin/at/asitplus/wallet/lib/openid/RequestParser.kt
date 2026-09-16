@@ -21,8 +21,8 @@ import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.jsonForParameters
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.jsonForParameters
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.serialization.json.JsonObject
@@ -96,7 +96,7 @@ class RequestParser(
                 url = it,
                 parameters = jsonForParameters.decodeFromJsonElement(
                     RequestParameters.serializer(),
-                    it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
+                    it.decodeFromQuery<JsonObject>()
                 )
             )
         }

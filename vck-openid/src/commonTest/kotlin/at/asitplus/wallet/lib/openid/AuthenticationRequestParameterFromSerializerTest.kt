@@ -19,7 +19,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.openid.decodeFromQuery
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -109,7 +109,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 reqOptions, CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
 
-            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
@@ -126,7 +126,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 reqOptions, CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
 
-            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
@@ -150,7 +150,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 reqOptions, CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
 
-            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val compactTyped = JwsTyped<AuthenticationRequestParameters>(serializedRequest)
@@ -182,7 +182,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             CreationOptions.SignedRequestByValue(walletUrl)
         ).getOrThrow().url
         val serializedRequest =
-            Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery<JarRequestParameters>().request.shouldNotBeNull()
+            Url(authnRequestUrl).decodeFromQuery<JarRequestParameters>().request.shouldNotBeNull()
 
         val params = RequestParametersFrom.Jws<AuthenticationRequestParameters>(
             jws = JwsTyped<AuthenticationRequestParameters>(serializedRequest).jws,

@@ -32,8 +32,8 @@ import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.WalletService
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.decode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.fail
@@ -113,7 +113,7 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
 
                     request.url.fullPath.startsWith(parEndpointPath) -> {
                         val requestBody = request.body.toByteArray().decodeToString()
-                        val authnRequest: RequestParameters = requestBody.decodeFromPostBody<RequestParameters>()
+                        val authnRequest: RequestParameters = requestBody.decodeFromFormUrlEncoded<RequestParameters>()
                         authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
                             onSuccess = { respondIncludingDpopNonce(it) },
                             onFailure = { respondOAuth2Error(it) }
@@ -125,8 +125,8 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
                         val queryParameters: Map<String, String> =
                             request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
                         val authnRequest: RequestParameters =
-                            if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery<RequestParameters>()
-                            else requestBody.decodeFromPostBody<RequestParameters>()
+                            if (requestBody.isEmpty()) queryParameters.decode<RequestParameters>()
+                            else requestBody.decodeFromFormUrlEncoded<RequestParameters>()
                         authorizationService.authorize(authnRequest) { this.catching { TestUtils.dummyUser() } }.fold(
                             onSuccess = { respondRedirect(it.url) },
                             onFailure = { fail("$authorizationEndpointPath should not return an error") }
@@ -135,7 +135,7 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
 
                     request.url.fullPath.startsWith(tokenEndpointPath) -> {
                         val requestBody = request.body.toByteArray().decodeToString()
-                        val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
+                        val params: TokenRequestParameters = requestBody.decodeFromFormUrlEncoded<TokenRequestParameters>()
                         authorizationService.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
                             onSuccess = { respondIncludingDpopNonce(it) },
                             onFailure = { fail("$tokenEndpointPath should not return an error") }
