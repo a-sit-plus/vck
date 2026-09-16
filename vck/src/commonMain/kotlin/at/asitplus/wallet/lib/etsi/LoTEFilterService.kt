@@ -1,13 +1,18 @@
 package at.asitplus.wallet.lib.etsi
 
+import at.asitplus.etsi.EtsiCountryCode
 import at.asitplus.etsi.EtsiX509CertificateSerializer
+import at.asitplus.etsi.ListAndSchemeInformation
 import at.asitplus.etsi.ListOfTrustedEntities
 import at.asitplus.etsi.TEName
+import at.asitplus.rfc3986uri.Rfc3986UniformResourceIdentifier
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.Serializable
+
+enum class ServiceKind { ISSUANCE, REVOCATION }
 
 /**
  * Service to filter and extract trusted X.509 certificates from an ETSI List of Trusted Entities (LoTE)
@@ -15,9 +20,53 @@ import kotlinx.serialization.Serializable
 class LoTEFilterService {
 
     /**
-     * Extracts certificates matching the requested service type identifier where
-     * the certificate's subject organization aligns with the trusted provider's registered names
+     * Extracts certificates matching the requested service type identifier for Issuance.
      */
+    fun extractIssuanceCertificates(
+        lote: ListOfTrustedEntities,
+        profile: LoteProfile
+    ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.ISSUANCE)
+
+    /**
+     * Extracts certificates matching the requested service type identifier for Revocation.
+     */
+    fun extractRevocationCertificates(
+        lote: ListOfTrustedEntities,
+        profile: LoteProfile
+    ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.REVOCATION)
+
+    /**
+     * Core extraction logic handling both Issuance and Revocation based on [ServiceKind].
+     */
+    private fun extractTrustedCertificates(
+        lote: ListOfTrustedEntities,
+        profile: LoteProfile,
+        kind: ServiceKind = ServiceKind.ISSUANCE
+    ): List<TrustedCertificate> {
+        if (!checkListAndSchemeInformation(lote.listAndSchemeInformation, profile)) {
+            return emptyList()
+        }
+
+        val (matcher, targetServiceType) = when (kind) {
+            ServiceKind.ISSUANCE -> profile::matchesServiceTypeIssuance to profile.serviceTypeIdentifierIssuance
+            ServiceKind.REVOCATION -> profile::matchesServiceTypeRevocation to profile.serviceTypeIdentifierRevocation
+        }
+
+        val entities = lote.trustedEntitiesList ?: return emptyList()
+        return entities.flatMap { entity ->
+            val providerName = entity.trustedEntityInformation.teName
+
+            entity.trustedEntityServices
+                .filter { service ->
+                    matcher(service.serviceInformation.serviceTypeIdentifier?.string)
+                }
+                .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
+                .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
+                .map { cert -> TrustedCertificate(cert, providerName, LoTEServiceType.fromSchemeIdentifier(targetServiceType), targetServiceType) }
+        }
+    }
+
+    @Deprecated("Replaced with extractIssuanceCertificates/extractRevocationCertificates, which take a LoteProfile instead of LoTEFilterCriteria")
     fun extractTrustedCertificates(sourceUrl: String, lote: ListOfTrustedEntities, criteria: LoTEFilterCriteria): List<TrustedCertificate> {
         val entities = lote.trustedEntitiesList ?: return emptyList()
         val loteType = lote.listAndSchemeInformation?.loteType?.toString()
@@ -34,13 +83,33 @@ class LoTEFilterService {
                     } else {
                         // Field is absent. The services inherit the list's default type
                         loteType?.contains(criteria.expectedServiceType.type, ignoreCase = true) == true ||
-                        sourceUrl.contains(criteria.expectedServiceType.type, ignoreCase = true)
+                                sourceUrl.contains(criteria.expectedServiceType.type, ignoreCase = true)
                     }
                 }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
                 .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
                 .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType) }
         }
+    }
+
+    /**
+     * Validates that the List and Scheme Information metadata aligns with the expected [LoteProfile].
+     */
+    private fun checkListAndSchemeInformation(
+        listAndSchemeInformation: ListAndSchemeInformation?,
+        profile: LoteProfile
+    ): Boolean {
+        if (listAndSchemeInformation == null) return false
+
+        val matchesLoteType = profile.matchesLoteType(listAndSchemeInformation.loteType?.toString())
+        val matchesStatus =
+            profile.matchesStatusDeterminationApproach(listAndSchemeInformation.statusDeterminationApproach?.toString())
+        val matchesRules = profile.matchesSchemeCommunityRules(
+            listAndSchemeInformation.schemeTypeCommunityRules?.map { it.uniformResourceIdentifier }
+        )
+        val matchesTerritory = profile.matchesSchemeTerritory(listAndSchemeInformation.schemeTerritory)
+
+        return matchesLoteType && matchesStatus && matchesRules && matchesTerritory
     }
 
     /**
@@ -66,16 +135,137 @@ class LoTEFilterService {
     }
 }
 
+/** `serviceType` property should be removed in future */
 data class TrustedCertificate(
     val certificate: @Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?,
     val providerName: TEName,
-    val serviceType: LoTEServiceType
+    @Deprecated(
+        "Kept only for compatibility. Use serviceTypeIdentifier instead",
+        ReplaceWith("serviceTypeIdentifier")
+    )
+    val serviceType: LoTEServiceType,
+    val serviceTypeIdentifier: String = serviceType.type
 )
 
+sealed class LoteProfile(
+    val fetchUrl: String,
+    val loteType: String,
+    val statusDeterminationApproach: String,
+    val schemeCommunityRules: List<Rfc3986UniformResourceIdentifier>,
+    val serviceTypeIdentifierIssuance: String,
+    val serviceTypeIdentifierRevocation: String,
+    val schemeCountryCode: EtsiCountryCode = EtsiCountryCode("EU")
+) {
+    fun matchesLoteType(loteTypeUri: String?): Boolean {
+        if (loteTypeUri.isNullOrBlank()) return false
+        return loteTypeUri.equals(loteType, ignoreCase = true)
+    }
+
+    fun matchesStatusDeterminationApproach(approachUri: String?): Boolean {
+        if (approachUri.isNullOrBlank()) return false
+        return approachUri.equals(statusDeterminationApproach, ignoreCase = true)
+    }
+
+    fun matchesSchemeCommunityRules(rulesUri: List<Rfc3986UniformResourceIdentifier>?): Boolean {
+        if (rulesUri.isNullOrEmpty()) return false
+        if (rulesUri.size != schemeCommunityRules.size) return false
+        return rulesUri.toSet() == schemeCommunityRules.toSet()
+    }
+
+    open fun matchesServiceTypeIssuance(serviceTypeUri: String?): Boolean {
+        if (serviceTypeUri.isNullOrBlank()) return false
+        return serviceTypeUri.equals(serviceTypeIdentifierIssuance, ignoreCase = true)
+    }
+
+    fun matchesServiceTypeRevocation(serviceTypeUri: String?): Boolean {
+        if (serviceTypeUri.isNullOrBlank()) return false
+        return serviceTypeUri.equals(serviceTypeIdentifierRevocation, ignoreCase = true)
+    }
+
+    fun matchesSchemeTerritory(countryCode: EtsiCountryCode?): Boolean {
+        if (countryCode == null) return false
+        return countryCode.string.equals(schemeCountryCode.string, ignoreCase = true)
+    }
+
+    data object PID : LoteProfile(
+        fetchUrl = "${BASE_FETCH_URL}/pid-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUPIDProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/PIDProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/PIDProviders/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/PID/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/PID/Revocation"
+    )
+
+    data object mDL : LoteProfile(
+        fetchUrl = "${BASE_FETCH_URL}/mdl-providers.json",
+        loteType = "http://trust.ec.europa.eu/lists/mDL/mDLProvidersListType",
+        statusDeterminationApproach = "http://trust.ec.europa.eu/lists/mDL/mDLProvidersListStatusDetn",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://trust.ec.europa.eu/lists/mDL/schemerules")),
+        serviceTypeIdentifierIssuance = "http://trust.ec.europa.eu/lists/mDL/SvcType/Issuance",
+        serviceTypeIdentifierRevocation = "http://trust.ec.europa.eu/lists/mDL/SvcType/Revocation"
+    ) {
+        // Not in the spec (https://eidas.ec.europa.eu/efda/wallet/lists-of-trusted-entities/mdl-providers), but present in DIGIT's LOTE.
+        private val legacyIssuanceIdentifier = "http://uri.etsi.org/19602/SvcType/mDL/Issuance"
+
+        override fun matchesServiceTypeIssuance(serviceTypeUri: String?) =
+            serviceTypeUri.equals(serviceTypeIdentifierIssuance, ignoreCase = true) ||
+                    serviceTypeUri.equals(legacyIssuanceIdentifier, ignoreCase = true)
+    }
+
+    data object WRPAC : LoteProfile(
+        fetchUrl = "${BASE_FETCH_URL}/wrpac-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUWRPACProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/WRPACProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WRPACProvidersList/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WRPAC/Revocation"
+    )
+
+    data object WALLET : LoteProfile(
+        fetchUrl = "${BASE_FETCH_URL}/wallet-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUWalletProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/WalletProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WalletProvidersList/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WalletSolution/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WalletSolution/Revocation"
+    )
+
+    data object EAA : LoteProfile(
+        fetchUrl = "${BASE_FETCH_URL}/pub-eaa-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUPubEAAProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/PubEAAProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/PubEAAProvidersList/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/PubEAA/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/PubEAA/Revocation"
+    )
+
+    companion object {
+        private const val BASE_FETCH_URL = "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw"
+        private val PID_IDENTIFIER_PREFIXES = listOf("urn:eudi:pid:", "eu.europa.ec.eudi.pid.")
+        private val MDL_IDENTIFIER_PREFIXES = listOf("org.iso.18013.5.1.mDL")
+
+        val defaultUrls: List<String> by lazy {
+            listOf(PID, mDL, WRPAC, WALLET, EAA).map { it.fetchUrl }
+        }
+
+        fun fromSchemeIdentifier(identifier: String?): LoteProfile {
+            if (identifier.isNullOrBlank()) return EAA
+
+            return when {
+                PID_IDENTIFIER_PREFIXES.any { identifier.startsWith(it, ignoreCase = true) } -> PID
+                MDL_IDENTIFIER_PREFIXES.any { identifier.startsWith(it, ignoreCase = true) } -> mDL
+                else -> EAA
+            }
+        }
+    }
+}
+
+@Deprecated("Replaced by LoteProfile")
 data class LoTEFilterCriteria(
     val expectedServiceType: LoTEServiceType,
 )
 
+@Deprecated("Replaced by LoteProfile")
 enum class LoTEServiceType(
     val type: String,
     val fileName: String,
