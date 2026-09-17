@@ -59,20 +59,10 @@ interface IsoMdocZkBackend {
      * Supporting a system means the backend is capable of generating and verifying proofs
      * that fulfill the requirements and parameters defined by the [candidate].
      *
-     * The default implementation returns `true` if at least one of the backend's [zkSystemSpecs] matches:
-     * - The candidate's system identifier (`system`), and
-     * - All parameters (`params`) provided by the candidate.
-     *
      * @param candidate The [ZkSystemSpec] instance to evaluate.
      * @return `true` if the system is supported, `false` otherwise.
      */
-    fun supports(candidate: ZkSystemSpec): Boolean {
-        return zkSystemSpecs.any { supportedSpec ->
-            supportedSpec.system == candidate.system && candidate.params.all { (key, userValue) ->
-                supportedSpec.params[key] == userValue
-            }
-        }
-    }
+    fun supports(candidate: ZkSystemSpec): Boolean
 
     /**
      * Generates an [IsoMdocZkProof] using this backend.
