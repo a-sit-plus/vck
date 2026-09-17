@@ -51,17 +51,19 @@ class WrprcValidator(
 ) : WrprcValidatorFun {
     val requestValidator = WrprcRequestValidator()
 
-    fun parse(verifierInfo: VerifierInfo): JwsTyped<JwsCompact, WrpPayload> = run {
+    fun parse(verifierInfo: VerifierInfo) = catching {
         if (!verifierInfo.format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true)) {
-            throw Throwable("skipping $this, expected '$REGISTRATION_CERT_FORMAT' but got '${verifierInfo.format}'.")
+            Napier.w("skipping $this, expected '$REGISTRATION_CERT_FORMAT' but got '${verifierInfo.format}'.")
+            return@catching null
         }
         val jwsTyped = catchingUnwrapped {
             JwsCompactTyped<WrpPayload>(verifierInfo.data)
         }.getOrElse {
-            throw Throwable("$this ($REGISTRATION_CERT_FORMAT) contains invalid JWS data.", cause = it)
+            Napier.w("$this ($REGISTRATION_CERT_FORMAT) contains invalid JWS data.", throwable = it)
+            return@catching null
         }
         jwsTyped
-    }
+    }.getOrNull()
 
     override suspend fun invoke(
         accessCertValidation: WrpacValidationResult,
@@ -78,6 +80,9 @@ class WrprcValidator(
             certificateTrustAnchors,
             statusListTokenResolver
         )
+
+        if(verifierInfoValidationResult.isEmpty())  throw Throwable("VerifierInfoValidationResult empty")
+
         val requestDataValidity = validateRequest(validationData, verifierInfoValidationResult)
 
         requestDataValidity ?: run {
@@ -98,21 +103,25 @@ class WrprcValidator(
         identifierResult: WrpacIdentifier?,
         certificateTrustAnchors: List<X509Certificate>,
         statusListTokenResolver: StatusListTokenResolver,
-    ): WrprcVerifierInfoValidationResult = verifierInfo.associateWith {
-        validateVerifierInfo(
-            verifierInfo = it,
-            identifierResult = identifierResult,
-            certificateTrustAnchors = certificateTrustAnchors,
-            statusListTokenResolver = statusListTokenResolver
-        )
+    ): WrprcVerifierInfoValidationResult = run {
+        verifierInfo.mapNotNull {
+            val parsed = parse(it) ?: return@mapNotNull null
+            it to validateVerifierInfo(
+                jwsTyped = parsed,
+                identifierResult = identifierResult,
+                certificateTrustAnchors = certificateTrustAnchors,
+                statusListTokenResolver = statusListTokenResolver
+            )
+        }.toMap()
     }
 
+
     private suspend fun validateVerifierInfo(
-        verifierInfo: VerifierInfo,
+        jwsTyped: JwsTyped<JwsCompact, WrpPayload>,
         identifierResult: WrpacIdentifier?,
         certificateTrustAnchors: List<X509Certificate>,
         statusListTokenResolver: StatusListTokenResolver,
-    ): VerifierInfoValidationResult = parse(verifierInfo).let { jwsTyped ->
+    ): VerifierInfoValidationResult = run {
         val certificateChain = jwsTyped.jws.jwsHeader.certificateChain ?: run {
             throw Throwable("Certificate chain is empty.")
         }

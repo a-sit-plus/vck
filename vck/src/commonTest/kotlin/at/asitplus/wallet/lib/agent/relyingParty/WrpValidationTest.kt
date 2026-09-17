@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestValidation
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.isValid
+import io.kotest.matchers.maps.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -225,7 +226,7 @@ val WrpValidationTest by matrixSuite {
         result.exceptionOrNull()?.message.shouldContain(("VerifierInfo is null"))
     }
 
-    "VerifierInfo with a format other than registration_cert fails" {
+    "Single VerifierInfo with a format other than registration_cert yields exception" {
         val fixture = buildWrpFixture()
 
         val result = fixture.validateWrprc(
@@ -233,7 +234,7 @@ val WrpValidationTest by matrixSuite {
             verifierInfoFormat = "some_other_format",
         )
 
-        result.exceptionOrNull()?.message.shouldContain(("expected 'registration_cert' but got 'some_other_format'"))
+        result.exceptionOrNull()?.message.shouldContain(("VerifierInfoValidationResult empty"))
     }
 
     "Wrong JWS header type fails" {
