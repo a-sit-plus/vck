@@ -42,7 +42,7 @@ sealed interface WrpCredentialRequest {
                     vctValues = meta.vctValues.toNonEmptyList()
                 )
 
-                else -> throw IllegalStateException("")
+                else -> throw IllegalStateException("Unsupported meta data ${this.query.meta}")
             }
 
         override suspend fun getRepresentation(): CredentialRepresentation = when (this.query.format) {
