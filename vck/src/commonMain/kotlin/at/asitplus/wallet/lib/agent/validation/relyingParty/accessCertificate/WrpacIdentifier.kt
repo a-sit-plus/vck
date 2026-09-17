@@ -26,17 +26,19 @@ sealed interface WrpacIdentifier {
  * See: ETSI TS 119 475 V1.2.1 - 5.1.2 and 5.1.4
  */
 fun X509Certificate.getWrpIdentifier() = catching {
-    this.tbsCertificate.subjectName.firstOrNull { it.attrsAndValues.any { it.oid == OID_ORGANIZATION_IDENTIFIER } }?.attrsAndValues?.first()?.value.let {
-        (it as? Asn1Primitive)?.content?.decodeToString()
-    }?.let {
-        return@catching WrpacIdentifier.WrpacLegalIdentifier(it)
-    }
+    this.tbsCertificate.subjectName.firstOrNull { it.attrsAndValues.any { it.oid == OID_ORGANIZATION_IDENTIFIER } }
+        ?.attrsAndValues?.first { it.oid == OID_ORGANIZATION_IDENTIFIER }?.value.let {
+            (it as? Asn1Primitive)?.content?.decodeToString()
+        }?.let {
+            return@catching WrpacIdentifier.WrpacLegalIdentifier(it)
+        }
 
-    this.tbsCertificate.subjectName.firstOrNull { it.attrsAndValues.any { it.oid == OID_SERIAL_NUMBER } }?.attrsAndValues?.first()?.value.let {
-        (it as? Asn1Primitive)?.content?.decodeToString()
-    }?.let {
-        return@catching WrpacIdentifier.WrpacNaturalIdentifier(it)
-    }
+    this.tbsCertificate.subjectName.firstOrNull { it.attrsAndValues.any { it.oid == OID_SERIAL_NUMBER } }
+        ?.attrsAndValues?.first { it.oid == OID_SERIAL_NUMBER }?.value.let {
+            (it as? Asn1Primitive)?.content?.decodeToString()
+        }?.let {
+            return@catching WrpacIdentifier.WrpacNaturalIdentifier(it)
+        }
 
     throw Throwable("Unable to extract access certificate identifier")
 }
