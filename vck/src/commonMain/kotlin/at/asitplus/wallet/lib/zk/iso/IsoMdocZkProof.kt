@@ -10,7 +10,7 @@ import at.asitplus.iso.ZkDocument
  */
 class IsoMdocZkProof(
     val zkDocument: ZkDocument,
-    private val verifyFn: suspend (ZkDocument) -> KmmResult<Unit>
+    private val verifyFn: suspend () -> KmmResult<Unit>
 ) {
     /**
      * Verifies the ZK proof.
@@ -21,6 +21,6 @@ class IsoMdocZkProof(
      * @return [KmmResult]-wrapped [Unit] if the proof is valid, or [Throwable] with the error if otherwise, e.g., if the
      * proof is invalid, the required ZK system is unsupported, or any other internal error occurs during evaluation.
      */
-    suspend fun verify(): KmmResult<Unit> = verifyFn.invoke(zkDocument)
+    suspend fun verify(): KmmResult<Unit> = verifyFn.invoke()
 
 }
