@@ -60,11 +60,11 @@ class WrpacValidator : WrpacValidatorFun {
 
     private fun validateX509HashBinding(clientId: String, chain: CertificateChain?) = catching {
         if (chain.isNullOrEmpty()) {
-            throw Throwable("x509_hash validation skipped, request x5c missing.")
+            throw Throwable("x509_hash validation failed, request x5c missing.")
         }
 
         if (!clientId.startsWith("x509_hash:")) {
-            throw Throwable("x509_hash validation skipped, client_id is '$clientId'.")
+            throw Throwable("x509_hash validation failed, client_id not starting with `x509_hash:`.")
         }
 
         val expectedHash = clientId.removePrefix("x509_hash:")
