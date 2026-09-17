@@ -159,7 +159,7 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
         wrpPayload: WrpPayload,
         representation: ConstantIndex.CredentialRepresentation,
         meta: WrpCredentialMetaDomain,
-        attributes: Collection<SingleClaimReference?>?
+        attributes: Collection<SingleClaimReference>?
     ): RequestCredentialAttributesValidity = catchingUnwrapped {
         when (representation) {
             ISO_MDOC -> {
@@ -198,7 +198,7 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
                 TODO("PLAIN_JWT not supported")
             }
         }
-    }.getOrElse { throw Throwable("checkAttributes: failed with $it") }
+    }.getOrThrow()
 
     private fun WrpCredentialMetaDomain.WrpDocTypeDomain.contains(other: WrpCredentialMetaDomain.WrpDocTypeDomain): Boolean =
         this.doctypeValue == other.doctypeValue
@@ -230,5 +230,5 @@ fun CredentialPresentationRequest.toWrpCredentialRequest() = when (this) {
         WrpCredentialRequest.WrpDocRequest(it)
     }.toSet()
 
-    else -> throw Throwable("Unsupported")
+    else -> throw Throwable("Unsupported CredentialPresentationRequest $this")
 }
