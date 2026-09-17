@@ -39,7 +39,12 @@ fun interface WrprcValidatorFun {
 }
 
 /**
- * Class to verify a registration certificates validity.
+ * Class to verify registration certificates
+ * Validations:
+ *  - Header, payload and signature of VerifierInfo
+ *  - Certificate trust anchors
+ *  - Linkage to access certificate
+ *  - Token status
  **/
 class WrprcValidator(
     private val timeLeeway: Duration = 5.minutes, private val maxValidity: Duration = 365.days

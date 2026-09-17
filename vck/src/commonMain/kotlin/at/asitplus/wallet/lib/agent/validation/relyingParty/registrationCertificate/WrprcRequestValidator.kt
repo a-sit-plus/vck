@@ -27,6 +27,9 @@ fun interface WrprcRequestValidatorFun {
 
 /**
  * Class to validate a presentation request against registration certificates.
+ * Validations:
+ *  - Requested credential type
+ *  - Requested attributes
  **/
 class WrprcRequestValidator : WrprcRequestValidatorFun {
     override suspend fun invoke(

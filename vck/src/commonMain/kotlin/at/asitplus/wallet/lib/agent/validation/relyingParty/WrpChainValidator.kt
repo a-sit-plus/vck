@@ -18,6 +18,13 @@ fun interface WrpChainValidatorFun {
     ): KmmResult<Boolean>
 }
 
+/**
+ * Class to verify a certificate chain against trusted roots.
+ * Validations:
+ *  - Validity periods
+ *  - Certificate trust anchors
+ *  - Signature chain
+ **/
 class WrpChainValidator : WrpChainValidatorFun {
     private val timeLeeway: Duration = 5.minutes
     override fun invoke(chain: CertificateChain, certificateTrustAnchors: List<X509Certificate>) = catching {

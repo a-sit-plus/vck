@@ -22,7 +22,11 @@ fun interface WrpacValidatorFun {
 }
 
 /**
- * Class to verify access certificates validity.
+ * Class to verify access certificates
+ * Validations:
+ *  - Certificate trust anchors
+ *  - Linkage to the presentation request (OID4VP only)
+ *  - Identifier is either legal or natural person
  **/
 class WrpacValidator : WrpacValidatorFun {
     override fun invoke(
