@@ -4,7 +4,6 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 
 data class WrpacValidationResult(
     val chain: List<X509Certificate>,
-    val chainValid: Boolean,
-    val hashValid: Boolean,
-    val identifierResult: WrpacIdentifier?
+    val identifierResult: WrpacIdentifier?,
+    val validLinkage: Boolean
 )

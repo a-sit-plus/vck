@@ -11,7 +11,9 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.Wr
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.isValid
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import kotlin.time.Clock.System
 import kotlin.time.Duration.Companion.days
 import kotlin.uuid.ExperimentalUuidApi
@@ -23,52 +25,29 @@ val WrpValidationTest by matrixSuite {
     "WRPAC + WRPRC issuance and validation round-trip" {
         val fixture = buildWrpFixture()
 
-        WrpChainValidator.validateChain(
+        WrpChainValidator().invoke(
             chain = fixture.wrpacChain,
             certificateTrustAnchors = fixture.trustAnchors,
-        ) shouldBe true
+        ).getOrThrow() shouldBe true
 
-        val wrpacValidation = fixture.validateWrpac()!!
-        wrpacValidation.chainValid shouldBe true
-        wrpacValidation.hashValid shouldBe true
+        val wrpacValidation = fixture.validateWrpac().getOrThrow()
         wrpacValidation.identifierResult?.identifier shouldBe fixture.wrpIdentifier
 
-        val result = fixture.validateWrprc(payload = buildWrpPayload(fixture.wrpIdentifier))
+        val result =
+            fixture.validateWrprc(payload = buildWrpPayload(fixture.wrpIdentifier)).getOrNull().shouldNotBeNull()
 
-        result?.verifierInfoValidationResult?.values?.all { it?.isValid() == true } shouldBe true
-        result?.requestDataValidationResult?.values?.all { it?.isValid() == true } shouldBe true
+        result.verifierInfoValidationResult.toMap().values.all { it?.isValid() == true } shouldBe true
+        result.requestDataValidationResult.toMap().values.all { it?.isValid() == true } shouldBe true
     }
 
     "Wrong x509 hash in clientId" {
-        val caKey = EphemeralKeyWithoutCert()
-        val ca = TestCertificateAuthority(name = CA_NAME, key = caKey)
-
-        val wrpacProviderKey = EphemeralKeyWithoutCert()
-        val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = wrpacProviderKey)
-        val providerCert = ca.issue(
-            subjectName = WRPAC_PROVIDER_NAME,
-            validity = 1.days,
-            key = wrpacProviderKey,
-        ).getCertificate()!!
-
-        val wrpKey = EphemeralKeyWithoutCert()
-        val wrpCert = provider.issue(
-            subjectName = WRP_NAME,
-            validity = 1.days,
-            key = wrpKey,
-        ).getCertificate()!!
-
-        val chain = listOf(wrpCert, providerCert)
-        val certificateTrustAnchors = listOf(ca.certificate())
-
+        val fixture = buildWrpFixture()
         val clientId = "x509_hash:wrong"
 
-        val result = WrpacValidator.validate(
-            WrpRequestValidationData(clientId = clientId, certificateChain = chain),
-            certificateTrustAnchors,
-        )!!
-        result.chainValid shouldBe true
-        result.hashValid shouldBe false
+        val result = WrpacValidator().invoke(
+            WrpRequestValidationData(clientId = clientId, certificateChain = fixture.wrpacChain),
+            certificateTrustAnchors = fixture.trustAnchors
+        ).exceptionOrNull()?.message.shouldContain("x509_hash binding failed.")
     }
 
     "Provider certificate expired invalidates the chain" {
@@ -82,15 +61,16 @@ val WrpValidationTest by matrixSuite {
             validity = 1.days,
             validFrom = System.now() - 2.days,
             key = providerKey,
-        ).getCertificate()!!
+        ).getCertificate().shouldNotBeNull()
 
         val wrpKey = EphemeralKeyWithoutCert()
-        val wrpCert = provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate()!!
+        val wrpCert =
+            provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate().shouldNotBeNull()
 
-        WrpChainValidator.validateChain(
+        WrpChainValidator().invoke(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
-        ) shouldBe false
+        ).exceptionOrNull()?.message.shouldContain("Certificate is expired")
     }
 
     "WRP certificate expired invalidates the chain" {
@@ -103,7 +83,7 @@ val WrpValidationTest by matrixSuite {
             subjectName = WRPAC_PROVIDER_NAME,
             validity = 1.days,
             key = providerKey,
-        ).getCertificate()!!
+        ).getCertificate().shouldNotBeNull()
 
         val wrpKey = EphemeralKeyWithoutCert()
         val wrpCert = provider.issue(
@@ -111,12 +91,12 @@ val WrpValidationTest by matrixSuite {
             validity = 1.days,
             validFrom = System.now() - 2.days,
             key = wrpKey,
-        ).getCertificate()!!
+        ).getCertificate().shouldNotBeNull()
 
-        WrpChainValidator.validateChain(
+        WrpChainValidator().invoke(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
-        ) shouldBe false
+        ).exceptionOrNull()?.message.shouldContain(("Certificate is expired"))
     }
 
     "All chain certificates expired invalidates the chain" {
@@ -130,7 +110,7 @@ val WrpValidationTest by matrixSuite {
             validity = 1.days,
             validFrom = System.now() - 2.days,
             key = providerKey,
-        ).getCertificate()!!
+        ).getCertificate().shouldNotBeNull()
 
         val wrpKey = EphemeralKeyWithoutCert()
         val wrpCert = provider.issue(
@@ -138,12 +118,12 @@ val WrpValidationTest by matrixSuite {
             validity = 1.days,
             validFrom = System.now() - 2.days,
             key = wrpKey,
-        ).getCertificate()!!
+        ).getCertificate().shouldNotBeNull()
 
-        WrpChainValidator.validateChain(
+        WrpChainValidator().invoke(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
-        ) shouldBe false
+        ).exceptionOrNull()?.message.shouldContain(("Certificate is expired"))
     }
 
     "Self-signed WRP certificate is not accepted as part of the chain" {
@@ -151,19 +131,18 @@ val WrpValidationTest by matrixSuite {
         val ca = TestCertificateAuthority(name = CA_NAME, key = caKey)
 
         val providerKey = EphemeralKeyWithoutCert()
-        val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
         val providerCert = ca.issue(
             subjectName = WRPAC_PROVIDER_NAME,
             validity = 1.days,
             key = providerKey,
-        ).getCertificate()!!
+        ).getCertificate().shouldNotBeNull()
 
-        val wrpCert = EphemeralKeyWithSelfSignedCert().getCertificate()!!
+        val wrpCert = EphemeralKeyWithSelfSignedCert().getCertificate().shouldNotBeNull()
 
-        WrpChainValidator.validateChain(
+        WrpChainValidator().invoke(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
-        ) shouldBe false
+        ).exceptionOrNull()?.message.shouldContain(("is not signed by"))
     }
 
     "Wrong provider subject name breaks issuer linkage" {
@@ -176,62 +155,60 @@ val WrpValidationTest by matrixSuite {
             subjectName = "Provider Wrong",
             validity = 1.days,
             key = providerKey,
-        ).getCertificate()!!
+        ).getCertificate().shouldNotBeNull()
 
         val wrpKey = EphemeralKeyWithoutCert()
-        val wrpCert = provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate()!!
+        val wrpCert =
+            provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate().shouldNotBeNull()
 
-        WrpChainValidator.validateChain(
+        WrpChainValidator().invoke(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
-        ) shouldBe false
+        ).exceptionOrNull()?.message.shouldContain(("is not signed by"))
     }
 
     "Empty trust anchors reject any chain" {
         val fixture = buildWrpFixture()
 
-        WrpChainValidator.validateChain(
+        WrpChainValidator().invoke(
             chain = fixture.wrpacChain,
             certificateTrustAnchors = emptyList(),
-        ) shouldBe false
+        ).exceptionOrNull()?.message.shouldContain(("No trusted root certificates configured for request validation."))
     }
 
 
-    "Missing certificate chain yields no WRPAC validation result" {
-        val result = WrpacValidator.validate(
+    "Missing certificate chain yields an exception" {
+        val result = WrpacValidator().invoke(
             validationData = WrpRequestValidationData(clientId = "x509_hash:abc", certificateChain = null),
             certificateTrustAnchors = emptyList(),
         )
 
-        result.shouldBeNull()
+        result.exceptionOrNull()?.message.shouldContain(("Certificate chain null"))
     }
 
-    "Missing client_id yields no WRPAC validation result" {
+    "Missing client_id yields no exception" {
         val fixture = buildWrpFixture()
 
-        val result = WrpacValidator.validate(
+        val result = WrpacValidator().invoke(
             validationData = WrpRequestValidationData(clientId = null, certificateChain = fixture.wrpacChain),
             certificateTrustAnchors = fixture.trustAnchors,
-        )
+        ).getOrNull()
 
-        result.shouldBeNull()
+        result.shouldNotBeNull()
     }
 
-    "No WRP identifier attribute yields a null identifier result" {
+    "No WRP identifier attribute yields an exception" {
         val fixture = buildWrpFixture(wrpacIdentifier = null)
 
-        val result = fixture.validateWrpac()!!
-
-        result.chainValid shouldBe true
-        result.hashValid shouldBe true
-        result.identifierResult.shouldBeNull()
+        val result = fixture.validateWrpac()
+        result.exceptionOrNull()?.message.shouldContain(("Unable to extract access certificate identifier"))
     }
 
     "WRPRC validation fails when no verifierInfo is present" {
         val fixture = buildWrpFixture()
-        val wrpacValidation = fixture.validateWrpac()!!
+        val wrpacValidation = fixture.validateWrpac().getOrThrow()
 
-        val result = WrprcValidator.validate(
+        val result = WrprcValidator().invoke(
             accessCertValidation = wrpacValidation,
             validationData = WrpRequestValidationData(
                 clientId = fixture.clientId,
@@ -245,10 +222,10 @@ val WrpValidationTest by matrixSuite {
             certificateTrustAnchors = fixture.trustAnchors,
         )
 
-        result.shouldBeNull()
+        result.exceptionOrNull()?.message.shouldContain(("VerifierInfo is null"))
     }
 
-    "VerifierInfo with a format other than registration_cert is skipped" {
+    "VerifierInfo with a format other than registration_cert fails" {
         val fixture = buildWrpFixture()
 
         val result = fixture.validateWrprc(
@@ -256,10 +233,10 @@ val WrpValidationTest by matrixSuite {
             verifierInfoFormat = "some_other_format",
         )
 
-        result?.verifierInfoValidationResult?.values?.single().shouldBeNull()
+        result.exceptionOrNull()?.message.shouldContain(("expected 'registration_cert' but got 'some_other_format'"))
     }
 
-    "Wrong JWS header type fails header validation only" {
+    "Wrong JWS header type fails" {
         val fixture = buildWrpFixture()
 
         val result = fixture.validateWrprc(
@@ -267,19 +244,12 @@ val WrpValidationTest by matrixSuite {
             jwsType = "not-rc-wrp+jwt",
         )
 
-        val verifierInfoResult = result?.verifierInfoValidationResult?.values?.single()!!
-        verifierInfoResult.headerValid shouldBe false
-        verifierInfoResult.chainValid shouldBe true
-        verifierInfoResult.signatureValid shouldBe true
-        verifierInfoResult.payloadValid shouldBe true
-        verifierInfoResult.linkageValid shouldBe true
-        verifierInfoResult.statusValid shouldBe true
-        verifierInfoResult.isValid() shouldBe false
+        result.exceptionOrNull()?.message.shouldContain(("has invalid typ in JWS header. expected='rc-wrp+jwt', actual='not-rc-wrp+jwt'"))
     }
 
-    "Signature from a non-matching key fails signature validation only" {
+    "Signature from a non-matching key fails" {
         val fixture = buildWrpFixture()
-        val realCertificate = fixture.wrprcSigningKeyMaterial.getCertificate()!!
+        val realCertificate = fixture.wrprcSigningKeyMaterial.getCertificate().shouldNotBeNull()
         val mismatchedSigner = KeyWithFixedCert(EphemeralKeyWithoutCert(), realCertificate)
 
         val result = fixture.validateWrprc(
@@ -287,11 +257,7 @@ val WrpValidationTest by matrixSuite {
             signingKeyMaterial = mismatchedSigner,
         )
 
-        val verifierInfoResult = result?.verifierInfoValidationResult?.values?.single()!!
-        verifierInfoResult.signatureValid shouldBe false
-        verifierInfoResult.chainValid shouldBe true
-        verifierInfoResult.headerValid shouldBe true
-        verifierInfoResult.isValid() shouldBe false
+        result.exceptionOrNull()?.message.shouldContain(("Signature is cryptographically invalid"))
     }
 
     "Expired WRPRC payload fails payload validation" {
@@ -303,32 +269,24 @@ val WrpValidationTest by matrixSuite {
         )
 
         val result = fixture.validateWrprc(payload = payload)
-
-        val verifierInfoResult = result?.verifierInfoValidationResult?.values?.single()!!
-        verifierInfoResult.payloadValid shouldBe false
-        verifierInfoResult.isValid() shouldBe false
+        result.exceptionOrNull()?.message.shouldContain(("already expired"))
     }
 
-    "WRPRC payload missing intendedUseId still validates" {
+    "WRPRC payload missing optional intendedUseId still validates" {
         val fixture = buildWrpFixture()
         val payload = buildWrpPayload(fixture.wrpIdentifier, intendedUseId = null)
 
         val result = fixture.validateWrprc(payload = payload)
-
-        val verifierInfoResult = result?.verifierInfoValidationResult?.values?.single()!!
-        verifierInfoResult.payloadValid shouldBe true
-        verifierInfoResult.isValid() shouldBe true
+        result.isSuccess.shouldBe(true)
     }
 
-    "WRPRC payload missing exp still validates" {
+    "WRPRC payload missing optional exp still validates" {
         val fixture = buildWrpFixture()
         val payload = buildWrpPayload(fixture.wrpIdentifier, exp = null)
 
         val result = fixture.validateWrprc(payload = payload)
+        result.isSuccess.shouldBe(true)
 
-        val verifierInfoResult = result?.verifierInfoValidationResult?.values?.single()!!
-        verifierInfoResult.payloadValid shouldBe true
-        verifierInfoResult.isValid() shouldBe true
     }
 
     "WRPRC payload with exp more than 12 months after iat fails payload validation" {
@@ -341,37 +299,24 @@ val WrpValidationTest by matrixSuite {
 
         val result = fixture.validateWrprc(payload = payload)
 
-        val verifierInfoResult = result?.verifierInfoValidationResult?.values?.single()!!
-        verifierInfoResult.payloadValid shouldBe false
-        verifierInfoResult.isValid() shouldBe false
+        result.exceptionOrNull()?.message.shouldContain(("exceeds maximum validity"))
     }
 
     "sub not matching the WRPAC identifier fails linkage validation" {
         val fixture = buildWrpFixture(wrpIdentifier = "WRP-${Uuid.generateV4()}")
         val payload = buildWrpPayload(wrpIdentifier = "WRP-${Uuid.generateV4()}")
 
-        val result = fixture.validateWrprc(payload = payload)
+        val result = fixture.validateWrprc(payload = payload).getOrThrow()
 
-        val verifierInfoResult = result?.verifierInfoValidationResult?.values?.single()!!
-        verifierInfoResult.linkageValid shouldBe false
-        verifierInfoResult.payloadValid shouldBe true
-        verifierInfoResult.isValid() shouldBe false
+        result.verifierInfoValidationResult.all { it.value?.validLinkage == false }
     }
 
     "Revoked status list entry fails status validation only" {
         val fixture = buildWrpFixture()
         val payload = buildWrpPayload(fixture.wrpIdentifier, statusListIdx = 0)
 
-        val result = fixture.validateWrprc(payload = payload, revokedStatusIndex = 0)
-
-        val verifierInfoResult = result?.verifierInfoValidationResult?.values?.single()!!
-        verifierInfoResult.statusValid shouldBe false
-        verifierInfoResult.signatureValid shouldBe true
-        verifierInfoResult.chainValid shouldBe true
-        verifierInfoResult.headerValid shouldBe true
-        verifierInfoResult.payloadValid shouldBe true
-        verifierInfoResult.linkageValid shouldBe true
-        verifierInfoResult.isValid() shouldBe false
+        val result = fixture.validateWrprc(payload = payload, revokedStatusIndex = 0).getOrThrow()
+        result.verifierInfoValidationResult.all { it.value?.validStatusList == false }
     }
 
     "Requesting more attributes than the WRPRC declares fails request validation (over-asking)" {
@@ -380,10 +325,10 @@ val WrpValidationTest by matrixSuite {
         val result = fixture.validateWrprc(
             payload = buildWrpPayload(fixture.wrpIdentifier),
             request = mdocDcqlRequest(claimNames = listOf("given_name", "family_name", "birth_date", "portrait")),
-        )
+        ).getOrNull().shouldNotBeNull()
 
-        result?.verifierInfoValidationResult?.values?.all { it?.isValid() == true } shouldBe true
-        result?.requestDataValidationResult?.values?.single()?.isValid() shouldBe false
+        result.verifierInfoValidationResult.values.all { it?.isValid() == true } shouldBe true
+        result.requestDataValidationResult.toMap().values.single()?.isValid() shouldBe false
     }
 
     "Requesting a credential format the WRPRC never declared finds no match" {
@@ -395,9 +340,9 @@ val WrpValidationTest by matrixSuite {
                 credentials = listOf(defaultMdocCredential())
             ),
             request = sdJwtDcqlRequest(vctValue = "urn:eudi:pid:1"),
-        )
+        ).getOrNull().shouldNotBeNull()
 
-        result?.requestDataValidationResult?.values?.single().shouldBeNull()
+        result.requestDataValidationResult.toMap().values.single().shouldBeNull()
     }
 
     "Requesting only claims the WRPRC actually declares still validates" {
@@ -406,8 +351,8 @@ val WrpValidationTest by matrixSuite {
         val result = fixture.validateWrprc(
             payload = buildWrpPayload(fixture.wrpIdentifier),
             request = mdocDcqlRequest(claimNames = listOf("given_name")),
-        )
+        ).getOrNull().shouldNotBeNull()
 
-        result?.requestDataValidationResult?.values?.single()?.isValid() shouldBe true
+        result.requestDataValidationResult.toMap().values.single()?.isValid() shouldBe true
     }
 }

@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpCredentialMetaDomain
 import at.asitplus.etsi.relyingParty.WrpPayload
@@ -16,41 +18,24 @@ import at.asitplus.wallet.lib.data.SingleClaimReference
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.Serializable
 
-typealias RequestCredentialAttributesValidity = List<Pair<SingleClaimReference, Boolean>>
-typealias RequestDataValidationResult = Map<String, RequestDataValidity?>
-
-@Serializable
-data class RequestDataValidity(
-    val credentialTypeValidity: Boolean,
-    val credentialAttributesValidity: RequestCredentialAttributesValidity,
-)
-
-fun RequestDataValidity.isValid(): Boolean =
-    this.credentialTypeValidity && !credentialAttributesValidity.any { it.second == false }
-
-fun CredentialPresentationRequest.toWrpCredentialRequest() = when (this) {
-    is DCQLRequest -> this.dcqlQuery.credentials.map {
-        WrpCredentialRequest.WrpDcqlCredentialQuery(it)
-    }.toSet()
-
-    is CredentialPresentationRequest.IsoDeviceRetrieval -> this.deviceRequest.docRequests.map {
-        WrpCredentialRequest.WrpDocRequest(it)
-    }.toSet()
-
-    else -> throw Throwable("Unsupported")
+fun interface WrprcRequestValidatorFun {
+    suspend fun invoke(
+        presentationRequest: CredentialPresentationRequest,
+        verifierInfos: Set<VerifierInfo>
+    ): KmmResult<RequestDataValidationResult>
 }
 
 /**
  * Class to validate a presentation request against registration certificates.
  **/
-class WrprcRequestValidator {
-    suspend fun requestCheck(
+class WrprcRequestValidator : WrprcRequestValidatorFun {
+    override suspend fun invoke(
         presentationRequest: CredentialPresentationRequest,
         verifierInfos: Set<VerifierInfo>,
-    ): Result<RequestDataValidationResult> = catchingUnwrapped {
+    ): KmmResult<RequestDataValidationResult> = catching {
         matchRequestToVerifierInfo(presentationRequest, verifierInfos).mapNotNull { (request, verifierInfo) ->
             validateCredentialRequest(request, verifierInfo)
-        }.toMap()
+        }
     }
 
     /**
@@ -111,15 +96,15 @@ class WrprcRequestValidator {
 
     private suspend fun validateCredentialRequest(
         request: WrpCredentialRequest, verifierInfo: VerifierInfo?
-    ): Pair<String, RequestDataValidity?>? = catchingUnwrapped {
-        request.id to verifierInfo?.getPayload()?.let { payload ->
+    ) = catchingUnwrapped {
+        request to verifierInfo?.getPayload()?.let { payload ->
             RequestDataValidity(
                 credentialTypeValidity = checkCredentialTypesValidity(request, payload),
                 credentialAttributesValidity = checkAttributesValidity(request, payload)
             )
         }
     }.getOrElse {
-        Napier.w("WrprcRequestValidator.validateCredentialRequest failed with:", tag = LOG_TAG, throwable = it)
+        Napier.w("WrprcRequestValidator.validateCredentialRequest failed with:", throwable = it)
         null
     }
 
@@ -193,7 +178,7 @@ class WrprcRequestValidator {
                     catchingUnwrapped {
                         val meta = (meta as? WrpCredentialMetaDomain.WrpVctTypeDomain)?.vctValues?.firstOrNull()
                         it.meta.vctValues?.contains(meta) ?: run {
-                            Napier.w("Sd-jwt but vctValues null", tag = LOG_TAG)
+                            Napier.w("Sd-jwt but vctValues null")
                             return@catchingUnwrapped false
                         }
                     }.getOrDefault(false)
@@ -217,10 +202,30 @@ class WrprcRequestValidator {
 
     private fun WrpCredentialMetaDomain.WrpVctTypeDomain.contains(other: WrpCredentialMetaDomain.WrpVctTypeDomain): Boolean =
         this.vctValues.any { other.vctValues.contains(it) }
-
-    private companion object Constants {
-        const val LOG_TAG = "WrprcRequestValidator"
-    }
 }
 
 fun VerifierInfo.getPayload() = catchingUnwrapped { JwsCompactTyped<WrpPayload>(this.data).payload }.getOrNull()
+
+typealias RequestCredentialAttributesValidity = List<Pair<SingleClaimReference, Boolean>>
+typealias RequestDataValidationResult = List<Pair<WrpCredentialRequest, RequestDataValidity?>>
+
+@Serializable
+data class RequestDataValidity(
+    val credentialTypeValidity: Boolean,
+    val credentialAttributesValidity: RequestCredentialAttributesValidity,
+)
+
+fun RequestDataValidity.isValid(): Boolean =
+    this.credentialTypeValidity && !credentialAttributesValidity.any { it.second == false }
+
+fun CredentialPresentationRequest.toWrpCredentialRequest() = when (this) {
+    is DCQLRequest -> this.dcqlQuery.credentials.map {
+        WrpCredentialRequest.WrpDcqlCredentialQuery(it)
+    }.toSet()
+
+    is CredentialPresentationRequest.IsoDeviceRetrieval -> this.deviceRequest.docRequests.map {
+        WrpCredentialRequest.WrpDocRequest(it)
+    }.toSet()
+
+    else -> throw Throwable("Unsupported")
+}

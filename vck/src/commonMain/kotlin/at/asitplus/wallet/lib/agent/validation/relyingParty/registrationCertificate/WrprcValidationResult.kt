@@ -14,13 +14,8 @@ data class WrprcValidationResult(
 
 data class VerifierInfoValidationResult(
     val jwsTyped: JwsTyped<JwsCompact, WrpPayload>? = null,
-    val signatureValid: Boolean,
-    val chainValid: Boolean,
-    val linkageValid: Boolean,
-    val headerValid: Boolean,
-    val payloadValid: Boolean,
-    val statusValid: Boolean
+    val validLinkage: Boolean,
+    val validStatusList: Boolean
 ) {
-    fun isValid() =
-        (this.signatureValid && this.chainValid && this.linkageValid && this.headerValid && this.payloadValid && this.statusValid)
+    fun isValid() = validStatusList && validLinkage
 }

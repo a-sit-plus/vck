@@ -10,7 +10,6 @@ import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpLangString
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.etsi.relyingParty.WrpStatus
-import at.asitplus.etsi.relyingParty.WrpStatusList
 import at.asitplus.etsi.relyingParty.WrpSupervisoryAuthority
 import at.asitplus.iso.sha256
 import at.asitplus.openid.VerifierInfo
@@ -47,11 +46,11 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestValidation
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidationResult
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator
-import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidationResult
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.StatusListJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -60,6 +59,7 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.extensions.toStatusList
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 import kotlin.time.Clock.System
@@ -136,7 +136,7 @@ suspend fun buildWrpFixture(
         subjectName = WRPAC_PROVIDER_NAME,
         validity = validity,
         key = wrpacProviderKey,
-    ).getCertificate()!!
+    ).getCertificate().shouldNotBeNull()
 
     val wrpKey = EphemeralKeyWithoutCert()
     val wrpCert = if (wrpacIdentifier != null) {
@@ -149,7 +149,8 @@ suspend fun buildWrpFixture(
             validity = validity,
         )
     } else {
-        wrpacProvider.issue(subjectName = WRP_NAME, validity = validity, key = wrpKey).getCertificate()!!
+        wrpacProvider.issue(subjectName = WRP_NAME, validity = validity, key = wrpKey).getCertificate()
+            .shouldNotBeNull()
     }
     val wrpacChain = listOf(wrpCert, wrpacProviderCert)
     val clientId = "x509_hash:${wrpacChain.leaf.encodeToDer().sha256().encodeToString(Base64UrlStrict)}"
@@ -164,7 +165,7 @@ suspend fun buildWrpFixture(
     return WrpFixture(trustAnchors, wrpIdentifier, wrpacChain, clientId, wrprcSigningKeyMaterial)
 }
 
-fun WrpFixture.validateWrpac(): WrpacValidationResult? = WrpacValidator.validate(
+fun WrpFixture.validateWrpac() = WrpacValidator().invoke(
     validationData = WrpRequestValidationData(clientId = clientId, certificateChain = wrpacChain),
     certificateTrustAnchors = trustAnchors,
 )
@@ -202,7 +203,7 @@ fun buildWrpPayload(
     certificatePolicy = "https://localhost/certificate-policy",
     iat = iat,
     exp = exp,
-    status = WrpStatus(statusList = WrpStatusList(idx = statusListIdx, uri = statusListUri)),
+    status = WrpStatus(statusList = StatusListInfo(index = statusListIdx.toLong(), uri = statusListUri)),
     purpose = listOf(WrpLangString(lang = "en", value = "Purpose description.")),
     credentials = credentials,
     intendedUseId = intendedUseId,
@@ -277,7 +278,7 @@ suspend fun WrpFixture.validateWrprc(
     jwsType: String = WRPRC_JWS_TYPE,
     revokedStatusIndex: Int = 1,
     accessCertValidation: WrpacValidationResult? = null,
-): WrprcValidationResult? {
+) = run {
     val wrprcJws = signWrprc(signingKeyMaterial, payload, type = jwsType)
     val validationData = WrpRequestValidationData(
         clientId = clientId,
@@ -285,11 +286,11 @@ suspend fun WrpFixture.validateWrprc(
         verifierInfo = nonEmptyListOf(VerifierInfo(format = verifierInfoFormat, data = wrprcJws)),
         request = request,
     )
-    val resolvedAccessCertValidation = accessCertValidation ?: validateWrpac()!!
+    val resolvedAccessCertValidation = accessCertValidation ?: validateWrpac().getOrThrow()
     val statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
         buildStatusListToken(statusListUrl, revokedIndex = revokedStatusIndex)
     }
-    return WrprcValidator.validate(
+    WrprcValidator().invoke(
         accessCertValidation = resolvedAccessCertValidation,
         validationData = validationData,
         statusListTokenResolver = statusListTokenResolver,

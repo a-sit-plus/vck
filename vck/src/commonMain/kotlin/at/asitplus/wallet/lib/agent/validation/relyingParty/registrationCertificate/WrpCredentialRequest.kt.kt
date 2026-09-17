@@ -26,8 +26,6 @@ Sealed interface for supported request types to allow generic validation and ser
  */
 @Serializable
 sealed interface WrpCredentialRequest {
-    val id: String
-
     fun getMeta(): WrpCredentialMetaDomain
 
     suspend fun getRepresentation(): CredentialRepresentation
@@ -35,7 +33,7 @@ sealed interface WrpCredentialRequest {
     suspend fun getAttributes(): Collection<SingleClaimReference>
 
     @Serializable
-    data class WrpDcqlCredentialQuery(val query: DCQLCredentialQuery, override val id: String = query.id.string) :
+    data class WrpDcqlCredentialQuery(val query: DCQLCredentialQuery) :
         WrpCredentialRequest {
         override fun getMeta(): WrpCredentialMetaDomain =
             when (val meta = this.query.meta) {
@@ -75,7 +73,7 @@ sealed interface WrpCredentialRequest {
     }
 
     @Serializable
-    data class WrpDocRequest(val query: DocRequest, override val id: String = TODO()) : WrpCredentialRequest {
+    data class WrpDocRequest(val query: DocRequest) : WrpCredentialRequest {
         override fun getMeta(): WrpCredentialMetaDomain =
             WrpCredentialMetaDomain.WrpDocTypeDomain(this.query.itemsRequest.value.docType)
 
