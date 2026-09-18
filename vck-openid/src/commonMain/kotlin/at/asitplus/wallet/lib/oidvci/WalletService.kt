@@ -194,8 +194,10 @@ class WalletService @JvmOverloads constructor(
     )
 
     /**
-     * Pass in the URL provided by the Credential Issuer,
-     * which may contain a direct [CredentialOffer] or a URI pointing to it.
+     * Parses [input] as either a JSON-encoded [CredentialOffer] or a credential offer URL.
+     *
+     * A credential offer URL may contain an embedded `credential_offer` or a `credential_offer_uri`.
+     * Resources referenced by `credential_offer_uri` are retrieved and parsed.
      */
     suspend fun parseCredentialOffer(input: String): KmmResult<CredentialOffer> = catching {
         if (input.trimStart().startsWith("{")) {
