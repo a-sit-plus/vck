@@ -5,7 +5,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.Identifier
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.iso18013.IdentifierInfoKey
@@ -43,7 +43,7 @@ private const val identifierListTestVec =
 
 val IdentifierListTest by matrixSuite {
     "status containing IdentifierListInfo can be serialized" {
-        val expected = RevocationListInfo.StatusSurrogate(
+        val expected = TokenStatusInfo(
             identifierList = IdentifierListInfo(
                 identifier = byteArrayOf(0xcc.toByte(), 0xcc.toByte()),
                 uri = UniformResourceIdentifier("https://example.com/identifierlists/1"),
@@ -51,12 +51,12 @@ val IdentifierListTest by matrixSuite {
             )
         )
         val deserialized = coseCompliantSerializer.decodeFromByteArray(
-            RevocationListInfo.StatusSurrogate.serializer(),
+            TokenStatusInfo.serializer(),
             statusTestVec.decodeToByteArray(Base16Strict)
         )
 
         val serialized =
-            coseCompliantSerializer.encodeToByteArray(RevocationListInfo.StatusSurrogate.serializer(), deserialized)
+            coseCompliantSerializer.encodeToByteArray(TokenStatusInfo.serializer(), deserialized)
         deserialized shouldBe expected //sanity check
         serialized.encodeToString(Base16Strict) shouldBe statusTestVec
     }

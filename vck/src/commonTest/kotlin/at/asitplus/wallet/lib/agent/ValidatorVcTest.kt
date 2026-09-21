@@ -38,6 +38,7 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock
@@ -164,7 +165,7 @@ val ValidatorVcTest by matrixSuite {
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
             it.issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
-                index = value.jws.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index,
+                index = value.jws.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index,
                 status = TokenStatus.Invalid,
             ) shouldBe true
 

@@ -41,6 +41,7 @@ import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -229,7 +230,7 @@ val AgentSdJwtTest by matrixSuite {
                 .forEach { storeEntry ->
                     it.statusListIssuer.revokeCredentialByIndex(
                         FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.statusElement.shouldBeInstanceOf<StatusListInfo>().index,
+                        storeEntry.sdJwt.statusElement.shouldNotBeNull().statusList.shouldNotBeNull().index,
                     ) shouldBe true
                 }
             it.verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
