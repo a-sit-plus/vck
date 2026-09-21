@@ -1,6 +1,7 @@
 # Changelog
 
 Release 8.0.0 (unreleased):
+- Credential issuance: Preserve credential-offer retrieval failures instead of masking them with a JSON parsing error
 - Build: Upgrade to the 20260828 conventions plugin and AGP 9
     - migrate Android library targets to the new Kotlin Multiplatform Android library plugin API
     - no more conventions plugin submodule
