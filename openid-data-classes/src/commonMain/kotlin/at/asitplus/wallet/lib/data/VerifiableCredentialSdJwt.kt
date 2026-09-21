@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -90,9 +90,10 @@ data class VerifiableCredentialSdJwt(
      * different authenticity confirmation methods can be included.
      *
      * See [Token Status List](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-12).
-    */
+     */
     @SerialName("status")
-    val statusElement: TokenStatusInfo? = null,
+    @Serializable(with = RevocationListInfo.StatusSurrogateSerializer::class)
+    val statusElement: RevocationListInfo? = null,
 
     /**
      * The claim `_sd_alg` indicates the hash algorithm used by the Issuer to generate the digests as described in

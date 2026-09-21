@@ -29,7 +29,10 @@ data class TokenStatusInfo(
     companion object {
         /** Wraps a single status mechanism in its wire-level status object. */
         fun from(status: RevocationListInfo): TokenStatusInfo = when (status) {
-            is StatusListInfo -> TokenStatusInfo(statusList = status)
+            is StatusListInfo -> TokenStatusInfo(
+                statusList = status,
+                identifierList = status.identifierListInfo,
+            )
             is IdentifierListInfo -> TokenStatusInfo(identifierList = status)
         }
     }

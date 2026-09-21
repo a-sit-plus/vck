@@ -230,7 +230,7 @@ val AgentSdJwtTest by matrixSuite {
                 .forEach { storeEntry ->
                     it.statusListIssuer.revokeCredentialByIndex(
                         FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.statusElement.shouldNotBeNull().statusList.shouldNotBeNull().index,
+                        storeEntry.sdJwt.statusElement.shouldBeInstanceOf<StatusListInfo>().index,
                     ) shouldBe true
                 }
             it.verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()

@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 import kotlin.require
@@ -46,6 +47,21 @@ data class StatusListInfo(
 
     override val certificate: ByteArray? = null,
 ) : RevocationListInfo() {
+
+    @Transient
+    private var additionalIdentifierListInfo: IdentifierListInfo? = null
+
+    /** Additional status mechanism decoded from the same status object, if present. */
+    val identifierListInfo: IdentifierListInfo?
+        get() = additionalIdentifierListInfo
+
+    /** Every mechanism decoded from the containing status object. */
+    val tokenStatusInfo: TokenStatusInfo
+        get() = TokenStatusInfo(statusList = this, identifierList = identifierListInfo)
+
+    internal fun withIdentifierListInfo(identifierListInfo: IdentifierListInfo): StatusListInfo = apply {
+        additionalIdentifierListInfo = identifierListInfo
+    }
 
     /** For JVM callers which can't access value class or ULong constructors directly */
     @JvmOverloads

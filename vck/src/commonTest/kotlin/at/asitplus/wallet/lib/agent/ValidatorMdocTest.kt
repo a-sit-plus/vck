@@ -109,7 +109,7 @@ val ValidatorMdocTest by matrixSuite {
             it.issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
                 index = credential.issuerSigned.issuerAuth.payload.shouldNotBeNull()
-                    .status.shouldNotBeNull().statusList.shouldNotBeNull().index,
+                    .status.shouldBeInstanceOf<StatusListInfo>().index,
                 status = TokenStatus.Invalid,
             ) shouldBe true
 

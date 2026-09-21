@@ -442,13 +442,13 @@ private val simpleTranscriptCallback: () -> SessionTranscript = {
 }
 
 private fun SubjectCredentialStore.StoreEntry.Iso.mdocStatusListIndex(): ULong =
-    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().statusList.shouldNotBeNull().index
+    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().shouldBeInstanceOf<StatusListInfo>().index
 
 private fun Issuer.IssuedCredential.Iso.issuedIdentifierListInfo(): IdentifierListInfo =
-    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().identifierList.shouldNotBeNull()
+    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().shouldBeInstanceOf<IdentifierListInfo>()
 
 private fun SubjectCredentialStore.StoreEntry.Iso.mdocIdentifierListInfo(): IdentifierListInfo =
-    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().identifierList.shouldNotBeNull()
+    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().shouldBeInstanceOf<IdentifierListInfo>()
 
 private suspend fun IssuerAgent.issueIdentifierListIsoMdoc(subjectPublicKey: CryptoPublicKey) = issueCredential(
     DummyCredentialDataProvider.getCredential(
