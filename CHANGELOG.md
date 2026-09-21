@@ -103,6 +103,9 @@ Release 8.0.0 (unreleased):
 - Trust List filtering:
     - Replace `LoTEServiceType`/`LoTEFilterCriteria` with `LoteProfile`, a sealed class defining PID, mDL, WRPAC, WALLET, and EAA profiles with built-in matching against scheme type, status approach, community rules URIs, and country code
     - Add support for LoTEs with issuance and revocation certificates
+    - Add `LoTEStage`, enumerating the base URLs of the European Commission's development, acceptance, and production trust infrastructure, so that applications can fetch the lists of any stage
+    - Replace the hardcoded acceptance URL in `LoteProfile.fetchUrl` with the relative `LoteProfile.fileName`, resolved against a base URL by `LoteProfile.fetchUrl(baseUrl)` or `LoteProfile.fetchUrl(stage)`
+    - Replace `LoteProfile.defaultUrls` with `LoteProfile.entries` and `LoteProfile.fetchUrls()`, which take the stages or the base URL to fetch from
 - Form-url-encoded parameters:
     - Preserve opaque string parameters when decoding polymorphic requests, and ignore unknown object parameters before parsing their values as JSON
     - Use `RequestParametersSerializer.decodeFormParameters()` to decode form parameters whose concrete request type is determined by their parameter names
