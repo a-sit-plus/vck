@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.jws
 
-
 object JwsContentTypeConstants {
     const val JWT = "jwt"
     /** SD-JWT: `dc+sd-jwt` */

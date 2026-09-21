@@ -307,7 +307,8 @@ class BearerTokenVerificationService(
         val token = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
         else tokenOrAuthHeader
-        tokenGenerationService.verifyAccessToken(token)?.toTokenInfo()
+        tokenGenerationService.verifyAccessToken(token)
+            ?.toTokenInfo()
             ?: throw InvalidToken("authorization header not valid: $tokenOrAuthHeader")
     }
 }

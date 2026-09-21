@@ -5,7 +5,8 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
@@ -28,6 +29,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.serialization.json.JsonObject
+import kotlin.jvm.JvmOverloads
 
 /**
  * Uses an external OAuth 2.0 Authorization Server with a [at.asitplus.wallet.lib.oidvci.CredentialIssuer],
@@ -35,7 +37,7 @@ import kotlinx.serialization.json.JsonObject
  * (after performing token exchange with the Wallet's access token to get a fresh one).
  * Make sure to configure [oauth2Client] to use the correct [OAuth2KtorClient.loadInstanceAttestation].
  */
-class RemoteOAuth2AuthorizationServerAdapter(
+class RemoteOAuth2AuthorizationServerAdapter @JvmOverloads constructor(
     /** Base URL of the remote Authorization Server. */
     override val publicContext: String,
     /** ktor engine to make requests to the verifier. */
@@ -60,6 +62,9 @@ class RemoteOAuth2AuthorizationServerAdapter(
     val internalTokenVerificationService: TokenVerificationService,
     /** Used to provide DPoP nonces for credential requests, which will be verified by [internalTokenVerificationService]. */
     val dpopNonceService: NonceService = DefaultNonceService(),
+    /** Response media ranges sent to the remote token introspection endpoint. */
+    private val tokenIntrospectionResponseFormats: List<ContentType> =
+        listOf(TokenIntrospectionResponseJwt.contentType),
 ) : OAuth2AuthorizationServerAdapter {
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
@@ -79,7 +84,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
 
     override suspend fun getTokenInfo(
         authorizationHeader: String,
-        httpRequest: RequestInfo?,
+        httpRequest: RequestInfo?
     ): KmmResult<TokenInfo> = catching {
         val oauthMetadata = _metadata.await()
         val token = authorizationHeader.let { if (it.contains(" ")) it.split(" ").last() else it }
@@ -91,7 +96,8 @@ class RemoteOAuth2AuthorizationServerAdapter(
             oauthMetadata = oauthMetadata,
             request = request,
             token = token,
-            popAudience = publicContext
+            popAudience = publicContext,
+            requestedResponseFormats = tokenIntrospectionResponseFormats,
         ).toTokenInfo(token)
     }
 
@@ -149,7 +155,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
     override suspend fun getDpopNonce() = dpopNonceService.provideNonce()
 }
 
-private fun TokenIntrospectionResponse.toTokenInfo(token: String) = TokenInfo(
+private fun TokenIntrospectionResponseJson.toTokenInfo(token: String) = TokenInfo(
     token = token,
     scope = this.scope,
     authorizationDetails = this.authorizationDetails,

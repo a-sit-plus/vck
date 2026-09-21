@@ -8,7 +8,7 @@ import at.asitplus.signum.indispensable.josef.JwsTyped
 import io.ktor.http.*
 import kotlin.jvm.JvmOverloads
 
-/** Holds information about the HTTP request the client has made, to validate client authentication. */
+/** Holds information about the HTTP request the client has made. */
 data class RequestInfo @JvmOverloads constructor(
     /** URL that has been used to send this request. */
     val url: String,
@@ -53,6 +53,10 @@ data class RequestInfo @JvmOverloads constructor(
      */
     val clientAttestationPop: JwsCompactTyped<JsonWebToken>?
         get() = headers.parseSingletonJwt(HttpHeaders.OAuthClientAttestationPop)
+
+    /** Value of the HTTP `Accept` header, or `null` if the header was omitted. */
+    val acceptHeader: String?
+        get() = headers?.getAll(HttpHeaders.Accept)?.joinToString(", ")
 
     /** Reads and parses the value of `headerName`, and also checks that there is exactly one such header. */
     private fun Headers?.parseSingletonJwt(headerName: String): JwsTyped<JwsCompact, JsonWebToken>? =

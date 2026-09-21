@@ -7,7 +7,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -87,6 +87,17 @@ val OAuth2ClientDPoPTest by matrixSuite {
                     OpenId4VciAccessToken.serializer(),
                 ).getOrThrow()
 
+            suspend fun introspectJson(token: String) = server.tokenIntrospection(
+                TokenIntrospectionRequest(token = token),
+                httpRequest = RequestInfo(
+                    url = "https://example.com/introspect",
+                    method = HttpMethod.Post,
+                    headers = headers {
+                        set(HttpHeaders.Accept, ContentType.Application.Json.toString())
+                    },
+                ),
+            ).getOrThrow().shouldBeInstanceOf<TokenIntrospectionResponseJson>()
+
             suspend fun getCode(state: String): String {
                 val authnRequest = client.createAuthRequestJar(
                     state = state,
@@ -147,7 +158,10 @@ val OAuth2ClientDPoPTest by matrixSuite {
             val forged = it.signAccessToken(payload, key = EphemeralKeyWithoutCert())
 
             shouldThrow<OAuth2Exception.InvalidToken> {
-                it.server.getUserInfo("${OpenIdConstants.TOKEN_PREFIX_DPOP}$forged", null).getOrThrow()
+                it.server.getUserInfo(
+                    "${OpenIdConstants.TOKEN_PREFIX_DPOP}$forged",
+                    null,
+                ).getOrThrow()
             }
         }
 
@@ -156,7 +170,10 @@ val OAuth2ClientDPoPTest by matrixSuite {
             val expired = it.signAccessToken(payload.copy(expiration = Clock.System.now() - 1.hours))
 
             shouldThrow<OAuth2Exception.InvalidToken> {
-                it.server.getUserInfo("${OpenIdConstants.TOKEN_PREFIX_DPOP}$expired", null).getOrThrow()
+                it.server.getUserInfo(
+                    "${OpenIdConstants.TOKEN_PREFIX_DPOP}$expired",
+                    null,
+                ).getOrThrow()
             }
         }
 
@@ -183,11 +200,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 it.tokenType shouldBe TOKEN_TYPE_DPOP
             }
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
+            it.introspectJson(token.accessToken)
                 .apply { active shouldBe true }
 
             val dpopForResource = BuildDPoPHeader(
@@ -236,12 +249,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 it.refreshToken.shouldNotBeNull()
             }
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
 
             @Suppress("DEPRECATION")
             val refreshedAccessToken = it.server.token(
@@ -264,12 +272,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
             ).getOrThrow()
             refreshedAccessToken.accessToken shouldNotBe token.accessToken
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = refreshedAccessToken.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(refreshedAccessToken.accessToken).active shouldBe true
 
             val dpopForResource = BuildDPoPHeader(
                 signDpop = it.signDpop,
@@ -316,12 +319,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 it.refreshToken.shouldNotBeNull()
             }
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
             @Suppress("DEPRECATION")
@@ -577,18 +575,12 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 it.tokenType shouldBe TOKEN_TYPE_DPOP
             }
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
 
             // simulate access to protected resource, i.e. verify access token
             shouldThrow<OAuth2Exception> {
                 it.server.userInfo(
                     token.toHttpHeaderValue(),
-                    null
                 ).getOrThrow()
             }
         }
@@ -614,12 +606,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 )
             ).getOrThrow()
 
-            it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+            it.introspectJson(token.accessToken).active shouldBe true
 
             val wrongSignDpop = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
             val dpopForResource = BuildDPoPHeader(

@@ -24,10 +24,11 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
-import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.openid.TokenIntrospectionResult
+import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
+import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -60,6 +61,7 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -145,14 +147,19 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Sets [OAuth2AuthorizationServerMetadata.requestObjectSigningAlgorithmsSupported].
      * Currently, we only support [JwsAlgorithm.Signature.ES256].
      * If set the client MAY wrap [RequestParameters] as [JarRequestParameters]
-     * - this is the default behaviour of `OAuth2KtorClient`
+     * - this is the default behavior of `OAuth2KtorClient`
      */
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
     /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */
     private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = DEFAULT_WALLET_ATTESTATION_ALGORITHMS,
     /** Used to sign JWT introspection responses (RFC 9701). */
-    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponse> =
+    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponseJwtPayload> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+    /**
+     * Response format used to break ties between equally preferred supported representations,
+     * including ties produced by [ContentType.Any] or [ContentType.Application.Any].
+     */
+    private val defaultTokenIntrospectionResponseFormat: ContentType = TokenIntrospectionResponseJwt.contentType,
     /** Used to create and verify `issuer_state` values of credential offers. */
     private val issuerStateService: CodeService = DefaultCodeService(),
     /** Used to create and verify pre-authorized codes, see [providePreAuthorizedCode]. */
@@ -184,6 +191,13 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             JwsAlgorithm.Signature.ES384,
             JwsAlgorithm.Signature.ES512,
         )
+    }
+
+    init {
+        require(
+            defaultTokenIntrospectionResponseFormat == TokenIntrospectionResponseJson.contentType ||
+                    defaultTokenIntrospectionResponseFormat == TokenIntrospectionResponseJwt.contentType
+        ) { "Unsupported default token introspection response format: $defaultTokenIntrospectionResponseFormat" }
     }
 
     private val _metadata: OAuth2AuthorizationServerMetadata by lazy {
@@ -805,7 +819,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     ): KmmResult<JsonObject> = userInfo(authorizationHeader, httpRequest)
 
     /**
-     * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter],
+     * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter]),
      * we can directly access our [tokenService].
      */
     override suspend fun getTokenInfo(
@@ -818,37 +832,48 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     override suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo?,
-    ): KmmResult<TokenIntrospectionResult> = catching {
+    ): KmmResult<TokenIntrospectionResponse> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()
-        clientAuthenticationService.authenticateClient(
+        val authenticatedResourceServerId = clientAuthenticationService.authenticateClient(
             httpRequest = httpRequest,
             clientId = null,
             validatedClientKey = validatedClientKey
-        ).getOrThrow()
+        ).getOrThrow()?.clientId
+        val responseFormat = TokenIntrospectionResponse.parseAcceptHeader(
+            httpRequest?.acceptHeader,
+            defaultTokenIntrospectionResponseFormat,
+        ).getOrElse { throw InvalidRequest("accept_header invalid", it) }
         val response = catchingUnwrapped {
             tokenService.verification.getTokenInfo(request.token)
         }.fold(
             onSuccess = {
-                TokenIntrospectionResponse(
+                TokenIntrospectionResponseJson(
                     active = true,
                     scope = it.scope,
                     authorizationDetails = it.authorizationDetails,
                 )
             },
-            onFailure = {
-                TokenIntrospectionResponse(active = false)
-            }
+            onFailure = { TokenIntrospectionResponseJson(active = false) },
         )
-        when (request.responseFormat) {
-            TokenIntrospectionRequest.ResponseFormat.JWT -> TokenIntrospectionJwtResponse(
-                jwt = signIntrospectionJwt(
+
+        when (responseFormat) {
+            TokenIntrospectionResponseJson.contentType -> response
+
+            TokenIntrospectionResponseJwt.contentType -> TokenIntrospectionResponseJwt(
+                signIntrospectionJwt(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
-                    response,
-                    TokenIntrospectionResponse.serializer()
-                ).getOrThrow().toString()
+                    TokenIntrospectionResponseJwtPayload(
+                        issuer = publicContext,
+                        audience = authenticatedResourceServerId
+                            ?: throw InvalidClient("client authentication required for JWT token introspection response"),
+                        iat = Clock.System.now(),
+                        tokenIntrospection = response
+                    ),
+                    TokenIntrospectionResponseJwtPayload.serializer()
+                ).getOrThrow()
             )
 
-            else -> response
+            else -> throw InvalidRequest("accept_header invalid")
         }
     }
 

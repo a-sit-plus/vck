@@ -194,8 +194,8 @@ val OpenId4VciClientExternalAuthorizationServerTest by matrixSuite {
                 }
 
                 request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
-                    val authn = request.headers[HttpHeaders.Authorization]
-                    externalAuthorizationServer.userInfo(authn!!, request.toRequestInfo()).fold(
+                    val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
+                    externalAuthorizationServer.userInfo(authn, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )
@@ -204,7 +204,10 @@ val OpenId4VciClientExternalAuthorizationServerTest by matrixSuite {
                 request.url.toString() == "$authServerPublicContext$introspectionEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params = requestBody.decodeFromPostBody<TokenIntrospectionRequest>()
-                    externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).fold(
+                    externalAuthorizationServer.tokenIntrospection(
+                        request = params,
+                        httpRequest = request.toRequestInfo(),
+                    ).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
                     )

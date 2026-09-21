@@ -19,9 +19,10 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResponseJson
+import at.asitplus.openid.TokenIntrospectionResponseJwt
+import at.asitplus.openid.TokenIntrospectionResponseJwtPayload
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -46,8 +47,8 @@ import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationChallenge
 import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationPop
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
-import at.asitplus.wallet.lib.oidvci.TokenInfo
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
@@ -103,7 +104,7 @@ class OAuth2KtorClient(
     /** Source for random bytes, i.e., nonces for proof-of-possession of key material for sender-constrained tokens. */
     private val randomSource: RandomSource = RandomSource.Secure,
     /** Verifies signed token introspection responses. By default, every syntactically valid JWS is accepted. */
-    private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+    private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponseJwtPayload>) -> Boolean = { true },
     /**
      * Return a new Wallet Instance Attestation (WIA) to authenticate the Wallet App to the
      * Authorization Service with OAuth Attestation Based Client Auth.
@@ -473,10 +474,7 @@ class OAuth2KtorClient(
         )
     } ?: throw Exception("No pushedAuthorizationRequestEndpoint in $oauthMetadata")
 
-    /**
-     * Calls the token introspection endpoint ([OAuth2AuthorizationServerMetadata.introspectionEndpoint])
-     * to check whether the given token is active, returns [TokenInfo] on success, otherwise throws [InvalidToken].
-     */
+    @Deprecated("New required parameter")
     suspend fun callTokenIntrospection(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         request: TokenIntrospectionRequest,
@@ -484,10 +482,33 @@ class OAuth2KtorClient(
         popAudience: String,
         retryCount: Int = 0,
         issuerMetadata: IssuerMetadata? = null,
-    ): TokenIntrospectionResponse = oauthMetadata.introspectionEndpoint?.let { url ->
+    ): TokenIntrospectionResponseJson = callTokenIntrospection(
+        oauthMetadata,
+        request,
+        token,
+        popAudience,
+        listOf(ContentType.Application.Json),
+        retryCount,
+        issuerMetadata,
+    )
+
+    /**
+     * Calls the token introspection endpoint ([OAuth2AuthorizationServerMetadata.introspectionEndpoint])
+     * to check whether the given token is active, returns [TokenIntrospectionResponseJson] on success, otherwise throws [InvalidToken].
+     */
+    suspend fun callTokenIntrospection(
+        oauthMetadata: OAuth2AuthorizationServerMetadata,
+        request: TokenIntrospectionRequest,
+        token: String,
+        popAudience: String,
+        requestedResponseFormats: List<ContentType>,
+        retryCount: Int = 0,
+        issuerMetadata: IssuerMetadata? = null,
+    ): TokenIntrospectionResponseJson = oauthMetadata.introspectionEndpoint?.let { url ->
         Napier.i("callTokenIntrospection: $url with $request")
         val response = try {
             client.request {
+                requestedResponseFormats.forEach { accept(it) }
                 url(url)
                 method = HttpMethod.Post
                 setBody(FormDataContent(parameters {
@@ -503,15 +524,23 @@ class OAuth2KtorClient(
             }
         } catch (error: HttpErrorResponseException) {
             return@let error.updateDpopNonceOrAttestationChallengeAndRetry(url, retryCount) {
-                callTokenIntrospection(oauthMetadata, request, token, popAudience, retryCount + 1)
+                callTokenIntrospection(
+                    oauthMetadata = oauthMetadata,
+                    request = request,
+                    token = token,
+                    popAudience = popAudience,
+                    requestedResponseFormats = requestedResponseFormats,
+                    retryCount = retryCount + 1,
+                    issuerMetadata = issuerMetadata,
+                )
             }
         }
         updateDpopNonce(url, response.headers[HttpHeaders.DPoPNonce])
         updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
         parseTokenIntrospectionResponse(
             body = response.bodyAsText(),
+            responseContentType = response.contentType(),
             verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
-            requestedResponseFormat = request.responseFormat,
         ).also {
             if (!it.active) {
                 throw InvalidToken("Introspected token is not active")
@@ -678,29 +707,21 @@ data class TokenResponseWithDpopNonce(
 
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean,
-    requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
-): TokenIntrospectionResponse = catchingUnwrapped {
-    if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
-        parseJwt(body, verifyTokenIntrospectionJwt)
-    } else {
-        catchingUnwrapped {
-            joseCompliantSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
-        }.getOrElse {
-            parseJwt(body, verifyTokenIntrospectionJwt)
-        }
+    responseContentType: ContentType?,
+    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponseJwtPayload>) -> Boolean,
+): TokenIntrospectionResponseJson = catchingUnwrapped {
+    when (responseContentType?.withoutParameters()) {
+        TokenIntrospectionResponseJson.contentType ->
+            joseCompliantSerializer.decodeFromString<TokenIntrospectionResponseJson>(body)
+
+        TokenIntrospectionResponseJwt.contentType -> JwsCompactTyped<TokenIntrospectionResponseJwtPayload>(body).apply {
+            require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
+        }.payload.tokenIntrospection
+
+        else -> throw OAuth2Exception.InvalidRequest(
+            "Token introspection response content type $responseContentType is not supported."
+        )
     }
 }.getOrElse {
     throw InvalidToken("Token introspection response could not be parsed", it)
 }
-
-private suspend fun parseJwt(
-    body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean
-): TokenIntrospectionResponse =
-    joseCompliantSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
-        JwsCompactTyped<TokenIntrospectionResponse>(jwtResponse.jwt).run {
-            require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
-            payload
-        }
-    }

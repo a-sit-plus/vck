@@ -7,7 +7,6 @@ import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -50,7 +49,6 @@ interface OAuth2AuthorizationServerAdapter {
 
     /** If this is an internal AS, provide a fresh DPoP nonce for clients. */
     suspend fun getDpopNonce(): String?
-
 }
 
 

@@ -224,7 +224,10 @@ class CredentialIssuer @JvmOverloads constructor(
         Napier.i("credential called")
         Napier.d("credential called with $authorizationHeader, $request")
         encryptionService.validateRequestEncryption(request, hasBeenEncrypted)
-        val validated = authorizationService.validateAccessToken(authorizationHeader, requestInfo).getOrThrow()
+        val validated = authorizationService.validateAccessToken(
+            authorizationHeader,
+            requestInfo,
+        ).getOrThrow()
         request.validateAgainstToken(validated)
         val userInfo = validated.userInfoExtended
             ?: loadUserInfo(authorizationHeader, requestInfo)
