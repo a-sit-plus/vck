@@ -113,7 +113,7 @@ val RedirectUriClientTest by matrixSuite {
                     credentials = setOf(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
                     )
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
                 verifierInfo = verifierInfo
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
@@ -140,7 +140,7 @@ val RedirectUriClientTest by matrixSuite {
                     credentials = setOf(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
                     )
-                ).toPresentationExchangeRequest(),
+                ).toDCQLRequest(),
                 verifierInfo = verifierInfo,
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(

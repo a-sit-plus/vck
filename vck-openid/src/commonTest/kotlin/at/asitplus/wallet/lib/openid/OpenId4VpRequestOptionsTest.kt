@@ -38,6 +38,7 @@ val OpenId4VpRequestOptionsTest by matrixSuite {
     }
 
     test("dc api requires dcql and expected origins") {
+        @Suppress("DEPRECATION")
         shouldThrowAny {
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
