@@ -362,7 +362,7 @@ class VerifyCoseSignature<P : Any> @JvmOverloads constructor(
         coseSigned.loadPublicKeys().also {
             Napier.d("Public keys available: ${it.size}")
         }.firstNotNullOf { coseKey ->
-            verifyCoseSignature(coseSigned, coseKey, externalAad, detachedPayload).getOrNull()
+            verifyCoseSignature(coseSigned, coseKey, externalAad, detachedPayload).getOrThrow()
         }
     }
 
