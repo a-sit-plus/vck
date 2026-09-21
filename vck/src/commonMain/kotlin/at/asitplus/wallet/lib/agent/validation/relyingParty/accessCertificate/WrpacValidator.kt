@@ -10,13 +10,13 @@ import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestValidationData
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
 fun interface WrpacValidatorFun {
     fun invoke(
-        validationData: WrpRequestValidationData,
+        validationData: WrpRequestData,
         certificateTrustAnchors: List<X509Certificate>
     ): KmmResult<WrpacValidationResult>
 }
@@ -30,9 +30,10 @@ fun interface WrpacValidatorFun {
  **/
 class WrpacValidator : WrpacValidatorFun {
     override fun invoke(
-        validationData: WrpRequestValidationData, certificateTrustAnchors: List<X509Certificate>
+        validationData: WrpRequestData, certificateTrustAnchors: List<X509Certificate>
     ) = catching {
-        val certificateChain = validationData.certificateChain ?: throw Throwable("Certificate chain null")
+        val certificateChain =
+            validationData.accessCertificate.certificateChain ?: throw Throwable("Certificate chain null")
 
         Napier.d(
             "validating request x5c, count=${certificateChain.size}"

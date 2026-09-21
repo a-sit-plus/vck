@@ -2,7 +2,6 @@ package at.asitplus.etsi.relyingParty
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 
 /**
  * ETSI TS 119 475 V1.2.1 Annex C claim selector.
@@ -13,5 +12,5 @@ data class WrpClaim(
     val path: List<String>,
 
     @SerialName("values")
-    val values: List<JsonElement>? = null
+    val values: List<String>? = null
 )

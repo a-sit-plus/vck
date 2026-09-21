@@ -13,6 +13,8 @@ Release 8.0.0 (unreleased):
   - BREAKING: Update `ZkDocumentData.timestamp` type to `Instant` instead of `DateTime` to conform to upcoming ISO-18013-5 draft
   - Add support for correctly (de-)serializing RFC9360-conformant single-chain cbor-encoded `ZkDocumentData`
   - Add missing equality overrides for `ZkDocumentData`, `ZkSignedItem`
+- ISO mDoc DocRequest:
+  - Add fields `eUWrprc` and `euWrpRegistrarInfo` to data class `DocRequestInfo`
 - ISO mDoc Zero-Knowledge Proofs:
   - Add the `ZkRequest`-based ISO mDoc ZK presentation path and convert DCQL ZK metadata into
   `ZkRequest` for holder-side proof generation
@@ -27,7 +29,6 @@ Release 8.0.0 (unreleased):
     - Remove the unused `ZkInfo` and `ZkSystem` preparation abstractions
   - Credentials:
     - Add `WalletRelyingParty` ETSI data classes for `WRPAC` and `WRPRC` validation
-- Credentials:
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject
     - Preserve and validate every status mechanism when a credential's `status` object contains both `status_list` and `identifier_list`; combined values are exposed through `StatusListInfo.tokenStatusInfo` while the 7.0.1 `RevocationListInfo` properties and singleton behavior remain compatible
@@ -103,6 +104,7 @@ Release 8.0.0 (unreleased):
     - Enforce the `pre-registered` client identifier scheme against `RelyingPartyTrust.PreRegisteredClients`
     - Requests using a scheme for which no trust material is configured are rejected. This includes `entity_id` and `did`, which are handed to `RelyingPartyTrust.Custom` and rejected when none is configured, so that a relying party cannot bypass the configured trust anchors by naming itself with a scheme this library does not evaluate natively. Only `redirect_uri` is not covered, as it forbids signed requests anyway
     - `RequestParser` no longer verifies anything and lost its `requestObjectJwsVerifier` parameter, so parsing a request is purely parsing. Consequently `RequestParametersSigned.verified` is removed, with the `verified` property of `Jws`, `OpenId4VpDcApiSigned` and `OpenId4VpDcApiMultiSigned` and its serialized form. Stored JSON still carrying `"verified"` deserializes fine, as unknown keys are ignored
+    - Add `WrprcValidator`, `WrpacValidator`, `WrpAuthenticationRequestValidator` and `WrpChainValidator` to validate WRPAC and WRPRC during presentation.
 - Trust List filtering:
     - Replace `LoTEServiceType`/`LoTEFilterCriteria` with `LoteProfile`, a sealed class defining PID, mDL, WRPAC, WALLET, and EAA profiles with built-in matching against scheme type, status approach, community rules URIs, and country code
     - Add support for LoTEs with issuance and revocation certificates
@@ -120,7 +122,6 @@ Release 8.0.0 (unreleased):
     - Add `T.encodeToFormUrlEncoded()` and `String.toFormParameters()`
     - Deprecate `FormParameters.decodeFromUrlQuery()`: its receiver is already decoded in nearly all call sites, so it decoded percent-encoding a second time and mangled every value containing a percent sign. This fixes parsing credential offers, authentication requests and authentication responses carrying such values
     - Split the payload with `io.ktor.http.parseQueryString()` instead of by hand, which drops names without a value instead of throwing, and reads `+` as a space in URL queries too
-    - Add `WrprcValidator`, `WrpacValidator` and `WrpChainValidator` to validate WRPAC and WRPRC during presentation.
 - OAuth 2.0:
     - Update implementation of [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html) to Draft 10 from 2026-07-06
     - Support DPoP combined mode, advertised with `dpop_combined` in `client_attestation_pop_methods_supported` to combine client authentication with DPoP proofs from RFC 9449
@@ -181,6 +182,7 @@ Release 8.0.0 (unreleased):
     - In `EncryptJwe` remove `keyMaterial` as it always relies on ephemeral keys embedded in the JWE header
  - Dependencies:
     - Update to [Signum 3.25.0](https://github.com/a-sit-plus/signum/releases/tag/3.25.0) for HPKE support
+    - Add `etsi-data-classes` as api dependency to `openid-data-classes`
 
 Release 7.0.0:
 - Credential definitions:

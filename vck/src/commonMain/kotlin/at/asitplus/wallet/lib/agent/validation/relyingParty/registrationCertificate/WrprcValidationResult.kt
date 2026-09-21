@@ -1,21 +1,20 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
-import at.asitplus.etsi.relyingParty.WrpPayload
-import at.asitplus.openid.VerifierInfo
-import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsTyped
-
-typealias WrprcVerifierInfoValidationResult = Map<VerifierInfo, VerifierInfoValidationResult?>
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
 
 data class WrprcValidationResult(
-    val verifierInfoValidationResult: WrprcVerifierInfoValidationResult,
-    val requestDataValidationResult: RequestDataValidationResult
+    val certificateValidation: Map<WrpRegistrationCertificate, WrpRegistrationCertificateValidation?>,
+    val requestDataValidation: RequestDataValidation
 )
 
-data class VerifierInfoValidationResult(
-    val jwsTyped: JwsTyped<JwsCompact, WrpPayload>? = null,
+
+data class WrpRegistrationCertificateValidation(
+    val validHeader: Boolean,
+    val validSignature: Boolean,
+    val validChain: Boolean,
+    val validPayload: Boolean,
     val validLinkage: Boolean,
     val validStatusList: Boolean
 ) {
-    fun isValid() = validStatusList && validLinkage
+    fun isValid() = validHeader && validSignature && validChain && validPayload && validLinkage && validStatusList
 }

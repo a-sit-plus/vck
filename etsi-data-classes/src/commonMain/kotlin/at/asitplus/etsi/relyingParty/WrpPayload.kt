@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * WRPRC payload aligned to ETSI TS 119 475 V1.2.1 Annex C.
+ * ETSI TS 119 475 V1.2.1 Annex C WRPRC payload.
  */
 @Serializable
 data class WrpPayload(

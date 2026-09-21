@@ -30,7 +30,6 @@ kotlin {
             dependencies {
                 implementation(project.napier())
                 implementation(project.ktor("http"))
-                api(project(":openid-data-classes"))
                 api(project(":rfc3986-uri-syntax"))
                 api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
             }

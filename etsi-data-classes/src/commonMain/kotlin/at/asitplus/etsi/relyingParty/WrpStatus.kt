@@ -1,6 +1,5 @@
 package at.asitplus.etsi.relyingParty
 
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,5 +9,14 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class WrpStatus(
     @SerialName("status_list")
-    val statusList: StatusListInfo
+    val statusList: WrpStatusList
+)
+
+@Serializable
+data class WrpStatusList(
+    @SerialName("idx")
+    val idx: ULong,
+
+    @SerialName("uri")
+    val uri: String,
 )

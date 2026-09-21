@@ -1,6 +1,5 @@
 package at.asitplus.etsi.relyingParty
 
-import at.asitplus.data.NonEmptyList
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -13,7 +12,7 @@ data class WrpCredentialMeta(
     val doctypeValue: String? = null,
 
     @SerialName("vct_values")
-    val vctValues: NonEmptyList<String>? = null
+    val vctValues: List<String>? = null
 ) {
     fun toDomain() = when {
         doctypeValue != null -> WrpCredentialMetaDomain.WrpDocTypeDomain(doctypeValue)
@@ -29,6 +28,6 @@ sealed interface WrpCredentialMetaDomain {
     ) : WrpCredentialMetaDomain
 
     data class WrpVctTypeDomain(
-        @SerialName("vct_values") val vctValues: NonEmptyList<String>
+        @SerialName("vct_values") val vctValues: List<String>
     ) : WrpCredentialMetaDomain
 }

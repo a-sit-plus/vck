@@ -3,11 +3,10 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertifi
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMetaDomain
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
-import at.asitplus.openid.VerifierInfo
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
@@ -20,87 +19,28 @@ import kotlinx.serialization.Serializable
 
 fun interface WrprcRequestValidatorFun {
     suspend fun invoke(
-        presentationRequest: CredentialPresentationRequest,
-        verifierInfos: Set<VerifierInfo>
-    ): KmmResult<RequestDataValidationResult>
+        request: WrpCredentialRequest, payload: WrpPayload
+    ): KmmResult<Pair<WrpCredentialRequest, RequestDataValidity>?>
 }
 
 /**
- * Class to validate a presentation request against registration certificates.
+ * Class to validate a credential request against a registration certificates.
  * Validations:
  *  - Requested credential type
  *  - Requested attributes
  **/
 class WrprcRequestValidator : WrprcRequestValidatorFun {
     override suspend fun invoke(
-        presentationRequest: CredentialPresentationRequest,
-        verifierInfos: Set<VerifierInfo>,
-    ): KmmResult<RequestDataValidationResult> = catching {
-        matchRequestToVerifierInfo(presentationRequest, verifierInfos).mapNotNull { (request, verifierInfo) ->
-            validateCredentialRequest(request, verifierInfo)
-        }
-    }
-
-    /**
-     * Matches credential request to a corresponding registration certificate.
-     * Falls back to a registration certificate (without a scope) which at least matches the credential type
-     */
-    private fun matchCredentialToVerifierInfo(
-        request: WrpCredentialRequest,
-        verifierInfos: Set<VerifierInfo>,
-    ) = request.getMeta().let { meta ->
-        request to when (request) {
-            is WrpCredentialRequest.WrpDcqlCredentialQuery -> {
-                verifierInfos.firstOrNull { it.credentialIds?.contains(request.query.id.string) == true } ?: run {
-                    matchVerifierInfoFallback(meta, verifierInfos.filterUnscoped())
-                }
-            }
-
-            is WrpCredentialRequest.WrpDocRequest -> {
-                matchVerifierInfoFallback(meta, verifierInfos.filterUnscoped())
-            }
-        }
-    }
-
-    private fun Set<VerifierInfo>.filterUnscoped(): Set<VerifierInfo> =
-        filterTo(mutableSetOf()) { it.credentialIds == null }
-
-    private fun matchVerifierInfoFallback(
-        queryMeta: WrpCredentialMetaDomain,
-        verifierInfos: Set<VerifierInfo>,
-    ) = when (queryMeta) {
-        is WrpCredentialMetaDomain.WrpDocTypeDomain -> {
-            verifierInfos.firstOrNull {
-                it.getPayload()?.credentials?.any { credential ->
-                    catchingUnwrapped {
-                        queryMeta.contains(credential.meta.toDomain() as WrpCredentialMetaDomain.WrpDocTypeDomain)
-                    }.getOrElse {
-                        Napier.e("matchVerifierInfoFallback: failed to cast ${credential.meta}")
-                        false
-                    }
-                } == true
-            }
-        }
-
-        is WrpCredentialMetaDomain.WrpVctTypeDomain -> {
-            verifierInfos.firstOrNull {
-                it.getPayload()?.credentials?.any { credential ->
-                    catchingUnwrapped {
-                        queryMeta.contains(credential.meta.toDomain() as WrpCredentialMetaDomain.WrpVctTypeDomain)
-                    }.getOrElse {
-                        Napier.e("matchVerifierInfoFallback: failed to cast ${credential.meta}")
-                        false
-                    }
-                } == true
-            }
-        }
+        request: WrpCredentialRequest, payload: WrpPayload
+    ) = catching {
+        validateCredentialRequest(request, payload)
     }
 
 
     private suspend fun validateCredentialRequest(
-        request: WrpCredentialRequest, verifierInfo: VerifierInfo?
+        request: WrpCredentialRequest, payload: WrpPayload
     ) = catchingUnwrapped {
-        request to verifierInfo?.getPayload()?.let { payload ->
+        request to payload.let { payload ->
             RequestDataValidity(
                 credentialTypeValidity = checkCredentialTypesValidity(request, payload),
                 credentialAttributesValidity = checkAttributesValidity(request, payload)
@@ -111,16 +51,14 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
         null
     }
 
-    private fun matchRequestToVerifierInfo(
-        presentationRequest: CredentialPresentationRequest, verifierInfos: Set<VerifierInfo>
-    ): Map<WrpCredentialRequest, VerifierInfo?> = presentationRequest.toWrpCredentialRequest().associate {
-        matchCredentialToVerifierInfo(it, verifierInfos)
-    }
 
     private suspend fun checkAttributesValidity(
         credentialRequest: WrpCredentialRequest, wrpPayload: WrpPayload
     ): RequestCredentialAttributesValidity = run {
-        val attributes = credentialRequest.getAttributes()
+        val attributes = credentialRequest.getAttributes() ?: run {
+            Napier.w("Only mandatory claims requested, return empty list")
+            return@run listOf()
+        }
         val meta = credentialRequest.getMeta()
         val representation = credentialRequest.getRepresentation()
         checkAttributes(wrpPayload, representation, meta, attributes)
@@ -137,21 +75,19 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
             it.meta
         }
         when (metadata) {
-            is WrpCredentialMetaDomain.WrpDocTypeDomain -> {
-                metaList.any { meta ->
-                    catchingUnwrapped {
-                        metadata.contains(meta.toDomain() as WrpCredentialMetaDomain.WrpDocTypeDomain)
-                    }.getOrDefault(false)
-                }
+            is WrpCredentialMetaDomain.WrpDocTypeDomain -> metaList.any { meta ->
+                catchingUnwrapped {
+                    metadata.contains(meta.toDomain() as WrpCredentialMetaDomain.WrpDocTypeDomain)
+                }.getOrDefault(false)
             }
 
-            is WrpCredentialMetaDomain.WrpVctTypeDomain -> {
-                metaList.any { meta ->
-                    catchingUnwrapped {
-                        metadata.contains(meta.toDomain() as WrpCredentialMetaDomain.WrpVctTypeDomain)
-                    }.getOrDefault(false)
-                }
+
+            is WrpCredentialMetaDomain.WrpVctTypeDomain -> metaList.any { meta ->
+                catchingUnwrapped {
+                    metadata.contains(meta.toDomain() as WrpCredentialMetaDomain.WrpVctTypeDomain)
+                }.getOrDefault(false)
             }
+
         }
     }
 
@@ -159,46 +95,51 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
         wrpPayload: WrpPayload,
         representation: ConstantIndex.CredentialRepresentation,
         meta: WrpCredentialMetaDomain,
-        attributes: Collection<SingleClaimReference>?
-    ): RequestCredentialAttributesValidity = catchingUnwrapped {
-        when (representation) {
-            ISO_MDOC -> {
-                val listCredentialDto = wrpPayload.credentials.filter {
-                    catchingUnwrapped {
-                        val meta = (meta as? WrpCredentialMetaDomain.WrpDocTypeDomain)?.doctypeValue
-                        it.meta.doctypeValue == meta
-                    }.getOrDefault(false)
-                }
-                attributes?.mapNotNull { attribute ->
-                    val claim = attribute as? MdocClaimReference ?: return@mapNotNull null
-                    val claimName = claim.claimName
-                    attribute to (listCredentialDto.firstOrNull()?.claim?.any { it.path.contains(claimName) } ?: false)
-                } ?: throw Throwable("checkAttributes: no claims match request")
-            }
-
-            SD_JWT -> {
-                val listCredentialDto = wrpPayload.credentials.filter {
-                    catchingUnwrapped {
-                        val meta = (meta as? WrpCredentialMetaDomain.WrpVctTypeDomain)?.vctValues?.firstOrNull()
-                        it.meta.vctValues?.contains(meta) ?: run {
-                            Napier.w("Sd-jwt but vctValues null")
-                            return@catchingUnwrapped false
-                        }
-                    }.getOrDefault(false)
-                }
-                attributes?.mapNotNull { attribute ->
-                    val claim = attribute as? JsonClaimReference ?: return@mapNotNull null
-                    val claimName = (claim.normalizedJsonPath.segments.last() as NameSegment).memberName
-                    if (claimName == "vct") return@mapNotNull null
-                    attribute to (listCredentialDto.firstOrNull()?.claim?.any { it.path.contains(claimName) } ?: false)
-                } ?: throw Throwable("checkAttributes: no claims match request")
-            }
-
-            PLAIN_JWT -> {
-                TODO("PLAIN_JWT not supported")
-            }
+        attributes: Collection<SingleClaimReference>,
+    ): RequestCredentialAttributesValidity {
+        val entries = matchingCredentialEntries(wrpPayload, meta)
+        val bestEntry = entries.maxByOrNull { entry -> attributes.count { entry.matchesAttribute(it, representation) } }
+        return attributes.map { attribute ->
+            attribute to (bestEntry?.matchesAttribute(attribute, representation) ?: false)
         }
-    }.getOrThrow()
+    }
+
+    private fun matchingCredentialEntries(
+        wrpPayload: WrpPayload,
+        meta: WrpCredentialMetaDomain,
+    ): List<WrpCredential> = wrpPayload.credentials.filter { credential ->
+        catchingUnwrapped {
+            when (meta) {
+                is WrpCredentialMetaDomain.WrpDocTypeDomain ->
+                    (credential.meta.toDomain() as? WrpCredentialMetaDomain.WrpDocTypeDomain)
+                        ?.let { meta.contains(it) } == true
+
+                is WrpCredentialMetaDomain.WrpVctTypeDomain ->
+                    (credential.meta.toDomain() as? WrpCredentialMetaDomain.WrpVctTypeDomain)
+                        ?.let { meta.contains(it) } == true
+            }
+        }.getOrDefault(false)
+    }
+
+    private fun WrpCredential.matchesAttribute(
+        attribute: SingleClaimReference,
+        representation: ConstantIndex.CredentialRepresentation,
+    ): Boolean = when (representation) {
+        ISO_MDOC -> {
+            val claim = attribute as? MdocClaimReference ?: return false
+            this.claim.any { it.path == listOf(claim.namespace, claim.claimName) }
+        }
+
+        SD_JWT -> {
+            val claim = attribute as? JsonClaimReference ?: return false
+            val segments = claim.normalizedJsonPath.segments.map { (it as? NameSegment)?.memberName }
+            if (segments.contains(null)) return false
+            if (segments.lastOrNull() == "vct") return true
+            this.claim.any { it.path == segments }
+        }
+
+        PLAIN_JWT -> false
+    }
 
     private fun WrpCredentialMetaDomain.WrpDocTypeDomain.contains(other: WrpCredentialMetaDomain.WrpDocTypeDomain): Boolean =
         this.doctypeValue == other.doctypeValue
@@ -207,10 +148,8 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
         this.vctValues.any { other.vctValues.contains(it) }
 }
 
-fun VerifierInfo.getPayload() = catchingUnwrapped { JwsCompactTyped<WrpPayload>(this.data).payload }.getOrNull()
-
 typealias RequestCredentialAttributesValidity = List<Pair<SingleClaimReference, Boolean>>
-typealias RequestDataValidationResult = List<Pair<WrpCredentialRequest, RequestDataValidity?>>
+typealias RequestDataValidation = List<Pair<WrpCredentialRequest, RequestDataValidity>>
 
 @Serializable
 data class RequestDataValidity(
@@ -224,11 +163,11 @@ fun RequestDataValidity.isValid(): Boolean =
 fun CredentialPresentationRequest.toWrpCredentialRequest() = when (this) {
     is DCQLRequest -> this.dcqlQuery.credentials.map {
         WrpCredentialRequest.WrpDcqlCredentialQuery(it)
-    }.toSet()
+    }
 
     is CredentialPresentationRequest.IsoDeviceRetrieval -> this.deviceRequest.docRequests.map {
         WrpCredentialRequest.WrpDocRequest(it)
-    }.toSet()
+    }
 
     else -> throw Throwable("Unsupported CredentialPresentationRequest $this")
 }

@@ -2,25 +2,25 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertifi
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.catchingUnwrapped
-import at.asitplus.data.NonEmptyList
 import at.asitplus.etsi.relyingParty.WrpPayload
-import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
-import at.asitplus.openid.VerifierInfo
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestValidationData
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
-import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidationResult
+import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator.Constants.WRPRC_CWT_HEADER
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator.Constants.WRPRC_JWS_HEADER
 import at.asitplus.wallet.lib.agent.validation.toTokenStatusResolver
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import io.github.aakira.napier.Napier
 import kotlin.time.Clock
@@ -31,8 +31,8 @@ import kotlin.time.Instant
 
 fun interface WrprcValidatorFun {
     suspend fun invoke(
-        accessCertValidation: WrpacValidationResult,
-        validationData: WrpRequestValidationData,
+        identifierResult: WrpacIdentifier?,
+        validationData: WrpRequestData,
         statusListTokenResolver: StatusListTokenResolver,
         certificateTrustAnchors: List<X509Certificate>,
     ): KmmResult<WrprcValidationResult>
@@ -41,7 +41,7 @@ fun interface WrprcValidatorFun {
 /**
  * Class to verify registration certificates
  * Validations:
- *  - Header, payload and signature of VerifierInfo
+ *  - Header, payload and signature
  *  - Certificate trust anchors
  *  - Linkage to access certificate
  *  - Token status
@@ -51,95 +51,133 @@ class WrprcValidator(
 ) : WrprcValidatorFun {
     val requestValidator = WrprcRequestValidator()
 
-    fun parse(verifierInfo: VerifierInfo) = catching {
-        if (!verifierInfo.format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true)) {
-            Napier.w("skipping $this, expected '$REGISTRATION_CERT_FORMAT' but got '${verifierInfo.format}'.")
-            return@catching null
-        }
-        val jwsTyped = catchingUnwrapped {
-            JwsCompactTyped<WrpPayload>(verifierInfo.data)
-        }.getOrElse {
-            Napier.w("$this ($REGISTRATION_CERT_FORMAT) contains invalid JWS data.", throwable = it)
-            return@catching null
-        }
-        jwsTyped
-    }.getOrNull()
 
     override suspend fun invoke(
-        accessCertValidation: WrpacValidationResult,
-        validationData: WrpRequestValidationData,
+        identifierResult: WrpacIdentifier?,
+        validationData: WrpRequestData,
         statusListTokenResolver: StatusListTokenResolver,
         certificateTrustAnchors: List<X509Certificate>,
     ) = catching {
-        validationData.verifierInfo ?: run {
-            throw Throwable("VerifierInfo is null")
-        }
-        val verifierInfoValidationResult = validateVerifierInfoList(
-            validationData.verifierInfo,
-            accessCertValidation.identifierResult,
-            certificateTrustAnchors,
-            statusListTokenResolver
-        )
+        if (validationData.registrationCertificate.isEmpty()) throw Throwable("No registration certificates to verify")
+        val validationResult = validationData.registrationCertificate.mapNotNull { (certificate, _) ->
+            certificate to validateWrpRegistrationCertificate(
+                certificate = certificate,
+                certificateTrustAnchors = certificateTrustAnchors,
+                statusListTokenResolver = statusListTokenResolver,
+                identifierResult = identifierResult
+            )
+        }.toMap()
 
-        if(verifierInfoValidationResult.isEmpty())  throw Throwable("VerifierInfoValidationResult empty")
+        val requestDataValidity = validationData.registrationCertificate.mapNotNull { (certificate, request) ->
+            validateRequest(certificate, request).toList()
+        }.flatten()
 
-        val requestDataValidity = validateRequest(validationData, verifierInfoValidationResult)
 
-        requestDataValidity ?: run {
-            throw Throwable("RequestDataValidationResult is null")
-        }
-
-        WrprcValidationResult(verifierInfoValidationResult, requestDataValidity)
+        WrprcValidationResult(validationResult, requestDataValidity)
     }
 
     suspend fun validateRequest(
-        validationData: WrpRequestValidationData, registrationCertValidation: WrprcVerifierInfoValidationResult
-    ) = validationData.request?.let { presentationRequest ->
-        requestValidator.invoke(presentationRequest, registrationCertValidation.keys).getOrThrow()
-    }
+        registrationCert: WrpRegistrationCertificate,
+        requests: List<WrpCredentialRequest>
+    ) = requests.mapNotNull {
+        requestValidator.invoke(request = it, payload = registrationCert.payload).getOrThrow()
+    }.toMap()
 
-    suspend fun validateVerifierInfoList(
-        verifierInfo: NonEmptyList<VerifierInfo>,
-        identifierResult: WrpacIdentifier?,
+
+    private suspend fun validateWrpRegistrationCertificate(
+        certificate: WrpRegistrationCertificate,
         certificateTrustAnchors: List<X509Certificate>,
         statusListTokenResolver: StatusListTokenResolver,
-    ): WrprcVerifierInfoValidationResult = run {
-        verifierInfo.mapNotNull {
-            val parsed = parse(it) ?: return@mapNotNull null
-            it to validateVerifierInfo(
-                jwsTyped = parsed,
-                identifierResult = identifierResult,
+        identifierResult: WrpacIdentifier?
+    ) =
+        when (certificate) {
+            is WrpRegistrationCertificate.WrpCwtRegistrationCertificate -> validateCose(
+                certificate = certificate,
                 certificateTrustAnchors = certificateTrustAnchors,
-                statusListTokenResolver = statusListTokenResolver
+                statusListTokenResolver = statusListTokenResolver,
+                identifierResult = identifierResult
             )
-        }.toMap()
+
+
+            is WrpRegistrationCertificate.WrpJwtRegistrationCertificate -> validateJwt(
+                certificate = certificate,
+                certificateTrustAnchors = certificateTrustAnchors,
+                statusListTokenResolver = statusListTokenResolver,
+                identifierResult = identifierResult
+            )
+
+        }
+
+
+    private suspend fun validateCose(
+        certificate: WrpRegistrationCertificate.WrpCwtRegistrationCertificate,
+        certificateTrustAnchors: List<X509Certificate>,
+        statusListTokenResolver: StatusListTokenResolver,
+        identifierResult: WrpacIdentifier?
+    ) = run {
+        val cose = certificate.cose
+        val validHeader = validateHeader(cose)
+        val validSignature = validateSignature(cose)
+        val certificateChainBytes = cose.protectedHeader.certificateChain
+            ?: cose.unprotectedHeader?.certificateChain
+            ?: throw Throwable("$cose has no certificate chain in COSE header.")
+        val chain = certificateChainBytes.map {
+            X509Certificate.decodeFromDerSafe(it).getOrElse { throwable ->
+                throw IllegalArgumentException("Could not parse certificate from euWrprc COSE header", throwable)
+            }
+        }
+        val validChain = WrpChainValidator().invoke(
+            chain = chain, certificateTrustAnchors = certificateTrustAnchors
+        ).getOrThrow()
+        val payload = certificate.payload
+        val validPayload = validatePayload(payload)
+        val statusList = payload.status.statusList.let {
+            StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
+        }
+        val validStatusList = validateWrpStatusList(statusList = statusList, statusListTokenResolver)
+        val validLinkage = validateWrpIdentifierLinkage(identifierResult = identifierResult, payload = payload)
+
+        WrpRegistrationCertificateValidation(
+            validHeader = validHeader,
+            validSignature = validSignature,
+            validChain = validChain,
+            validPayload = validPayload,
+            validLinkage = validLinkage,
+            validStatusList = validStatusList
+        )
     }
 
 
-    private suspend fun validateVerifierInfo(
-        jwsTyped: JwsTyped<JwsCompact, WrpPayload>,
+    private suspend fun validateJwt(
+        certificate: WrpRegistrationCertificate.WrpJwtRegistrationCertificate,
         identifierResult: WrpacIdentifier?,
         certificateTrustAnchors: List<X509Certificate>,
         statusListTokenResolver: StatusListTokenResolver,
-    ): VerifierInfoValidationResult = run {
+    ) = run {
+        val jwsTyped = certificate.jwsTyped
         val certificateChain = jwsTyped.jws.jwsHeader.certificateChain ?: run {
             throw Throwable("Certificate chain is empty.")
         }
-        validateHeader(jwsTyped)
+        val validHeader = validateHeader(jwsTyped)
 
-        WrpChainValidator().invoke(
+        val validChain = WrpChainValidator().invoke(
             chain = certificateChain, certificateTrustAnchors = certificateTrustAnchors
         ).getOrThrow()
 
-        validateSignature(jwsTyped, certificateChain.leaf)
-        validatePayload(jwsTyped)
+        val validSignature = validateSignature(jwsTyped, certificateChain.leaf)
+        val validPayload = validatePayload(jwsTyped.payload)
 
-        val validLinkage = validateWrpIdentifierLinkage(identifierResult = identifierResult, jwsTyped = jwsTyped)
+        val validLinkage = validateWrpIdentifierLinkage(identifierResult = identifierResult, payload = jwsTyped.payload)
+        val statusList = jwsTyped.payload.status.statusList.let {
+            StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
+        }
+        val validStatusList = validateWrpStatusList(statusList, statusListTokenResolver)
 
-        val validStatusList = validateWrpStatusList(jwsTyped, statusListTokenResolver)
-
-        VerifierInfoValidationResult(
-            jwsTyped = jwsTyped,
+        WrpRegistrationCertificateValidation(
+            validHeader = validHeader,
+            validSignature = validSignature,
+            validChain = validChain,
+            validPayload = validPayload,
             validLinkage = validLinkage,
             validStatusList = validStatusList
         )
@@ -147,12 +185,23 @@ class WrprcValidator(
 
     private fun validateHeader(jwsTyped: JwsCompactTyped<WrpPayload>) = run {
         if (jwsTyped.jws.jwsHeader.type != WRPRC_JWS_HEADER) {
-            throw Throwable("$jwsTyped has invalid typ in JWS header. " + "expected='rc-wrp+jwt', actual='${jwsTyped.jws.jwsHeader.type}'")
+            throw Throwable("$jwsTyped has invalid typ in JWS header. " + "expected='$WRPRC_JWS_HEADER', actual='${jwsTyped.jws.jwsHeader.type}'")
         }
         if (jwsTyped.jws.jwsHeader.algorithm != JwsAlgorithm.Signature.ES256) {
             throw Throwable("$jwsTyped has invalid alg in JWS header. " + "expected='${JwsAlgorithm.Signature.ES256}', actual='${jwsTyped.jws.jwsHeader.algorithm}'")
         }
         Napier.d("header checks passed for $jwsTyped.")
+        true
+    }
+
+    private fun validateHeader(cose: CoseSigned<ByteArray>) = run {
+        if (cose.protectedHeader.type != WRPRC_CWT_HEADER) {
+            throw Throwable("$cose has invalid typ in CWT header. " + "expected='$WRPRC_CWT_HEADER', actual='${cose.protectedHeader.type}'")
+        }
+        if (cose.protectedHeader.algorithm != CoseAlgorithm.Signature.ES256) {
+            throw Throwable("$cose has invalid alg in CWT header. " + "expected='${CoseAlgorithm.Signature.ES256}', actual='${cose.protectedHeader.algorithm}'")
+        }
+        Napier.d("header checks passed for $cose.")
         true
     }
 
@@ -169,17 +218,28 @@ class WrprcValidator(
         true
     }
 
-    private fun validatePayload(jwsTyped: JwsCompactTyped<WrpPayload>): Boolean {
+    private suspend fun validateSignature(
+        cose: CoseSigned<ByteArray>
+    ) = run {
+        if (cose.protectedHeader.algorithm !is CoseAlgorithm.Signature) {
+            throw Throwable("$cose uses unsupported Cose algorithm.")
+        }
+        VerifyCoseSignature<ByteArray>().invoke(coseSigned = cose, byteArrayOf(), null).getOrThrow().also {
+            Napier.d("signature validation passed for $cose.")
+        }
+        true
+    }
+
+    private fun validatePayload(payload: WrpPayload): Boolean {
         val now = Clock.System.now()
-        val payload = jwsTyped.payload
         if (payload.name == null) {
-            throw Throwable("$jwsTyped is missing required payload claim 'name'.")
+            throw Throwable("$payload is missing required claim 'name'.")
         }
         if (payload.srvDescription.isEmpty()) {
-            throw Throwable("$jwsTyped is missing required payload claim 'srv_description'")
+            throw Throwable("$payload is missing required claim 'srv_description'")
         }
         if (payload.credentials.isEmpty()) {
-            throw Throwable("$jwsTyped is missing required payload claim 'credentials'.")
+            throw Throwable("$payload is missing required claim 'credentials'.")
         }
         val issuedAt = Instant.fromEpochSeconds(payload.iat)
 
@@ -187,30 +247,30 @@ class WrprcValidator(
             val expires = Instant.fromEpochSeconds(exp)
             if (expires <= issuedAt) {
                 throw Throwable(
-                    "$jwsTyped has invalid temporal claims: exp=${expires} <= iat=${issuedAt}."
+                    "$payload has invalid temporal claims: exp=${expires} <= iat=${issuedAt}."
                 )
             }
             if (expires < (now - timeLeeway)) {
                 throw Throwable(
-                    "$jwsTyped already expired: exp=${expires} <= now=${now}."
+                    "$payload already expired: exp=${expires} <= now=${now}."
                 )
             }
 
             if (expires > (issuedAt + maxValidity)) {
                 throw Throwable(
-                    "$jwsTyped exceeds maximum validity: exp=${expires} > iat=${issuedAt} + ${maxValidity}."
+                    "$payload exceeds maximum validity: exp=${expires} > iat=${issuedAt} + ${maxValidity}."
                 )
             }
         }
-        Napier.d("payload checks passed for $jwsTyped.")
+        Napier.d("payload checks passed for $payload.")
         return true
     }
 
     private suspend fun validateWrpStatusList(
-        jwsTyped: JwsCompactTyped<WrpPayload>,
+        statusList: StatusListInfo,
         statusListTokenResolver: StatusListTokenResolver,
     ): Boolean {
-        jwsTyped.payload.status.statusList.let { statusList ->
+        statusList.let { statusList ->
             val tokenStatus = statusListTokenResolver.toTokenStatusResolver().invoke(statusList).getOrElse {
                 Napier.w("Unable to obtain token status.", it)
                 TokenStatus.Invalid
@@ -229,9 +289,9 @@ class WrprcValidator(
      * Reference: ETSI TS 119 475 V1.2.1 (S18-S20)
      **/
     private fun validateWrpIdentifierLinkage(
-        identifierResult: WrpacIdentifier?, jwsTyped: JwsCompactTyped<WrpPayload>
+        identifierResult: WrpacIdentifier?, payload: WrpPayload
     ): Boolean {
-        if (identifierResult?.identifier != jwsTyped.payload.sub) {
+        if (identifierResult?.identifier != payload.sub) {
             Napier.w("Identifier not matching sub")
             return false
         }

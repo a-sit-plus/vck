@@ -21,16 +21,16 @@ import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SingleClaimReference
 import kotlinx.serialization.Serializable
 
-/*
-Sealed interface for supported request types to allow generic validation and serialized transport.
- */
+/**
+ * Sealed interface for supported request types to allow generic validation and serialized transport.
+ **/
 @Serializable
 sealed interface WrpCredentialRequest {
     fun getMeta(): WrpCredentialMetaDomain
 
     suspend fun getRepresentation(): CredentialRepresentation
 
-    suspend fun getAttributes(): Collection<SingleClaimReference>
+    suspend fun getAttributes(): Collection<SingleClaimReference>?
 
     @Serializable
     data class WrpDcqlCredentialQuery(val query: DCQLCredentialQuery) :
@@ -51,7 +51,7 @@ sealed interface WrpCredentialRequest {
             else -> PLAIN_JWT
         }
 
-        override suspend fun getAttributes(): Collection<SingleClaimReference> = this.query.claims?.associateWith {
+        override suspend fun getAttributes() = this.query.claims?.associateWith {
             when (it) {
                 is DCQLJsonClaimsQuery -> JsonClaimReference(
                     NormalizedJsonPath(it.path.map {
@@ -69,7 +69,7 @@ sealed interface WrpCredentialRequest {
 
                 is DCQLAmbiguousClaimsQuery -> throw IllegalStateException("Unsupported claims query format: $it")
             }
-        }?.values ?: emptyList()
+        }?.values
     }
 
     @Serializable
@@ -86,5 +86,4 @@ sealed interface WrpCredentialRequest {
                 }
             }
     }
-
 }
