@@ -1,6 +1,6 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.iso.ZkInfo
+import at.asitplus.iso.ZkRequest
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -10,11 +10,21 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = DCQLIsoMdocZkSystemType.Companion.Serializer::class)
 data class DCQLIsoMdocZkSystemType(
-    override val systemSpecs: List<DCQLIsoMdocZkSystemSpec>,
+    val systemSpecs: List<DCQLIsoMdocZkSystemSpec>,
 
     @Transient
-    override val zkRequired: Boolean = false
-): ZkInfo {
+    val zkRequired: Boolean = false
+) {
+    fun toZkRequest() = ZkRequest(
+        systemSpecs = systemSpecs.map { it.toZkSystemSpec() },
+        zkRequired = zkRequired
+    )
+
+    fun validate() {
+        // automatically validates in ZkRequest's init block
+        toZkRequest()
+    }
+
     companion object {
         object Serializer : KSerializer<DCQLIsoMdocZkSystemType> {
             private val delegate = ListSerializer(DCQLIsoMdocZkSystemSpec.serializer())
@@ -31,7 +41,6 @@ data class DCQLIsoMdocZkSystemType(
         }
     }
 }
-
 
 
 

@@ -93,7 +93,7 @@ internal class PresentationResponseCreator(
                         credential = credential,
                         disclosedAttributes = it.matchingResult,
                         zkMetadata = when (query) {
-                            is DCQLIsoMdocZkCredentialQuery -> ZkMetadata.IsoMdocZk(query.meta.zkSystemType)
+                            is DCQLIsoMdocZkCredentialQuery -> ZkMetadata.IsoMdocZk(query.meta.zkSystemType.toZkRequest())
                             else -> null
                         }
                     ).getOrThrow()

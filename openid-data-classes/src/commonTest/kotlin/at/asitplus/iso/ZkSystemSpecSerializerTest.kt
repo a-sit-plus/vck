@@ -25,7 +25,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
 
     "serialize and deserialize ZkSystemSpec with string param" {
         val input = ZkSystemSpec(
-            zkSystemId = "test-id-123",
+            id = "test-id-123",
             system = TEST_SYSTEM_NAME,
             params = mapOf("string_param" to "hello world")
         )
@@ -40,7 +40,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
 
     "serialize and deserialize ZkSystemSpec with int param" {
         val input = ZkSystemSpec(
-            zkSystemId = "test-id-456",
+            id = "test-id-456",
             system = TEST_SYSTEM_NAME,
             params = mapOf("int_param" to 42)
         )
@@ -55,7 +55,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
 
     "serialize and deserialize ZkSystemSpec with long param" {
         val input = ZkSystemSpec(
-            zkSystemId = "test-id-789",
+            id = "test-id-789",
             system = TEST_SYSTEM_NAME,
             params = mapOf("long_param" to 9876543210L)
         )
@@ -70,7 +70,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
 
     "serialize and deserialize ZkSystemSpec with boolean param" {
         val input = ZkSystemSpec(
-            zkSystemId = "test-id-bool",
+            id = "test-id-bool",
             system = TEST_SYSTEM_NAME,
             params = mapOf("bool_param" to true)
         )
@@ -85,7 +85,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
 
     "serialize and deserialize ZkSystemSpec with multiple params" {
         val input = ZkSystemSpec(
-            zkSystemId = "test-id-multi",
+            id = "test-id-multi",
             system = TEST_SYSTEM_NAME,
             params = mapOf(
                 "string_param" to "test string",
@@ -107,7 +107,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
 
     "serialize and deserialize ZkSystemSpec with empty params" {
         val input = ZkSystemSpec(
-            zkSystemId = "test-id-empty",
+            id = "test-id-empty",
             system = TEST_SYSTEM_NAME,
             params = emptyMap()
         )
@@ -122,7 +122,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
     "serialize and deserialize ZkSystemSpec with unregistered system falls back to string" {
         val unregisteredSystem = "unregistered-system"
         val input = ZkSystemSpec(
-            zkSystemId = "test-id-unregistered",
+            id = "test-id-unregistered",
             system = unregisteredSystem,
             params = mapOf("unknown_param" to "some value")
         )
@@ -130,7 +130,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
         val serialized = coseCompliantSerializer.encodeToByteArray(input)
         val deserialized = coseCompliantSerializer.decodeFromByteArray<ZkSystemSpec>(serialized)
 
-        deserialized.zkSystemId shouldBe input.zkSystemId
+        deserialized.id shouldBe input.id
         deserialized.system shouldBe input.system
         // Fallback decodes as string
         deserialized.params["unknown_param"] shouldBe "some value"
@@ -138,7 +138,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
 
     "getParam returns typed value" {
         val spec = ZkSystemSpec(
-            zkSystemId = "test",
+            id = "test",
             system = TEST_SYSTEM_NAME,
             params = mapOf(
                 "string_param" to "hello",
@@ -154,7 +154,7 @@ val ZkSystemSpecSerializerTest by matrixSuite {
 
     "requireParam throws on missing param" {
         val spec = ZkSystemSpec(
-            zkSystemId = "test",
+            id = "test",
             system = TEST_SYSTEM_NAME,
             params = mapOf("string_param" to "hello")
         )

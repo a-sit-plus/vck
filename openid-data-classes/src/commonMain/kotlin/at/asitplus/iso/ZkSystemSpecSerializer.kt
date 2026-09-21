@@ -26,7 +26,7 @@ object ZkSystemSpecSerializer : KSerializer<ZkSystemSpec> {
         element(ZkSystemSpec.PROP_PARAMS, ZkSystemParamsMapSerializer("dummy").descriptor)
     }
     override fun deserialize(decoder: Decoder): ZkSystemSpec {
-        var zkSystemId: String? = null
+        var id: String? = null
         var system: String? = null
         var params: Map<String, Any>? = null
 
@@ -36,7 +36,7 @@ object ZkSystemSpecSerializer : KSerializer<ZkSystemSpec> {
                 val index = descriptor.getElementIndex(name)
 
                 when(name) {
-                    ZkSystemSpec.PROP_ZK_SYSTEM_ID -> zkSystemId = decodeStringElement(descriptor, index)
+                    ZkSystemSpec.PROP_ZK_SYSTEM_ID -> id = decodeStringElement(descriptor, index)
                     ZkSystemSpec.PROP_SYSTEM -> system = decodeStringElement(descriptor, index)
                     ZkSystemSpec.PROP_PARAMS -> {
                         params = decodeSerializableElement(
@@ -46,12 +46,12 @@ object ZkSystemSpecSerializer : KSerializer<ZkSystemSpec> {
                     }
                 }
 
-                if (zkSystemId != null && system != null && params != null) break
+                if (id != null && system != null && params != null) break
             }
         }
 
         return ZkSystemSpec(
-            zkSystemId = zkSystemId ?: error("Missing zkSystemId"),
+            id = id ?: error("Missing id"),
             system = system ?: error("Missing system"),
             params = params ?: error("Missing params"),
         )
@@ -60,7 +60,7 @@ object ZkSystemSpecSerializer : KSerializer<ZkSystemSpec> {
     override fun serialize(encoder: Encoder, value: ZkSystemSpec) {
         ZkSystemParamsMapSerializer(value.system).let { paramsSerializer ->
             encoder.encodeStructure(descriptor) {
-                encodeStringElement(descriptor, 0, value.zkSystemId)
+                encodeStringElement(descriptor, 0, value.id)
                 encodeStringElement(descriptor, 1, value.system)
                 encodeSerializableElement(descriptor, 2, paramsSerializer, value.params)
             }

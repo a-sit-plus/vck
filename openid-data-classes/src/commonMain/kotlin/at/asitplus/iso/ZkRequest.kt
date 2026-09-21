@@ -9,7 +9,21 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ZkRequest (
     @SerialName("zkRequired")
-    override val zkRequired: Boolean,
+    val zkRequired: Boolean,
     @SerialName("systemSpecs")
-    override val systemSpecs: List<ZkSystemSpec>,
-): ZkInfo
+    val systemSpecs: List<ZkSystemSpec>,
+) {
+    init {
+        validate()
+    }
+
+    private fun validate() {
+        require(!zkRequired || systemSpecs.isNotEmpty()) {
+            "systemSpecs list cannot be empty if Zero-Knowledge is enforced"
+        }
+        val ids = systemSpecs.map { it.id }
+        require(ids.size == ids.distinct().size) {
+            "ZkSystemType IDs are not unique!"
+        }
+    }
+}

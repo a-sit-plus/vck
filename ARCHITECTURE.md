@@ -250,15 +250,33 @@ OpenID4VP support. New presentation work should use `CredentialPresentationReque
 ZKP support is currently request-side plumbing plus a compatibility gate; there is no proving backend. Keep that
 layering when adding one:
 
-- `at.asitplus.iso.ZkSystem`, `ZkInfo`, and `ZkSystemSpec` in `openid-data-classes` are the protocol-neutral
-  abstractions. `ZkRequest` is the native ISO/IEC 18013-5 request shape, `DCQLIsoMdocZkCredentialQuery` with
-  `DCQLIsoMdocZkSystemType` the OpenID4VP/DCQL one.
+- `ZkRequest` is the native ISO/IEC 18013-5 request shape and used for zkp proof generation and verification. `DCQLIsoMdocZkCredentialQuery` with
+  `DCQLIsoMdocZkSystemType` the OpenID4VP/DCQL one (which is eventually converted to a `ZkRequest`)
 - `ZkSystemParamRegistry` maps a ZK system name and param key to a serializer so `ZkSystemSpec.params` can be
   deserialized. Each proving system registers its own params, using the same atomic copy-on-write registration as the
   scheme registries.
 - `vck` carries the requested ZK parameters as `ZkMetadata` through `IsoPresentationParameters`, which rejects
   metadata that does not fit the selected credential. A proving backend belongs behind `ZkMetadata` and
-  `VerifiablePresentationFactory`, not in the DCQL or ISO request models.
+  `VerifiablePresentationFactory`.
+- `IsoMdocZkEngine` routes proof generation and loading into a verifiable `IsoMdocZkProof` to registered backends. 
+  During generation, the requested system specifications are alternatives: the selected backend chooses one for 
+  proof generation. During loading, the document's ZkSystemSpec ID must match exactly one zkSystem specification from
+  the request before a backend is selected.
+- For proof generation, backend matching is intentionally partial. `IsoMdocZkBackend.supports(candidate)` requires every
+  parameter explicitly present in the candidate to equal the corresponding backend-supported value. Parameters omitted 
+  by the verifier are unconstrained and may be supplied by the backend's supported specification.
+- `IsoMdocZkBackend.system` identifies the parameter-serializer namespace used by `ZkSystemParamRegistry`, while
+  `ZkSystemSpec.system` identifies the protocol-level proving system. Implementations should keep these identifiers
+  aligned for a single-system backend; backends supporting multiple systems must ensure their advertised specs and
+  serializer namespace remain compatible.
+- The default selection strategy is intentionally simple. Applications that register multiple compatible backends
+  should provide an explicit `SelectionStrategy`.
+- When ZK is optional, presentation creation may fall back to a plain mDoc if proof generation fails. Required ZK
+  requests propagate the generation error. A loaded `IsoMdocZkProof` retains the session transcript and backend-specific
+  verifier state needed by its later `verify()` call.
+- `IsoMdocZkBackendRegistry.Default` and `ZkSystemParamRegistry` are application-wide registries. Custom backend
+  registries do not isolate the global parameter serializers, so applications must avoid incompatible serializers for
+  the same system and parameter key.
 - OpenID4VCI deliberately rejects the `mso_mdoc_zk` credential format in issuer metadata. Do not re-add it to make ZK
   presentations work; ZKP is a presentation concern.
 
