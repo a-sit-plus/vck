@@ -147,8 +147,25 @@ data class TrustedCertificate(
     val serviceTypeIdentifier: String = serviceType.type
 )
 
+/**
+ * Deployment stage of the European Commission's trust infrastructure, serving the Lists of Trusted
+ * Entities. Every stage publishes the same set of [LoteProfile] lists below its own [baseUrl].
+ */
+enum class LoTEStage(val baseUrl: String) {
+    DEVELOPMENT("https://development.trust.tech.ec.europa.eu/lists/eudiw"),
+    ACCEPTANCE("https://acceptance.trust.tech.ec.europa.eu/lists/eudiw"),
+    PRODUCTION("https://trust.tech.ec.europa.eu/lists/eudiw");
+
+    /** URL to fetch the list of [profile] from, as published on this stage. */
+    fun fetchUrl(profile: LoteProfile): String = profile.fetchUrl(baseUrl)
+
+    /** URLs of all lists published on this stage. */
+    val fetchUrls: List<String> get() = LoteProfile.fetchUrls(baseUrl)
+}
+
 sealed class LoteProfile(
-    val fetchUrl: String,
+    /** Name of the file this list is published as, relative to the base URL of a [LoTEStage]. */
+    val fileName: String,
     val loteType: String,
     val statusDeterminationApproach: String,
     val schemeCommunityRules: List<Rfc3986UniformResourceIdentifier>,
@@ -187,8 +204,14 @@ sealed class LoteProfile(
         return countryCode.string.equals(schemeCountryCode.string, ignoreCase = true)
     }
 
+    /** URL to fetch this list from, below [baseUrl], e.g. [LoTEStage.baseUrl]. */
+    fun fetchUrl(baseUrl: String): String = "${baseUrl.trimEnd('/')}/$fileName"
+
+    /** URL to fetch this list from, as published on [stage]. */
+    fun fetchUrl(stage: LoTEStage): String = fetchUrl(stage.baseUrl)
+
     data object PID : LoteProfile(
-        fetchUrl = "${BASE_FETCH_URL}/pid-providers.json",
+        fileName = "pid-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUPIDProvidersList",
         statusDeterminationApproach = "http://uri.etsi.org/19602/PIDProvidersList/StatusDetn/EU",
         schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/PIDProviders/schemerules/EU")),
@@ -197,7 +220,7 @@ sealed class LoteProfile(
     )
 
     data object mDL : LoteProfile(
-        fetchUrl = "${BASE_FETCH_URL}/mdl-providers.json",
+        fileName = "mdl-providers.json",
         loteType = "http://trust.ec.europa.eu/lists/mDL/mDLProvidersListType",
         statusDeterminationApproach = "http://trust.ec.europa.eu/lists/mDL/mDLProvidersListStatusDetn",
         schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://trust.ec.europa.eu/lists/mDL/schemerules")),
@@ -213,7 +236,7 @@ sealed class LoteProfile(
     }
 
     data object WRPAC : LoteProfile(
-        fetchUrl = "${BASE_FETCH_URL}/wrpac-providers.json",
+        fileName = "wrpac-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUWRPACProvidersList",
         statusDeterminationApproach = "http://uri.etsi.org/19602/WRPACProvidersList/StatusDetn/EU",
         schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WRPACProvidersList/schemerules/EU")),
@@ -222,7 +245,7 @@ sealed class LoteProfile(
     )
 
     data object WALLET : LoteProfile(
-        fetchUrl = "${BASE_FETCH_URL}/wallet-providers.json",
+        fileName = "wallet-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUWalletProvidersList",
         statusDeterminationApproach = "http://uri.etsi.org/19602/WalletProvidersList/StatusDetn/EU",
         schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WalletProvidersList/schemerules/EU")),
@@ -231,7 +254,7 @@ sealed class LoteProfile(
     )
 
     data object EAA : LoteProfile(
-        fetchUrl = "${BASE_FETCH_URL}/pub-eaa-providers.json",
+        fileName = "pub-eaa-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUPubEAAProvidersList",
         statusDeterminationApproach = "http://uri.etsi.org/19602/PubEAAProvidersList/StatusDetn/EU",
         schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/PubEAAProvidersList/schemerules/EU")),
@@ -240,13 +263,23 @@ sealed class LoteProfile(
     )
 
     companion object {
-        private const val BASE_FETCH_URL = "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw"
         private val PID_IDENTIFIER_PREFIXES = listOf("urn:eudi:pid:", "eu.europa.ec.eudi.pid.")
         private val MDL_IDENTIFIER_PREFIXES = listOf("org.iso.18013.5.1.mDL")
 
-        val defaultUrls: List<String> by lazy {
-            listOf(PID, mDL, WRPAC, WALLET, EAA).map { it.fetchUrl }
+        /** All known profiles, i.e. all lists published per [LoTEStage]. */
+        val entries: List<LoteProfile> by lazy {
+            listOf(PID, mDL, WRPAC, WALLET, EAA)
         }
+
+        /** URLs of all lists published below [baseUrl]. */
+        fun fetchUrls(baseUrl: String): List<String> = entries.map { it.fetchUrl(baseUrl) }
+
+        /** URLs of all lists published on [stages], in the order the stages are passed. */
+        fun fetchUrls(stages: Iterable<LoTEStage>): List<String> =
+            stages.flatMap { stage -> fetchUrls(stage.baseUrl) }
+
+        /** URLs of all lists published on [stages], in the order the stages are passed. */
+        fun fetchUrls(vararg stages: LoTEStage): List<String> = fetchUrls(stages.asIterable())
 
         fun fromSchemeIdentifier(identifier: String?): LoteProfile {
             if (identifier.isNullOrBlank()) return EAA
