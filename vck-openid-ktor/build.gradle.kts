@@ -25,8 +25,8 @@ kotlin {
     if ("true" != disableAppleTargets) {
         iosArm64()
         iosSimulatorArm64()
-
     }
+
     sourceSets {
 
         commonMain {
@@ -58,9 +58,11 @@ kotlin {
             }
         }
 
-        iosTest {
-            dependencies {
-                implementation(ktor("client-darwin"))
+        if ("true" != disableAppleTargets) {
+            iosTest {
+                dependencies {
+                    implementation(ktor("client-darwin"))
+                }
             }
         }
     }
@@ -131,4 +133,3 @@ signing {
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications)
 }
-
