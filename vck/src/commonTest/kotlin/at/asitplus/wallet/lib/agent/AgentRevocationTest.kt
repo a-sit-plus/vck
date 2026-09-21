@@ -21,6 +21,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueIsoMdoc
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
+import at.asitplus.signum.supreme.sign.Verifier.Success
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -39,7 +40,6 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -131,7 +131,7 @@ val AgentRevocationTest by matrixSuite {
                     shouldContain("636c7374") // text(3) "lst"
                     shouldNotContain("d818") // tagged item (24) as payload
                 }
-                VerifyCoseSignature<ByteArray>().invoke(this, byteArrayOf(), null).isSuccess shouldBe true
+                VerifyCoseSignature<ByteArray>().invoke(this, byteArrayOf(), null).getOrThrow() shouldBe Success
             }
         }
 
