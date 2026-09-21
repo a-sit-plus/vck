@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -84,6 +85,13 @@ fun StatusListTokenResolver.toTokenStatusResolver(
             zlibService = zlibService,
         ).getOrThrow()
     }
+}
+
+/** Resolves every advertised status mechanism and requires them to agree. */
+suspend operator fun TokenStatusResolver.invoke(status: TokenStatusInfo): KmmResult<TokenStatus> = catching {
+    val resolved = status.mechanisms.map { invoke(it).getOrThrow() }.distinct()
+    require(resolved.size == 1) { "Token status mechanisms returned conflicting results" }
+    resolved.single()
 }
 
 /**

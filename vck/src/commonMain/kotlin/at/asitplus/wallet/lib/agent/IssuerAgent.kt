@@ -36,6 +36,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.ktx.extractId
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -121,7 +122,7 @@ class IssuerAgent @JvmOverloads constructor(
                 validFrom = issuanceDate,
                 validUntil = expirationDate,
             ),
-            status = statusListAgent?.provideStatusReference(credential, issuanceDate)
+            status = statusListAgent?.provideStatusReference(credential, issuanceDate)?.let(TokenStatusInfo::from)
         )
         val issuerSigned = IssuerSigned.fromIssuerSignedItems(
             namespacedItems = mapOf(credential.scheme.isoNamespace to credential.issuerSignedItems),
@@ -195,7 +196,7 @@ class IssuerAgent @JvmOverloads constructor(
             verifiableCredentialType = credential.scheme.sdJwtType,
             selectiveDisclosureAlgorithm = credential.sdAlgorithm.toIanaName(),
             confirmationClaim = cnf,
-            statusElement = statusListAgent?.provideStatusReference(credential, issuanceDate)
+            statusElement = statusListAgent?.provideStatusReference(credential, issuanceDate)?.let(TokenStatusInfo::from)
         )
         val vcSdJwtObject = joseCompliantSerializer.encodeToJsonElement(vcSdJwt).jsonObject
         val entireObject = buildJsonObject {

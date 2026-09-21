@@ -118,7 +118,7 @@ val AgentTest by matrixSuite {
 
             it.statusListIssuer.revokeCredentialByIndex(
                 FixedTimePeriodProvider.timePeriod,
-                credential.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
+                credential.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
             ) shouldBe true
 
             it.holder.getCredentials()
@@ -241,7 +241,7 @@ val AgentTest by matrixSuite {
 
             it.statusListIssuer.revokeCredentialByIndex(
                 FixedTimePeriodProvider.timePeriod,
-                credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
+                credentialToRevoke.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index
             ) shouldBe true
 
             it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()

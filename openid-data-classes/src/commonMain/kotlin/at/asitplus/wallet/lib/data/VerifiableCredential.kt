@@ -17,6 +17,7 @@ import at.asitplus.iso.InstantStringSerializer
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -42,8 +43,7 @@ data class VerifiableCredential(
     @SerialName("expirationDate")
     val expirationDate: Instant?,
     @SerialName("status")
-    @Serializable(with = RevocationListInfo.StatusSurrogateSerializer::class)
-    val credentialStatus: RevocationListInfo? = null,
+    val credentialStatus: TokenStatusInfo? = null,
     @SerialName("credentialSubject")
     val credentialSubject: JsonElement,
 ) {
@@ -62,7 +62,7 @@ data class VerifiableCredential(
         issuer = issuer,
         issuanceDate = issuanceDate,
         expirationDate = expirationDate,
-        credentialStatus = credentialStatus,
+        credentialStatus = TokenStatusInfo.from(credentialStatus),
         credentialSubject = credentialSubject,
     )
 
@@ -80,7 +80,7 @@ data class VerifiableCredential(
         issuer = issuer,
         issuanceDate = issuanceDate,
         expirationDate = expirationDate,
-        credentialStatus = credentialStatus,
+        credentialStatus = credentialStatus?.let(TokenStatusInfo::from),
         credentialSubject = credentialSubject,
     )
 }
