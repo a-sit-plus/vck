@@ -39,16 +39,13 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
 
     private suspend fun validateCredentialRequest(
         request: WrpCredentialRequest, payload: WrpPayload
-    ) = catchingUnwrapped {
+    ) = run {
         request to payload.let { payload ->
             RequestDataValidity(
                 credentialTypeValidity = checkCredentialTypesValidity(request, payload),
                 credentialAttributesValidity = checkAttributesValidity(request, payload)
             )
         }
-    }.getOrElse {
-        Napier.w("WrprcRequestValidator.validateCredentialRequest failed with:", throwable = it)
-        null
     }
 
 
