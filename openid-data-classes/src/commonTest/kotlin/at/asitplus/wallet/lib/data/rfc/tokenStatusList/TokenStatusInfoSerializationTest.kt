@@ -5,6 +5,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 
 private val statusListInfo = StatusListInfo(
     index = 74727U,
@@ -33,11 +34,19 @@ val TokenStatusInfoSerializationTest by matrixSuite {
             TokenStatusInfo(statusListInfo, identifierListInfo),
         )
 
-        val decoded = coseCompliantSerializer.decodeFromByteArray(TokenStatusInfo.serializer(), encoded)
+        val decodedStatus = coseCompliantSerializer.decodeFromByteArray(
+            RevocationListInfo.StatusSurrogateSerializer,
+            encoded,
+        ).shouldBeInstanceOf<StatusListInfo>()
+        val decoded = decodedStatus.tokenStatusInfo
 
         decoded.statusList shouldBe statusListInfo
         decoded.identifierList shouldBe identifierListInfo
         decoded.mechanisms shouldBe listOf(statusListInfo, identifierListInfo)
+        coseCompliantSerializer.encodeToByteArray(
+            RevocationListInfo.StatusSurrogateSerializer,
+            decodedStatus,
+        ) shouldBe encoded
     }
 
     "reject empty status information" {

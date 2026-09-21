@@ -165,7 +165,7 @@ val ValidatorVcTest by matrixSuite {
                 .shouldBeInstanceOf<VerifyCredentialResult.SuccessJwt>()
             it.issuerCredentialStore.setStatus(
                 timePeriod = FixedTimePeriodProvider.timePeriod,
-                index = value.jws.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index,
+                index = value.jws.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index,
                 status = TokenStatus.Invalid,
             ) shouldBe true
 

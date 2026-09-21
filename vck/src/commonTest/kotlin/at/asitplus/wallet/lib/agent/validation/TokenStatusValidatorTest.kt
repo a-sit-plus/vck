@@ -28,7 +28,7 @@ val TokenStatusValidatorTest by matrixSuite {
     "all status mechanisms must be valid" {
         val validator = TokenStatusValidator { TokenStatusValidationResult.Valid(TokenStatus.Valid) }
 
-        validator(multipleStatusMechanisms) shouldBe TokenStatusValidationResult.Valid(TokenStatus.Valid)
+        validator.validate(multipleStatusMechanisms) shouldBe TokenStatusValidationResult.Valid(TokenStatus.Valid)
     }
 
     "an invalid status mechanism dominates a resolution failure" {
@@ -40,7 +40,7 @@ val TokenStatusValidatorTest by matrixSuite {
             }
         }
 
-        validator(multipleStatusMechanisms) shouldBe TokenStatusValidationResult.Invalid(TokenStatus.Invalid)
+        validator.validate(multipleStatusMechanisms) shouldBe TokenStatusValidationResult.Invalid(TokenStatus.Invalid)
     }
 
     "a resolution failure rejects otherwise valid status information" {
@@ -52,7 +52,7 @@ val TokenStatusValidatorTest by matrixSuite {
             }
         }
 
-        validator(multipleStatusMechanisms) shouldBe TokenStatusValidationResult.Rejected(resolutionFailure)
+        validator.validate(multipleStatusMechanisms) shouldBe TokenStatusValidationResult.Rejected(resolutionFailure)
     }
 
     "conflicting valid mechanism results are rejected" {
@@ -65,7 +65,7 @@ val TokenStatusValidatorTest by matrixSuite {
             )
         }
 
-        validator(multipleStatusMechanisms)
+        validator.validate(multipleStatusMechanisms)
             .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
     }
 
@@ -80,13 +80,13 @@ val TokenStatusValidatorTest by matrixSuite {
         }
 
         shouldThrow<IllegalArgumentException> {
-            resolver(multipleStatusMechanisms).getOrThrow()
+            resolver.resolve(multipleStatusMechanisms).getOrThrow()
         }
     }
 
     "status resolver returns the common mechanism result" {
         val resolver = TokenStatusResolver { KmmResult.success(TokenStatus.Valid) }
 
-        resolver(multipleStatusMechanisms).getOrThrow() shouldBe TokenStatus.Valid
+        resolver.resolve(multipleStatusMechanisms).getOrThrow() shouldBe TokenStatus.Valid
     }
 }

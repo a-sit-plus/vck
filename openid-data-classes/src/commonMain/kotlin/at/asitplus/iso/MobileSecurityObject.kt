@@ -2,7 +2,6 @@ package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import io.github.z4kn4fein.semver.Version
 import io.github.z4kn4fein.semver.toVersion
 import kotlinx.serialization.SerialName
@@ -28,7 +27,8 @@ data class MobileSecurityObject(
     @SerialName("validityInfo")
     val validityInfo: ValidityInfo,
     @SerialName("status")
-    val status: TokenStatusInfo? = null,
+    @Serializable(with = RevocationListInfo.StatusSurrogateSerializer::class)
+    val status: RevocationListInfo? = null,
 ) {
     @Deprecated("Use constructor with parsedVersion")
     constructor(
@@ -46,7 +46,7 @@ data class MobileSecurityObject(
         deviceKeyInfo = deviceKeyInfo,
         docType = docType,
         validityInfo = validityInfo,
-        status = status?.let(TokenStatusInfo::from)
+        status = status
     )
 
     @Deprecated("Use digest instead", ReplaceWith("digest.toIsoString()"))

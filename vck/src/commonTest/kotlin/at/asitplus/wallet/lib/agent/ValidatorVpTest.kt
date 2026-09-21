@@ -194,7 +194,7 @@ val ValidatorVpTest by matrixSuite {
                 .forEach { vcjws ->
                     it.issuerCredentialStore.setStatus(
                         timePeriod = FixedTimePeriodProvider.timePeriod,
-                        index = vcjws.vc.credentialStatus.shouldNotBeNull().statusList.shouldNotBeNull().index,
+                        index = vcjws.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index,
                         status = TokenStatus.Invalid,
                     ) shouldBe true
                 }

@@ -30,6 +30,7 @@ import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList.Kind
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
@@ -142,8 +143,7 @@ val AgentRevocationTest by matrixSuite {
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                 .jws.vc.credentialStatus
                 .shouldNotBeNull()
-                .statusList
-                .shouldNotBeNull()
+                .shouldBeInstanceOf<StatusListInfo>()
                 .index.shouldNotBeNull()
         }
 
@@ -211,7 +211,7 @@ val AgentRevocationTest by matrixSuite {
 }
 
 private fun Issuer.IssuedCredential.Iso.mdocIdentifierListInfo(): IdentifierListInfo =
-    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().identifierList.shouldNotBeNull()
+    issuerSigned.issuerAuth.payload.shouldNotBeNull().status.shouldNotBeNull().shouldBeInstanceOf<IdentifierListInfo>()
 
 private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: List<ULong>) {
     val expectedRevocationStatuses = MutableList(expectedRevokedIndexes.max().toInt() + 1) {

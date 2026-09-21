@@ -31,7 +31,7 @@ fun TokenStatusResolver.toTokenStatusValidator(
  * Validates every advertised status mechanism. Invalid status takes precedence over resolution failures;
  * otherwise, all mechanisms must resolve successfully and agree.
  */
-suspend operator fun TokenStatusValidator.invoke(status: TokenStatusInfo): TokenStatusValidationResult {
+suspend fun TokenStatusValidator.validate(status: TokenStatusInfo): TokenStatusValidationResult {
     val results = status.mechanisms.map { invoke(it) }
     results.filterIsInstance<TokenStatusValidationResult.Invalid>().firstOrNull()?.let { return it }
     results.filterIsInstance<TokenStatusValidationResult.Rejected>().firstOrNull()?.let { return it }
@@ -69,5 +69,10 @@ suspend operator fun TokenStatusValidator.invoke(credentialWrapper: CredentialWr
     is CredentialWrapper.SdJwt -> credentialWrapper.sdJwt.statusElement
     is CredentialWrapper.VcJws -> credentialWrapper.verifiableCredentialJws.vc.credentialStatus
 }?.let {
-    invoke(it)
+    val statusInfo = TokenStatusInfo.from(it)
+    if (statusInfo.mechanisms.size > 1) {
+        validate(statusInfo)
+    } else {
+        invoke(it)
+    }
 } ?: TokenStatusValidationResult.Valid(null)
