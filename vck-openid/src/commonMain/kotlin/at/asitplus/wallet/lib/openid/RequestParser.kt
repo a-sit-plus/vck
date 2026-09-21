@@ -11,7 +11,8 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweHeader
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -135,7 +136,10 @@ class RequestParser(
         if (fromJwe == null && requireEncryptedRequests && expectedKeyId != null)
             throw InvalidRequest("request object from $uri is not encrypted, but we require encryption")
         (fromJwe
-            ?: content.parseAsJwsRequest(parent)
+            ?: content.parseAsJwsRequest(
+                parent,
+                invalidRequestDescription = "request_uri content not a valid request object: $uri",
+            )
             ?: throw InvalidRequest("request_uri content not a valid request object: $uri"))
             .also { request -> request.requireWalletNonce(requestObjectParameters?.walletNonce) }
     }
@@ -170,17 +174,20 @@ class RequestParser(
     private suspend fun String.parseAsJwsRequest(
         parent: RequestParametersFrom<out RequestParameters>?,
         decryptedFrom: JweHeader? = null,
-    ): RequestParametersFrom<*>? =
-        catching { JwsCompactTyped<RequestParameters>(this) }
-            .getOrNull()?.let { jws ->
-                jws.jws.requireRequestObjectType()
-                RequestParametersFrom.Jws(
-                    jws = jws.jws,
-                    parameters = jws.payload,
-                    parent = (parent as? RequestParametersFrom.Uri)?.url,
-                    decryptedFrom = decryptedFrom,
-                )
-            }
+        invalidRequestDescription: String = "request content not a valid request object",
+    ): RequestParametersFrom<*>? {
+        val jws = catching { JwsCompact(this) }.getOrNull() ?: return null
+        val typedJws = catching { jws.typed<RequestParameters, JwsCompact>() }.getOrElse {
+            throw InvalidRequest(invalidRequestDescription, it)
+        }
+        typedJws.jws.requireRequestObjectType()
+        return RequestParametersFrom.Jws(
+            jws = typedJws.jws,
+            parameters = typedJws.payload,
+            parent = (parent as? RequestParametersFrom.Uri)?.url,
+            decryptedFrom = decryptedFrom,
+        )
+    }
 
     /**
      * Decrypts a request object encrypted to the key we have advertised in `wallet_metadata`, as per
@@ -205,7 +212,11 @@ class RequestParser(
         }
         // OpenID4VP 1.0, 5.10.1 permits encryption only in addition to signing, never instead of it, and per
         // RFC 9101, 6.1 decrypting a request object yields "a signed Request Object"
-        return decrypted.payload.parseAsJwsRequest(parent, jwe.header)
+        return decrypted.payload.parseAsJwsRequest(
+            parent = parent,
+            decryptedFrom = jwe.header,
+            invalidRequestDescription = "Decrypted request object is not a signed request object",
+        )
             ?: throw InvalidRequest("Decrypted request object is not a signed request object")
     }
 

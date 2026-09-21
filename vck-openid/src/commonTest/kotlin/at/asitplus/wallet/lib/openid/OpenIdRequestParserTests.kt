@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.openid.encodeToParameters
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
@@ -23,6 +24,8 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 
@@ -107,6 +110,14 @@ val OpenIdRequestParserTests by matrixSuite {
     val typedJws = runBlocking {
         SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
             JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST, authnRequest, JsonObject.serializer()
+        ).getOrThrow().toString()
+    }
+
+    val jwsWithInvalidRequestPayload = runBlocking {
+        SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
+            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+            JsonObject(mapOf("response_type" to JsonArray(emptyList()))),
+            JsonObject.serializer(),
         ).getOrThrow().toString()
     }
 
@@ -246,6 +257,24 @@ val OpenIdRequestParserTests by matrixSuite {
             }
         }
 
+    }
+
+    fixture {
+        RequestParser(
+            remoteResourceRetriever = {
+                if (it.url == "https://client.example.org/req/1234567890") jwsWithInvalidRequestPayload else null
+            }
+        )
+    } - {
+        "request object payload serialization error is retained as cause" { requestParser ->
+            val input =
+                "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890&client_id=s6BhdRkqt3"
+
+            requestParser.parseRequestParameters(input)
+                .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+                .cause.shouldBeInstanceOf<SerializationException>()
+                .message.shouldNotBeNull() shouldContain "response_type"
+        }
     }
 
     // RFC 9101, 6.2: a request object must not contain `request` or `request_uri` itself
