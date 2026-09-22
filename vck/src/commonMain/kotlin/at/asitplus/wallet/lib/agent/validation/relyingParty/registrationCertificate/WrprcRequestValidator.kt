@@ -18,7 +18,7 @@ import io.github.aakira.napier.Napier
 import kotlinx.serialization.Serializable
 
 fun interface WrprcRequestValidatorFun {
-    suspend fun invoke(
+    suspend operator fun invoke(
         request: WrpCredentialRequest, payload: WrpPayload
     ): KmmResult<Pair<WrpCredentialRequest, RequestDataValidity>?>
 }

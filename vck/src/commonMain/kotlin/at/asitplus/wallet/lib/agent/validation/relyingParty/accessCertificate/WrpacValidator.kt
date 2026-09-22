@@ -15,7 +15,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
 fun interface WrpacValidatorFun {
-    fun invoke(
+    operator fun invoke(
         validationData: WrpRequestData,
         certificateTrustAnchors: List<X509Certificate>
     ): KmmResult<WrpacValidationResult>

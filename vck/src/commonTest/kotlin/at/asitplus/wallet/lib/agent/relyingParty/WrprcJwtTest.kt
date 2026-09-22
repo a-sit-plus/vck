@@ -80,7 +80,7 @@ val WrprcJwtTest by matrixSuite {
             signingKeyMaterial = mismatchedSigner,
         )
 
-        result.exceptionOrNull()?.message.shouldContain(("Signature is cryptographically invalid"))
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("Signature is cryptographically invalid")
     }
 
     "Expired WRPRC payload fails payload validation" {
@@ -92,7 +92,7 @@ val WrprcJwtTest by matrixSuite {
         )
 
         val result = fixture.validateWrprc(payload = payload)
-        result.exceptionOrNull()?.message.shouldContain(("already expired"))
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("already expired")
     }
 
     "WRPRC payload missing optional intendedUseId still validates" {
@@ -122,7 +122,7 @@ val WrprcJwtTest by matrixSuite {
 
         val result = fixture.validateWrprc(payload = payload)
 
-        result.exceptionOrNull()?.message.shouldContain(("exceeds maximum validity"))
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("exceeds maximum validity")
     }
 
     "sub not matching the WRPAC identifier fails linkage validation" {
