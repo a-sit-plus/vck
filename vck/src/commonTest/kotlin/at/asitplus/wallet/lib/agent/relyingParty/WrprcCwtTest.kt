@@ -57,7 +57,7 @@ val WrprcCwtTest by matrixSuite {
             signingKeyMaterial = mismatchedSigner,
         )
 
-        result.exceptionOrNull()?.message.shouldContain(
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain(
             "Signature is cryptographically invalid"
         )
     }
