@@ -6,7 +6,7 @@ import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.ktor.http.Url
+import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -85,7 +85,9 @@ val FormUrlEncodingTest by matrixSuite {
     test("polymorphic authentication requests preserve opaque strings") {
         val input = AuthenticationRequestParameters(clientId = "client", state = "{}", nonce = "[", userHint = "null")
         RequestParametersSerializer.decodeFormParameters(input.encodeToParameters()) shouldBe input
-        RequestParametersSerializer.decodeFormParameters(input.encodeToFormUrlEncoded().toFormParameters()) shouldBe input
+        RequestParametersSerializer.decodeFormParameters(
+            input.encodeToFormUrlEncoded().toFormParameters()
+        ) shouldBe input
     }
 
     test("polymorphic JAR requests preserve opaque strings and ignore unknown parameters") {
@@ -95,10 +97,27 @@ val FormUrlEncodingTest by matrixSuite {
 
     test("polymorphic signature requests use their own fields") {
         val input = SignatureRequestParameters(
-            responseType = "code", clientId = "client", state = "{}",
-            documentDigests = emptyList(), documentLocations = emptyList(),
+            responseType = "code",
+            clientId = "client",
+            state = "{}",
+            documentDigests = emptyList(),
+            documentLocations = emptyList(),
         )
         RequestParametersSerializer.decodeFormParameters(input.encodeToParameters()) shouldBe input
+    }
+
+    test("signature requests encode required fields with their default values") {
+        val input = SignatureRequestParameters(
+            responseType = "code",
+            clientId = "client",
+            documentDigests = emptyList(),
+            documentLocations = emptyList(),
+        )
+
+        input.encodeToParameters().apply {
+            get("signatureQualifier").shouldNotBeNull()
+            get("hashAlgorithmOID").shouldNotBeNull()
+        }
     }
 
     test("an incomplete signature request must not fall back to an authentication request") {
