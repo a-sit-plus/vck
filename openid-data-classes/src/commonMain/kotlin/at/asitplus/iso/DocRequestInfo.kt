@@ -26,7 +26,7 @@ data class DocRequestInfo(
     val zkRequest: ZkRequest? = null,
     @SerialName("docResponseEncryption")
     val docResponseEncryption: EncryptionParameters? = null,
-    @SerialName("eUWrprc")
+    @SerialName("euWrprc")
     val euWrprc: CoseSigned<ByteArray>? = null,
     @SerialName("euWrpRegistrarInfo")
     val euWrpRegistrarInfo: WrpRegistrarInfo? = null,
