@@ -121,7 +121,7 @@ val WrpacTest by matrixSuite {
         WrpChainValidator().invoke(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
-        ).exceptionOrNull()?.message.shouldContain(("is not signed by"))
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
     }
 
     "Wrong provider subject name breaks issuer linkage" {
