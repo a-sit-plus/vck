@@ -12,7 +12,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 fun interface WrpChainValidatorFun {
-    fun invoke(
+    operator fun invoke(
         chain: CertificateChain,
         certificateTrustAnchors: List<X509Certificate>
     ): KmmResult<Boolean>
