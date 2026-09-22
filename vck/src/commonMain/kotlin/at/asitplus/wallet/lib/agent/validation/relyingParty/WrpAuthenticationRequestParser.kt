@@ -18,7 +18,7 @@ import io.github.aakira.napier.Napier
 import kotlinx.serialization.decodeFromByteArray
 
 fun interface WrpAuthenticationRequestValidatorFun {
-    suspend fun invoke(request: RequestParametersFrom<*>): KmmResult<WrpRequestData>
+    suspend operator fun invoke(request: RequestParametersFrom<*>): KmmResult<WrpRequestData>
 }
 
 class WrpAuthenticationRequestValidator : WrpAuthenticationRequestValidatorFun {
