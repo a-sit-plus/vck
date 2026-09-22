@@ -75,7 +75,7 @@ val WrpacTest by matrixSuite {
         WrpChainValidator().invoke(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
-        ).exceptionOrNull()?.message.shouldContain(("Certificate is expired"))
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
     }
 
     "All chain certificates expired invalidates the chain" {
