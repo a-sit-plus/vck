@@ -90,8 +90,7 @@ class WrprcValidator(
         certificateTrustAnchors: List<X509Certificate>,
         statusListTokenResolver: StatusListTokenResolver,
         identifierResult: WrpacIdentifier?
-    ) =
-        when (certificate) {
+    ) = when (certificate) {
             is WrpRegistrationCertificate.WrpCwtRegistrationCertificate -> validateCose(
                 certificate = certificate,
                 certificateTrustAnchors = certificateTrustAnchors,
