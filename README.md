@@ -23,6 +23,11 @@ VC-K is a comprehensive **Kotlin Multiplatform** library for implementing digita
 
 Designed with developers in mind, VC-K provides a flexible, modular architecture that simplifies the implementation of complex identity workflows while maintaining compatibility with the broader digital identity ecosystem, including the EU Digital Identity Wallet (EUDI Wallet).
 
+
+| ⚠️ Warning                                             |
+|:-------------------------------------------------------|
+| This library is intended as a Technology Demonstrator! |
+
 ## Architecture
 
 VC-K is split into published Kotlin Multiplatform modules that separate wire models, credential behavior, OpenID
