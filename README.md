@@ -360,8 +360,8 @@ implementation("at.asitplus.wallet:vck-longfellow:$version")
 Then register the backend (usually with the default registry):
 ```kotlin
 IsoMdocZkBackendRegistry.Default.register(LongfellowBackend()).fold(
-    onSuccess = { Napier.i { "Longfellow ISO-ZKP backend registered" } },
-    onFailure = { Napier.e { "Longfellow ISO-ZKP backend registration failed with ${it.message}" }}
+    onSuccess = { Napier.i { "Hooray!" } },
+    onFailure = { Napier.e { "Registration failed with ${it.message}" }}
 )
 ```
 
@@ -371,7 +371,7 @@ IsoMdocZkBackendRegistry.Default.register(LongfellowBackend()).fold(
  - Anything related to ledgers (e.g. resolving DID documents) is out of scope.
  - JSON-LD is not supported for W3C credentials.
  - Trust relationships are mostly up to clients using this library.
- - ISO mDoc verification is not yet implemented.
+ - ISO mDoc zero-knowledge proof verification is not yet (fully) implemented.
 
 ## Contributing
 External contributions are greatly appreciated! Be sure to observe the contribution guidelines (see [CONTRIBUTING.md](CONTRIBUTING.md)).
