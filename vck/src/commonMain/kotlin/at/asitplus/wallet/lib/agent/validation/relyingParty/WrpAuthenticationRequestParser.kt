@@ -127,8 +127,6 @@ class WrpAuthenticationRequestValidator : WrpAuthenticationRequestValidatorFun {
         }
 
         val payloadBytes = euWrprc.payload ?: throw IllegalStateException("euWrprc payload not found.")
-        val wrpPayload = coseCompliantSerializer.decodeFromByteArray<WrpPayload>(bytes = payloadBytes)
-
-        return wrpPayload
+        return coseCompliantSerializer.decodeFromByteArray<WrpPayload>(bytes = payloadBytes)
     }
 }
