@@ -9,6 +9,7 @@ Release 8.0.0 (unreleased):
     - no more build hacks
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input
+    - Add `WalletRelyingParty` ETSI data classes for `WRPAC` and `WRPRC` validation
 - ISO mdoc data classes:
   - BREAKING: Update `ZkDocumentData.timestamp` type to `Instant` instead of `DateTime` to conform to upcoming ISO-18013-5 draft
   - Add support for correctly (de-)serializing RFC9360-conformant single-chain cbor-encoded `ZkDocumentData`
@@ -28,7 +29,6 @@ Release 8.0.0 (unreleased):
       and update the ZK integration APIs to use `ZkSystemSpec`
     - Remove the unused `ZkInfo` and `ZkSystem` preparation abstractions
   - Credentials:
-    - Add `WalletRelyingParty` ETSI data classes for `WRPAC` and `WRPRC` validation
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject
     - Preserve and validate every status mechanism when a credential's `status` object contains both `status_list` and `identifier_list`; combined values are exposed through `StatusListInfo.tokenStatusInfo` while the 7.0.1 `RevocationListInfo` properties and singleton behavior remain compatible
