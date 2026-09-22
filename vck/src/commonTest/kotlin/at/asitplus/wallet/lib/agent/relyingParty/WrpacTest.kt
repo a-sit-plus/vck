@@ -102,7 +102,7 @@ val WrpacTest by matrixSuite {
         WrpChainValidator().invoke(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
-        ).exceptionOrNull()?.message.shouldContain(("Certificate is expired"))
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
     }
 
     "Self-signed WRP certificate is not accepted as part of the chain" {
