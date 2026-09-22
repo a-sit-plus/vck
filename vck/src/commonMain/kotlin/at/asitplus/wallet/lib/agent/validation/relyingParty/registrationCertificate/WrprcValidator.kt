@@ -30,7 +30,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 fun interface WrprcValidatorFun {
-    suspend fun invoke(
+    suspend operator fun invoke(
         identifierResult: WrpacIdentifier?,
         validationData: WrpRequestData,
         statusListTokenResolver: StatusListTokenResolver,
