@@ -187,6 +187,6 @@ val WrpacTest by matrixSuite {
         val fixture = buildWrpFixture(wrpacIdentifier = null)
 
         val result = fixture.validateWrpac()
-        result.exceptionOrNull()?.message.shouldContain(("Unable to extract access certificate identifier"))
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain(("Unable to extract access certificate identifier"))
     }
 }
