@@ -152,7 +152,7 @@ val WrpacTest by matrixSuite {
         WrpChainValidator().invoke(
             chain = fixture.wrpacChain,
             certificateTrustAnchors = emptyList(),
-        ).exceptionOrNull()?.message.shouldContain(("No trusted root certificates configured for request validation."))
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("No trusted root certificates configured for request validation.")
     }
 
     "Missing certificate chain yields an exception" {
