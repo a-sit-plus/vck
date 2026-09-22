@@ -14,16 +14,16 @@ data class WrpPayload(
     val name: String? = null,
 
     @SerialName("sub_ln")
-    val subLn: String? = null,
+    val subjectLegalName: String? = null,
 
     @SerialName("sub_gn")
-    val subGn: String? = null,
+    val subjectGivenName: String? = null,
 
     @SerialName("sub_fn")
-    val subFn: String? = null,
+    val subjectFamilyName: String? = null,
 
     @SerialName("sub")
-    val sub: String,
+    val subjectIdentifier: String,
 
     @SerialName("country")
     val country: String,

@@ -292,7 +292,7 @@ class WrprcValidator(
     private fun validateWrpIdentifierLinkage(
         identifierResult: WrpacIdentifier?, payload: WrpPayload
     ): Boolean {
-        if (identifierResult?.identifier != payload.sub) {
+        if (identifierResult?.identifier != payload.subjectIdentifier) {
             Napier.w("Identifier not matching sub")
             return false
         }

@@ -211,8 +211,8 @@ fun buildWrpPayload(
     statusListUri: String = "https://localhost/statuslists/1",
 ): WrpPayload = WrpPayload(
     name = name,
-    subLn = "Demo Service",
-    sub = wrpIdentifier,
+    subjectLegalName = "Demo Service",
+    subjectIdentifier = wrpIdentifier,
     country = "AT",
     registryUri = "https://localhost/wrp",
     srvDescription = listOf(listOf(WrpLangString(lang = "en", value = "Service description"))),
