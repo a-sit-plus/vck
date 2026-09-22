@@ -165,7 +165,7 @@ val WrpacTest by matrixSuite {
             certificateTrustAnchors = emptyList(),
         )
 
-        result.exceptionOrNull()?.message.shouldContain(("Certificate chain null"))
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate chain null")
     }
 
     "Missing client_id yields no exception" {
