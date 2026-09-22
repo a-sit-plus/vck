@@ -25,6 +25,7 @@ Release 8.0.0 (unreleased):
     - Rename `ZkMetadata.IsoMdocZk.zkInfo` to `zkRequest`, change DCQL ZK numeric parameters from `Int` to `Long`,
       and update the ZK integration APIs to use `ZkSystemSpec`
     - Remove the unused `ZkInfo` and `ZkSystem` preparation abstractions
+    - Add `vck-longfellow` module containing an implementation of a registerable `Longfellow-ZK` backend
   - Credentials:
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject

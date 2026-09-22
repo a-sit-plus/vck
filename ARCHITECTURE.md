@@ -18,6 +18,9 @@ vck-openid
     -> vck
     -> openid-data-classes
 
+vck-longfellow
+    -> vck
+
 vck
     -> dif-data-classes
     -> openid-data-classes
@@ -114,6 +117,19 @@ Put Ktor engine selection, request execution, response body handling, cache poli
 here. Reuse the shared client setup so non-success responses remain `HttpErrorResponseException` instances carrying
 OAuth errors, RFC 9457 problem details, and the raw body. If a rule must also apply without Ktor, move that rule down
 into `vck-openid`.
+
+### `vck-longfellow`
+`vck-longfellow` provides an ISO mDoc Zero-Knowledge Proof (ZKP) backend for VC-K using the 
+[Multipaz Longfellow](https://github.com/openwallet-foundation/multipaz/tree/main/multipaz-longfellow?utm_source=gemini) 
+library. Once registered with `IsoMdocZkBackendRegistry`, VC-K can seamlessly delegate ISO mDoc ZKP operations to this 
+module.
+
+Important areas:
+- `vck-longfellow/src/commonMain/kotlin/at/asitplus/wallet/lib/zk/iso/LongfellowBackend.kt`
+  Implements `IsoMdocZkBackend`, defining supported `ZkSystemSpec` options and providing parameter serializers. It 
+  handles proof creation and loading via its `generate` and `load` methods to produce verifiable `IsoMdocZkProof` 
+  instances.
+
 
 ### Data-Class Modules
 
