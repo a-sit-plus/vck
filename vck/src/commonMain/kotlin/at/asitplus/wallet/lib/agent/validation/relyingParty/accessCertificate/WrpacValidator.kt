@@ -29,6 +29,8 @@ fun interface WrpacValidatorFun {
  *  - Identifier is either legal or natural person
  **/
 class WrpacValidator : WrpacValidatorFun {
+    val chainValidator = WrpChainValidator()
+
     override fun invoke(
         validationData: WrpRequestData, certificateTrustAnchors: List<X509Certificate>
     ) = catching {
@@ -45,7 +47,7 @@ class WrpacValidator : WrpacValidatorFun {
             ).getOrThrow()
         } ?: true
 
-        WrpChainValidator().invoke(
+        chainValidator.invoke(
             chain = certificateChain, certificateTrustAnchors = certificateTrustAnchors
         ).getOrThrow()
 

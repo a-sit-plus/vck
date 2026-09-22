@@ -50,6 +50,7 @@ class WrprcValidator(
     private val timeLeeway: Duration = 5.minutes, private val maxValidity: Duration = 365.days
 ) : WrprcValidatorFun {
     val requestValidator = WrprcRequestValidator()
+    val chainValidator = WrpChainValidator()
 
 
     override suspend fun invoke(
@@ -126,7 +127,7 @@ class WrprcValidator(
                 throw IllegalArgumentException("Could not parse certificate from euWrprc COSE header", throwable)
             }
         }
-        val validChain = WrpChainValidator().invoke(
+        val validChain = chainValidator.invoke(
             chain = chain, certificateTrustAnchors = certificateTrustAnchors
         ).getOrThrow()
         val payload = certificate.payload
@@ -160,7 +161,7 @@ class WrprcValidator(
         }
         val validHeader = validateHeader(jwsTyped)
 
-        val validChain = WrpChainValidator().invoke(
+        val validChain = chainValidator.invoke(
             chain = certificateChain, certificateTrustAnchors = certificateTrustAnchors
         ).getOrThrow()
 
