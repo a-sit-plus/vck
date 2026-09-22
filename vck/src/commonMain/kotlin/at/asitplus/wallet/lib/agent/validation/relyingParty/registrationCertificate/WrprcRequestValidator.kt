@@ -33,13 +33,6 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
     override suspend fun invoke(
         request: WrpCredentialRequest, payload: WrpPayload
     ) = catching {
-        validateCredentialRequest(request, payload)
-    }
-
-
-    private suspend fun validateCredentialRequest(
-        request: WrpCredentialRequest, payload: WrpPayload
-    ) = run {
         request to payload.let { payload ->
             RequestDataValidity(
                 credentialTypeValidity = checkCredentialTypesValidity(request, payload),
@@ -47,7 +40,6 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
             )
         }
     }
-
 
     private suspend fun checkAttributesValidity(
         credentialRequest: WrpCredentialRequest, wrpPayload: WrpPayload
