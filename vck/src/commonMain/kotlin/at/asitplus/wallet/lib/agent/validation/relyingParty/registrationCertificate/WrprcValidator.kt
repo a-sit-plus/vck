@@ -241,10 +241,10 @@ class WrprcValidator(
         if (payload.credentials.isEmpty()) {
             throw Throwable("$payload is missing required claim 'credentials'.")
         }
-        val issuedAt = Instant.fromEpochSeconds(payload.iat)
+        val issuedAt = payload.iat
 
         payload.exp?.let { exp ->
-            val expires = Instant.fromEpochSeconds(exp)
+            val expires = exp
             if (expires <= issuedAt) {
                 throw Throwable(
                     "$payload has invalid temporal claims: exp=${expires} <= iat=${issuedAt}."

@@ -1,7 +1,9 @@
 package at.asitplus.etsi.relyingParty
 
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.time.Instant
 
 /**
  * ETSI TS 119 475 V1.2.1 Annex C WRPRC payload.
@@ -54,7 +56,8 @@ data class WrpPayload(
     val certificatePolicy: String,
 
     @SerialName("iat")
-    val iat: Long,
+    @Serializable(with = InstantLongSerializer::class)
+    val iat: Instant,
 
     @SerialName("status")
     val status: WrpStatus,
@@ -78,5 +81,6 @@ data class WrpPayload(
     val intermediary: WrpIntermediary? = null,
 
     @SerialName("exp")
-    val exp: Long? = null,
+    @Serializable(with = InstantLongSerializer::class)
+    val exp: Instant? = null,
 )

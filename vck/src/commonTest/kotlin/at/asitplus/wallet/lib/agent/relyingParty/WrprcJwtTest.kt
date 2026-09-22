@@ -13,6 +13,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlin.time.Clock.System
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -87,8 +88,8 @@ val WrprcJwtTest by matrixSuite {
         val fixture = buildWrpFixture()
         val payload = buildWrpPayload(
             fixture.wrpIdentifier,
-            iat = (System.now() - 60.days).epochSeconds,
-            exp = (System.now() - 30.days).epochSeconds,
+            iat = Instant.fromEpochSeconds((System.now() - 60.days).epochSeconds),
+            exp = Instant.fromEpochSeconds((System.now() - 30.days).epochSeconds),
         )
 
         val result = fixture.validateWrprc(payload = payload)
@@ -116,8 +117,8 @@ val WrprcJwtTest by matrixSuite {
         val fixture = buildWrpFixture()
         val payload = buildWrpPayload(
             fixture.wrpIdentifier,
-            iat = System.now().epochSeconds,
-            exp = (System.now() + 400.days).epochSeconds,
+            iat = Instant.fromEpochSeconds(System.now().epochSeconds),
+            exp = Instant.fromEpochSeconds((System.now() + 400.days).epochSeconds),
         )
 
         val result = fixture.validateWrprc(payload = payload)

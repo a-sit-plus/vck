@@ -81,6 +81,7 @@ import kotlin.random.Random
 import kotlin.time.Clock.System
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -204,8 +205,8 @@ fun buildWrpPayload(
     name: String? = WRP_NAME,
     intendedUseId: String? = "urn:uuid:${Uuid.generateV4()}",
     credentials: List<WrpCredential> = listOf(defaultMdocCredential()),
-    iat: Long = System.now().epochSeconds,
-    exp: Long? = (System.now() + 30.days).epochSeconds,
+    iat: Instant = Instant.fromEpochSeconds(System.now().epochSeconds),
+    exp: Instant? = Instant.fromEpochSeconds((System.now() + 30.days).epochSeconds),
     statusListIdx: Int = 0,
     statusListUri: String = "https://localhost/statuslists/1",
 ): WrpPayload = WrpPayload(
