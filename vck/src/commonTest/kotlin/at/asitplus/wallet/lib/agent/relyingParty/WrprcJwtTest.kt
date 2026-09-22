@@ -67,7 +67,7 @@ val WrprcJwtTest by matrixSuite {
             jwsType = "not-rc-wrp+jwt",
         )
 
-        result.exceptionOrNull()?.message.shouldContain(("has invalid typ in JWS header. expected='rc-wrp+jwt', actual='not-rc-wrp+jwt'"))
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("has invalid typ in JWS header. expected='rc-wrp+jwt', actual='not-rc-wrp+jwt'")
     }
 
     "Signature from a non-matching key fails" {
