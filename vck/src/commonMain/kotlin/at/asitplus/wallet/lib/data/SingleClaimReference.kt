@@ -8,6 +8,7 @@ import kotlin.jvm.JvmInline
 sealed interface SingleClaimReference
 
 @JvmInline
+@Serializable
 value class JsonClaimReference(
     val normalizedJsonPath: NormalizedJsonPath,
 ) : SingleClaimReference
