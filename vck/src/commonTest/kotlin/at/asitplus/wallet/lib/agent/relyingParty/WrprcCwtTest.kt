@@ -42,7 +42,7 @@ val WrprcCwtTest by matrixSuite {
             type = "not-rc-wrp+cwt",
         )
 
-        result.exceptionOrNull()?.message.shouldContain(
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain(
             "Invalid typ header in euWrprc: expected 'rc-wrp+cwt', got 'not-rc-wrp+cwt'."
         )
     }
