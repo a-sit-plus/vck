@@ -54,7 +54,7 @@ val WrprcJwtTest by matrixSuite {
             certificateTrustAnchors = fixture.trustAnchors,
         )
 
-        result.exceptionOrNull()?.message.shouldContain(("No registration certificates to verify"))
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("No registration certificates to verify")
 
 
     }
