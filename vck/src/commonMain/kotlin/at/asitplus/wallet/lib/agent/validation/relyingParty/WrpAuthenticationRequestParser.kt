@@ -21,6 +21,9 @@ fun interface WrpAuthenticationRequestValidatorFun {
     suspend operator fun invoke(request: RequestParametersFrom<*>): KmmResult<WrpRequestData>
 }
 
+/**
+ * Parses an authentication request and wraps necessary data for WRP validation.
+ */
 class WrpAuthenticationRequestValidator : WrpAuthenticationRequestValidatorFun {
     override suspend fun invoke(request: RequestParametersFrom<*>) = catching {
         when (request) {
