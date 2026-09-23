@@ -45,8 +45,7 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
         credentialRequest: WrpCredentialRequest, wrpPayload: WrpPayload
     ): RequestCredentialAttributesValidity = run {
         val attributes = credentialRequest.getAttributes() ?: run {
-            Napier.w("Only mandatory claims requested, return empty list")
-            return@run listOf()
+            throw Throwable("Unable to extract attributes from $credentialRequest")
         }
         val meta = credentialRequest.getMeta()
         val representation = credentialRequest.getRepresentation()
