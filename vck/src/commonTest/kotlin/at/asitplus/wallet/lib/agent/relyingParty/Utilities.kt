@@ -52,6 +52,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
@@ -324,14 +325,17 @@ suspend fun WrpFixture.validateWrprc(
         accessCertificate = WrpAccessCertificate(wrpacChain),
         registrationCertificate = mapOf(registrationCertificate to credentialRequests),
     )
+
     val resolvedAccessCertValidation = accessCertValidation ?: validateWrpac().getOrThrow()
     val statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
         buildStatusListToken(statusListUrl, revokedIndex = revokedStatusIndex)
     }
+    val tokenStatusResolver = TokenStatusResolverImpl(statusListTokenResolver)
+
     WrprcValidator().invoke(
         identifierResult = resolvedAccessCertValidation.identifierResult,
         validationData = validationData,
-        statusListTokenResolver = statusListTokenResolver,
+        tokenStatusResolver = tokenStatusResolver,
         certificateTrustAnchors = trustAnchors,
     ).getOrThrow()
 }
@@ -385,10 +389,12 @@ suspend fun WrpFixture.validateWrprcCose(
     val statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
         buildStatusListToken(statusListUrl, revokedIndex = revokedStatusIndex)
     }
+    val tokenStatusResolver = TokenStatusResolverImpl(statusListTokenResolver)
+
     WrprcValidator().invoke(
         identifierResult = resolvedAccessCertValidation.identifierResult,
         validationData = validationData,
-        statusListTokenResolver = statusListTokenResolver,
+        tokenStatusResolver = tokenStatusResolver,
         certificateTrustAnchors = trustAnchors,
     ).getOrThrow()
 }

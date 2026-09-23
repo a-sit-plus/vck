@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent.relyingParty
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyWithFixedCert
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
@@ -49,9 +50,9 @@ val WrprcJwtTest by matrixSuite {
                 accessCertificate = WrpAccessCertificate(fixture.wrpacChain),
                 registrationCertificate = emptyMap(),
             ),
-            statusListTokenResolver = { url ->
-                buildStatusListToken(url, revokedIndex = 1)
-            },
+            tokenStatusResolver = TokenStatusResolverImpl({ statusListUrl ->
+                buildStatusListToken(statusListUrl, revokedIndex = 1)
+            }),
             certificateTrustAnchors = fixture.trustAnchors,
         )
 

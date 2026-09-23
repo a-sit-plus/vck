@@ -9,14 +9,13 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolver
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator.Constants.WRPRC_CWT_HEADER
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator.Constants.WRPRC_JWS_HEADER
-import at.asitplus.wallet.lib.agent.validation.toTokenStatusResolver
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -27,13 +26,12 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
 
 fun interface WrprcValidatorFun {
     suspend operator fun invoke(
         identifierResult: WrpacIdentifier?,
         validationData: WrpRequestData,
-        statusListTokenResolver: StatusListTokenResolver,
+        tokenStatusResolver: TokenStatusResolver,
         certificateTrustAnchors: List<X509Certificate>,
     ): KmmResult<WrprcValidationResult>
 }
@@ -56,7 +54,7 @@ class WrprcValidator(
     override suspend fun invoke(
         identifierResult: WrpacIdentifier?,
         validationData: WrpRequestData,
-        statusListTokenResolver: StatusListTokenResolver,
+        tokenStatusResolver: TokenStatusResolver,
         certificateTrustAnchors: List<X509Certificate>,
     ) = catching {
         if (validationData.registrationCertificate.isEmpty()) throw Throwable("No registration certificates to verify")
@@ -64,7 +62,7 @@ class WrprcValidator(
             certificate to validateWrpRegistrationCertificate(
                 certificate = certificate,
                 certificateTrustAnchors = certificateTrustAnchors,
-                statusListTokenResolver = statusListTokenResolver,
+                tokenStatusResolver = tokenStatusResolver,
                 identifierResult = identifierResult
             )
         }.toMap()
@@ -88,31 +86,31 @@ class WrprcValidator(
     private suspend fun validateWrpRegistrationCertificate(
         certificate: WrpRegistrationCertificate,
         certificateTrustAnchors: List<X509Certificate>,
-        statusListTokenResolver: StatusListTokenResolver,
+        tokenStatusResolver: TokenStatusResolver,
         identifierResult: WrpacIdentifier?
     ) = when (certificate) {
-            is WrpRegistrationCertificate.WrpCwtRegistrationCertificate -> validateCose(
-                certificate = certificate,
-                certificateTrustAnchors = certificateTrustAnchors,
-                statusListTokenResolver = statusListTokenResolver,
-                identifierResult = identifierResult
-            )
+        is WrpRegistrationCertificate.WrpCwtRegistrationCertificate -> validateCose(
+            certificate = certificate,
+            certificateTrustAnchors = certificateTrustAnchors,
+            tokenStatusResolver = tokenStatusResolver,
+            identifierResult = identifierResult
+        )
 
 
-            is WrpRegistrationCertificate.WrpJwtRegistrationCertificate -> validateJwt(
-                certificate = certificate,
-                certificateTrustAnchors = certificateTrustAnchors,
-                statusListTokenResolver = statusListTokenResolver,
-                identifierResult = identifierResult
-            )
+        is WrpRegistrationCertificate.WrpJwtRegistrationCertificate -> validateJwt(
+            certificate = certificate,
+            certificateTrustAnchors = certificateTrustAnchors,
+            tokenStatusResolver = tokenStatusResolver,
+            identifierResult = identifierResult
+        )
 
-        }
+    }
 
 
     private suspend fun validateCose(
         certificate: WrpRegistrationCertificate.WrpCwtRegistrationCertificate,
         certificateTrustAnchors: List<X509Certificate>,
-        statusListTokenResolver: StatusListTokenResolver,
+        tokenStatusResolver: TokenStatusResolver,
         identifierResult: WrpacIdentifier?
     ) = run {
         val cose = certificate.cose
@@ -134,7 +132,7 @@ class WrprcValidator(
         val statusList = payload.status.statusList.let {
             StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
         }
-        val validStatusList = validateWrpStatusList(statusList = statusList, statusListTokenResolver)
+        val validStatusList = validateWrpStatusList(statusList = statusList, tokenStatusResolver = tokenStatusResolver)
         val validLinkage = validateWrpIdentifierLinkage(identifierResult = identifierResult, payload = payload)
 
         WrpRegistrationCertificateValidation(
@@ -152,7 +150,7 @@ class WrprcValidator(
         certificate: WrpRegistrationCertificate.WrpJwtRegistrationCertificate,
         identifierResult: WrpacIdentifier?,
         certificateTrustAnchors: List<X509Certificate>,
-        statusListTokenResolver: StatusListTokenResolver,
+        tokenStatusResolver: TokenStatusResolver,
     ) = run {
         val jwsTyped = certificate.jwsTyped
         val certificateChain = jwsTyped.jws.jwsHeader.certificateChain ?: run {
@@ -171,7 +169,7 @@ class WrprcValidator(
         val statusList = jwsTyped.payload.status.statusList.let {
             StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
         }
-        val validStatusList = validateWrpStatusList(statusList, statusListTokenResolver)
+        val validStatusList = validateWrpStatusList(statusList, tokenStatusResolver)
 
         WrpRegistrationCertificateValidation(
             validHeader = validHeader,
@@ -268,10 +266,10 @@ class WrprcValidator(
 
     private suspend fun validateWrpStatusList(
         statusList: StatusListInfo,
-        statusListTokenResolver: StatusListTokenResolver,
+        tokenStatusResolver: TokenStatusResolver,
     ): Boolean {
         statusList.let { statusList ->
-            val tokenStatus = statusListTokenResolver.toTokenStatusResolver().invoke(statusList).getOrElse {
+            val tokenStatus = tokenStatusResolver.invoke(statusList).getOrElse {
                 Napier.w("Unable to obtain token status.", it)
                 TokenStatus.Invalid
             }
