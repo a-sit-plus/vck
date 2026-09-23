@@ -89,8 +89,9 @@ class WrpAuthenticationRequestValidator : WrpAuthenticationRequestValidatorFun {
 
                 val registrationCertificate: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>> =
                     deviceRequest.docRequests.mapIndexed { _, it ->
-                        val euWrprc = it.itemsRequest.value.requestInfo?.euWrprc
+                        val euWrprcBytes = it.itemsRequest.value.requestInfo?.euWrprc
                             ?: throw Throwable("Registration certificate missing in DocRequest $it")
+                        val euWrprc = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(euWrprcBytes)
                         val payload = parseCose(euWrprc = euWrprc)
                         val registrationCertificate =
                             WrpRegistrationCertificate.WrpCwtRegistrationCertificate(cose = euWrprc, payload = payload)
