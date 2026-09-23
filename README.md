@@ -87,16 +87,17 @@ VC-K demonstrated very high **interoperability** with various implementations ac
 VC-K uses a modular structure to separate concerns. Hence, depending on the use cases you want to cover, you will need different artifacts:
 
 
-| Artefact               | Info                                                                                                                                                                                                                                |
+|        Artefact        | Info                                                                                                                                                                                                                                |
 |:----------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `vck`                  | VC-K base functionality. Contains business logic for creating, issuing, presenting, and verifying credentials.                                                                                                                      |
-| `vck-openid`           | OpenID protocol implementation, including OpenID4VCI. Contains client and server authentication business logic and the actual issuing protocol.                                                                                     |
-| `vck-openid-ktor`      | Contains ktor-based OpenID4VCI client and OpenID4VP wallet implementations.                                                                                                                                                         |
-| `dif-data-classes`     | [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K! |
+|         `vck`          | VC-K base functionality. Contains business logic for creating, issuing, presenting, and verifying credentials.                                                                                                                      |
+|      `vck-openid`      | OpenID protocol implementation, including OpenID4VCI. Contains client and server authentication business logic and the actual issuing protocol.                                                                                     |
+|   `vck-openid-ktor`    | Contains ktor-based OpenID4VCI client and OpenID4VP wallet implementations.                                                                                                                                                         |
+|    `vck-longfellow`    | Implementation of a registerable backend for ISO mDoc zero-knowledge proofs using [LongfellowZk](https://github.com/longfellow-zk/longfellow-zk)                                                                                    |
+|   `dif-data-classes`   | [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K! |
 | `openid-data-classes`  | OpenID data classes. **Only depends on `dif-data-classes` and `csc-data-classes`** and can hence be used independently of VC-K!                                                                                                     |
-| `csc-data-classes`     | [CSC](https://cloudsignatureconsortium.org/wp-content/uploads/2025/01/csc-api-2.1.0.1.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                 |
-| `etsi-data-classes`    | [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!             |
-| `rfc3986-uri-syntax`   | [RFC 3986 URI Syntax](https://datatracker.ietf.org/doc/html/rfc3986) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                                       |
+|   `csc-data-classes`   | [CSC](https://cloudsignatureconsortium.org/wp-content/uploads/2025/01/csc-api-2.1.0.1.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                 |
+|  `etsi-data-classes`   | [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!             |
+|  `rfc3986-uri-syntax`  | [RFC 3986 URI Syntax](https://datatracker.ietf.org/doc/html/rfc3986) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                                       |
 | `sd-jwt-type-metadata` | [SD-JWT VC](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/) type metadata data classes. **Only depends on `rfc3986-uri-syntax`** and can hence be used independently of VC-K!                                         |
 
 Simply declare the desired dependency to get going. This will usually be one of:
@@ -346,6 +347,23 @@ request arrives, require `summary.isConsistentWith(request.parameters.isoMdocReq
 final request cannot ask for different data than the system showed. The iOS response encoder accepts Annex C
 responses only; OpenID4VP responses use a different platform return path.
 
+### Registering a Zero-Knowledge Proof backend for ISO mDoc
+On the wallet side use `IsoMdocZkBackendRegistry` to register a zero-knowledge backend capable of generating 
+`IsoMdocZkProof`s/`ZkDocument`s.
+
+#### Example: Register `LongfellowBackend`:
+Ensure the longfellow-zk dependency is added to the project:
+```kotlin 
+implementation("at.asitplus.wallet:vck-longfellow:$version")
+```
+
+Then register the backend (usually with the default registry):
+```kotlin
+IsoMdocZkBackendRegistry.Default.register(LongfellowBackend()).fold(
+    onSuccess = { Napier.i { "Hooray!" } },
+    onFailure = { Napier.e { "Registration failed with ${it.message}" }}
+)
+```
 
 ## Limitations
 
@@ -353,6 +371,7 @@ responses only; OpenID4VP responses use a different platform return path.
  - Anything related to ledgers (e.g. resolving DID documents) is out of scope.
  - JSON-LD is not supported for W3C credentials.
  - Trust relationships are mostly up to clients using this library.
+ - ISO mDoc zero-knowledge proof verification is not yet (fully) implemented.
 
 ## Contributing
 External contributions are greatly appreciated! Be sure to observe the contribution guidelines (see [CONTRIBUTING.md](CONTRIBUTING.md)).

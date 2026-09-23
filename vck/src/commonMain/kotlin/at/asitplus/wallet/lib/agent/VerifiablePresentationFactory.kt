@@ -17,16 +17,12 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
-import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
-import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.ZkDocument
-import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
@@ -34,9 +30,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.supreme.hash.digest
@@ -60,8 +54,6 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import io.github.aakira.napier.Napier
 import io.github.z4kn4fein.semver.Version
-import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -244,12 +236,16 @@ class VerifiablePresentationFactory(
     ): KmmResult<Document> = catching {
         // grouping by namespace and all requested claims for that namespace
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
-            .mapNotNull { it.toIsoNamespaceAttribute() }
+            .mapNotNull { path -> path.toIsoNamespaceAttribute().also { if (it == null) {
+                Napier.w { "Ignoring requested claim '$path': does not follow namespaced path format (expected 2 segments)." }
+            } } }
             .groupBy { it.first }
             .mapValues { it.value.map { it.second } }
         val disclosedItems = namespaceToAttributesMap.mapValues { entry ->
             entry.value.map {
                 discloseItem(entry.key, it)
+                    .mapFailure { PresentationException(it) }
+                    .getOrThrow()
             }
         }
 
@@ -260,7 +256,14 @@ class VerifiablePresentationFactory(
         val deviceSignature = request.calcIsoDeviceSignaturePlain(input) ?: run {
             val sessionTranscript = request.calcIsoSessionTranscript()
                 ?: throw PresentationException("calcIsoSessionTranscript not implemented")
-            calculateDeviceSignature(input, sessionTranscript)
+
+            calculateIsoDeviceAuthenticationBytes(input, sessionTranscript).transform {
+                Napier.d("Device authentication signature input is ${it.toHexString()}")
+                calculateIsoDeviceSignature(it, signDeviceAuthDetached)
+            }.getOrElse { e ->
+                Napier.w("Could not create DeviceAuth for presentation", e)
+                throw PresentationException(e)
+            }
         }
 
         Document(
@@ -278,53 +281,6 @@ class VerifiablePresentationFactory(
         )
     }
 
-    private suspend fun calculateDeviceSignature(
-        input: IsoDeviceSignatureInput,
-        sessionTranscript: SessionTranscript,
-    ):  CoseSigned<ByteArray> {
-        val deviceAuthentication = DeviceAuthentication(
-            type = DeviceAuthentication.TYPE,
-            sessionTranscript = sessionTranscript,
-            docType = input.docType,
-            namespaces = input.deviceNameSpaceBytes
-        )
-        val deviceAuthenticationBytes = coseCompliantSerializer
-            .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
-            .wrapInCborTag(24)
-        Napier.d("Device authentication signature input is ${deviceAuthenticationBytes.toHexString()}")
-        return signDeviceAuthDetached(
-            protectedHeader = null,
-            unprotectedHeader = null,
-            payload = deviceAuthenticationBytes,
-            serializer = ByteArraySerializer()
-        ).getOrElse { e ->
-            Napier.w("Could not create DeviceAuth for presentation", e)
-            throw PresentationException(e)
-        }
-    }
-
-    /** Returns map of first element (namespace) to second element (attribute name) */
-    private fun NormalizedJsonPath.toIsoNamespaceAttribute() = with(firstTwoSegments()) {
-        if (size == 2) {
-            first().memberName to last().memberName
-        } else {
-            // Treating non-namespaced attributes as fields that are inherent to the credential for now
-            //  -> no need for selective disclosure
-            Napier.w("Not a namespaced attribute, ignoring: $this. This may be a bug.")
-            null
-        }
-    }
-
-    private fun NormalizedJsonPath.firstTwoSegments() = segments.take(2)
-        .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
-
-    private fun StoreEntry.Iso.discloseItem(
-        namespace: String,
-        attributeName: String
-    ): IssuerSignedItem = issuerSigned.namespaces?.get(namespace)
-        ?.entries?.find { it.value.elementIdentifier == attributeName }
-        ?.value
-        ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
 
     private suspend fun createSdJwtPresentation(
         request: PresentationRequestParameters,
@@ -501,3 +457,5 @@ class VerifiablePresentationFactory(
         CreatePresentationResult.VpJws(toString(), this)
     }
 }
+
+
