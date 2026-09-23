@@ -88,14 +88,14 @@ class WrpAuthenticationRequestValidator : WrpAuthenticationRequestValidatorFun {
                 val accessCertificateChain = deviceRequest.extractCertificateChain()
 
                 val registrationCertificate: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>> =
-                    deviceRequest.docRequests.associate {
+                    deviceRequest.docRequests.mapIndexed { _, it ->
                         val euWrprc = it.itemsRequest.value.requestInfo?.euWrprc
                             ?: throw Throwable("Registration certificate missing in DocRequest $it")
                         val payload = parseCose(euWrprc = euWrprc)
                         val registrationCertificate =
                             WrpRegistrationCertificate.WrpCwtRegistrationCertificate(cose = euWrprc, payload = payload)
                         Pair(registrationCertificate, listOf(WrpCredentialRequest.WrpDocRequest(it)))
-                    }
+                    }.groupBy({ it.first }, { it.second }).mapValues { (_, listen) -> listen.flatten() }
 
                 WrpRequestData(
                     accessCertificate = WrpAccessCertificate(accessCertificateChain),
