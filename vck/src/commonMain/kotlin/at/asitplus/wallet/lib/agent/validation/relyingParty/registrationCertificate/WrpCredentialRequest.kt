@@ -54,15 +54,15 @@ sealed interface WrpCredentialRequest {
         override suspend fun getAttributes() = this.query.claims?.associateWith {
             when (it) {
                 is DCQLJsonClaimsQuery -> JsonClaimReference(
-                    NormalizedJsonPath(it.path.map {
-                        when (it) {
-                            is DCQLClaimsPathPointerSegment.IndexSegment -> IndexSegment(it.index)
-                            is DCQLClaimsPathPointerSegment.NameSegment -> NameSegment(it.name)
-                            DCQLClaimsPathPointerSegment.NullSegment -> null
+                    NormalizedJsonPath(it.path.map { segment ->
+                        when (segment) {
+                            is DCQLClaimsPathPointerSegment.IndexSegment -> IndexSegment(segment.index)
+                            is DCQLClaimsPathPointerSegment.NameSegment -> NameSegment(segment.name)
+                            DCQLClaimsPathPointerSegment.NullSegment -> throw IllegalStateException(
+                                "NullSegment is not supported for WRPRC claim validation: $it"
+                            )
                         }
-                    }.takeWhile {
-                        it != null
-                    }.filterNotNull())
+                    })
                 )
 
                 is DCQLIsoMdocClaimsQuery -> MdocClaimReference(namespace = it.namespace, claimName = it.claimName)
