@@ -6,6 +6,7 @@ import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -17,7 +18,7 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator.Constants.WRPRC_CWT_HEADER
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator.Constants.WRPRC_JWS_HEADER
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
@@ -77,8 +78,7 @@ class WrprcValidator(
     }
 
     suspend fun validateRequest(
-        registrationCert: WrpRegistrationCertificate,
-        requests: List<WrpCredentialRequest>
+        registrationCert: WrpRegistrationCertificate, requests: List<WrpCredentialRequest>
     ) = requests.mapNotNull {
         requestValidator.invoke(request = it, payload = registrationCert.payload).getOrThrow()
     }.toMap()
@@ -116,10 +116,8 @@ class WrprcValidator(
     ) = run {
         val cose = certificate.cose
         val validHeader = validateHeader(cose)
-        val validSignature = validateSignature(cose)
-        val certificateChainBytes = cose.protectedHeader.certificateChain
-            ?: cose.unprotectedHeader?.certificateChain
-            ?: throw Throwable("$cose has no certificate chain in COSE header.")
+        val certificateChainBytes = cose.protectedHeader.certificateChain ?: cose.unprotectedHeader?.certificateChain
+        ?: throw Throwable("$cose has no certificate chain in COSE header.")
         val chain = certificateChainBytes.map {
             X509Certificate.decodeFromDerSafe(it).getOrElse { throwable ->
                 throw IllegalArgumentException("Could not parse certificate from euWrprc COSE header", throwable)
@@ -128,6 +126,7 @@ class WrprcValidator(
         val validChain = chainValidator.invoke(
             chain = chain, certificateTrustAnchors = certificateTrustAnchors
         ).getOrThrow()
+        val validSignature = validateSignature(cose, chain.leaf)
         val payload = certificate.payload
         val validPayload = validatePayload(payload)
         val statusList = payload.status.statusList.let {
@@ -200,6 +199,9 @@ class WrprcValidator(
         if (cose.protectedHeader.algorithm != CoseAlgorithm.Signature.ES256) {
             throw Throwable("$cose has invalid alg in CWT header. " + "expected='${CoseAlgorithm.Signature.ES256}', actual='${cose.protectedHeader.algorithm}'")
         }
+        if (cose.protectedHeader.kid != null || cose.unprotectedHeader?.kid != null) {
+            throw Throwable("$cose must not carry a 'kid' header attribute.")
+        }
         Napier.d("header checks passed for $cose.")
         true
     }
@@ -218,12 +220,13 @@ class WrprcValidator(
     }
 
     private suspend fun validateSignature(
-        cose: CoseSigned<ByteArray>
+        cose: CoseSigned<ByteArray>, leafCertificate: X509Certificate
     ) = run {
         if (cose.protectedHeader.algorithm !is CoseAlgorithm.Signature) {
             throw Throwable("$cose uses unsupported Cose algorithm.")
         }
-        VerifyCoseSignature<ByteArray>().invoke(coseSigned = cose, byteArrayOf(), null).getOrThrow().also {
+        val leafKey = leafCertificate.decodedPublicKey.getOrThrow().toCoseKey().getOrThrow()
+        VerifyCoseSignatureWithKey<ByteArray>().invoke(cose, leafKey, byteArrayOf(), null).getOrThrow().also {
             Napier.d("signature validation passed for $cose.")
         }
         true
