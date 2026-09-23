@@ -1,5 +1,6 @@
 package at.asitplus.etsi.relyingParty
 
+import at.asitplus.etsi.relyingParty.WrpConstants.POLICY_IDENTIFIER
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -50,7 +51,7 @@ data class WrpPayload(
     val supervisoryAuthority: WrpSupervisoryAuthority? = null,
 
     @SerialName("policy_id")
-    val policyId: List<String> = emptyList(),
+    val policyId: List<String> = listOf(POLICY_IDENTIFIER),
 
     @SerialName("certificate_policy")
     val certificatePolicy: String,

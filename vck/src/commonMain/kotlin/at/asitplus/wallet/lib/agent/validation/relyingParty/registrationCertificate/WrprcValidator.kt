@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertifi
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseSigned
@@ -259,6 +260,9 @@ class WrprcValidator(
                     "$payload exceeds maximum validity: exp=${expires} > iat=${issuedAt} + ${maxValidity}."
                 )
             }
+        }
+        if(!payload.policyId.contains(WrpConstants.POLICY_IDENTIFIER)) {
+            throw Throwable("$payload is missing required policy identifier ${WrpConstants.POLICY_IDENTIFIER}")
         }
         Napier.d("payload checks passed for $payload.")
         return true
