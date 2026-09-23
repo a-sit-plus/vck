@@ -28,6 +28,6 @@ data class WrpRegistrarInfo(
     val policyURI: String,
 
     @SerialName("credential")
-    val credential: List<WrpClaim>? = null,
+    val credential: List<WrpCredential>? = null,
 )
 
