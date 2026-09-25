@@ -26,14 +26,13 @@ import kotlin.time.Instant
  * subject name to `Default`, this sets distinct names, so that name chaining in
  * [at.asitplus.wallet.lib.etsi.isTrustedBy] is actually exercised.
  */
-class TestCertificateAuthority(
+class TestCertificateAuthority private constructor(
     val name: String = "Test CA ${Random.nextInt()}",
     private val key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
     private val validity: Duration = 5.minutes,
-) {
     /** The certificate to put on a trust list. */
-    suspend fun certificate(): X509Certificate =
-        certificateFor(key.publicKey, name, name, key, validity)
+    val certificate: X509Certificate,
+) {
 
     /** Key material whose [KeyMaterial.getCertificate] is issued by this authority, for use as an issuer key. */
     suspend fun issue(
@@ -49,7 +48,7 @@ class TestCertificateAuthority(
 
     companion object {
         /** Builds a certificate for [publicKey], signed by [issuerKey]. */
-        suspend fun certificateFor(
+        internal suspend fun certificateFor(
             publicKey: CryptoPublicKey,
             subjectName: String,
             issuerName: String,
@@ -77,7 +76,19 @@ class TestCertificateAuthority(
 
         private fun commonName(value: String) =
             AttributeTypeAndValue.CommonName(Asn1String.UTF8(value))
+
+        suspend operator fun invoke(
+            name: String = "Test CA ${Random.nextInt()}",
+            key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
+            validity: Duration = 5.minutes
+        ) = TestCertificateAuthority(
+            name = name,
+            key = key,
+            validity = validity,
+            certificate = certificateFor(key.publicKey, name, name, key, validity)
+        )
     }
+
 }
 
 /** Key material presenting a certificate built by [TestCertificateAuthority.certificateFor]. */

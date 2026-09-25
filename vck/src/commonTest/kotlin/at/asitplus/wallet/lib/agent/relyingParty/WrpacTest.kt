@@ -29,11 +29,11 @@ val WrpacTest by matrixSuite {
     "Unrelated intermediate invalidates an otherwise directly trusted leaf" {
         val ca = TestCertificateAuthority(name = CA_NAME)
         val leaf = ca.issue(subjectName = WRP_NAME).getCertificate().shouldNotBeNull()
-        val unrelatedIntermediate = TestCertificateAuthority(name = "Unrelated CA").certificate()
+        val unrelatedIntermediate = TestCertificateAuthority(name = "Unrelated CA").certificate
 
         WrpChainValidator(
             chain = listOf(leaf, unrelatedIntermediate),
-            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate()) },
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
     }
 
@@ -94,7 +94,7 @@ val WrpacTest by matrixSuite {
 
         WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
-            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate()) },
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
     }
 
@@ -121,7 +121,7 @@ val WrpacTest by matrixSuite {
 
         WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
-            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate()) },
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
     }
 
@@ -140,7 +140,7 @@ val WrpacTest by matrixSuite {
 
         WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
-            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate()) },
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
     }
 
@@ -162,7 +162,7 @@ val WrpacTest by matrixSuite {
 
         WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
-            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate()) },
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
     }
 

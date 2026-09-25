@@ -16,6 +16,7 @@ import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /**
  * A certificate authority for tests, i.e. an ephemeral key with a self-signed certificate that can issue
@@ -23,48 +24,68 @@ import kotlin.time.Duration.Companion.minutes
  *
  * Copy of the helper in the `vck` tests, as test sources are not shared between modules.
  */
-class TestCertificateAuthority(
+class TestCertificateAuthority private constructor(
     private val name: String = "Test CA ${Random.nextInt()}",
     private val key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
     private val validity: Duration = 5.minutes,
-) {
     /** The certificate to put on a trust list. */
-    suspend fun certificate(): X509Certificate = certificateFor(name, name, key.publicKey, key)
-
+    val certificate: X509Certificate,
+) {
     /** Key material whose [KeyMaterial.getCertificate] is issued by this authority. */
     suspend fun issue(
         subjectName: String = "Test Issuer ${Random.nextInt()}",
+        validity: Duration = this.validity,
+        validFrom: Instant = Clock.System.now(),
+        key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
         extensions: List<X509CertificateExtension> = listOf(),
-    ): KeyMaterial =
-        EphemeralKeyWithoutCert().let {
-            KeyWithFixedCert(it, certificateFor(subjectName, name, it.publicKey, key, extensions))
+    ): KeyMaterial = KeyWithFixedCert(
+        key = key,
+        certificate = certificateFor(key.publicKey, subjectName, name, this.key, validity, validFrom, extensions),
+    )
+
+    companion object {
+        /** Builds a certificate for [publicKey], signed by [issuerKey]. */
+        internal suspend fun certificateFor(
+            publicKey: CryptoPublicKey,
+            subjectName: String,
+            issuerName: String,
+            issuerKey: KeyMaterial,
+            validity: Duration = 5.minutes,
+            validFrom: Instant = Clock.System.now(),
+            extensions: List<X509CertificateExtension> = listOf(),
+        ): X509Certificate {
+            val algorithm = issuerKey.signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
+            val notBefore = validFrom.truncateToSeconds()
+            val tbsCertificate = TbsCertificate(
+                version = 2,
+                serialNumber = Random.nextBytes(8),
+                issuerName = listOf(RelativeDistinguishedName(commonName(issuerName))),
+                subjectName = listOf(RelativeDistinguishedName(commonName(subjectName))),
+                validFrom = Asn1Time(notBefore),
+                validUntil = Asn1Time((notBefore + validity).truncateToSeconds()),
+                signatureAlgorithm = algorithm,
+                publicKey = publicKey,
+                extensions = extensions,
+            )
+            val signature = issuerKey.sign(tbsCertificate.encodeToDer()).asKmmResult().getOrThrow()
+            return X509Certificate(tbsCertificate, algorithm, signature)
         }
 
-    private suspend fun certificateFor(
-        subjectName: String,
-        issuerName: String,
-        publicKey: CryptoPublicKey,
-        issuerKey: KeyMaterial,
-        extensions: List<X509CertificateExtension> = listOf(),
-    ): X509Certificate {
-        val algorithm = issuerKey.signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
-        val notBefore = Clock.System.now().truncateToSeconds()
-        val tbsCertificate = TbsCertificate(
-            version = 2,
-            serialNumber = Random.nextBytes(8),
-            issuerName = listOf(RelativeDistinguishedName(commonName(issuerName))),
-            subjectName = listOf(RelativeDistinguishedName(commonName(subjectName))),
-            validFrom = Asn1Time(notBefore),
-            validUntil = Asn1Time((notBefore + validity).truncateToSeconds()),
-            signatureAlgorithm = algorithm,
-            publicKey = publicKey,
-            extensions = extensions,
+        private fun commonName(value: String) =
+            AttributeTypeAndValue.CommonName(Asn1String.UTF8(value))
+
+        suspend operator fun invoke(
+            name: String = "Test CA ${Random.nextInt()}",
+            key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
+            validity: Duration = 5.minutes
+        ) = TestCertificateAuthority(
+            name = name,
+            key = key,
+            validity = validity,
+            certificate = certificateFor(key.publicKey, name, name, key, validity)
         )
-        val signature = issuerKey.sign(tbsCertificate.encodeToDer()).asKmmResult().getOrThrow()
-        return X509Certificate(tbsCertificate, algorithm, signature)
     }
 
-    private fun commonName(value: String) = AttributeTypeAndValue.CommonName(Asn1String.UTF8(value))
 }
 
 private class KeyWithFixedCert(

@@ -41,7 +41,6 @@ import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -248,7 +247,7 @@ val AgentSdJwtTest by matrixSuite {
                     ).second
                 },
                 verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(
-                    trustedIssuers = { setOf(it.statusListCa.certificate()) },
+                    trustedIssuers = { setOf(it.statusListCa.certificate) },
                 ),
             )
 
@@ -292,7 +291,7 @@ val AgentSdJwtTest by matrixSuite {
                     ).second
                 },
                 verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(
-                    trustedIssuers = { setOf(TestCertificateAuthority().certificate()) },
+                    trustedIssuers = { setOf(TestCertificateAuthority().certificate) },
                 ),
             )
 
