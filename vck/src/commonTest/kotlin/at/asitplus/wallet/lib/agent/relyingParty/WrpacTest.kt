@@ -57,6 +57,7 @@ val WrpacTest by matrixSuite {
         val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
         val providerCert = ca.issue(
             subjectName = WRPAC_PROVIDER_NAME,
+            certificateAuthority = true,
             validity = 1.days,
             validFrom = System.now() - 2.days,
             key = providerKey,
@@ -80,6 +81,7 @@ val WrpacTest by matrixSuite {
         val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
         val providerCert = ca.issue(
             subjectName = WRPAC_PROVIDER_NAME,
+            certificateAuthority = true,
             validity = 1.days,
             key = providerKey,
         ).getCertificate().shouldNotBeNull()
@@ -106,6 +108,7 @@ val WrpacTest by matrixSuite {
         val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
         val providerCert = ca.issue(
             subjectName = WRPAC_PROVIDER_NAME,
+            certificateAuthority = true,
             validity = 1.days,
             validFrom = System.now() - 2.days,
             key = providerKey,
@@ -132,6 +135,7 @@ val WrpacTest by matrixSuite {
         val providerKey = EphemeralKeyWithoutCert()
         val providerCert = ca.issue(
             subjectName = WRPAC_PROVIDER_NAME,
+            certificateAuthority = true,
             validity = 1.days,
             key = providerKey,
         ).getCertificate().shouldNotBeNull()
@@ -144,6 +148,30 @@ val WrpacTest by matrixSuite {
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
     }
 
+    // RFC 5280 section 4.2.1.9: a key whose certificate does not set cA "MUST NOT be used to verify certificate
+    // signatures". Only the top of the chain is anchored, so without this an end entity certificate could vouch
+    // for anything below it.
+    "Provider certificate that is not a certificate authority invalidates the chain" {
+        val ca = TestCertificateAuthority(name = CA_NAME)
+        val providerKey = EphemeralKeyWithoutCert()
+        val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+        val providerCert = ca.issue(
+            subjectName = WRPAC_PROVIDER_NAME,
+            validity = 1.days,
+            key = providerKey,
+            certificateAuthority = false,
+        ).getCertificate().shouldNotBeNull()
+
+        val wrpKey = EphemeralKeyWithoutCert()
+        val wrpCert =
+            provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate().shouldNotBeNull()
+
+        WrpChainValidator(
+            chain = listOf(wrpCert, providerCert),
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("may not issue certificates")
+    }
+
     "Wrong provider subject name breaks issuer linkage" {
         val caKey = EphemeralKeyWithoutCert()
         val ca = TestCertificateAuthority(name = CA_NAME, key = caKey)
@@ -154,6 +182,9 @@ val WrpacTest by matrixSuite {
             subjectName = "Provider Wrong",
             validity = 1.days,
             key = providerKey,
+            // A legitimate intermediate whose only defect is its name, so the linkage failure below is the
+            // reason the chain is rejected, not a missing cA flag.
+            certificateAuthority = true,
         ).getCertificate().shouldNotBeNull()
 
         val wrpKey = EphemeralKeyWithoutCert()
