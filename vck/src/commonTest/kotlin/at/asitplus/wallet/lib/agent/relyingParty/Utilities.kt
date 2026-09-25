@@ -147,7 +147,7 @@ suspend fun buildWrpFixture(
 ): WrpFixture {
     val rootKey = EphemeralKeyWithoutCert()
     val root = TestCertificateAuthority(name = CA_NAME, key = rootKey)
-    val trustAnchors = TrustedCertificates { setOf(root.certificate()) }
+    val trustAnchors = TrustedCertificates { setOf(root.certificate) }
 
     val wrpacProviderKey = EphemeralKeyWithoutCert()
     val wrpacProvider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = wrpacProviderKey)

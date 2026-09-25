@@ -49,7 +49,7 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
         presentTo(
             relyingParty = relyingParty,
             clientIdScheme = sanDnsScheme(relyingParty),
-            trust = setOf(RelyingPartyTrust.Certificates { setOf(ca.certificate()) }),
+            trust = setOf(RelyingPartyTrust.Certificates { setOf(ca.certificate) }),
         ).getOrThrow()
     }
 
@@ -60,7 +60,7 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
         presentTo(
             relyingParty = relyingParty,
             clientIdScheme = sanDnsScheme(relyingParty),
-            trust = setOf(RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate()) }),
+            trust = setOf(RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate) }),
         ).exceptionOrNull().shouldNotBeNull()
             .message.shouldNotBeNull() shouldContain "trust anchor"
     }
@@ -73,7 +73,7 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
         presentTo(
             relyingParty = impostor,
             clientIdScheme = sanDnsScheme(impostor),
-            trust = setOf(RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate()) }),
+            trust = setOf(RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate) }),
         ).exceptionOrNull().shouldNotBeNull()
             .message.shouldNotBeNull() shouldContain "self-signed"
     }
@@ -84,12 +84,12 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
         val chain = listOf(relyingParty.getCertificate()!!)
         val scheme = ClientIdScheme.CertificateHash(chain, REDIRECT_URI)
 
-        presentTo(relyingParty, scheme, setOf(RelyingPartyTrust.Certificates { setOf(ca.certificate()) }))
+        presentTo(relyingParty, scheme, setOf(RelyingPartyTrust.Certificates { setOf(ca.certificate) }))
             .getOrThrow()
 
         presentTo(
             relyingParty, scheme,
-            setOf(RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate()) }),
+            setOf(RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate) }),
         ).exceptionOrNull().shouldNotBeNull()
             .message.shouldNotBeNull() shouldContain "trust anchor"
     }
@@ -188,8 +188,8 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
             relyingParty = relyingParty,
             clientIdScheme = sanDnsScheme(relyingParty),
             trust = setOf(
-                RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate()) },
-                RelyingPartyTrust.Certificates { setOf(ca.certificate()) },
+                RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate) },
+                RelyingPartyTrust.Certificates { setOf(ca.certificate) },
                 RelyingPartyTrust.Certificates {
                     consultedAfterTrustEstablished = true
                     setOf()
