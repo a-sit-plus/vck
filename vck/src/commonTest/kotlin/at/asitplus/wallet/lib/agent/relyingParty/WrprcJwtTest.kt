@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
 import at.asitplus.etsi.relyingParty.WrpClaim
-import at.asitplus.signum.supreme.sign.InvalidSignature
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyWithFixedCert
+import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock.System
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
@@ -60,8 +59,6 @@ val WrprcJwtTest by matrixSuite {
         )
 
         result.exceptionOrNull().shouldNotBeNull().message.shouldContain("No registration certificates to verify")
-
-
     }
 
     "Wrong JWS header type fails" {
@@ -72,7 +69,21 @@ val WrprcJwtTest by matrixSuite {
             jwsType = "not-rc-wrp+jwt",
         )
 
-        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("has invalid typ in JWS header. expected='rc-wrp+jwt', actual='not-rc-wrp+jwt'")
+        result.getOrThrow().certificateValidation.values.single().shouldNotBeNull().validHeader shouldBe false
+    }
+
+    "WRPRC signed under an untrusted CA fails chain validation" {
+        val fixture = buildWrpFixture()
+        val untrustedSigner = TestCertificateAuthority(name = "Untrusted CA").issue(subjectName = WRPRC_PROVIDER_NAME)
+
+        val result = fixture.validateWrprc(
+            payload = buildWrpPayload(fixture.wrpIdentifier),
+            signingKeyMaterial = untrustedSigner,
+        ).getOrThrow()
+
+        val validation = result.certificateValidation.values.single().shouldNotBeNull()
+        validation.validChain shouldBe false
+        validation.validSignature shouldBe true
     }
 
     "Signature from a non-matching key fails" {
@@ -85,7 +96,7 @@ val WrprcJwtTest by matrixSuite {
             signingKeyMaterial = mismatchedSigner,
         )
 
-        result.exceptionOrNull().shouldBeInstanceOf<InvalidSignature>()
+        result.getOrThrow().certificateValidation.values.single().shouldNotBeNull().validSignature shouldBe false
     }
 
     "Expired WRPRC payload fails payload validation" {
@@ -97,7 +108,7 @@ val WrprcJwtTest by matrixSuite {
         )
 
         val result = fixture.validateWrprc(payload = payload)
-        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("already expired")
+        result.getOrThrow().certificateValidation.values.single().shouldNotBeNull().validPayload shouldBe false
     }
 
     "WRPRC payload missing optional intendedUseId still validates" {
@@ -127,7 +138,7 @@ val WrprcJwtTest by matrixSuite {
 
         val result = fixture.validateWrprc(payload = payload)
 
-        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("exceeds maximum validity")
+        result.getOrThrow().certificateValidation.values.single().shouldNotBeNull().validPayload shouldBe false
     }
 
     "sub not matching the WRPAC identifier fails linkage validation" {
@@ -195,6 +206,6 @@ val WrprcJwtTest by matrixSuite {
             request = mdocDcqlRequest(claimNames = listOf("given_name")),
         )
 
-        result.exceptionOrNull().shouldBeInstanceOf<IllegalArgumentException>()
+        result.getOrThrow().certificateValidation.values.single().shouldNotBeNull().validPayload shouldBe false
     }
 }

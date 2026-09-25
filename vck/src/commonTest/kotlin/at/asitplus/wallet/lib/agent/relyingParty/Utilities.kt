@@ -340,7 +340,7 @@ suspend fun WrpFixture.validateWrprc(
     ).getOrThrow()
 }
 
-enum class CertificateChainPlacement { PROTECTED, UNPROTECTED }
+enum class CertificateChainPlacement { PROTECTED, UNPROTECTED, NONE }
 
 suspend fun signWrprcCose(
     keyMaterial: KeyMaterial,
@@ -370,13 +370,14 @@ suspend fun WrpFixture.validateWrprcCose(
     request: DocRequest? = mdocDocRequest(),
     signingKeyMaterial: KeyMaterial = wrprcSigningKeyMaterial,
     type: String = WRPRC_CWT_TYPE,
+    parsePayload: Boolean = true,
     certificateChainPlacement: CertificateChainPlacement = CertificateChainPlacement.UNPROTECTED,
     revokedStatusIndex: Int = 1,
     accessCertValidation: WrpacValidationResult? = null,
 ) = catching {
     val cose =
         signWrprcCose(signingKeyMaterial, payload, type = type, certificateChainPlacement = certificateChainPlacement)
-    val parsedPayload = WrpAuthenticationRequestValidator.parseCose(cose)
+    val parsedPayload = if (parsePayload) WrpAuthenticationRequestValidator.parseCose(cose) else payload
     val registrationCertificate: WrpRegistrationCertificate =
         WrpRegistrationCertificate.WrpCwtRegistrationCertificate(cose = cose, payload = parsedPayload)
     val credentialRequests = request?.let { listOf(WrpCredentialRequest.WrpDocRequest(it)) } ?: emptyList()
