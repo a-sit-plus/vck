@@ -1,13 +1,14 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate
 
+import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.sha256
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
+import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
 import io.github.aakira.napier.Napier
@@ -22,10 +23,10 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
  **/
 object WrpacValidator {
 
-    operator fun invoke(
+    suspend operator fun invoke(
         validationData: WrpRequestData,
-        certificateTrustAnchors: List<X509Certificate>
-    ) = catching {
+        certificateTrustAnchors: TrustedCertificates
+    ): KmmResult<WrpacValidationResult> = catching {
         val certificateChain = requireNotNull(validationData.accessCertificate.certificateChain) {
             "certificate chain is null"
         }

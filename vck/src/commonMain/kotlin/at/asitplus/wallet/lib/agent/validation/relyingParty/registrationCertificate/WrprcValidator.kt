@@ -12,6 +12,8 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
+import at.asitplus.wallet.lib.agent.TrustedCertificates
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolver
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
@@ -39,6 +41,7 @@ import kotlin.time.Duration.Companion.minutes
  *  - Token status
  **/
 class WrprcValidator(
+    private val clock: Clock = Clock.System,
     private val timeLeeway: Duration = 5.minutes,
     private val maxValidity: Duration = 365.days
 ) {
@@ -47,7 +50,7 @@ class WrprcValidator(
         identifierResult: WrpacIdentifier?,
         validationData: WrpRequestData,
         tokenStatusResolver: TokenStatusResolver,
-        certificateTrustAnchors: List<X509Certificate>,
+        certificateTrustAnchors: TrustedCertificates,
     ): KmmResult<WrprcValidationResult> = catching {
         require(validationData.registrationCertificate.isNotEmpty()) {
             "No registration certificates to verify"
@@ -79,7 +82,7 @@ class WrprcValidator(
 
     private suspend fun validateWrpRegistrationCertificate(
         certificate: WrpRegistrationCertificate,
-        certificateTrustAnchors: List<X509Certificate>,
+        certificateTrustAnchors: TrustedCertificates,
         tokenStatusResolver: TokenStatusResolver,
         identifierResult: WrpacIdentifier?
     ) = when (certificate) {
@@ -97,13 +100,11 @@ class WrprcValidator(
             tokenStatusResolver = tokenStatusResolver,
             identifierResult = identifierResult
         )
-
     }
-
 
     private suspend fun validateCose(
         certificate: WrpRegistrationCertificate.WrpCwtRegistrationCertificate,
-        certificateTrustAnchors: List<X509Certificate>,
+        certificateTrustAnchors: TrustedCertificates,
         tokenStatusResolver: TokenStatusResolver,
         identifierResult: WrpacIdentifier?
     ) = run {
@@ -138,7 +139,7 @@ class WrprcValidator(
     private suspend fun validateJwt(
         certificate: WrpRegistrationCertificate.WrpJwtRegistrationCertificate,
         identifierResult: WrpacIdentifier?,
-        certificateTrustAnchors: List<X509Certificate>,
+        certificateTrustAnchors: TrustedCertificates,
         tokenStatusResolver: TokenStatusResolver,
     ) = run {
         val jwsTyped = certificate.jwsTyped
@@ -211,7 +212,6 @@ class WrprcValidator(
     }
 
     private fun validatePayload(payload: WrpPayload): Boolean {
-        val now = Clock.System.now()
         requireNotNull(payload.name) {
             "$payload is missing required claim 'name'."
         }
@@ -226,17 +226,18 @@ class WrprcValidator(
         require(payload.credentials.none { credential -> credential.claim.any { it.values != null } }) {
             "WRPRC claim values are not supported for authorization."
         }
-        // TODO looks like duplicated code
-        val issuedAt = payload.iat
-        payload.exp?.let { expires ->
-            require(expires > issuedAt) {
-                "$payload has invalid temporal claims: exp=$expires <= iat=${issuedAt}."
+        with(TimeScope(clock.now(), timeLeeway)) {
+            val issuedAt = payload.iat
+            require(!issuedAt.isTooLate()) {
+                "$payload has invalid temporal claims: iat=${payload.iat}."
             }
-            require(expires >= (now - timeLeeway)) {
-                "$payload already expired: exp=$expires <= now=${now}."
-            }
-            require(expires <= (issuedAt + maxValidity)) {
-                "$payload exceeds maximum validity: exp=$expires > iat=${issuedAt} + ${maxValidity}."
+            payload.exp?.let { expires ->
+                require(maxValidity >= (expires - issuedAt)) {
+                    "$payload exceeds maximum validity: exp=$expires > iat=${issuedAt} + ${maxValidity}."
+                }
+                require(!expires.isTooEarly()) {
+                    "$payload has invalid temporal claims: exp=${expires}."
+                }
             }
         }
         require(payload.policyId.contains(WrpConstants.POLICY_IDENTIFIER)) {

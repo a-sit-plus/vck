@@ -51,6 +51,7 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
@@ -132,7 +133,7 @@ suspend fun issueWrpAccessCertificate(
 }
 
 data class WrpFixture(
-    val trustAnchors: List<X509Certificate>,
+    val trustAnchors: TrustedCertificates,
     val wrpIdentifier: String,
     val wrpacChain: List<X509Certificate>,
     val clientId: String,
@@ -146,7 +147,7 @@ suspend fun buildWrpFixture(
 ): WrpFixture {
     val rootKey = EphemeralKeyWithoutCert()
     val root = TestCertificateAuthority(name = CA_NAME, key = rootKey)
-    val trustAnchors = listOf(root.certificate())
+    val trustAnchors = TrustedCertificates { setOf(root.certificate()) }
 
     val wrpacProviderKey = EphemeralKeyWithoutCert()
     val wrpacProvider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = wrpacProviderKey)
@@ -183,7 +184,7 @@ suspend fun buildWrpFixture(
     return WrpFixture(trustAnchors, wrpIdentifier, wrpacChain, clientId, wrprcSigningKeyMaterial)
 }
 
-fun WrpFixture.validateWrpac() = WrpacValidator(
+suspend fun WrpFixture.validateWrpac() = WrpacValidator(
     validationData = WrpRequestData(
         clientId = clientId,
         accessCertificate = WrpAccessCertificate(wrpacChain),
