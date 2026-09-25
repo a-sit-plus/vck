@@ -38,7 +38,7 @@ val WrprcJwtTest by matrixSuite {
             fixture.validateWrprc(payload = buildWrpPayload(fixture.wrpIdentifier)).getOrThrow()
 
         result.certificateValidation.toMap().values.all { it?.isValid() == true } shouldBe true
-        result.requestDataValidation.toMap().values.all { it?.isValid() == true } shouldBe true
+        result.requestDataValidation.toMap().values.all { it.isValid() } shouldBe true
     }
 
     "WRPRC validation with no registration certificate present succeeds with empty results" {
