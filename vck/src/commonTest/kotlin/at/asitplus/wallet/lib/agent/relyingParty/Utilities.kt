@@ -51,6 +51,7 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
@@ -132,7 +133,7 @@ suspend fun issueWrpAccessCertificate(
 }
 
 data class WrpFixture(
-    val trustAnchors: List<X509Certificate>,
+    val trustAnchors: TrustedCertificates,
     val wrpIdentifier: String,
     val wrpacChain: List<X509Certificate>,
     val clientId: String,
@@ -146,12 +147,13 @@ suspend fun buildWrpFixture(
 ): WrpFixture {
     val rootKey = EphemeralKeyWithoutCert()
     val root = TestCertificateAuthority(name = CA_NAME, key = rootKey)
-    val trustAnchors = listOf(root.certificate())
+    val trustAnchors = TrustedCertificates { setOf(root.certificate) }
 
     val wrpacProviderKey = EphemeralKeyWithoutCert()
     val wrpacProvider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = wrpacProviderKey)
     val wrpacProviderCert = root.issue(
         subjectName = WRPAC_PROVIDER_NAME,
+        certificateAuthority = true,
         validity = validity,
         key = wrpacProviderKey,
     ).getCertificate().shouldNotBeNull()
@@ -183,7 +185,7 @@ suspend fun buildWrpFixture(
     return WrpFixture(trustAnchors, wrpIdentifier, wrpacChain, clientId, wrprcSigningKeyMaterial)
 }
 
-fun WrpFixture.validateWrpac() = WrpacValidator().invoke(
+suspend fun WrpFixture.validateWrpac() = WrpacValidator(
     validationData = WrpRequestData(
         clientId = clientId,
         accessCertificate = WrpAccessCertificate(wrpacChain),
@@ -332,7 +334,7 @@ suspend fun WrpFixture.validateWrprc(
     }
     val tokenStatusResolver = TokenStatusResolverImpl(statusListTokenResolver)
 
-    WrprcValidator().invoke(
+    WrprcValidator()(
         identifierResult = resolvedAccessCertValidation.identifierResult,
         validationData = validationData,
         tokenStatusResolver = tokenStatusResolver,
@@ -340,7 +342,7 @@ suspend fun WrpFixture.validateWrprc(
     ).getOrThrow()
 }
 
-enum class CertificateChainPlacement { PROTECTED, UNPROTECTED }
+enum class CertificateChainPlacement { PROTECTED, UNPROTECTED, NONE }
 
 suspend fun signWrprcCose(
     keyMaterial: KeyMaterial,
@@ -370,13 +372,14 @@ suspend fun WrpFixture.validateWrprcCose(
     request: DocRequest? = mdocDocRequest(),
     signingKeyMaterial: KeyMaterial = wrprcSigningKeyMaterial,
     type: String = WRPRC_CWT_TYPE,
+    parsePayload: Boolean = true,
     certificateChainPlacement: CertificateChainPlacement = CertificateChainPlacement.UNPROTECTED,
     revokedStatusIndex: Int = 1,
     accessCertValidation: WrpacValidationResult? = null,
 ) = catching {
     val cose =
         signWrprcCose(signingKeyMaterial, payload, type = type, certificateChainPlacement = certificateChainPlacement)
-    val parsedPayload = WrpAuthenticationRequestValidator().parseCose(cose)
+    val parsedPayload = if (parsePayload) WrpAuthenticationRequestValidator.parseCose(cose) else payload
     val registrationCertificate: WrpRegistrationCertificate =
         WrpRegistrationCertificate.WrpCwtRegistrationCertificate(cose = cose, payload = parsedPayload)
     val credentialRequests = request?.let { listOf(WrpCredentialRequest.WrpDocRequest(it)) } ?: emptyList()
@@ -391,7 +394,7 @@ suspend fun WrpFixture.validateWrprcCose(
     }
     val tokenStatusResolver = TokenStatusResolverImpl(statusListTokenResolver)
 
-    WrprcValidator().invoke(
+    WrprcValidator()(
         identifierResult = resolvedAccessCertValidation.identifierResult,
         validationData = validationData,
         tokenStatusResolver = tokenStatusResolver,

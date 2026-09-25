@@ -50,7 +50,7 @@ val OAuth2ClientAttestationDpopCombinedTest by matrixSuite {
     fixture {
         runBlocking {
             val walletProviderCa = TestCertificateAuthority()
-            val walletProviderCaCert = walletProviderCa.certificate()
+            val walletProviderCaCert = walletProviderCa.certificate
             val attesterBackend = SignJwt<JsonWebToken>(walletProviderCa.issue(), JwsHeaderCertOrJwk())
             val client = OAuth2Client()
             val scope = randomString()

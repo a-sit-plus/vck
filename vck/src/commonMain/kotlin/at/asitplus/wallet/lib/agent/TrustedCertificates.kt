@@ -46,22 +46,28 @@ fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCo
 
 /**
  * Extracts the signing certificate, i.e. the [leaf], from this certificate chain, and requires it to be trusted:
- * It has to be signed by one of the certificates from [trustedIssuers], and both certificates have to be valid
- * at [at], see [isTrustedBy].
+ * either the signing certificate itself is listed in [trustedIssuers], or it was issued by a listed certificate.
+ * The signing certificate, and its issuer when applicable, must be valid at [at], see [isTrustedBy].
  *
  * The certificate of the trust anchor must be known out-of-band, so no certificate from [trustedIssuers] may
- * appear in this chain, and the signing certificate must not be self-signed. Unless [allowDirectTrust] is
- * disabled, one case is exempt from both rules: a chain consisting of exactly one self-signed certificate that
- * is itself contained in [trustedIssuers], i.e. an issuer whose own certificate we trust directly.
+ * appear in this chain, and the signing certificate must not be self-signed. The anchor must also assert
+ * `BasicConstraints` with `cA` set, see [isTrustedBy] and
+ * [at.asitplus.wallet.lib.etsi.isCertificateAuthority].
+ *
+ * Unless [allowDirectTrust] is disabled, one case is exempt from all of those rules: a chain consisting of
+ * exactly one certificate that is itself contained in [trustedIssuers], regardless of whether it is self-signed
+ * or CA-issued. This directly listed certificate verifies the signed object, not another certificate, so it
+ * need not be a CA.
  *
  * @return the signing certificate, for use in signature verification
  */
-// ponytail: single hop only, we don't build a certificate path, and we don't evaluate keyUsage or
-// basicConstraints -- Signum 3.24.0 exposes no typed X.509 extensions, revisit once it does
+// ponytail: single hop only, so we don't build a certificate path and never evaluate pathLenConstraint, and we
+// don't evaluate keyUsage -- Signum exposes no typed X.509 extensions, BasicConstraints is decoded in
+// at.asitplus.wallet.lib.etsi.basicConstraints, revisit once Signum ships its own
 suspend fun CertificateChain?.requireTrustedSigningCertificate(
     trustedIssuers: TrustedCertificates,
     at: Instant = Clock.System.now(),
-    /** Whether a chain of exactly one self-signed certificate contained in [trustedIssuers] counts as trusted. */
+    /** Whether a chain of exactly one certificate contained in [trustedIssuers] counts as directly trusted. */
     allowDirectTrust: Boolean = true,
 ): X509Certificate {
     val chain = this?.takeIf { it.isNotEmpty() }
@@ -71,12 +77,17 @@ suspend fun CertificateChain?.requireTrustedSigningCertificate(
     require(trusted.isNotEmpty()) { "No trusted issuer certificates" }
     require(signingCertificate.isValidAt(at)) { "Signing certificate is not valid at $at" }
 
-    val isSelfSigned = signingCertificate.isIssuerOf(signingCertificate).isSuccess
-    val isDirectlyTrusted = allowDirectTrust && chain.size == 1 && isSelfSigned && signingCertificate in trusted
+    // Compare the full certificate, not just its key: a listed signer does not confer trust on other
+    // certificates sharing that key. DER comparison also works when the transported certificate was decoded anew.
+    fun isListed(certificate: X509Certificate) = trusted.any {
+        it.encodeToDer().contentEquals(certificate.encodeToDer())
+    }
+    val isDirectlyTrusted = allowDirectTrust && chain.size == 1 && isListed(signingCertificate)
     if (!isDirectlyTrusted) {
-        require(chain.none { it in trusted }) {
+        require(chain.none(::isListed)) {
             "The certificate of the trust anchor must not be transported with the signed object"
         }
+        val isSelfSigned = signingCertificate.isIssuerOf(signingCertificate).isSuccess
         require(!isSelfSigned) { "The signing certificate must not be self-signed" }
         signingCertificate.isTrustedBy(trusted.toList(), at).getOrThrow()
     }

@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
-import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpCredential
@@ -14,14 +13,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SingleClaimReference
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.Serializable
-
-fun interface WrprcRequestValidatorFun {
-    suspend operator fun invoke(
-        request: WrpCredentialRequest, payload: WrpPayload
-    ): KmmResult<Pair<WrpCredentialRequest, RequestDataValidity>?>
-}
 
 /**
  * Class to validate a credential request against a registration certificates.
@@ -29,9 +21,11 @@ fun interface WrprcRequestValidatorFun {
  *  - Requested credential type
  *  - Requested attributes
  **/
-class WrprcRequestValidator : WrprcRequestValidatorFun {
-    override suspend fun invoke(
-        request: WrpCredentialRequest, payload: WrpPayload
+object WrprcRequestValidator {
+
+    suspend operator fun invoke(
+        request: WrpCredentialRequest,
+        payload: WrpPayload
     ) = catching {
         request to payload.let { payload ->
             RequestDataValidity(
@@ -44,8 +38,8 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
     private suspend fun checkAttributesValidity(
         credentialRequest: WrpCredentialRequest, wrpPayload: WrpPayload
     ): RequestCredentialAttributesValidity = run {
-        val attributes = credentialRequest.getAttributes() ?: run {
-            throw Throwable("Unable to extract attributes from $credentialRequest")
+        val attributes = requireNotNull(credentialRequest.getAttributes()) {
+            "Unable to extract attributes from $credentialRequest"
         }
         val meta = credentialRequest.getMeta()
         val representation = credentialRequest.getRepresentation()
@@ -53,15 +47,15 @@ class WrprcRequestValidator : WrprcRequestValidatorFun {
     }
 
     private fun checkCredentialTypesValidity(
-        credentialRequest: WrpCredentialRequest, wrpPayload: WrpPayload
+        credentialRequest: WrpCredentialRequest,
+        wrpPayload: WrpPayload
     ): Boolean = checkCredentialTypes(credentialRequest.getMeta(), wrpPayload)
 
     private fun checkCredentialTypes(
-        metadata: WrpCredentialMetaDomain, wrpPayload: WrpPayload
+        metadata: WrpCredentialMetaDomain,
+        wrpPayload: WrpPayload
     ): Boolean = run {
-        val metaList = wrpPayload.credentials.map {
-            it.meta
-        }
+        val metaList = wrpPayload.credentials.map { it.meta }
         when (metadata) {
             is WrpCredentialMetaDomain.WrpDocTypeDomain -> metaList.any { meta ->
                 catchingUnwrapped {
