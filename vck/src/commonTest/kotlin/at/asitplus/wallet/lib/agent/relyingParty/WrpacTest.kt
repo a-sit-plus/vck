@@ -19,7 +19,7 @@ val WrpacTest by matrixSuite {
         val fixture = buildWrpFixture()
         val clientId = "x509_hash:wrong"
 
-        WrpacValidator().invoke(
+        WrpacValidator(
             WrpRequestData(
                 clientId = clientId,
                 accessCertificate = WrpAccessCertificate(fixture.wrpacChain),
@@ -46,7 +46,7 @@ val WrpacTest by matrixSuite {
         val wrpCert =
             provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate().shouldNotBeNull()
 
-        WrpChainValidator().invoke(
+        WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
@@ -72,7 +72,7 @@ val WrpacTest by matrixSuite {
             key = wrpKey,
         ).getCertificate().shouldNotBeNull()
 
-        WrpChainValidator().invoke(
+        WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
@@ -99,7 +99,7 @@ val WrpacTest by matrixSuite {
             key = wrpKey,
         ).getCertificate().shouldNotBeNull()
 
-        WrpChainValidator().invoke(
+        WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
@@ -118,7 +118,7 @@ val WrpacTest by matrixSuite {
 
         val wrpCert = EphemeralKeyWithSelfSignedCert().getCertificate().shouldNotBeNull()
 
-        WrpChainValidator().invoke(
+        WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
@@ -140,7 +140,7 @@ val WrpacTest by matrixSuite {
         val wrpCert =
             provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate().shouldNotBeNull()
 
-        WrpChainValidator().invoke(
+        WrpChainValidator(
             chain = listOf(wrpCert, providerCert),
             certificateTrustAnchors = listOf(ca.certificate()),
         ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
@@ -149,14 +149,15 @@ val WrpacTest by matrixSuite {
     "Empty trust anchors reject any chain" {
         val fixture = buildWrpFixture()
 
-        WrpChainValidator().invoke(
+        WrpChainValidator(
             chain = fixture.wrpacChain,
             certificateTrustAnchors = emptyList(),
-        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("No trusted root certificates configured for request validation.")
+        ).exceptionOrNull()
+            .shouldNotBeNull().message.shouldContain("No trusted root certificates configured for request validation.")
     }
 
     "Missing certificate chain yields an exception" {
-        val result = WrpacValidator().invoke(
+        val result = WrpacValidator(
             validationData = WrpRequestData(
                 clientId = "x509_hash:abc",
                 accessCertificate = WrpAccessCertificate(null),
@@ -171,7 +172,7 @@ val WrpacTest by matrixSuite {
     "Missing client_id yields no exception" {
         val fixture = buildWrpFixture()
 
-        val result = WrpacValidator().invoke(
+        val result = WrpacValidator(
             validationData = WrpRequestData(
                 clientId = null,
                 accessCertificate = WrpAccessCertificate(fixture.wrpacChain),
@@ -187,6 +188,7 @@ val WrpacTest by matrixSuite {
         val fixture = buildWrpFixture(wrpacIdentifier = null)
 
         val result = fixture.validateWrpac()
-        result.exceptionOrNull().shouldNotBeNull().message.shouldContain(("Unable to extract access certificate identifier"))
+        result.exceptionOrNull()
+            .shouldNotBeNull().message.shouldContain(("Unable to extract access certificate identifier"))
     }
 }

@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
-import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -11,13 +10,6 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
-fun interface WrpChainValidatorFun {
-    operator fun invoke(
-        chain: CertificateChain,
-        certificateTrustAnchors: List<X509Certificate>
-    ): KmmResult<Boolean>
-}
-
 /**
  * Class to verify a certificate chain against trusted roots.
  * Validations:
@@ -25,9 +17,10 @@ fun interface WrpChainValidatorFun {
  *  - Certificate trust anchors
  *  - Signature chain
  **/
-class WrpChainValidator : WrpChainValidatorFun {
+object WrpChainValidator {
     private val timeLeeway: Duration = 5.minutes
-    override fun invoke(chain: CertificateChain, certificateTrustAnchors: List<X509Certificate>) = catching {
+
+    operator fun invoke(chain: CertificateChain, certificateTrustAnchors: List<X509Certificate>) = catching {
         Napier.d("Received chain with ${chain.size} certificate(s).")
 
         validateValidityPeriods(chain)

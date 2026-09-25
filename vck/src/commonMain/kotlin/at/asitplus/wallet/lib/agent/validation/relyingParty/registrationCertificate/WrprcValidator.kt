@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
-import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpPayload
@@ -29,15 +28,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
-fun interface WrprcValidatorFun {
-    suspend operator fun invoke(
-        identifierResult: WrpacIdentifier?,
-        validationData: WrpRequestData,
-        tokenStatusResolver: TokenStatusResolver,
-        certificateTrustAnchors: List<X509Certificate>,
-    ): KmmResult<WrprcValidationResult>
-}
-
 /**
  * Class to verify registration certificates
  * Validations:
@@ -47,13 +37,11 @@ fun interface WrprcValidatorFun {
  *  - Token status
  **/
 class WrprcValidator(
-    private val timeLeeway: Duration = 5.minutes, private val maxValidity: Duration = 365.days
-) : WrprcValidatorFun {
-    val requestValidator = WrprcRequestValidator()
-    val chainValidator = WrpChainValidator()
+    private val timeLeeway: Duration = 5.minutes,
+    private val maxValidity: Duration = 365.days
+) {
 
-
-    override suspend fun invoke(
+    suspend operator fun invoke(
         identifierResult: WrpacIdentifier?,
         validationData: WrpRequestData,
         tokenStatusResolver: TokenStatusResolver,
@@ -79,10 +67,9 @@ class WrprcValidator(
 
     suspend fun validateRequest(
         registrationCert: WrpRegistrationCertificate, requests: List<WrpCredentialRequest>
-    ) = requests.mapNotNull {
-        requestValidator.invoke(request = it, payload = registrationCert.payload).getOrThrow()
-    }.toMap()
-
+    ) = requests.associate {
+        WrprcRequestValidator(request = it, payload = registrationCert.payload).getOrThrow()
+    }
 
     private suspend fun validateWrpRegistrationCertificate(
         certificate: WrpRegistrationCertificate,
@@ -116,14 +103,15 @@ class WrprcValidator(
     ) = run {
         val cose = certificate.cose
         val validHeader = validateHeader(cose)
-        val certificateChainBytes = cose.protectedHeader.certificateChain ?: cose.unprotectedHeader?.certificateChain
-        ?: throw Throwable("$cose has no certificate chain in COSE header.")
+        val certificateChainBytes = cose.protectedHeader.certificateChain
+            ?: cose.unprotectedHeader?.certificateChain
+            ?: throw Throwable("$cose has no certificate chain in COSE header.")
         val chain = certificateChainBytes.map {
             X509Certificate.decodeFromDerSafe(it).getOrElse { throwable ->
                 throw IllegalArgumentException("Could not parse certificate from euWrprc COSE header", throwable)
             }
         }
-        val validChain = chainValidator.invoke(
+        val validChain = WrpChainValidator.invoke(
             chain = chain, certificateTrustAnchors = certificateTrustAnchors
         ).getOrThrow()
         val validSignature = validateSignature(cose, chain.leaf)
@@ -153,12 +141,11 @@ class WrprcValidator(
         tokenStatusResolver: TokenStatusResolver,
     ) = run {
         val jwsTyped = certificate.jwsTyped
-        val certificateChain = jwsTyped.jws.jwsHeader.certificateChain ?: run {
-            throw Throwable("Certificate chain is empty.")
-        }
+        val certificateChain = jwsTyped.jws.jwsHeader.certificateChain
+            ?: throw Throwable("Certificate chain is empty.")
         val validHeader = validateHeader(jwsTyped)
 
-        val validChain = chainValidator.invoke(
+        val validChain = WrpChainValidator.invoke(
             chain = certificateChain, certificateTrustAnchors = certificateTrustAnchors
         ).getOrThrow()
 
@@ -269,7 +256,7 @@ class WrprcValidator(
                 )
             }
         }
-        if(!payload.policyId.contains(WrpConstants.POLICY_IDENTIFIER)) {
+        if (!payload.policyId.contains(WrpConstants.POLICY_IDENTIFIER)) {
             throw Throwable("$payload is missing required policy identifier ${WrpConstants.POLICY_IDENTIFIER}")
         }
         Napier.d("payload checks passed for $payload.")
@@ -310,7 +297,7 @@ class WrprcValidator(
 
 
     object Constants {
-        val WRPRC_JWS_HEADER = "rc-wrp+jwt"
-        val WRPRC_CWT_HEADER = "rc-wrp+cwt"
+        const val WRPRC_JWS_HEADER = "rc-wrp+jwt"
+        const val WRPRC_CWT_HEADER = "rc-wrp+cwt"
     }
 }

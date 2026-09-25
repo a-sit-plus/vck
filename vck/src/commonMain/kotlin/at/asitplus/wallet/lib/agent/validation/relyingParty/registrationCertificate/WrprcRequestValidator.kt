@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
-import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpCredential
@@ -14,14 +13,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SingleClaimReference
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.Serializable
-
-fun interface WrprcRequestValidatorFun {
-    suspend operator fun invoke(
-        request: WrpCredentialRequest, payload: WrpPayload
-    ): KmmResult<Pair<WrpCredentialRequest, RequestDataValidity>?>
-}
 
 /**
  * Class to validate a credential request against a registration certificates.
@@ -29,9 +21,11 @@ fun interface WrprcRequestValidatorFun {
  *  - Requested credential type
  *  - Requested attributes
  **/
-class WrprcRequestValidator : WrprcRequestValidatorFun {
-    override suspend fun invoke(
-        request: WrpCredentialRequest, payload: WrpPayload
+object WrprcRequestValidator {
+
+    suspend operator fun invoke(
+        request: WrpCredentialRequest,
+        payload: WrpPayload
     ) = catching {
         request to payload.let { payload ->
             RequestDataValidity(
