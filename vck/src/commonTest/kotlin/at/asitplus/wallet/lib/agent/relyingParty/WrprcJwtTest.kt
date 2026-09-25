@@ -27,7 +27,7 @@ val WrprcJwtTest by matrixSuite {
     "Issuance and validation round-trip" {
         val fixture = buildWrpFixture()
 
-        WrpChainValidator().invoke(
+        WrpChainValidator(
             chain = fixture.wrpacChain,
             certificateTrustAnchors = fixture.trustAnchors,
         ).getOrThrow() shouldBe true
@@ -46,7 +46,7 @@ val WrprcJwtTest by matrixSuite {
         val fixture = buildWrpFixture()
         val wrpacValidation = fixture.validateWrpac().getOrThrow()
 
-        val result = WrprcValidator().invoke(
+        val result = WrprcValidator()(
             identifierResult = wrpacValidation.identifierResult,
             validationData = WrpRequestData(
                 clientId = fixture.clientId,

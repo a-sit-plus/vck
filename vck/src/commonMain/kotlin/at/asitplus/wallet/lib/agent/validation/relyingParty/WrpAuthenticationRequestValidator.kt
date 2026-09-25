@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
-import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpPayload
@@ -17,15 +16,12 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.decodeFromByteArray
 
-fun interface WrpAuthenticationRequestValidatorFun {
-    suspend operator fun invoke(request: RequestParametersFrom<*>): KmmResult<WrpRequestData>
-}
-
 /**
  * Parses an authentication request and wraps necessary data for WRP validation.
  */
-class WrpAuthenticationRequestValidator : WrpAuthenticationRequestValidatorFun {
-    override suspend fun invoke(request: RequestParametersFrom<*>) = catching {
+object WrpAuthenticationRequestValidator {
+
+    operator fun invoke(request: RequestParametersFrom<*>) = catching {
         when (request) {
             is RequestParametersFrom.Jws<*> -> {
                 (request.jwsTyped as? JwsTyped<JwsCompact, AuthenticationRequestParameters>)?.let { request ->

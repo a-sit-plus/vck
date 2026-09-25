@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate
 
-import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.sha256
@@ -14,13 +13,6 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
-fun interface WrpacValidatorFun {
-    operator fun invoke(
-        validationData: WrpRequestData,
-        certificateTrustAnchors: List<X509Certificate>
-    ): KmmResult<WrpacValidationResult>
-}
-
 /**
  * Class to verify access certificates
  * Validations:
@@ -28,18 +20,16 @@ fun interface WrpacValidatorFun {
  *  - Linkage to the presentation request (OID4VP only)
  *  - Identifier is either legal or natural person
  **/
-class WrpacValidator : WrpacValidatorFun {
-    val chainValidator = WrpChainValidator()
+object WrpacValidator {
 
-    override fun invoke(
-        validationData: WrpRequestData, certificateTrustAnchors: List<X509Certificate>
+    operator fun invoke(
+        validationData: WrpRequestData,
+        certificateTrustAnchors: List<X509Certificate>
     ) = catching {
-        val certificateChain =
-            validationData.accessCertificate.certificateChain ?: throw Throwable("Certificate chain null")
+        val certificateChain = validationData.accessCertificate.certificateChain
+            ?: throw Throwable("Certificate chain null")
 
-        Napier.d(
-            "validating request x5c, count=${certificateChain.size}"
-        )
+        Napier.d("validating request x5c, count=${certificateChain.size}")
 
         val validLinkage = validationData.clientId?.let { clientId ->
             validateX509HashBinding(
@@ -47,8 +37,9 @@ class WrpacValidator : WrpacValidatorFun {
             ).getOrThrow()
         } ?: true
 
-        chainValidator.invoke(
-            chain = certificateChain, certificateTrustAnchors = certificateTrustAnchors
+        WrpChainValidator(
+            chain = certificateChain,
+            certificateTrustAnchors = certificateTrustAnchors
         ).getOrThrow()
 
         val identifierResult = certificateChain.leaf.getWrpIdentifier().getOrThrow()
