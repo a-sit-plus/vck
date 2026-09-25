@@ -243,6 +243,11 @@ class WrprcValidator(
         if (payload.credentials.isEmpty()) {
             throw Throwable("$payload is missing required claim 'credentials'.")
         }
+        // EUDI TS5 registers claim paths only. Until value constraints are evaluated,
+        // accepting one would turn a value-restricted grant into a path-wide grant.
+        require(payload.credentials.none { credential -> credential.claim.any { it.values != null } }) {
+            "WRPRC claim values are not supported for authorization."
+        }
         val issuedAt = payload.iat
 
         payload.exp?.let { exp ->
@@ -309,4 +314,3 @@ class WrprcValidator(
         val WRPRC_CWT_HEADER = "rc-wrp+cwt"
     }
 }
-

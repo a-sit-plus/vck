@@ -85,6 +85,9 @@ class WrpAuthenticationRequestValidator : WrpAuthenticationRequestValidatorFun {
             is RequestParametersFrom.IsoMdocDcApi -> {
 
                 val deviceRequest = request.parameters.isoMdocRequest.deviceRequest
+                // TODO: Verify readerAuth/readerAuthAll against the session transcript before trusting
+                // the certificate chain asserted by the device request. A valid WRPAC chain alone
+                // does not prove that its leaf key signed this request.
                 val accessCertificateChain = deviceRequest.extractCertificateChain()
 
                 val registrationCertificate: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>> =

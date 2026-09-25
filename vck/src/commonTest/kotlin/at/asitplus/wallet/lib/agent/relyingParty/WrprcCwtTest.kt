@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
+import at.asitplus.etsi.relyingParty.WrpClaim
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.DocRequestInfo
 import at.asitplus.signum.indispensable.CryptoSignature
@@ -7,6 +8,7 @@ import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.supreme.sign.InvalidSignature
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyWithFixedCert
@@ -14,6 +16,7 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -67,9 +70,7 @@ val WrprcCwtTest by matrixSuite {
             signingKeyMaterial = mismatchedSigner,
         )
 
-        result.exceptionOrNull().shouldNotBeNull().message.shouldContain(
-            "Signature is cryptographically invalid"
-        )
+        result.exceptionOrNull().shouldBeInstanceOf<InvalidSignature>()
     }
 
     "sub not matching the WRPAC identifier fails linkage validation" {
@@ -100,6 +101,21 @@ val WrprcCwtTest by matrixSuite {
         result.certificateValidation.values.all { it?.isValid() == true } shouldBe true
         result.requestDataValidation.toMap().values.single().isValid() shouldBe false
     }
+
+    "CWT WRPRC with unsupported claim values does not authorize a path-only request" {
+        val fixture = buildWrpFixture()
+        val credential = defaultMdocCredential().copy(
+            claim = listOf(WrpClaim(path = listOf(DEFAULT_DOCTYPE, "given_name"), values = listOf("Alice")))
+        )
+
+        val result = fixture.validateWrprcCose(
+            payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential)),
+            request = mdocDocRequest(claimNames = listOf("given_name")),
+        )
+
+        result.exceptionOrNull().shouldBeInstanceOf<IllegalArgumentException>()
+    }
+
     "eUWrprc round-trips as a CBOR byte string" {
         val payload = buildWrpPayload(wrpIdentifier = "WRP-wireformat-test")
         val payloadBytes = coseCompliantSerializer.encodeToByteArray(WrpPayload.serializer(), payload)
