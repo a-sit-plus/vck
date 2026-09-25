@@ -17,11 +17,13 @@ sealed interface WrpRegistrationCertificate {
     val payload: WrpPayload
 
     data class WrpJwtRegistrationCertificate(
-        val jwsTyped: JwsTyped<JwsCompact, WrpPayload>, override val payload: WrpPayload = jwsTyped.payload
+        val jwsTyped: JwsTyped<JwsCompact, WrpPayload>,
+        override val payload: WrpPayload = jwsTyped.payload
     ) : WrpRegistrationCertificate
 
     data class WrpCwtRegistrationCertificate(
-        val cose: CoseSigned<ByteArray>, override val payload: WrpPayload
+        val cose: CoseSigned<ByteArray>,
+        override val payload: WrpPayload
     ) : WrpRegistrationCertificate
 }
 

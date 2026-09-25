@@ -38,8 +38,8 @@ object WrprcRequestValidator {
     private suspend fun checkAttributesValidity(
         credentialRequest: WrpCredentialRequest, wrpPayload: WrpPayload
     ): RequestCredentialAttributesValidity = run {
-        val attributes = credentialRequest.getAttributes() ?: run {
-            throw Throwable("Unable to extract attributes from $credentialRequest")
+        val attributes = requireNotNull(credentialRequest.getAttributes()) {
+            "Unable to extract attributes from $credentialRequest"
         }
         val meta = credentialRequest.getMeta()
         val representation = credentialRequest.getRepresentation()
@@ -47,15 +47,15 @@ object WrprcRequestValidator {
     }
 
     private fun checkCredentialTypesValidity(
-        credentialRequest: WrpCredentialRequest, wrpPayload: WrpPayload
+        credentialRequest: WrpCredentialRequest,
+        wrpPayload: WrpPayload
     ): Boolean = checkCredentialTypes(credentialRequest.getMeta(), wrpPayload)
 
     private fun checkCredentialTypes(
-        metadata: WrpCredentialMetaDomain, wrpPayload: WrpPayload
+        metadata: WrpCredentialMetaDomain,
+        wrpPayload: WrpPayload
     ): Boolean = run {
-        val metaList = wrpPayload.credentials.map {
-            it.meta
-        }
+        val metaList = wrpPayload.credentials.map { it.meta }
         when (metadata) {
             is WrpCredentialMetaDomain.WrpDocTypeDomain -> metaList.any { meta ->
                 catchingUnwrapped {

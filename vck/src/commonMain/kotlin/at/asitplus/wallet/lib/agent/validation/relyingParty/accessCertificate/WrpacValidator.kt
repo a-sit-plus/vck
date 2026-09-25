@@ -26,15 +26,13 @@ object WrpacValidator {
         validationData: WrpRequestData,
         certificateTrustAnchors: List<X509Certificate>
     ) = catching {
-        val certificateChain = validationData.accessCertificate.certificateChain
-            ?: throw Throwable("Certificate chain null")
-
+        val certificateChain = requireNotNull(validationData.accessCertificate.certificateChain) {
+            "certificate chain is null"
+        }
         Napier.d("validating request x5c, count=${certificateChain.size}")
 
         val validLinkage = validationData.clientId?.let { clientId ->
-            validateX509HashBinding(
-                clientId, certificateChain
-            ).getOrThrow()
+            validateX509HashBinding(clientId, certificateChain).getOrThrow()
         } ?: true
 
         WrpChainValidator(
@@ -43,22 +41,19 @@ object WrpacValidator {
         ).getOrThrow()
 
         val identifierResult = certificateChain.leaf.getWrpIdentifier().getOrThrow()
-
         WrpacValidationResult(
             chain = certificateChain,
             identifierResult = identifierResult,
             validLinkage = validLinkage
-
         )
     }
 
     private fun validateX509HashBinding(clientId: String, chain: CertificateChain?) = catching {
-        if (chain.isNullOrEmpty()) {
-            throw Throwable("x509_hash validation failed, request x5c missing.")
+        require(!chain.isNullOrEmpty()) {
+            "x509_hash validation failed, request x5c missing."
         }
-
-        if (!clientId.startsWith("x509_hash:")) {
-            throw Throwable("x509_hash validation failed, client_id not starting with `x509_hash:`.")
+        require(clientId.startsWith("x509_hash:")) {
+            "x509_hash validation failed, client_id not starting with `x509_hash:`"
         }
 
         val expectedHash = clientId.removePrefix("x509_hash:")
@@ -68,10 +63,8 @@ object WrpacValidator {
             throw Throwable("x509_hash calculation from request x5c[0] failed.", it)
         }
 
-        Napier.d("x509_hash expected(client_id)=$expectedHash")
-        Napier.d("x509_hash calculated(request x5c[0])=$calculatedHash")
-        if (calculatedHash != expectedHash) {
-            throw Throwable("x509_hash binding failed.")
+        require(calculatedHash == expectedHash) {
+            "x509_hash binding failed: expected $expectedHash but got $calculatedHash"
         }
         true
     }

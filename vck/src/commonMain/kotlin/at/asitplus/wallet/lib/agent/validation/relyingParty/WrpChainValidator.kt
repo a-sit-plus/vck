@@ -17,6 +17,7 @@ import kotlin.time.Duration.Companion.minutes
  *  - Certificate trust anchors
  *  - Signature chain
  **/
+// TODO looks like duplicated code
 object WrpChainValidator {
     private val timeLeeway: Duration = 5.minutes
 
@@ -24,7 +25,6 @@ object WrpChainValidator {
         Napier.d("Received chain with ${chain.size} certificate(s).")
 
         validateValidityPeriods(chain)
-
         val signatureChainOk = validateSignatures(chain)
         val trustedRootOk = validateTrustedRoot(chain, certificateTrustAnchors)
         if (!signatureChainOk || !trustedRootOk) {
@@ -42,11 +42,11 @@ object WrpChainValidator {
             val validFrom = certificate.tbsCertificate.validFrom.instant
             val validUntil = certificate.tbsCertificate.validUntil.instant
             Napier.d("Certificate validity=$validFrom .. $validUntil")
-            if (validFrom > (now + timeLeeway)) {
-                throw Throwable("Certificate is not yet valid (valid from $validFrom).")
+            require(validFrom <= (now + timeLeeway)) {
+                "Certificate is not yet valid (valid from $validFrom)."
             }
-            if (validUntil < (now - timeLeeway)) {
-                throw Throwable("Certificate is expired (valid until $validUntil).")
+            require(validUntil >= (now - timeLeeway)) {
+                "Certificate is expired (valid until $validUntil)."
             }
         }
         true
@@ -69,8 +69,8 @@ object WrpChainValidator {
 
     private fun validateTrustedRoot(chain: CertificateChain, certificateTrustAnchors: List<X509Certificate>) =
         run {
-            if (certificateTrustAnchors.isEmpty()) {
-                throw Throwable("No trusted root certificates configured for request validation.")
+            require(certificateTrustAnchors.isNotEmpty()) {
+                "No trusted root certificates configured for request validation."
             }
             Napier.d("Checking top certificate against ${certificateTrustAnchors.size} trusted root certificate(s).")
 
@@ -85,12 +85,8 @@ object WrpChainValidator {
                 sameCertificate || signedByTrustedRoot
             }
 
-            if (!anchored) {
-                throw Throwable(
-                    "is not anchored to a configured trusted root certificate. " + "x5cTop=${
-                        chain.root.shortFingerprint()
-                    }"
-                )
+            require(anchored) {
+                "not anchored to a configured trusted root certificate. x5cTop=${chain.root.shortFingerprint()}"
             }
 
             Napier.d("x5c chain anchored to trusted roots.")
