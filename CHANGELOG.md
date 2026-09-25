@@ -111,6 +111,7 @@ Release 8.0.0 (unreleased):
     - Add `LoTEStage`, enumerating the base URLs of the European Commission's development, acceptance, and production trust infrastructure, so that applications can fetch the lists of any stage
     - Replace the hardcoded acceptance URL in `LoteProfile.fetchUrl` with the relative `LoteProfile.fileName`, resolved against a base URL by `LoteProfile.fetchUrl(baseUrl)` or `LoteProfile.fetchUrl(stage)`
     - Replace `LoteProfile.defaultUrls` with `LoteProfile.entries` and `LoteProfile.fetchUrls()`, which take the stages or the base URL to fetch from
+    - Add `TrustAnchorProvider` which lets apps supply trust anchors per credential type (vct/doctype) or per `LoteProfile`, for issuers as well as for status list signers (JWT and CWT)
 - Form-url-encoded parameters:
     - Preserve opaque string parameters when decoding polymorphic requests, and ignore unknown object parameters before parsing their values as JSON
     - Use `RequestParametersSerializer.decodeFormParameters()` to decode form parameters whose concrete request type is determined by their parameter names

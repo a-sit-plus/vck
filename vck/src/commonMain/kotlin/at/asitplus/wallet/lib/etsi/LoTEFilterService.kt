@@ -35,6 +35,24 @@ class LoTEFilterService {
         profile: LoteProfile
     ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.REVOCATION)
 
+    /** The [LoteProfile] whose List and Scheme Information matches [lote] */
+    fun profileOf(lote: ListOfTrustedEntities): LoteProfile? =
+        LoteProfile.entries.firstOrNull { checkListAndSchemeInformation(lote.listAndSchemeInformation, it) }
+
+    /**
+     * Extracts issuance certificates of [lote], for the profile detected from its own metadata.
+     * For callers that have already selected the lists, e.g. per credential type
+     */
+    fun extractIssuanceCertificates(lote: ListOfTrustedEntities): List<TrustedCertificate> =
+        profileOf(lote)?.let { extractIssuanceCertificates(lote, it) }.orEmpty()
+
+    /**
+     * Extracts revocation certificates of [lote], for the profile detected from its own metadata.
+     * Used for status list signers, where the lists have already been selected by the caller.
+     */
+    fun extractRevocationCertificates(lote: ListOfTrustedEntities): List<TrustedCertificate> =
+        profileOf(lote)?.let { extractRevocationCertificates(lote, it) }.orEmpty()
+
     /**
      * Core extraction logic handling both Issuance and Revocation based on [ServiceKind].
      */
