@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.data.NonEmptyList
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
@@ -21,7 +22,7 @@ data class AuthorizationResponsePreparationState(
     val clientMetadata: RelyingPartyMetadata?,
     /** Extracted from [request], probably fetched remotely. */
     val jsonWebKeys: Collection<JsonWebKey>?,
-    val verifierInfo: List<VerifierInfo>?,
+    val verifierInfo: NonEmptyList<VerifierInfo>?,
     /** Audience of the presentation to create */
     val audience: String,
 ) {

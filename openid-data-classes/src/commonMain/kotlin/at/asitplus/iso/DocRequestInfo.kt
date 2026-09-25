@@ -1,5 +1,6 @@
 package at.asitplus.iso
 
+import at.asitplus.etsi.relyingParty.WrpRegistrarInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
@@ -24,6 +25,11 @@ data class DocRequestInfo(
     val zkRequest: ZkRequest? = null,
     @SerialName("docResponseEncryption")
     val docResponseEncryption: EncryptionParameters? = null,
+    @SerialName("euWrprc")
+    @ByteString
+    val euWrprc: ByteArray? = null,
+    @SerialName("euWrpRegistrarInfo")
+    val euWrpRegistrarInfo: WrpRegistrarInfo? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -43,6 +49,10 @@ data class DocRequestInfo(
         if (maximumResponseSize != other.maximumResponseSize) return false
         if (zkRequest != other.zkRequest) return false
         if (docResponseEncryption != other.docResponseEncryption) return false
+        if (euWrprc != null && other.euWrprc != null) {
+            if (!euWrprc.contentEquals(other.euWrprc)) return false
+        } else if (euWrprc != other.euWrprc) return false
+        if (euWrpRegistrarInfo != other.euWrpRegistrarInfo) return false
 
         return true
     }
@@ -54,6 +64,8 @@ data class DocRequestInfo(
         result = 31 * result + (maximumResponseSize?.hashCode() ?: 0)
         result = 31 * result + (zkRequest?.hashCode() ?: 0)
         result = 31 * result + (docResponseEncryption?.hashCode() ?: 0)
+        result = 31 * result + (euWrprc?.contentHashCode() ?: 0)
+        result = 31 * result + (euWrpRegistrarInfo?.hashCode() ?: 0)
         return result
     }
 }

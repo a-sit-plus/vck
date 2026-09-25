@@ -9,10 +9,13 @@ Release 8.0.0 (unreleased):
     - no more build hacks
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input
+    - Add `WalletRelyingParty` ETSI data classes for `WRPAC` and `WRPRC` validation
 - ISO mdoc data classes:
   - BREAKING: Update `ZkDocumentData.timestamp` type to `Instant` instead of `DateTime` to conform to upcoming ISO-18013-5 draft
   - Add support for correctly (de-)serializing RFC9360-conformant single-chain cbor-encoded `ZkDocumentData`
   - Add missing equality overrides for `ZkDocumentData`, `ZkSignedItem`
+- Openid data classes:
+  - Add fields `eUWrprc` and `euWrpRegistrarInfo` to data class `DocRequestInfo`
 - ISO mDoc Zero-Knowledge Proofs:
   - Add the `ZkRequest`-based ISO mDoc ZK presentation path and convert DCQL ZK metadata into
   `ZkRequest` for holder-side proof generation
@@ -101,6 +104,7 @@ Release 8.0.0 (unreleased):
     - Enforce the `pre-registered` client identifier scheme against `RelyingPartyTrust.PreRegisteredClients`
     - Requests using a scheme for which no trust material is configured are rejected. This includes `entity_id` and `did`, which are handed to `RelyingPartyTrust.Custom` and rejected when none is configured, so that a relying party cannot bypass the configured trust anchors by naming itself with a scheme this library does not evaluate natively. Only `redirect_uri` is not covered, as it forbids signed requests anyway
     - `RequestParser` no longer verifies anything and lost its `requestObjectJwsVerifier` parameter, so parsing a request is purely parsing. Consequently `RequestParametersSigned.verified` is removed, with the `verified` property of `Jws`, `OpenId4VpDcApiSigned` and `OpenId4VpDcApiMultiSigned` and its serialized form. Stored JSON still carrying `"verified"` deserializes fine, as unknown keys are ignored
+    - Add `WrprcValidator`, `WrpacValidator`, `WrpAuthenticationRequestValidator` and `WrpChainValidator` to validate WRPAC and WRPRC during presentation.
 - Trust List filtering:
     - Replace `LoTEServiceType`/`LoTEFilterCriteria` with `LoteProfile`, a sealed class defining PID, mDL, WRPAC, WALLET, and EAA profiles with built-in matching against scheme type, status approach, community rules URIs, and country code
     - Add support for LoTEs with issuance and revocation certificates
@@ -176,8 +180,10 @@ Release 8.0.0 (unreleased):
     - Return the validated token from `validateAccessToken()` in `TokenVerificationService` and `OAuth2AuthorizationServerAdapter` as `ValidatedAccessToken`, and move `validCredentialIdentifiers` from `TokenInfo` to `ValidatedAccessToken`
     - Authorize credential requests in `CredentialIssuer` from the `ValidatedAccessToken`
     - In `EncryptJwe` remove `keyMaterial` as it always relies on ephemeral keys embedded in the JWE header
+    - Add `SingleClaimReference` (moved from Valera)
  - Dependencies:
     - Update to [Signum 3.25.0](https://github.com/a-sit-plus/signum/releases/tag/3.25.0) for HPKE support
+    - Add `etsi-data-classes` as api dependency to `openid-data-classes`
 
 Release 7.0.0:
 - Credential definitions:
