@@ -1,6 +1,7 @@
 # Changelog
 
 Release 8.0.0 (unreleased):
+- Trusted issuers: Accept an exactly listed, CA-issued end-entity certificate as a direct credential signer, without requiring it to be self-signed
 - Credential issuance: Preserve credential-offer retrieval failures instead of masking them with a JSON parsing error
 - Build: Upgrade to the 20260828 conventions plugin and AGP 9
     - migrate Android library targets to the new Kotlin Multiplatform Android library plugin API

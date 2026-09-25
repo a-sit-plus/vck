@@ -2,6 +2,10 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.basicConstraints_2_5_29_19
 import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.asn1.Asn1Time
 import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
@@ -41,9 +45,25 @@ class TestCertificateAuthority private constructor(
         validFrom: Instant = Clock.System.now(),
         key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
         extensions: List<X509CertificateExtension> = listOf(),
+        /**
+         * Whether the issued certificate may itself issue certificates, i.e. whether it asserts
+         * `BasicConstraints` with `cA` set. Defaults to `false`, because an issued certificate is an end entity
+         * unless it is meant to be an intermediate; set it for a certificate that signs another one.
+         */
+        certificateAuthority: Boolean = false,
+        /** `pathLenConstraint` of [certificateAuthority], omitted when `null`. */
+        pathLength: Int? = null,
     ): KeyMaterial = KeyWithFixedCert(
         key = key,
-        certificate = certificateFor(key.publicKey, subjectName, name, this.key, validity, validFrom, extensions),
+        certificate = certificateFor(
+            publicKey = key.publicKey,
+            subjectName = subjectName,
+            issuerName = name,
+            issuerKey = this.key,
+            validity = validity,
+            validFrom = validFrom,
+            extensions = if (certificateAuthority) extensions + basicConstraintsCa(pathLength) else extensions,
+        ),
     )
 
     companion object {
@@ -80,12 +100,26 @@ class TestCertificateAuthority private constructor(
         suspend operator fun invoke(
             name: String = "Test CA ${Random.nextInt()}",
             key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
-            validity: Duration = 5.minutes
+            validity: Duration = 5.minutes,
+            /**
+             * Whether this authority's own certificate asserts `BasicConstraints` with `cA` set. Set to `false`
+             * to build an authority that can sign certificates but may not be trusted to have issued them.
+             */
+            certificateAuthority: Boolean = true,
+            /** `pathLenConstraint` of [certificateAuthority], omitted when `null`. */
+            pathLength: Int? = null,
         ) = TestCertificateAuthority(
             name = name,
             key = key,
             validity = validity,
-            certificate = certificateFor(key.publicKey, name, name, key, validity)
+            certificate = certificateFor(
+                publicKey = key.publicKey,
+                subjectName = name,
+                issuerName = name,
+                issuerKey = key,
+                validity = validity,
+                extensions = if (certificateAuthority) listOf(basicConstraintsCa(pathLength)) else listOf(),
+            )
         )
     }
 
@@ -114,3 +148,19 @@ suspend fun selfSignedKey(
         ),
     )
 }
+
+/**
+ * `BasicConstraints` marking a certificate as a certificate authority, i.e.
+ * `SEQUENCE { cA BOOLEAN TRUE }`, see [RFC 5280, Section 4.2.1.9](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.9).
+ *
+ * Without it [at.asitplus.wallet.lib.etsi.isTrustedBy] refuses to let the certificate issue anything, so a test
+ * authority that omitted this would be rejected as a trust anchor.
+ */
+private fun basicConstraintsCa(pathLength: Int? = null) = X509CertificateExtension(
+    oid = KnownOIDs.basicConstraints_2_5_29_19,
+    critical = true,
+    value = Asn1EncapsulatingOctetString(listOf(Asn1.Sequence {
+        +Asn1.Bool(true)
+        pathLength?.let { +Asn1.Int(it) }
+    })),
+)

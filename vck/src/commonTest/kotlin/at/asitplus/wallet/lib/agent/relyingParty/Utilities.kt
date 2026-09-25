@@ -153,6 +153,7 @@ suspend fun buildWrpFixture(
     val wrpacProvider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = wrpacProviderKey)
     val wrpacProviderCert = root.issue(
         subjectName = WRPAC_PROVIDER_NAME,
+        certificateAuthority = true,
         validity = validity,
         key = wrpacProviderKey,
     ).getCertificate().shouldNotBeNull()

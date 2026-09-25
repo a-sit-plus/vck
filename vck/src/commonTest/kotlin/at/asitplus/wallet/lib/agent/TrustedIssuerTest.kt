@@ -57,6 +57,15 @@ val TrustedIssuerTest by matrixSuite {
         )(signed).getOrThrow()
     }
 
+    "JWS signed by a directly listed CA-issued end-entity certificate is verified" {
+        val signer = TestCertificateAuthority().issue()
+        val signed = signJws(signer)
+
+        VerifyJwsObjectTrustedCertificate(
+            trustedIssuers = { setOf(signer.getCertificate()!!) },
+        )(signed).getOrThrow()
+    }
+
     "JWS signed by an untrusted self-signed certificate is not verified" {
         val signed = signJws(selfSignedKey())
 
@@ -117,6 +126,15 @@ val TrustedIssuerTest by matrixSuite {
 
         VerifyCoseSignatureTrustedCertificate<ByteArray>(
             trustedIssuers = { setOf(ca.certificate) },
+        )(signed, byteArrayOf(), null).getOrThrow()
+    }
+
+    "CoseSigned by a directly listed CA-issued end-entity certificate is verified" {
+        val signer = TestCertificateAuthority().issue()
+        val signed = signCose(signer)
+
+        VerifyCoseSignatureTrustedCertificate<ByteArray>(
+            trustedIssuers = { setOf(signer.getCertificate()!!) },
         )(signed, byteArrayOf(), null).getOrThrow()
     }
 
