@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
+import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.signum.supreme.sign.InvalidSignature
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyWithFixedCert
@@ -12,6 +14,7 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock.System
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
@@ -82,7 +85,7 @@ val WrprcJwtTest by matrixSuite {
             signingKeyMaterial = mismatchedSigner,
         )
 
-        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("Signature is cryptographically invalid")
+        result.exceptionOrNull().shouldBeInstanceOf<InvalidSignature>()
     }
 
     "Expired WRPRC payload fails payload validation" {
@@ -179,5 +182,19 @@ val WrprcJwtTest by matrixSuite {
         ).getOrThrow()
 
         result.requestDataValidation.toMap().values.single().isValid() shouldBe true
+    }
+
+    "WRPRC with unsupported claim values does not authorize a path-only request" {
+        val fixture = buildWrpFixture()
+        val credential = defaultMdocCredential().copy(
+            claim = listOf(WrpClaim(path = listOf(DEFAULT_DOCTYPE, "given_name"), values = listOf("Alice")))
+        )
+
+        val result = fixture.validateWrprc(
+            payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential)),
+            request = mdocDcqlRequest(claimNames = listOf("given_name")),
+        )
+
+        result.exceptionOrNull().shouldBeInstanceOf<IllegalArgumentException>()
     }
 }
