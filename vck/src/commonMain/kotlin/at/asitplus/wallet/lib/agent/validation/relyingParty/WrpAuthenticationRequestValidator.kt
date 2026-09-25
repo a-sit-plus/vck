@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.openid.RequestParametersFrom
@@ -62,32 +63,36 @@ object WrpAuthenticationRequestValidator {
                 )
             }
 
-            is RequestParametersFrom.IsoMdocDcApi -> {
-                val deviceRequest = request.parameters.isoMdocRequest.deviceRequest
-                // TODO: Verify readerAuth/readerAuthAll against the session transcript before trusting
-                // the certificate chain asserted by the device request. A valid WRPAC chain alone
-                // does not prove that its leaf key signed this request.
-                val accessCertificateChain = deviceRequest.extractCertificateChain()
-                val registrationCertificate: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>> =
-                    deviceRequest.docRequests.mapIndexed { _, docRequest ->
-                        val euWrprcBytes = requireNotNull(docRequest.itemsRequest.value.requestInfo?.euWrprc) {
-                            "Registration certificate missing in DocRequest $docRequest"
-                        }
-                        val euWrprc = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(euWrprcBytes)
-                        val payload = parseCose(euWrprc = euWrprc)
-                        val registrationCertificate = WrpCwtRegistrationCertificate(cose = euWrprc, payload = payload)
-                        Pair(registrationCertificate, listOf(WrpCredentialRequest.WrpDocRequest(docRequest)))
-                    }.groupBy({ it.first }, { it.second })
-                        .mapValues { (_, listen) -> listen.flatten() }
+            is RequestParametersFrom.IsoMdocDcApi -> throw IllegalArgumentException(
+                "Session transcript is required for ISO mdoc reader authentication"
+            )
 
-                WrpRequestData(
-                    accessCertificate = WrpAccessCertificate(accessCertificateChain),
-                    registrationCertificate = registrationCertificate
-                )
-            }
-
-            else -> throw IllegalArgumentException("Request not supported for validation: $this")
+            else -> throw IllegalArgumentException("Request not supported for validation: $request")
         }
+    }
+
+    suspend operator fun invoke(
+        request: RequestParametersFrom.IsoMdocDcApi,
+        sessionTranscript: SessionTranscript
+    ) = catching {
+        val deviceRequest = request.parameters.isoMdocRequest.deviceRequest
+        val accessCertificateChain = ReaderAuthenticationVerifier()(deviceRequest, sessionTranscript).getOrThrow()
+        val registrationCertificate: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>> =
+            deviceRequest.docRequests.map { docRequest ->
+                val euWrprcBytes = requireNotNull(docRequest.itemsRequest.value.requestInfo?.euWrprc) {
+                    "Registration certificate missing in DocRequest $docRequest"
+                }
+                val euWrprc = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(euWrprcBytes)
+                val payload = parseCose(euWrprc = euWrprc)
+                val registrationCertificate = WrpCwtRegistrationCertificate(cose = euWrprc, payload = payload)
+                Pair(registrationCertificate, listOf(WrpCredentialRequest.WrpDocRequest(docRequest)))
+            }.groupBy({ it.first }, { it.second })
+                .mapValues { (_, requests) -> requests.flatten() }
+
+        WrpRequestData(
+            accessCertificate = WrpAccessCertificate(accessCertificateChain),
+            registrationCertificate = registrationCertificate
+        )
     }
 
     fun VerifierInfo.parseJws() = catchingUnwrapped {
