@@ -112,7 +112,6 @@ internal class PresentationFactory(
             clientId = clientId,
             nonce = nonce,
             responseUrl = responseUrl,
-            clientIdRequired = clientId != null,
             origin = dcApiRequestCallingOrigin,
             recipientKey = recipientKey,
         )
@@ -121,7 +120,6 @@ internal class PresentationFactory(
             clientId = clientId,
             nonce = nonce,
             responseUrl = responseUrl,
-            clientIdRequired = true,
             origin = dcApiRequestCallingOrigin,
             recipientKey = recipientKey,
         )

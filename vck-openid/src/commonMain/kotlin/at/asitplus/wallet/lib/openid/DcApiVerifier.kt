@@ -10,6 +10,7 @@ import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.dcapi.SessionTranscriptContentHashable
+import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
@@ -421,8 +422,21 @@ class DcApiVerifier @JvmOverloads constructor(
         require(originalResponseParameters is ResponseParametersFrom.DcApi) {
             "Unsupported response parameters: $originalResponseParameters"
         }
-        if (originalResponseParameters.clientIdRequired) {
-            // is signed request
+        when (originalResponseParameters.protocol) {
+            ExchangeProtocolIdentifier.OpenId4VpV1Signed -> require(authnRequest.clientId != null) {
+                "Missing required parameter: clientId"
+            }
+
+            ExchangeProtocolIdentifier.OpenId4VpV1Multisigned -> require(authnRequest.clientId == null) {
+                "client_id must be absent from a multisigned request payload"
+            }
+
+            ExchangeProtocolIdentifier.OpenId4VpV1Unsigned -> Unit
+            else -> throw IllegalArgumentException(
+                "Unsupported OpenID4VP DC API protocol: ${originalResponseParameters.protocol}"
+            )
+        }
+        if (originalResponseParameters.protocol.isSignedOpenId4VpRequest) {
             require(authnRequest.verifyExpectedOrigin(expectedOrigin)) {
                 "expected origin '$expectedOrigin' does not match expected_origins"
             }

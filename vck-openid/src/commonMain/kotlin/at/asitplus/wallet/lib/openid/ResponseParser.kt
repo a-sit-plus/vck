@@ -79,9 +79,9 @@ class ResponseParser @JvmOverloads constructor(
             verifyJwsObject(jws.jws).getOrElse {
                 throw IllegalArgumentException("JWS not verified: $encodedResponse", it)
             }
-            ResponseParametersFrom.JwsSigned(jws, this, jws.payload, this.clientIdRequired)
+            ResponseParametersFrom.JwsSigned(jws, this, jws.payload)
         } ?: encodedResponse.fromJwe()?.let { jwe ->
-            ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload, this.clientIdRequired)
+            ResponseParametersFrom.JweDecrypted(jwe, this, jwe.payload)
         } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $this")
     } ?: this
 
