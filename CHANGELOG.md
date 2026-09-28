@@ -75,6 +75,7 @@ Release 8.0.0 (unreleased):
     - Deprecate `CreationOptions.RequestByReference` at error level: it serves an unsigned request object by reference, which OpenID4VP 1.0, Section 5.10.1 forbids, instead use `CreationOptions.SignedRequestByReference`
 - OpenID for Verifiable Credential Issuance:
     - Rework validation of key attestation statements
+    - In `ProofValidator` replace the unreleased `keyAttestationIssuer` with `verifyKeyAttestationSignature` to accept key attestations of trusted wallet providers, e.g. with `VerifyJwsObjectTrustedCertificate`; key attestations are rejected unless a trusted verifier is configured
     - Make sure a `nonce` provided by the credential issuer can only be used for one request to the credential endpoint
     - Security fix: encrypt the credential request whenever it carries `credential_response_encryption`, as required by OpenID4VCI 1.0, i.e. *"Credential Request encryption MUST be used if the `credential_response_encryption` parameter is included, to prevent it being substituted by an attacker"*. `WalletEncryptionService` previously sent its response encryption key in a plain request unless request encryption was required by either side, and `CredentialIssuer` accepted such requests
     - In `WalletEncryptionService`, if the issuer publishes no key to encrypt the request with, `credential_response_encryption` is omitted, or the request fails if the issuer requires response encryption
@@ -153,7 +154,7 @@ Release 8.0.0 (unreleased):
     - Remove code deprecated in 7.0.0, e.g. various `Iso180137AnnexC*` and related classes
     - Deprecate all classes used for Presentation Exchange requests and so on, e.g., `CredentialPresentationRequest.PresentationExchangeRequest` or `PresentationExchangeCredentialDisclosure` or `CredentialPresentation.PresentationExchangePresentation`
     - Deprecate member `invalidItems` in `IsoDocumentParsed`, method `ValidatorMdoc.verifyDocument()` will throw instead of filling invalid items
-    - In `ProofValidator` deprecate constructor argument `verifyAttestationProof`, replace with `statusListTokenResolver` and `keyAttestationIssuer`
+    - In `ProofValidator` deprecate constructor argument `verifyAttestationProof`, replace with `statusListTokenResolver` and `verifyKeyAttestationSignature`
     - In `NonceChallengeVerifier` deprecate `verifyPresentationSdJwt()`, `verifyPresentationVcJwt()` and `verifyPresentationIsoMdoc()`, which take the challenge from the presentation itself, to be replaced with `consumeChallenge()` and the returned `ChallengeSession`
     - `NonceChallengeVerifier` does not implement `Verifier` and `NonceService` anymore, so a presentation cannot be verified without accounting for the challenge it answers; use the `ChallengeSession` from `consumeChallenge()`, or the properties `verifier` for challenge-free verification and `nonceService` for raw nonce access
     - Deprecate passing `publicKeyLookup` to `VerifyJwsObject` and `VerifyCoseSignature`, callers are rerouted to the trusted variants, use `VerifyJwsObjectTrusted` resp. `VerifyCoseSignatureTrusted` explicitly, or drop the parameter to keep verifying against the asserted key

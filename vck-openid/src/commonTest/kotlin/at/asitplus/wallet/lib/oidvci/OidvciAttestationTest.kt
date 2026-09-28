@@ -39,10 +39,12 @@ import at.asitplus.signum.indispensable.josef.KeyStorageStatus
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultZlibService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -60,6 +62,9 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.toStatusList
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
+import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.WalletService.KeyAttestationInput
@@ -101,7 +106,7 @@ val OidvciAttestationTest by matrixSuite {
                 credentialSchemes = AttributeIndex.schemeSet,
                 proofValidator = ProofValidator(
                     requireKeyAttestation = true, // this is important, to require key attestation
-                    keyAttestationIssuer = walletProviderKeyMaterial,
+                    verifyKeyAttestationSignature = verifyKeyAttestationWith(walletProviderKeyMaterial),
                 )
             )
             val state = uuid4().toString()
@@ -197,7 +202,7 @@ val OidvciAttestationTest by matrixSuite {
             }
         }
 
-        test("reject key attestation in JWT proof, signed by a key other than keyAttestationIssuer") {
+        test("reject key attestation in JWT proof, signed by an untrusted key") {
             it.issuer = CredentialIssuer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
@@ -208,7 +213,7 @@ val OidvciAttestationTest by matrixSuite {
                 proofValidator = ProofValidator(
                     requireKeyAttestation = true, // this is important, to require key attestation
                     // the client's attestation is signed by walletProviderKeyMaterial, so it must not be accepted
-                    keyAttestationIssuer = EphemeralKeyWithoutCert(),
+                    verifyKeyAttestationSignature = verifyKeyAttestationWith(EphemeralKeyWithoutCert()),
                 )
             )
 
@@ -237,8 +242,8 @@ val OidvciAttestationTest by matrixSuite {
             }
         }
 
-        test("reject attestation proof signed by a key other than keyAttestationIssuer") {
-            val validator = ProofValidator(keyAttestationIssuer = it.walletProviderKeyMaterial)
+        test("reject attestation proof signed by an untrusted key") {
+            val validator = ProofValidator(verifyKeyAttestationSignature = verifyKeyAttestationWith(it.walletProviderKeyMaterial))
             val nonce = validator.nonce().clientNonce
             // a rogue wallet provider signs a well-formed attestation, embedding its own key in the JWS header,
             // so the attestation is self-consistent but not issued by the trusted wallet provider
@@ -269,9 +274,64 @@ val OidvciAttestationTest by matrixSuite {
             ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
         }
 
+        test("accept key attestations of any trusted wallet provider with verifyKeyAttestationSignature") {
+            val trustedProvider = EphemeralKeyWithSelfSignedCert()
+            val otherTrustedProvider = EphemeralKeyWithSelfSignedCert()
+            val validator = ProofValidator(
+                verifyKeyAttestationSignature = VerifyJwsObjectTrustedCertificate(
+                    trustedIssuers = TrustedCertificates {
+                        setOf(trustedProvider.getCertificate()!!, otherTrustedProvider.getCertificate()!!)
+                    }
+                ),
+            )
+
+            listOf(trustedProvider, otherTrustedProvider).forEach { provider ->
+                val attestation = buildValidKeyAttestation(
+                    signerKeyMaterial = provider,
+                    attestedKey = it.clientKeyMaterial,
+                    nonce = validator.nonce().clientNonce,
+                )
+                validator.validateProofExtractSubjectPublicKeys(
+                    CredentialRequestParameters(
+                        proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws))
+                    )
+                ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
+            }
+
+            val rogueAttestation = buildValidKeyAttestation(
+                signerKeyMaterial = EphemeralKeyWithSelfSignedCert(),
+                attestedKey = it.clientKeyMaterial,
+                nonce = validator.nonce().clientNonce,
+            )
+            shouldThrow<OAuth2Exception> {
+                validator.validateProofExtractSubjectPublicKeys(
+                    CredentialRequestParameters(
+                        proofs = CredentialRequestProofContainer(attestation = setOf(rogueAttestation.jws))
+                    )
+                )
+            }.message shouldContain "key attestation not verified"
+        }
+
+        test("reject key attestation when no trusted verifier is configured") {
+            val validator = ProofValidator()
+            val attestation = buildValidKeyAttestation(
+                signerKeyMaterial = it.walletProviderKeyMaterial,
+                attestedKey = it.clientKeyMaterial,
+                nonce = validator.nonce().clientNonce,
+            )
+
+            shouldThrow<OAuth2Exception> {
+                validator.validateProofExtractSubjectPublicKeys(
+                    CredentialRequestParameters(
+                        proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws))
+                    )
+                )
+            }.message shouldContain "key attestation not verified"
+        }
+
         test("reject key attestation whose key storage status is revoked") {
             val validator = ProofValidator(
-                keyAttestationIssuer = it.walletProviderKeyMaterial,
+                verifyKeyAttestationSignature = verifyKeyAttestationWith(it.walletProviderKeyMaterial),
                 statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
                     buildStatusListToken(statusListUrl, revokedIndex = KEY_STORAGE_STATUS_INDEX)
                 },
@@ -294,7 +354,7 @@ val OidvciAttestationTest by matrixSuite {
 
         test("accept key attestation whose key storage status is valid") {
             val validator = ProofValidator(
-                keyAttestationIssuer = it.walletProviderKeyMaterial,
+                verifyKeyAttestationSignature = verifyKeyAttestationWith(it.walletProviderKeyMaterial),
                 statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
                     // some other key storage is revoked, but not the one of this attestation
                     buildStatusListToken(statusListUrl, revokedIndex = KEY_STORAGE_STATUS_INDEX + 1)
@@ -421,7 +481,7 @@ val OidvciAttestationTest by matrixSuite {
                 credentialSchemes = AttributeIndex.schemeSet,
                 proofValidator = ProofValidator(
                     requireKeyAttestation = false,
-                    keyAttestationIssuer = EphemeralKeyWithoutCert() // not matching our walletProviderKeyMaterial
+                    verifyKeyAttestationSignature = verifyKeyAttestationWith(EphemeralKeyWithoutCert()) // not matching our walletProviderKeyMaterial
                 )
             )
             it.client = WalletService(loadKeyAttestation = { catchingUnwrapped { TODO() }.wrap() })
@@ -464,7 +524,7 @@ val OidvciAttestationTest by matrixSuite {
             val restrictedValidator = ProofValidator(
                 supportedAlgorithms = setOf(JwsAlgorithm.Signature.ES256),
                 publicContext = "https://wallet.a-sit.at/credential-issuer",
-                keyAttestationIssuer = it.walletProviderKeyMaterial
+                verifyKeyAttestationSignature = verifyKeyAttestationWith(it.walletProviderKeyMaterial)
             )
             val nonce = restrictedValidator.nonce().clientNonce
 
@@ -670,6 +730,10 @@ private suspend fun buildStatusListToken(
     ).getOrThrow(),
     resolvedAt = System.now(),
 )
+
+private fun verifyKeyAttestationWith(keyMaterial: KeyMaterial): VerifyJwsObjectFun = VerifyJwsObjectFun { jws ->
+    VerifyJwsSignatureWithKey()(jws, keyMaterial.jsonWebKey)
+}
 
 private suspend fun buildValidKeyAttestation(
     signerKeyMaterial: KeyMaterial,
