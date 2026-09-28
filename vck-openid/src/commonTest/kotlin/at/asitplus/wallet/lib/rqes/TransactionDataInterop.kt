@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
+import at.asitplus.csc.api.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData

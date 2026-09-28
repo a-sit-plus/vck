@@ -1,6 +1,5 @@
 package at.asitplus.csc.api
 
-import at.asitplus.csc.enums.OperationMode
 import at.asitplus.csc.api.serializers.QtspSignatureRequestSerializer
 import kotlinx.serialization.Serializable
 

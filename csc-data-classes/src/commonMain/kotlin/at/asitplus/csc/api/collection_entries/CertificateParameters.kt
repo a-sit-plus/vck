@@ -2,7 +2,6 @@ package at.asitplus.csc.api.collection_entries
 
 import at.asitplus.csc.api.CredentialInfo
 import at.asitplus.csc.api.CredentialInfoRequest
-import at.asitplus.csc.enums.CertificateOptions
 import at.asitplus.csc.api.serializers.Base64X509CertificateSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.SerialName

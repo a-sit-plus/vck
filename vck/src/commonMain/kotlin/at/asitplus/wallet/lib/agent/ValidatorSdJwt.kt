@@ -2,8 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.csc.contentEquals
-import at.asitplus.iso.sha256
+import at.asitplus.csc.api.contentEquals
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.CryptoPublicKey

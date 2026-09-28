@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.rqes.csc
 
-import at.asitplus.csc.CredentialInfoRequest
-import at.asitplus.csc.CredentialListRequest
-import at.asitplus.csc.CredentialListResponse
-import at.asitplus.csc.collection_entries.AuthParameters
-import at.asitplus.csc.collection_entries.CertificateParameters
-import at.asitplus.csc.collection_entries.KeyParameters
-import at.asitplus.csc.enums.CertificateOptions
+import at.asitplus.csc.api.CertificateOptions
+import at.asitplus.csc.api.CredentialInfoRequest
+import at.asitplus.csc.api.CredentialListRequest
+import at.asitplus.csc.api.CredentialListResponse
+import at.asitplus.csc.api.collection_entries.AuthParameters
+import at.asitplus.csc.api.collection_entries.CertificateParameters
+import at.asitplus.csc.api.collection_entries.KeyParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import com.benasher44.uuid.uuid4
