@@ -270,7 +270,9 @@ internal class OpenId4VpRequestFactory(
         return AuthenticationRequestParameters(
             responseType = responseType,
             clientId = if (populateClientId) clientIdScheme.clientId else null,
-            redirectUrl = if (!isAnyDirectPost) clientIdScheme.redirectUri else null,
+            // Requests without a payload client_id (unsigned and multisigned DC API) are bound to the
+            // platform-provided origin and must not inherit an identity-specific redirect_uri.
+            redirectUrl = if (!isAnyDirectPost && populateClientId) clientIdScheme.redirectUri else null,
             responseUrl = responseUrl,
             // Using scope as an alias for a well-defined DCQL Query is not supported
             scope = null,

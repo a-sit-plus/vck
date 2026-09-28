@@ -19,11 +19,22 @@ sealed class DcApiCreationOptions {
      */
     data object OpenId4VpSigned : DcApiCreationOptions()
 
+    /** Compact signed OpenID4VP request using the supplied verifier identity. */
+    data class OpenId4VpSignedBy(val signer: DcApiRequestSigner) : DcApiCreationOptions()
+
+    /** JWS General JSON OpenID4VP request protected by at least two verifier identities. */
+    data class OpenId4VpMultiSigned(val signers: List<DcApiRequestSigner>) : DcApiCreationOptions() {
+        init {
+            require(signers.size >= 2) { "A multisigned request requires at least two signers" }
+            require(signers.map { it.clientIdScheme.clientId }.distinct().size == signers.size) {
+                "A multisigned request requires distinct client identifiers"
+            }
+        }
+    }
+
     /**
      * ISO 18013-7 Annex C request, i.e. protocol `org-iso-mdoc`,
      * see [at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest.IsoMdoc].
      */
     data object Iso180137AnnexC : DcApiCreationOptions()
-
-    // TODO: OpenId4VpMultiSigned (`openid4vp-v1-multisigned`)
 }

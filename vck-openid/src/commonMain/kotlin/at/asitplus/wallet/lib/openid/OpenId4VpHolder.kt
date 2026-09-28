@@ -316,7 +316,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
     suspend fun startAuthorizationResponsePreparation(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        authorizationRequestValidator.validateAuthorizationRequest(params)
+        val verifierSignatures = authorizationRequestValidator.validateAuthorizationRequest(params)
         val loadedKeys = (params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
             ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(params.parameters.clientId))?.keys)
         val jsonWebKeys = loadedKeys?.combine(params.extractLeafCertKey())
@@ -326,7 +326,8 @@ class OpenId4VpHolder @JvmOverloads constructor(
             clientMetadata = params.parameters.clientMetadata,
             jsonWebKeys = jsonWebKeys,
             verifierInfo = params.parameters.verifierInfo,
-            audience = params.extractAudience(jsonWebKeys)
+            audience = params.extractAudience(jsonWebKeys),
+            verifierSignatures = verifierSignatures,
         )
     }
 

@@ -10,6 +10,9 @@ Release 9.0.0 (unreleased):
     - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
 - OpenID for Verifiable Presentations:
     - Replace `ResponseParametersFrom.clientIdRequired` with `ResponseParametersFrom.DcApi.protocol`, validating DC API responses according to the signed, multisigned or unsigned request protocol
+    - Create and validate `openid4vp-v1-multisigned` DC API requests with signature-specific protected verifier identities and a shared transaction payload, see `DcApiCreationOptions.OpenId4VpMultiSigned` and `DcApiRequestSigner`
+    - Add `DcApiCreationOptions.OpenId4VpSignedBy` to sign a DC API request with a given `DcApiRequestSigner`, whose `verifier_info` is carried in the payload
+    - Authenticate every signature of a multisigned DC API request and report each outcome, with its `client_id` and `verifier_info`, in `AuthorizationResponsePreparationState.verifierSignatures`, see `VerifierSignature`, so wallets only present identities that actually signed; `VerifierSignature.Status` tells invalid (e.g. forged) signatures apart from identifiers the wallet cannot evaluate or does not trust, and the `invalid_request` for a request without any authenticated signature names every signature's outcome
 
 Release 8.0.0:
 
