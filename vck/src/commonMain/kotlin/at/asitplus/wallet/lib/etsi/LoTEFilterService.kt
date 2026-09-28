@@ -4,6 +4,7 @@ import at.asitplus.etsi.EtsiCountryCode
 import at.asitplus.etsi.EtsiX509CertificateSerializer
 import at.asitplus.etsi.ListAndSchemeInformation
 import at.asitplus.etsi.ListOfTrustedEntities
+import at.asitplus.etsi.MultilingualCharacterString
 import at.asitplus.etsi.TEName
 import at.asitplus.rfc3986uri.Rfc3986UniformResourceIdentifier
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
@@ -35,6 +36,24 @@ class LoTEFilterService {
         profile: LoteProfile
     ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.REVOCATION)
 
+    /** The [LoteProfile] whose List and Scheme Information matches [lote] */
+    fun profileOf(lote: ListOfTrustedEntities): LoteProfile? =
+        LoteProfile.entries.firstOrNull { checkListAndSchemeInformation(lote.listAndSchemeInformation, it) }
+
+    /**
+     * Extracts issuance certificates of [lote], for the profile detected from its own metadata.
+     * For callers that have already selected the lists, e.g. per credential type
+     */
+    fun extractIssuanceCertificates(lote: ListOfTrustedEntities): List<TrustedCertificate> =
+        profileOf(lote)?.let { extractIssuanceCertificates(lote, it) }.orEmpty()
+
+    /**
+     * Extracts revocation certificates of [lote], for the profile detected from its own metadata.
+     * Used for status list signers, where the lists have already been selected by the caller.
+     */
+    fun extractRevocationCertificates(lote: ListOfTrustedEntities): List<TrustedCertificate> =
+        profileOf(lote)?.let { extractRevocationCertificates(lote, it) }.orEmpty()
+
     /**
      * Core extraction logic handling both Issuance and Revocation based on [ServiceKind].
      */
@@ -54,15 +73,16 @@ class LoTEFilterService {
 
         val entities = lote.trustedEntitiesList ?: return emptyList()
         return entities.flatMap { entity ->
-            val providerName = entity.trustedEntityInformation.teName
+            val providerNames = entity.trustedEntityInformation.teName + entity.trustedEntityInformation.teTradeName.orEmpty()
+
 
             entity.trustedEntityServices
                 .filter { service ->
                     matcher(service.serviceInformation.serviceTypeIdentifier?.string)
                 }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
-                .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
-                .map { cert -> TrustedCertificate(cert, providerName, LoTEServiceType.fromSchemeIdentifier(targetServiceType), targetServiceType) }
+                .filter { cert -> cert?.hasMatchingOrganization(providerNames) == true }
+                .map { cert -> TrustedCertificate(cert, entity.trustedEntityInformation.teName, LoTEServiceType.fromSchemeIdentifier(targetServiceType), targetServiceType) }
         }
     }
 
@@ -71,8 +91,7 @@ class LoTEFilterService {
         val entities = lote.trustedEntitiesList ?: return emptyList()
         val loteType = lote.listAndSchemeInformation?.loteType?.toString()
         return entities.flatMap { entity ->
-            val providerName = entity.trustedEntityInformation.teName
-
+            val providerNames = entity.trustedEntityInformation.teName + entity.trustedEntityInformation.teTradeName.orEmpty()
             entity.trustedEntityServices
                 .filter { service ->
                     val serviceTypeId = service.serviceInformation.serviceTypeIdentifier?.string
@@ -87,8 +106,8 @@ class LoTEFilterService {
                     }
                 }
                 .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
-                .filter { cert -> cert?.hasMatchingOrganization(providerName) == true }
-                .map { cert -> TrustedCertificate(cert, providerName, criteria.expectedServiceType) }
+                .filter { cert -> cert?.hasMatchingOrganization(providerNames) == true }
+                .map { cert -> TrustedCertificate(cert, entity.trustedEntityInformation.teName, criteria.expectedServiceType) }
         }
     }
 
@@ -113,17 +132,17 @@ class LoTEFilterService {
     }
 
     /**
-     * Checks if the Organization (O) attribute within the certificate's Subject Name matches
-     * any of the localized names declared in the provider's [TEName] block.
+     * Checks if the Organization (O) attribute within the certificate's Subject Name matches any of
+     * the localized names the provider declares, i.e. its [TEName] or its [TETradeName].
      */
-    private fun X509Certificate.hasMatchingOrganization(providerName: TEName): Boolean {
+    private fun X509Certificate.hasMatchingOrganization(names: List<MultilingualCharacterString>): Boolean {
         val orgName = tbsCertificate.subjectName
             .flatMap { it.attrsAndValues }
             .filterIsInstance<AttributeTypeAndValue.Organization>()
             .firstOrNull()
             ?.asStringOrNull() ?: return false
 
-        return providerName.any { it.value.equals(orgName, ignoreCase = true) }
+        return names.any { it.value.equals(orgName, ignoreCase = true) }
     }
 
     /**
