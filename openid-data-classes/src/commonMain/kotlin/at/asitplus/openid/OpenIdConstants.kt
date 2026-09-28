@@ -99,6 +99,9 @@ object OpenIdConstants {
     /** `key-attestation+jwt` */
     const val KEY_ATTESTATION_JWT_TYPE = "key-attestation+jwt"
 
+    /** `openidvci-issuer-metadata+jwt`, see OID4VCI 1.0, Section 12.2.3 */
+    const val ISSUER_METADATA_JWT_TYPE = "openidvci-issuer-metadata+jwt"
+
     /** `attest_jwt_client_auth` */
     const val AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH = "attest_jwt_client_auth"
 

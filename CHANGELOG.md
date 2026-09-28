@@ -76,6 +76,8 @@ Release 8.0.0 (unreleased):
 - OpenID for Verifiable Credential Issuance:
     - Rework validation of key attestation statements
     - In `ProofValidator` replace the unreleased `keyAttestationIssuer` with `verifyKeyAttestationSignature` to accept key attestations of trusted wallet providers, e.g. with `VerifyJwsObjectTrustedCertificate`; key attestations are rejected unless a trusted verifier is configured
+    - Sign metadata in `CredentialIssuer.signedMetadata()` as per OpenID4VCI 1.0, Section 12.2.3, i.e. with `typ` set to `openidvci-issuer-metadata+jwt` and the claims `sub` and `iat`, added as `subject`, `issuedAt` and `expiration` to `IssuerMetadata`
+    - Add `displayProperties` to `CredentialIssuer`, to include them in both `metadata` and `signedMetadata()`
     - Make sure a `nonce` provided by the credential issuer can only be used for one request to the credential endpoint
     - Security fix: encrypt the credential request whenever it carries `credential_response_encryption`, as required by OpenID4VCI 1.0, i.e. *"Credential Request encryption MUST be used if the `credential_response_encryption` parameter is included, to prevent it being substituted by an attacker"*. `WalletEncryptionService` previously sent its response encryption key in a plain request unless request encryption was required by either side, and `CredentialIssuer` accepted such requests
     - In `WalletEncryptionService`, if the issuer publishes no key to encrypt the request with, `credential_response_encryption` is omitted, or the request fails if the issuer requires response encryption
