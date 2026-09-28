@@ -178,7 +178,7 @@ class Verifier {
     private val verifyCoseSignatureBytes = VerifyCoseSignatureWithKey<ByteArray>()
 
     suspend fun buildDeviceRequest() = DeviceRequest(
-        version = "1.0",
+        parsedVersion = Version(1, 0),
         docRequests = arrayOf(
             DocRequest(
                 itemsRequest = ByteStringWrapper(

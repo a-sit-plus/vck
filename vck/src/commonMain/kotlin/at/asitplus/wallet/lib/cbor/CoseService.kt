@@ -20,11 +20,11 @@ import at.asitplus.signum.supreme.mac.mac
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TrustedCertificates
-import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
 import at.asitplus.wallet.lib.agent.VerifyMac
 import at.asitplus.wallet.lib.agent.VerifyMacFun
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
+import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
 import at.asitplus.wallet.lib.cbor.CoseUtils.calcMac
 import at.asitplus.wallet.lib.cbor.CoseUtils.calcSignature
 import io.github.aakira.napier.Napier
@@ -338,27 +338,11 @@ class VerifyCoseSignature<P : Any> @JvmOverloads constructor(
     val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
 ) : VerifyCoseSignatureFun<P> {
 
-    /** Set only by the deprecated constructor taking a [PublicCoseKeyLookup]. */
-    private var trustedDelegate: VerifyCoseSignatureFun<P>? = null
-
-    @Deprecated(
-        "A key lookup used to be ignored whenever the COSE headers asserted a key themselves, so it could " +
-                "not enforce anything. Use VerifyCoseSignatureTrusted to treat the keys as a trust list, or drop " +
-                "the parameter to keep verifying against the key asserted by the CoseSigned.",
-        ReplaceWith("VerifyCoseSignatureTrusted(verifyCoseSignature, publicKeyLookup)")
-    )
-    constructor(
-        verifyCoseSignature: VerifyCoseSignatureWithKeyFun<P> = VerifyCoseSignatureWithKey<P>(),
-        publicKeyLookup: PublicCoseKeyLookup,
-    ) : this(verifyCoseSignature) {
-        trustedDelegate = VerifyCoseSignatureTrusted(verifyCoseSignature, publicKeyLookup)
-    }
-
     override suspend operator fun invoke(
         coseSigned: CoseSigned<P>,
         externalAad: ByteArray,
         detachedPayload: ByteArray?,
-    ) = trustedDelegate?.invoke(coseSigned, externalAad, detachedPayload) ?: catching {
+    ) = catching {
         coseSigned.loadPublicKeys().also {
             Napier.d("Public keys available: ${it.size}")
         }.firstNotNullOf { coseKey ->

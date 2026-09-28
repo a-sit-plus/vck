@@ -88,7 +88,6 @@ val Iso18013SpecTest by matrixSuite {
             input.decodeToByteArray(Base16(true))
         ).shouldNotBeNull()
         deviceRequest.parsedVersion shouldBe Version(1, 0)
-        deviceRequest.version shouldBe "1.0"
         val docRequest = deviceRequest.docRequests.first()
         docRequest.shouldNotBeNull()
 
@@ -274,7 +273,6 @@ val Iso18013SpecTest by matrixSuite {
 
         val deviceResponse = coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(input)
         deviceResponse.parsedVersion shouldBe Version(1, 0)
-        deviceResponse.version shouldBe "1.0"
 
         val document = deviceResponse.documents?.get(0)
         document.shouldNotBeNull()
@@ -298,10 +296,8 @@ val Iso18013SpecTest by matrixSuite {
 
         mso.parsedVersion shouldBe Version(1, 0)
         mso.parsedVersion.toIsoString() shouldBe "1.0"
-        mso.version shouldBe "1.0"
         mso.digest shouldBe Digest.SHA256
         mso.digest.toIsoString() shouldBe "SHA-256"
-        mso.digestAlgorithm shouldBe "SHA-256"
         mso.docType shouldBe "org.iso.18013.5.1.mDL"
         mso.validityInfo.signed shouldBe Instant.parse("2020-10-01T13:30:02Z")
         mso.validityInfo.validFrom shouldBe Instant.parse("2020-10-01T13:30:02Z")
@@ -440,10 +436,8 @@ val Iso18013SpecTest by matrixSuite {
         val mso = coseSigned.payload!!
         mso.parsedVersion shouldBe Version(1, 0)
         mso.parsedVersion.toIsoString() shouldBe "1.0"
-        mso.version shouldBe "1.0"
         mso.digest shouldBe Digest.SHA256
         mso.digest.toIsoString() shouldBe "SHA-256"
-        mso.digestAlgorithm shouldBe "SHA-256"
         mso.docType shouldBe "org.iso.18013.5.1.mDL"
         mso.validityInfo.signed shouldBe Instant.parse("2020-10-01T13:30:02Z")
         mso.validityInfo.validFrom shouldBe Instant.parse("2020-10-01T13:30:02Z")

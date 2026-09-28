@@ -1,13 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.dif.PresentationSubmission
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -18,7 +16,6 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.putJsonArray
 
@@ -34,17 +31,6 @@ data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
     val transactionData: List<TransactionDataBase64Url>? = null,
-    /**
-     * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
-     * (OpenID4VP with ISO/IEC 18013-7)
-     */
-    @Deprecated("Compute Device Signature using the calcIsoSessionTranscript callback.")
-    val calcIsoDeviceSignaturePlain: (suspend (input: IsoDeviceSignatureInput) -> CoseSigned<ByteArray>?) = { null },
-    @Deprecated(
-        "Only applies to deprecated Presentation Exchange. DCQL uses `DCQLCredentialQuery.multiple`; " +
-                "ISO Device Retrieval always creates one DeviceResponse."
-    )
-    val returnOneDeviceResponse: Boolean = false,
 
     /**
      * Handle calculating Session Transcript for ISO mDocs, as this depends on the transport protocol
@@ -56,7 +42,7 @@ data class PresentationRequestParameters(
      */
     val calcIsoSessionTranscript: (suspend () -> SessionTranscript?) = { null },
 
-) {
+    ) {
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms
      * however in the [at.asitplus.wallet.lib.data.KeyBindingJws] we are only allowed to specify one.
@@ -95,23 +81,6 @@ sealed interface PresentationResponseParameters {
                 }
             }
 
-    }
-
-    @Deprecated("Support for Presentation Exchange has been removed from OpenID4VP; use DCQL or DeviceRequest")
-    data class PresentationExchangeParameters(
-        val presentationResults: List<CreatePresentationResult>,
-        @Deprecated("Presentation Exchange is deprecated, use DCQL or DeviceRequest instead")
-        val presentationSubmission: PresentationSubmission,
-    ) : PresentationResponseParameters {
-        val vpToken = presentationResults.map {
-            it.toJsonPrimitive()
-        }.singleOrArray()
-
-        private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {
-            this[0]
-        } else buildJsonArray {
-            forEach { add(it) }
-        }
     }
 
     /**
@@ -159,13 +128,6 @@ sealed interface CreatePresentationResult {
     ) : CreatePresentationResult
 }
 
-@Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-@Serializable
-data class PresentationExchangeCredentialDisclosure<Credential : Any>(
-    val credential: Credential,
-    val disclosedAttributes: Collection<NormalizedJsonPath>,
-)
-
 /**
  * A holder credential selected for an ISO Device Retrieval response and the data elements to disclose.
  *
@@ -179,11 +141,6 @@ data class DeviceRequestCredentialDisclosure<Credential : Any>(
     val credential: Credential,
     val disclosedAttributes: Collection<NormalizedJsonPath>,
 )
-
-/**
- * Implementations should return true, when the credential attribute may be disclosed to the verifier.
- */
-typealias PathAuthorizationValidator = (credential: SubjectCredentialStore.StoreEntry, attributePath: NormalizedJsonPath) -> Boolean
 
 open class PresentationException : Exception {
     constructor(message: String) : super(message)

@@ -1,7 +1,6 @@
 package at.asitplus.dcapi.ios
 
 import at.asitplus.dcapi.request.IsoMdocRequest
-import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.ItemsRequest
@@ -24,10 +23,6 @@ data class IosDcApiMdocPreRequestSummary(
     /** Checks that the full request asks for exactly the documents and data elements shown in this summary. */
     fun isConsistentWith(rawRequest: IsoMdocRequest): Boolean =
         normalizedDocumentRequests() == rawRequest.normalizedDocumentRequests()
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Support for Presentation Exchange been removed, use toDeviceRequest")
-    fun toDifInputDescriptors(): List<DifInputDescriptor> = listOf()
 
     /** Converts the summary into an ISO device request for pre-request credential matching. */
     fun toDeviceRequest(): DeviceRequest = DeviceRequest(

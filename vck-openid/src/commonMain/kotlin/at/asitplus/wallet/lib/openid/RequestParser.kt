@@ -21,7 +21,6 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
-import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.openid.toFormParameters
 import io.ktor.http.*
@@ -35,8 +34,6 @@ class RequestParser(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    @Deprecated("No longer used, decision moved to `AuthorizationRequestValidator`")
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _: Any -> true },
     /** Holds the ephemeral encryption keys advertised in `wallet_metadata` when fetching a request object with POST. */
     private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
     /** Decrypts request objects sent by the verifier, keyed by the `kid` of the JWE. */

@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.builtins.ByteArraySerializer
 
@@ -27,7 +28,7 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
         val rawInfo = byteArrayOf(0xA1.toByte(), 0x00, 0x01)
         val original = doc.copy(itemsRequest = ByteStringWrapper(doc.itemsRequest.value, rawItems))
         val request = DeviceRequest(
-            version = "1.1",
+            parsedVersion = Version(1, 1),
             docRequests = arrayOf(original),
             deviceRequestInfo = ByteStringWrapper(DeviceRequestInfo(), rawInfo),
         )
@@ -41,29 +42,35 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
         all.containsBytes(byteArrayOf(0xD8.toByte(), 0x18, 0x43, 0xA1.toByte(), 0x00, 0x01)) shouldBe true
         // last item request h'a0', then a plain null for the absent DeviceRequestInfoBytes, not #6.24(null)
         ReaderAuthenticationAll.detachedPayload(
-            DeviceRequest(version = "1.1", docRequests = arrayOf(original)), transcript
+            DeviceRequest(parsedVersion = Version(1, 1), docRequests = arrayOf(original)), transcript
         ).takeLast(3) shouldBe listOf(0x41, 0xA0, 0xF6).map { it.toByte() }
     }
 
     "readerAuthAll covers every document and binds the transcript" {
         val signer = EphemeralKeyWithSelfSignedCert()
         val requests = arrayOf(mdocDocRequest(), mdocDocRequest(claimNames = listOf("given_name")))
-        val unsigned = DeviceRequest(version = "1.1", docRequests = requests)
+        val unsigned = DeviceRequest(parsedVersion = Version(1, 1), docRequests = requests)
         val signed = SignCoseDetached<ByteArray>(signer, unprotectedHeaderModifier = CoseHeaderCertificate())(
             protectedHeader = null,
             unprotectedHeader = CoseHeader(),
             payload = ReaderAuthenticationAll.detachedPayload(unsigned, transcript),
             serializer = ByteArraySerializer(),
         ).getOrThrow()
-        val request = DeviceRequest(version = "1.1", docRequests = requests, readerAuthAll = arrayOf(signed))
+        val request =
+            DeviceRequest(parsedVersion = Version(1, 1), docRequests = requests, readerAuthAll = arrayOf(signed))
 
         ReaderAuthenticationVerifier()(request, transcript).isSuccess shouldBe true
         ReaderAuthenticationVerifier()(request, changedTranscript).isFailure shouldBe true
-        ReaderAuthenticationVerifier()(DeviceRequest(version = "1.1", docRequests = arrayOf(requests[0], mdocDocRequest())), transcript)
+        ReaderAuthenticationVerifier()(
+            DeviceRequest(
+                parsedVersion = Version(1, 1),
+                docRequests = arrayOf(requests[0], mdocDocRequest())
+            ), transcript
+        )
             .isFailure shouldBe true
         ReaderAuthenticationVerifier()(
             DeviceRequest(
-                version = "1.1",
+                parsedVersion = Version(1, 1),
                 docRequests = requests,
                 deviceRequestInfo = ByteStringWrapper(DeviceRequestInfo()),
                 readerAuthAll = arrayOf(signed),
@@ -79,7 +86,11 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
             payloadSerializer = ByteArraySerializer(),
         )
         ReaderAuthenticationVerifier()(
-            DeviceRequest(version = "1.1", docRequests = requests, readerAuthAll = arrayOf(malformedChain)),
+            DeviceRequest(
+                parsedVersion = Version(1, 1),
+                docRequests = requests,
+                readerAuthAll = arrayOf(malformedChain)
+            ),
             transcript,
         ).isFailure shouldBe true
 
@@ -91,7 +102,11 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
             payloadSerializer = ByteArraySerializer(),
         )
         ReaderAuthenticationVerifier()(
-            DeviceRequest(version = "1.1", docRequests = requests, readerAuthAll = arrayOf(embeddedPayload)),
+            DeviceRequest(
+                parsedVersion = Version(1, 1),
+                docRequests = requests,
+                readerAuthAll = arrayOf(embeddedPayload)
+            ),
             transcript,
         ).isFailure shouldBe true
     }
@@ -100,7 +115,7 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
         val signer = EphemeralKeyWithSelfSignedCert()
         val other = EphemeralKeyWithSelfSignedCert()
         val requests = arrayOf(mdocDocRequest())
-        val unsigned = DeviceRequest(version = "1.1", docRequests = requests)
+        val unsigned = DeviceRequest(parsedVersion = Version(1, 1), docRequests = requests)
         suspend fun signWith(key: EphemeralKeyWithSelfSignedCert) = SignCoseDetached<ByteArray>(
             key, unprotectedHeaderModifier = CoseHeaderCertificate()
         )(
@@ -109,6 +124,7 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
             payload = ReaderAuthenticationAll.detachedPayload(unsigned, transcript),
             serializer = ByteArraySerializer(),
         ).getOrThrow()
+
         val first = signWith(other)
         val second = signWith(signer)
         val invalidFirst = CoseSigned.create(
@@ -118,7 +134,11 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
             signature = second.signature,
             payloadSerializer = ByteArraySerializer(),
         )
-        val request = DeviceRequest(version = "1.1", docRequests = requests, readerAuthAll = arrayOf(invalidFirst, second))
+        val request = DeviceRequest(
+            parsedVersion = Version(1, 1),
+            docRequests = requests,
+            readerAuthAll = arrayOf(invalidFirst, second)
+        )
 
         val chain = ReaderAuthenticationVerifier()(request, transcript).getOrThrow()
         chain.first().encodeToDer() shouldBe signer.getCertificate()!!.encodeToDer()
@@ -144,11 +164,24 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
 
         val first = signedRequest(1)
         val second = signedRequest(2)
-        ReaderAuthenticationVerifier()(DeviceRequest(version = "1.0", docRequests = arrayOf(first, second)), transcript)
+        ReaderAuthenticationVerifier()(
+            DeviceRequest(
+                parsedVersion = Version(1, 1),
+                docRequests = arrayOf(first, second)
+            ), transcript
+        )
             .isSuccess shouldBe true
-        ReaderAuthenticationVerifier()(DeviceRequest(version = "1.0", docRequests = arrayOf(first, mdocDocRequest())), transcript)
+        ReaderAuthenticationVerifier()(
+            DeviceRequest(parsedVersion = Version(1, 1), docRequests = arrayOf(first, mdocDocRequest())),
+            transcript
+        )
             .isFailure shouldBe true
-        ReaderAuthenticationVerifier()(DeviceRequest(version = "1.0", docRequests = arrayOf(first, signedRequest(2, true))), transcript)
+        ReaderAuthenticationVerifier()(
+            DeviceRequest(
+                parsedVersion = Version(1, 1),
+                docRequests = arrayOf(first, signedRequest(2, true))
+            ), transcript
+        )
             .isFailure shouldBe true
     }
 }

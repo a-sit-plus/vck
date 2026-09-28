@@ -1,6 +1,7 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Trusted relying parties:
     - Fix JSON serialization of `JsonClaimReference` as `SingleClaimReference`, e.g. in `RequestDataValidity`, which produced invalid JSON since `NormalizedJsonPath` became a list in JsonPath4K 4.0.0. It is now serialized as an object holding `normalizedJsonPath`
     - `WrprcValidator` no longer drops the cause when a registration certificate can not be validated, e.g. for a missing or unparseable certificate chain: `WrprcValidationResult.certificateValidationResults` holds a `KmmResult` for each certificate. Deprecate `WrprcValidationResult.certificateValidation`, which maps such certificates to `null`

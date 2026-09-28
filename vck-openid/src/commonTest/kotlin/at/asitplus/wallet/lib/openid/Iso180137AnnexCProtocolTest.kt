@@ -10,7 +10,6 @@ import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
-import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.ItemsRequest
@@ -18,7 +17,6 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
-import at.asitplus.iso.wrapInCborTag
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
@@ -43,7 +41,6 @@ import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
-import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -61,7 +58,6 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
 
 /**
@@ -128,7 +124,7 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 suspend fun walletResponse(
                     isoMdocRequest: IsoMdocRequest,
                     origin: String = callingOrigin,
-                ) = createWalletResponse(holderAgent, holderKeyMaterial, isoMdocRequest, origin, requestedCredential)
+                ) = createWalletResponse(holderAgent, isoMdocRequest, origin, requestedCredential)
             }
         }
     } - {
@@ -419,7 +415,6 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
  */
 private suspend fun createWalletResponse(
     holder: Holder,
-    holderKeyMaterial: KeyMaterial,
     isoMdocRequest: IsoMdocRequest,
     origin: String,
     requestedCredential: RequestOptionsCredential,
@@ -432,30 +427,12 @@ private suspend fun createWalletResponse(
             ).sha256(),
         )
     )
-    val signer = SignCoseDetached<ByteArray>(keyMaterial = holderKeyMaterial)
     val calcIsoSessionTranscript = { sessionTranscript }
     val deviceResponse = holder.createDefaultPresentation(
         request = PresentationRequestParameters(
             nonce = uuid4().toString(), // not relevant for mdoc device authentication
             audience = origin,
-            calcIsoSessionTranscript = calcIsoSessionTranscript,
-            calcIsoDeviceSignaturePlain = { input ->
-                signer(
-                    protectedHeader = null,
-                    unprotectedHeader = null,
-                    payload = coseCompliantSerializer.encodeToByteArray(
-                        ByteStringWrapper(
-                            DeviceAuthentication(
-                                type = DeviceAuthentication.TYPE,
-                                sessionTranscript = calcIsoSessionTranscript(),
-                                docType = input.docType,
-                                namespaces = input.deviceNameSpaceBytes,
-                            )
-                        )
-                    ).wrapInCborTag(24),
-                    serializer = ByteArraySerializer(),
-                ).getOrThrow()
-            }
+            calcIsoSessionTranscript = calcIsoSessionTranscript
         ),
         credentialPresentationRequest = CredentialPresentationRequestBuilder(requestedCredential).toDCQLRequest()!!,
     ).getOrThrow()

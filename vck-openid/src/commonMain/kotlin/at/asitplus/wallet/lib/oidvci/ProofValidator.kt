@@ -10,7 +10,6 @@ import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -55,9 +54,6 @@ class ProofValidator @JvmOverloads constructor(
     private val clock: Clock = Clock.System,
     /** Time leeway for verification of timestamps in proof elements in credential requests. */
     private val timeLeeway: Duration = 5.minutes,
-    /** Callback to verify a received [KeyAttestationJwt] proof in credential requests. */
-    @Deprecated("Set a statusListTokenResolver and provide verifyKeyAttestationSignature instead")
-    private val verifyAttestationProof: suspend (JwsCompactTyped<KeyAttestationJwt>) -> Boolean = { true },
     /** Turn on to require key attestation support in the [validProofTypes]. */
     private val requireKeyAttestation: Boolean = false,
     /** Used to provide challenges to clients to include in proof of possession of key material. */

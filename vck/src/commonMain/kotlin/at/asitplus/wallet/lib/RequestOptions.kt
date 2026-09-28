@@ -1,30 +1,18 @@
 package at.asitplus.wallet.lib
 
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.ConstraintFilter
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.RequirementEnum
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
-import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
-import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import com.benasher44.uuid.uuid4
-import kotlinx.serialization.json.JsonPrimitive
 
 typealias RequestedAttributes = Set<String>
 typealias RequestedAttributePaths = Set<DCQLClaimsPathPointer>
@@ -57,36 +45,6 @@ data class RequestOptionsCredential(
      */
     val optionalAttributePaths: RequestedAttributePaths? = null,
 ) {
-    fun buildId() = if (isMdoc) credentialScheme.isoDocType!! else id
-
-    private val isMdoc: Boolean
-        get() = credentialScheme.isoDocType != null && representation == ISO_MDOC
-
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    fun toConstraint() = Constraint(
-        limitDisclosure = if (isMdoc) RequirementEnum.REQUIRED else null,
-        fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull().toSet()
-    )
-
-    private fun requiredAttributes() =
-        effectiveRequestedAttributePaths().createConstraints(credentialScheme, false)
-
-    private fun optionalAttributes() =
-        effectiveRequestedOptionalAttributePaths().createConstraints(credentialScheme, true)
-
-    private fun toTypeConstraint() = when (representation) {
-        PLAIN_JWT -> credentialScheme.toVcConstraint()
-        SD_JWT -> credentialScheme.toSdJwtConstraint()
-        ISO_MDOC -> null
-    }
-
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    fun toFormatHolder(containerJwt: FormatContainerJwt, containerSdJwt: FormatContainerSdJwt) =
-        when (representation) {
-            PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-            SD_JWT -> FormatHolder(sdJwt = containerSdJwt)
-            ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
-        }
 
     fun toDocRequest(): DocRequest {
         require(credentialScheme is IsoMdocCredentialScheme) {
@@ -132,67 +90,6 @@ data class RequestOptionsCredential(
     fun effectiveRequestedOptionalAttributePaths(): RequestedAttributePaths =
         optionalAttributePaths ?: emptySet()
 
-    private fun RequestedAttributePaths.createConstraints(
-        scheme: CredentialScheme?,
-        optional: Boolean,
-    ): Collection<ConstraintField> = map {
-        if (isMdoc) it.toIsoMdocConstraintField(scheme, optional) else it.toJwtConstraintField(optional)
-    }
-
-    private fun DCQLClaimsPathPointer.toIsoMdocConstraintField(
-        scheme: CredentialScheme?,
-        optional: Boolean,
-    ) = ConstraintField(
-        path = listOf(toIsoMdocClaimPath(scheme).toJsonPath()),
-        intentToRetain = false,
-        optional = optional
-    )
-
-    private fun DCQLClaimsPathPointer.toJwtConstraintField(optional: Boolean): ConstraintField =
-        ConstraintField(path = listOf(toJsonPath()), optional = optional)
-
-    private fun DCQLClaimsPathPointer.toJsonPath(): String =
-        buildString {
-            append("$")
-            segments.forEach {
-                when (it) {
-                    is DCQLClaimsPathPointerSegment.NameSegment ->
-                        append(it.name.toJsonPathNameSelector())
-
-                    is DCQLClaimsPathPointerSegment.IndexSegment ->
-                        append("[${it.index}]")
-
-                    DCQLClaimsPathPointerSegment.NullSegment ->
-                        throw IllegalArgumentException("Presentation Exchange constraints do not support null path segments")
-                }
-            }
-        }
-
-    private fun String.toJsonPathNameSelector(): String =
-        if (isJsonPathShorthandName()) ".$this"
-        else NormalizedJsonPath(listOf(NameSegment(this))).toString().removePrefix("$")
-
-    private fun String.isJsonPathShorthandName(): Boolean =
-        firstOrNull()?.let { it == '_' || it in 'A'..'Z' || it in 'a'..'z' } == true &&
-                drop(1).all { it == '_' || it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' }
-
-    private fun CredentialScheme.toVcConstraint() = if (this is VcJwtCredentialScheme)
-        ConstraintField(
-            path = listOf("$.type"),
-            filter = ConstraintFilter(
-                type = "string",
-                const = JsonPrimitive(vcType),
-            )
-        ) else null
-
-    private fun CredentialScheme.toSdJwtConstraint() = if (this is SdJwtCredentialScheme)
-        ConstraintField(
-            path = listOf("$.vct"),
-            filter = ConstraintFilter(
-                type = "string",
-                const = JsonPrimitive(sdJwtType)
-            )
-        ) else null
 }
 
 fun DCQLClaimsPathPointer.toIsoMdocClaimPath(

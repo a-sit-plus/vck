@@ -1,325 +1,234 @@
-@file:Suppress("DEPRECATION")
-
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.openid.encodeToParameters
-import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
-
+/**
+ * [RequestParser] turns every form in which an OpenID4VP authorization request can reach the wallet into
+ * [RequestParametersFrom]: parameters in the URL, a JSON body, or a request object (RFC 9101) passed directly, by
+ * value in `request`, or by reference in `request_uri`. Validating the parsed request is up to
+ * [AuthorizationRequestValidator]; here we only check that parsing preserves the request, and rejects request objects
+ * that OpenID4VP 1.0 and RFC 9101 forbid wallets to process.
+ *
+ * Encrypted request objects and `wallet_nonce` are covered in [OpenId4VpEncryptedRequestTest].
+ */
 val OpenIdRequestParserTests by matrixSuite {
 
-    // https://verifier.funke.wwwallet.org/verifier/public/definitions/presentation-request/PID
-    val jws = """
-            eyJhbGciOiJSUzI1NiIsIng1YyI6WyJNSUlFQURDQ0F1aWdBd0lCQWdJVVFpVk9NVXllNS9OWGtUbWhnZ0RzS1hHNE9QZ3dEUVlKS29aSWh2
-            Y05BUUVMQlFBd2NURUxNQWtHQTFVRUJoTUNSMUl4RHpBTkJnTlZCQWdNQmtGMGFHVnVjekVRTUE0R0ExVUVCd3dIU1d4c2FYTnBZVEVPTUF3
-            R0ExVUVDZ3dGUjFWdVpYUXhFVEFQQmdOVkJBc01DRWxrWlc1MGFYUjVNUnd3R2dZRFZRUUREQk4zZDNkaGJHeGxkQzFsYm5SbGNuQnlhWE5s
-            TUI0WERUSTBNRGt5T1RFMU5EZ3dPVm9YRFRJMU1Ea3lPVEUxTkRnd09Wb3djVEVMTUFrR0ExVUVCaE1DUjFJeER6QU5CZ05WQkFnTUJrRjBh
-            R1Z1Y3pFUU1BNEdBMVVFQnd3SFNXeHNhWE5wWVRFT01Bd0dBMVVFQ2d3RlIxVnVaWFF4RVRBUEJnTlZCQXNNQ0Vsa1pXNTBhWFI1TVJ3d0dn
-            WURWUVFEREJOM2QzZGhiR3hsZEMxbGJuUmxjbkJ5YVhObE1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBeDFJ
-            aHZEa1dYY2NackhKcjU0NC9rTG5WSXgzbDg1blgrcmxxRHpCWGVHdHFNRDVFWkV3YXNMU0JiMHRsQXlsZnVVU1BrNGFJcDBnTDhweUdET3Np
-            dFJUWmtwNk5yL051OTgyTTV4bnk3N202NW1CcHFGQ0x0UlBvTU0vQlpJbzJ0YnBFY3FDU3Y5Z2RwTVhKRE9ldDV6UzcrT3NzVDRBdTZYYjJL
-            azMwNDlFb2d0WjAyaGtFc3czRktqbzB4ZUR4cFRBNW1yaWI3Zzlod1RUOTcxdmlRSFZKUHdtYXk4ODNFemxtZm42KytLbllFNFY2eWNYZ3A1
-            Q2Y3RFJZQVNmdTdYZkM3RXpqVHJ3ZGJzNFlJZjc0MGw3Q0lOejd6U2V1dEwrdWI3UnN4M0twQ0paM2p4Tzh4TDFhcnVubmsxZlZ1dUFjR3JZ
-            VjAwOWlkekUwWTJRSzl3SURBUUFCbzRHUE1JR01NR3NHQTFVZEVRUmtNR0tDSFhkaGJHeGxkQzFsYm5SbGNuQnlhWE5sTFdWb2FXTXRhWE56
-            ZFdWeWdpQjNZV3hzWlhRdFpXNTBaWEp3Y21selpTMWthWEJzYjIxaExXbHpjM1ZsY29JZmQyRnNiR1YwTFdWdWRHVnljSEpwYzJVdFlXTnRa
-            UzEyWlhKcFptbGxjakFkQmdOVkhRNEVGZ1FVKzhNODZORU51RSt4RnhWTnk5V3daNTFHNld3d0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFM
-            YTVmWUQzaU5PVDUrV29oeHVXNVM2WVk0czllVVBjMk1jbURYd2duczcrOE1McVpnWmNHbHQ0RTExWWpNa0VHK1VsajJPMkpOYmJnSlorRXlu
-            ekNCNmIvMFdLVi91WjV4aE5hN3F3aitPdDNPTkdIZy9lUXVkOWZUd0N0YU5VSzRnaUlUZXRJSVhXQllNQUYrall4K3FkNUFWaWdMVXViZHo0
-            S3ZKU05WOU04ZU93TmJFckVXMmt2TzBSS0thMThtMkZZbWhXUXRORG9odFlsMTlqVHA3TGtwa0NxUzNkQXZxb1hTbGdIaXlWYVpCOUo2NGZH
-            OThORzFuUkhtVVpDaFhKTDVGTmxGS2VLc3R1Ulk0UkQwbVgrbENIUUlTc2dYVjRLK0xjWEdyNEpQTlBIdzZWSFM1akU0bll4bFkvT2FJV3Vz
-            b0gxVXVESUYyeG5CamtSZ3c9Il19.
-            eyJyZXNwb25zZV91cmkiOiJodHRwczovL3ZlcmlmaWVyLmZ1bmtlLnd3d2FsbGV0Lm9yZy92ZXJpZmljYXRpb24vZGlyZWN0X3Bvc3QiLCJh
-            dWQiOiJodHRwczovL3NlbGYtaXNzdWVkLm1lL3YyIiwiaXNzIjoidmVyaWZpZXIuZnVua2Uud3d3YWxsZXQub3JnIiwiY2xpZW50X2lkX3Nj
-            aGVtZSI6Ing1MDlfc2FuX2RucyIsImNsaWVudF9pZCI6InZlcmlmaWVyLmZ1bmtlLnd3d2FsbGV0Lm9yZyIsInJlc3BvbnNlX3R5cGUiOiJ2
-            cF90b2tlbiIsInJlc3BvbnNlX21vZGUiOiJkaXJlY3RfcG9zdC5qd3QiLCJzdGF0ZSI6ImYyYWQ3YWFiLThiMDQtNGU2NS1iYmJmLTI4MDg1
-            ODNkMTlhZiIsIm5vbmNlIjoiN2Q1MWJjNGEtOThjNS00YjdjLTg1OGQtY2E3MGQ0Y2NiOGY3IiwicHJlc2VudGF0aW9uX2RlZmluaXRpb24i
-            OnsiaWQiOiJQSUQiLCJ0aXRsZSI6IlNELUpXVCBQSUQiLCJkZXNjcmlwdGlvbiI6IlJlcXVpcmVkIEZpZWxkczogQ3JlZGVudGlhbCB0eXBl
-            LCBHaXZlbiBOYW1lLCBGYW1pbHkgTmFtZSwgQmlydGhkYXRlLCBQbGFjZSBvZiBCaXJ0aCwgQmlydGggWWVhciwgQWdlIGluIFllYXJzLCBG
-            YW1pbHkgTmFtZSBhdCBCaXJ0aCwgTmF0aW9uYWxpdGllcywgQWRkcmVzcywgSXNzdWluZyBDb3VudHJ5LCBJc3N1aW5nIEF1dGhvcml0eSIs
-            ImlucHV0X2Rlc2NyaXB0b3JzIjpbeyJpZCI6IlZlcmlmaWFibGVJZCIsIm5hbWUiOiJQSUQiLCJwdXJwb3NlIjoiUHJlc2VudCB5b3VyIFNE
-            LUpXVCBQSUQiLCJmb3JtYXQiOnsidmMrc2Qtand0Ijp7InNkLWp3dF9hbGdfdmFsdWVzIjpbIkVTMjU2Il0sImtiLWp3dF9hbGdfdmFsdWVz
-            IjpbIkVTMjU2Il19fSwiY29uc3RyYWludHMiOnsibGltaXRfZGlzY2xvc3VyZSI6InJlcXVpcmVkIiwiZmllbGRzIjpbeyJuYW1lIjoiQ3Jl
-            ZGVudGlhbCB0eXBlIiwicGF0aCI6WyIkLnZjdCJdLCJmaWx0ZXIiOnsidHlwZSI6InN0cmluZyIsImVudW0iOlsiaHR0cHM6Ly9leGFtcGxl
-            LmJtaS5idW5kLmRlL2NyZWRlbnRpYWwvcGlkLzEuMCIsInVybjpldS5ldXJvcGEuZWMuZXVkaTpwaWQ6MSJdfSwiaW50ZW50X3RvX3JldGFp
-            biI6ZmFsc2V9LHsibmFtZSI6IkdpdmVuIE5hbWUiLCJwYXRoIjpbIiQuZ2l2ZW5fbmFtZSJdLCJmaWx0ZXIiOnt9LCJpbnRlbnRfdG9fcmV0
-            YWluIjpmYWxzZX0seyJuYW1lIjoiRmFtaWx5IE5hbWUiLCJwYXRoIjpbIiQuZmFtaWx5X25hbWUiXSwiZmlsdGVyIjp7fSwiaW50ZW50X3Rv
-            X3JldGFpbiI6ZmFsc2V9LHsibmFtZSI6IkJpcnRoZGF0ZSIsInBhdGgiOlsiJC5iaXJ0aGRhdGUiXSwiZmlsdGVyIjp7fSwiaW50ZW50X3Rv
-            X3JldGFpbiI6ZmFsc2V9LHsibmFtZSI6IlBsYWNlIG9mIEJpcnRoIiwicGF0aCI6WyIkLnBsYWNlX29mX2JpcnRoLmxvY2FsaXR5Il0sImZp
-            bHRlciI6e30sImludGVudF90b19yZXRhaW4iOmZhbHNlfSx7Im5hbWUiOiJCaXJ0aCBZZWFyIiwicGF0aCI6WyIkLmFnZV9iaXJ0aF95ZWFy
-            Il0sImZpbHRlciI6e30sImludGVudF90b19yZXRhaW4iOmZhbHNlfSx7Im5hbWUiOiJBZ2UgaW4gWWVhcnMiLCJwYXRoIjpbIiQuYWdlX2lu
-            X3llYXJzIl0sImZpbHRlciI6e30sImludGVudF90b19yZXRhaW4iOmZhbHNlfSx7Im5hbWUiOiJGYW1pbHkgTmFtZSBhdCBCaXJ0aCIsInBh
-            dGgiOlsiJC5iaXJ0aF9mYW1pbHlfbmFtZSJdLCJmaWx0ZXIiOnt9LCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJuYW1lIjoiTmF0aW9u
-            YWxpdGllcyIsInBhdGgiOlsiJC5uYXRpb25hbGl0aWVzIl0sImZpbHRlciI6e30sImludGVudF90b19yZXRhaW4iOmZhbHNlfSx7Im5hbWUi
-            OiJBZGRyZXNzIC0gTG9jYWxpdHkiLCJwYXRoIjpbIiQuYWRkcmVzcy5sb2NhbGl0eSJdLCJmaWx0ZXIiOnt9LCJpbnRlbnRfdG9fcmV0YWlu
-            IjpmYWxzZX0seyJuYW1lIjoiQWRkcmVzcyAtIENvdW50cnkiLCJwYXRoIjpbIiQuYWRkcmVzcy5jb3VudHJ5Il0sImZpbHRlciI6e30sImlu
-            dGVudF90b19yZXRhaW4iOmZhbHNlfSx7Im5hbWUiOiJBZGRyZXNzIC0gUG9zdGFsIENvZGUiLCJwYXRoIjpbIiQuYWRkcmVzcy5wb3N0YWxf
-            Y29kZSJdLCJmaWx0ZXIiOnt9LCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJuYW1lIjoiQWRkcmVzcyAtIFN0cmVldCBBZGRyZXNzIiwi
-            cGF0aCI6WyIkLmFkZHJlc3Muc3RyZWV0X2FkZHJlc3MiXSwiZmlsdGVyIjp7fSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsibmFtZSI6
-            Iklzc3VpbmcgQ291bnRyeSIsInBhdGgiOlsiJC5pc3N1aW5nX2NvdW50cnkiXSwiZmlsdGVyIjp7fSwiaW50ZW50X3RvX3JldGFpbiI6ZmFs
-            c2V9LHsibmFtZSI6Iklzc3VpbmcgQXV0aG9yaXR5IiwicGF0aCI6WyIkLmlzc3VpbmdfYXV0aG9yaXR5Il0sImZpbHRlciI6e30sImludGVu
-            dF90b19yZXRhaW4iOmZhbHNlfSx7Im5hbWUiOiJBZ2UgRXF1YWwgb3Igb3ZlciAxMiIsInBhdGgiOlsiJC5hZ2VfZXF1YWxfb3Jfb3Zlci4x
-            MiJdLCJmaWx0ZXIiOnt9LCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJuYW1lIjoiQWdlIEVxdWFsIG9yIG92ZXIgMTQiLCJwYXRoIjpb
-            IiQuYWdlX2VxdWFsX29yX292ZXIuMTQiXSwiZmlsdGVyIjp7fSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsibmFtZSI6IkFnZSBFcXVh
-            bCBvciBvdmVyIDE2IiwicGF0aCI6WyIkLmFnZV9lcXVhbF9vcl9vdmVyLjE2Il0sImZpbHRlciI6e30sImludGVudF90b19yZXRhaW4iOmZh
-            bHNlfSx7Im5hbWUiOiJBZ2UgRXF1YWwgb3Igb3ZlciAxOCIsInBhdGgiOlsiJC5hZ2VfZXF1YWxfb3Jfb3Zlci4xOCJdLCJmaWx0ZXIiOnt9
-            LCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJuYW1lIjoiQWdlIEVxdWFsIG9yIG92ZXIgMjEiLCJwYXRoIjpbIiQuYWdlX2VxdWFsX29y
-            X292ZXIuMjEiXSwiZmlsdGVyIjp7fSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9XX19XX0sImNsaWVudF9tZXRhZGF0YSI6eyJqd2tzIjp7
-            ImtleXMiOlt7Imt0eSI6IkVDIiwieCI6ImtaSUJzOHVobC1uUFFmZkd4a1FfR0diajhPcm03dnJqekcwSUl6aEkxbXciLCJ5Ijoib2ZsdjFs
-            aWVFYmhpSXRmOG5qWmU1aDlDaGRWMFc4c2tPN1JMS1UtQjNZWSIsImNydiI6IlAtMjU2Iiwia2lkIjoiMTc4Njk2MjM5NzRhMWFmMiIsInVz
-            ZSI6ImVuYyJ9XX0sImF1dGhvcml6YXRpb25fZW5jcnlwdGVkX3Jlc3BvbnNlX2FsZyI6IkVDREgtRVMiLCJhdXRob3JpemF0aW9uX2VuY3J5
-            cHRlZF9yZXNwb25zZV9lbmMiOiJBMjU2R0NNIiwidnBfZm9ybWF0cyI6eyJ2YytzZC1qd3QiOnsic2Qtand0X2FsZ192YWx1ZXMiOlsiRVMy
-            NTYiXSwia2Itand0X2FsZ192YWx1ZXMiOlsiRVMyNTYiXX19fSwiaWF0IjoxNzM2NzU0NTgyfQ.
-            d53_mos8kemadVuxn-kNY5uCOIVlyg2_bbCD-c0cRpY1Mnax9CK-Fq8bNCeQ8MhjTCWBbuqo6Ql83k2mCrr9LYOT1gNjvc5YiHDNCmkqN9KZ
-            2ZU7cmhJ6gRHOaQxYGx6vqEElQsyJulLtp_odiDcmywk8VC9ra5WTztEZycyH5Bjv6gPQ1-GXxl6A9_0aUMnxiCdUCTu9a7J9hXfM8WbblJa
-            DZ00OUisOli-I5lDlmfSASgc10jPdlsmKDNa1ZW1dVezHDukUCAH5EPUsdC7HHXj_fDTkgICvVbBykq6-zWLda7kC0LvyXiQzuEeIFEzlP9u
-            m0LQZeO-00GBYNI0PQ
-        """.trimIndent().replace("\n", "")
+    val requestUri = "https://verifier.example.com/request/1234567890"
+    val authnRequest = AuthenticationRequestParameters(
+        responseType = OpenIdConstants.VP_TOKEN,
+        clientId = "x509_san_dns:verifier.example.com",
+        responseMode = OpenIdConstants.ResponseMode.DirectPost,
+        responseUrl = "https://verifier.example.com/response",
+        nonce = "n-0S6_WzA2Mj",
+        state = "af0ifjsldkj",
+        // a structured parameter, so it has to survive the JSON-in-form encoding of URL parameters
+        dcqlQuery = CredentialPresentationRequestBuilder(
+            RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
+        ).toDCQLRequest().shouldNotBeNull().dcqlQuery,
+    )
 
-    val authnRequest = JwsCompactTyped<JsonObject>(jws).payload
+    fun byValue(requestObject: String) = URLBuilder("https://wallet.example.com").apply {
+        parameters.append("client_id", authnRequest.clientId!!)
+        parameters.append("request", requestObject)
+    }.buildString()
 
-    val authnRequestSerialized = joseCompliantSerializer.encodeToString(authnRequest)
+    val byReference = URLBuilder("https://wallet.example.com").apply {
+        parameters.append("client_id", authnRequest.clientId!!)
+        parameters.append("request_uri", requestUri)
+    }.buildString()
 
-    /**
-     * The captured [jws] above is a real request from a deployed verifier whose header is `{"alg":"RS256","x5c":[…]}`,
-     * i.e. it carries no `typ` at all, which OpenID4VP 1.0, 5 forbids wallets to process. This is the same request
-     * object, correctly typed, for the cases that assert successful parsing.
-     */
-    val typedJws = runBlocking {
-        SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
-            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST, authnRequest, JsonObject.serializer()
-        ).getOrThrow().toString()
-    }
+    /** A parser that fetches [content] from [requestUri], and nothing from anywhere else. */
+    fun parserServing(content: String) = RequestParser(
+        remoteResourceRetriever = { if (it.url == requestUri) content else null }
+    )
 
-    val jwsWithInvalidRequestPayload = runBlocking {
-        SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
-            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
-            JsonObject(mapOf("response_type" to JsonArray(emptyList()))),
-            JsonObject.serializer(),
-        ).getOrThrow().toString()
-    }
+    testSuite("parameters in the URL") {
+        "are parsed from the query" {
+            val input = URLBuilder("https://wallet.example.com").apply {
+                authnRequest.encodeToParameters().forEach { parameters.append(it.key, it.value) }
+            }.buildString()
 
-    fixture {
-        RequestParser()
-    } - {
+            RequestParser().parseRequestParameters(input).getOrThrow()
+                .shouldBeInstanceOf<RequestParametersFrom.Uri<*>>().apply {
+                    url.toString() shouldBe input
+                    shouldCarry(authnRequest)
+                }
+        }
 
-        "URL request preserves JSON-shaped string parameters" { requestParser ->
-            val input = "https://example.com?client_id=client&state=%7B%7D&nonce=%5B&user_hint=null"
-            requestParser.parseRequestParameters(input).getOrThrow().parameters shouldBe
+        "keep JSON-shaped values of string parameters as strings" {
+            val input = "https://wallet.example.com?client_id=client&state=%7B%7D&nonce=%5B&user_hint=null"
+
+            RequestParser().parseRequestParameters(input).getOrThrow().parameters shouldBe
                     AuthenticationRequestParameters(clientId = "client", state = "{}", nonce = "[", userHint = "null")
         }
 
-        "URL request ignores unknown parameters with malformed JSON values" { requestParser ->
-            val input = "https://example.com?client_id=client&extension=%7B"
-            requestParser.parseRequestParameters(input).getOrThrow().parameters shouldBe
+        "ignore unknown parameters with malformed JSON values" {
+            val input = "https://wallet.example.com?client_id=client&extension=%7B"
+
+            RequestParser().parseRequestParameters(input).getOrThrow().parameters shouldBe
                     AuthenticationRequestParameters(clientId = "client")
         }
+    }
 
-        "request in URL parameters" { requestParser ->
-            val input = URLBuilder("https://example.com").apply {
-                authnRequest.encodeToParameters().forEach {
-                    parameters.append(it.key, it.value)
+    "JSON body is parsed" {
+        val input = joseCompliantSerializer.encodeToString(authnRequest)
+
+        RequestParser().parseRequestParameters(input).getOrThrow()
+            .shouldBeInstanceOf<RequestParametersFrom.Json<*>>().apply {
+                jsonString shouldBe input
+                shouldCarry(authnRequest)
+            }
+    }
+
+    testSuite("signed request object") {
+        "passed directly is parsed" {
+            val requestObject = signRequestObject(authnRequest)
+
+            RequestParser().parseRequestParameters(requestObject).getOrThrow()
+                .shouldBeInstanceOf<RequestParametersFrom.Jws<*>>().apply {
+                    jws.toString() shouldBe requestObject
+                    parent shouldBe null
+                    shouldCarry(authnRequest)
                 }
-            }.buildString()
+        }
 
-            requestParser.parseRequestParameters(input).getOrThrow().apply {
-                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.Uri<*>>()
-                this.url.toString() shouldBe input
-                parameters.assertParams()
+        "by value in `request` is parsed" {
+            val requestObject = signRequestObject(authnRequest)
+            val input = byValue(requestObject)
 
-                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-                ).shouldBe(this)
+            RequestParser().parseRequestParameters(input).getOrThrow()
+                .shouldBeInstanceOf<RequestParametersFrom.Jws<*>>().apply {
+                    jws.toString() shouldBe requestObject
+                    parent.toString() shouldBe input
+                    shouldCarry(authnRequest)
+                }
+        }
+
+        "by reference in `request_uri` is fetched with GET and parsed" {
+            // OpenID4VP 1.0, 5.10: `request_uri_method` defaults to `get`, and the wallet asks for a request object
+            val requestObject = signRequestObject(authnRequest)
+            var fetched: RemoteResourceRetrieverInput? = null
+            val parser = RequestParser(
+                remoteResourceRetriever = { fetched = it; requestObject }
+            )
+
+            parser.parseRequestParameters(byReference).getOrThrow()
+                .shouldBeInstanceOf<RequestParametersFrom.Jws<*>>().apply {
+                    jws.toString() shouldBe requestObject
+                    parent.toString() shouldBe byReference
+                    shouldCarry(authnRequest)
+                }
+            fetched.shouldNotBeNull().apply {
+                url shouldBe requestUri
+                method shouldBe HttpMethod.Get
+                headers[HttpHeaders.Accept] shouldBe MediaTypes.Application.AUTHZ_REQ_JWT
             }
         }
-
-        "plain request directly" { requestParser ->
-            requestParser.parseRequestParameters(authnRequestSerialized).getOrThrow().apply {
-                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
-                jsonString shouldBe authnRequestSerialized
-                parameters.assertParams()
-
-                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-                ).shouldBe(this)
-            }
-        }
-
-        "request object without typ is rejected" { requestParser ->
-            // OpenID4VP 1.0, 5: "Wallets MUST NOT process Request Objects where the typ Header Parameter is not
-            // present or does not have the value oauth-authz-req+jwt"
-            requestParser.parseRequestParameters(jws).isFailure shouldBe true
-        }
-
-        "signed request directly" { requestParser ->
-            requestParser.parseRequestParameters(typedJws).getOrThrow().apply {
-                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
-                this.jws.toString() shouldBe typedJws
-                parameters.assertParams()
-
-                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-                ).shouldBe(this)
-            }
-        }
-
-
-        "signed request by value" { requestParser ->
-            val input = "https://example.com?request=$typedJws&client_id=s6BhdRkqt3"
-
-            requestParser.parseRequestParameters(input).getOrThrow().apply {
-                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
-                this.jws.toString() shouldBe typedJws
-                parent.toString() shouldBe input
-                parameters.assertParams()
-
-                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-                ).shouldBe(this)
-            }
-        }
-
-        "request by reference that can not be retrieved is rejected" { requestParser ->
-            // This parser has no retriever, so there is no request object at all: the unresolved JAR request must
-            // not be reported as a successfully parsed authorization request
-            val input =
-                "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890&client_id=s6BhdRkqt3"
-
-            requestParser.parseRequestParameters(input)
-                .exceptionOrNull().shouldNotBeNull()
-                .message.shouldNotBeNull() shouldContain "https://client.example.org/req/1234567890"
-        }
-
     }
 
-    fixture {
-        RequestParser(
-            remoteResourceRetriever = {
-                if (it.url == "https://client.example.org/req/1234567890") authnRequestSerialized else null
-            }
-        )
-    } - {
-
-        "plain request by reference is rejected" { requestParser ->
-            // OpenID4VP 1.0, 5.10.1: the request URI response body is "a signed, optionally encrypted, request object"
-            val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890&client_id=s6BhdRkqt3"
-
-            requestParser.parseRequestParameters(input).isFailure shouldBe true
-        }
-
-    }
-    fixture {
-        RequestParser(
-            remoteResourceRetriever = {
-                if (it.url == "https://client.example.org/req/1234567890") typedJws else null
-            }
-        )
-    } - {
-        "signed request by reference" { requestParser ->
-            val input = "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890&client_id=s6BhdRkqt3"
-
-            requestParser.parseRequestParameters(input).getOrThrow().apply {
-                shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-                shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
-                this.jws.toString() shouldBe typedJws
-                parent.toString() shouldBe input
-                parameters.assertParams()
-
-                joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
-                    joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(this)
-                ).shouldBe(this)
+    testSuite("request object is rejected") {
+        // OpenID4VP 1.0, 5: "Wallets MUST NOT process Request Objects where the typ Header Parameter is not present
+        // or does not have the value oauth-authz-req+jwt"
+        testSuite("without typ oauth-authz-req+jwt") {
+            listOf(null, "JWT", "jwt").asData(nameFn = { it ?: "no typ" }) test { typ ->
+                RequestParser().parseRequestParameters(signRequestObject(authnRequest, typ = typ))
+                    .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+                    .message.shouldNotBeNull() shouldContain JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
             }
         }
 
-    }
+        // RFC 9101, 4 admits only signed, or signed and encrypted, request objects
+        "when plain in `request`" {
+            val input = byValue(joseCompliantSerializer.encodeToString(authnRequest))
 
-    fixture {
-        RequestParser(
-            remoteResourceRetriever = {
-                if (it.url == "https://client.example.org/req/1234567890") jwsWithInvalidRequestPayload else null
-            }
-        )
-    } - {
-        "request object payload serialization error is retained as cause" { requestParser ->
-            val input =
-                "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890&client_id=s6BhdRkqt3"
+            RequestParser().parseRequestParameters(input)
+                .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+        }
 
-            requestParser.parseRequestParameters(input)
+        // OpenID4VP 1.0, 5.10.1: the request URI response is "a signed, optionally encrypted, request object"
+        "when plain at `request_uri`" {
+            parserServing(joseCompliantSerializer.encodeToString(authnRequest))
+                .parseRequestParameters(byReference)
+                .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+        }
+
+        // an unresolved JAR request must not pass for a parsed authorization request without any parameters
+        "when it can not be retrieved from `request_uri`" {
+            RequestParser().parseRequestParameters(byReference)
+                .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+                .message.shouldNotBeNull() shouldContain requestUri
+        }
+
+        // RFC 9101, 6.2: a request object must not contain `request` or `request_uri` itself
+        "when it nests another `request_uri`" {
+            val nested = JarRequestParameters(
+                clientId = authnRequest.clientId!!,
+                requestUri = "https://verifier.example.com/request/nested",
+            )
+
+            parserServing(signRequestObject<RequestParameters>(nested, RequestParameters.serializer()))
+                .parseRequestParameters(byReference)
+                .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+                .message.shouldNotBeNull() shouldContain "request_uri"
+        }
+
+        "when its payload is not a request, keeping the serialization error as cause" {
+            val invalid = JsonObject(mapOf("response_type" to JsonArray(emptyList())))
+
+            parserServing(signRequestObject(invalid, JsonObject.serializer()))
+                .parseRequestParameters(byReference)
                 .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
                 .cause.shouldBeInstanceOf<SerializationException>()
                 .message.shouldNotBeNull() shouldContain "response_type"
         }
     }
-
-    // RFC 9101, 6.2: a request object must not contain `request` or `request_uri` itself
-    val nestedJarJws = runBlocking {
-        SignJwt<RequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
-            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
-            JarRequestParameters(
-                clientId = "s6BhdRkqt3",
-                requestUri = "https://client.example.org/req/nested",
-            ),
-            RequestParameters.serializer()
-        ).getOrThrow().toString()
-    }
-
-    fixture {
-        RequestParser(
-            remoteResourceRetriever = {
-                if (it.url == "https://client.example.org/req/1234567890") nestedJarJws else null
-            }
-        )
-    } - {
-        "request object nesting another request_uri is rejected" { requestParser ->
-            val input =
-                "https://example.com?request_uri=https%3A%2F%2Fclient.example.org%2Freq%2F1234567890&client_id=s6BhdRkqt3"
-
-            requestParser.parseRequestParameters(input)
-                .exceptionOrNull().shouldNotBeNull()
-                .message.shouldNotBeNull() shouldContain "request_uri"
-        }
-
-    }
 }
 
-private fun AuthenticationRequestParameters.assertParams() {
-    responseUrl shouldBe "https://verifier.funke.wwwallet.org/verification/direct_post"
-    clientId shouldBe "verifier.funke.wwwallet.org"
-    clientIdWithoutPrefix shouldBe "verifier.funke.wwwallet.org"
-    presentationDefinition.shouldNotBeNull()
-        .inputDescriptors.first()
-        .constraints.shouldNotBeNull()
-        .fields.shouldNotBeNull().apply {
-            this shouldHaveSize 20
-            first { it.path == listOf("$.vct") }
-                .filter.shouldNotBeNull()
-                .enum.shouldNotBeNull() shouldContain "urn:eu.europa.ec.eudi:pid:1"
-        }
+private suspend fun signRequestObject(
+    payload: AuthenticationRequestParameters,
+    typ: String? = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+): String = signRequestObject(payload, AuthenticationRequestParameters.serializer(), typ)
 
+private suspend fun <P : Any> signRequestObject(
+    payload: P,
+    serializer: SerializationStrategy<P>,
+    typ: String? = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+): String = SignJwt<P>(EphemeralKeyWithoutCert(), JwsHeaderNone())(typ, payload, serializer).getOrThrow().toString()
+
+/**
+ * Asserts the parsed request carries [expected], and survives serialization, as wallets persist it between preparing
+ * and finalizing the authorization response.
+ */
+private fun RequestParametersFrom<*>.shouldCarry(expected: AuthenticationRequestParameters) {
+    parameters shouldBe expected
+    val typed = shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
+    joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+        joseCompliantSerializer.encodeToString(typed)
+    ) shouldBe typed
 }
