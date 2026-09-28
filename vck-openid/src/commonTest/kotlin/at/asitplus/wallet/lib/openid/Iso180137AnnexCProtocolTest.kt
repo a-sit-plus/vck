@@ -20,11 +20,13 @@ import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -40,6 +42,7 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -359,6 +362,53 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 expectedOrigin = callingOrigin,
             ).isFailure shouldBe true
         }
+
+        test("without a certificate in the key material, document requests carry no readerAuth") { f ->
+            f.createIsoMdocRequest(uuid4().toString()).deviceRequest.docRequests.forEach {
+                it.readerAuth.shouldBeNull()
+            }
+        }
+    }
+
+    test("readerAuth binds the WRPAC and the WRPRC to the calling origin, as verified by the wallet") {
+        val wrpac = EphemeralKeyWithSelfSignedCert()
+        val verifier = DcApiVerifier(
+            clientIdScheme = ClientIdScheme.CertificateHash(
+                chain = listOf(wrpac.getCertificate()!!),
+                redirectUri = "https://example.com/callback",
+            ),
+            keyMaterial = wrpac,
+        )
+        val euWrprc = byteArrayOf(0xD2.toByte(), 0x84.toByte(), 0x40, 0xA0.toByte(), 0xF6.toByte(), 0x40)
+        val requestOptions = verifier.createAuthnRequest(
+            OpenId4VpRequestOptions(
+                presentationRequest = deviceRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+                euWrprc = euWrprc,
+            ),
+            DcApiCreationOptions.Iso180137AnnexC,
+        ).getOrThrow()
+        // the browser hands the request to the wallet as JSON
+        val isoMdocRequest = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
+            joseCompliantSerializer.encodeToString(requestOptions)
+        ).digital.requests.shouldBeSingleton().first()
+            .shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>().data
+        isoMdocRequest.deviceRequest.docRequests.forEach {
+            it.itemsRequest.value.requestInfo.shouldNotBeNull().euWrprc shouldBe euWrprc
+        }
+
+        fun transcriptFor(origin: String) = IsoMdocDcapiResponseBuilder.sessionTranscriptFor(
+            RequestParametersFrom.IsoMdocDcApi(
+                parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(isoMdocRequest),
+                jsonString = "",
+                callingOrigin = origin,
+            )
+        )
+        ReaderAuthenticationVerifier()(isoMdocRequest.deviceRequest, transcriptFor(callingOrigin)).getOrThrow()
+            .first().encodeToDer() shouldBe wrpac.getCertificate()!!.encodeToDer()
+        ReaderAuthenticationVerifier()(isoMdocRequest.deviceRequest, transcriptFor("https://other.example.com"))
+            .isFailure shouldBe true
     }
 }
 
