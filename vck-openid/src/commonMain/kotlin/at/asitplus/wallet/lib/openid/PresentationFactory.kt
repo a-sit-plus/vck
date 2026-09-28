@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormat
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.VpFormatsSupported
@@ -124,30 +123,22 @@ internal class PresentationFactory(
 
     @Throws(OAuth2Exception::class)
     private fun DCQLParameters.verifyFormatSupport(supportedFormats: VpFormatsSupported) =
-        verifiablePresentations.entries.mapIndexed { _, _ ->
-            val format = this.verifiablePresentations.values.flatten().first().toFormat()
-            if (!supportedFormats.supportsAlgorithm(format, supportedJwsAlgorithms, supportedCoseAlgorithms)) {
+        verifiablePresentations.values.flatten().forEach {
+            if (!supportedFormats.supportsAlgorithm(it, supportedJwsAlgorithms, supportedCoseAlgorithms)) {
                 throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
             }
         }
-
-    private fun CreatePresentationResult.toFormat(): ClaimFormat = when (this) {
-        is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
-        is CreatePresentationResult.SdJwt -> ClaimFormat.SD_JWT
-        is CreatePresentationResult.VcJwsPresentationData -> ClaimFormat.JWT_VP
-    }
-
 }
 
 /**
  * Empty objects are fine, since they are not imposing any restrictions on the supported algorithms
  */
 internal fun VpFormatsSupported.supportsAlgorithm(
-    claimFormat: ClaimFormat,
+    presentation: CreatePresentationResult,
     supportedJwsAlgorithms: Collection<JwsAlgorithm>,
     supportedCoseAlgorithms: Collection<CoseAlgorithm.Signature>
-): Boolean = when (claimFormat) {
-    ClaimFormat.JWT_VP -> vcJwt?.let { vcJwt ->
+): Boolean = when (presentation) {
+    is CreatePresentationResult.VcJwsPresentationData -> vcJwt?.let { vcJwt ->
         var result = true
         vcJwt.algorithms?.let {
             result = result and it.any { supportedJwsAlgorithms.contains(it) }
@@ -155,7 +146,7 @@ internal fun VpFormatsSupported.supportsAlgorithm(
         result
     } ?: false
 
-    ClaimFormat.SD_JWT -> dcSdJwt?.let { dcSdJwt ->
+    is CreatePresentationResult.SdJwt -> dcSdJwt?.let { dcSdJwt ->
         var result = true
         dcSdJwt.sdJwtAlgorithms?.let {
             result = result and it.any { supportedJwsAlgorithms.contains(it) }
@@ -166,7 +157,7 @@ internal fun VpFormatsSupported.supportsAlgorithm(
         result
     } ?: false
 
-    ClaimFormat.MSO_MDOC -> msoMdoc?.let { msoMdoc ->
+    is CreatePresentationResult.DeviceResponse -> msoMdoc?.let { msoMdoc ->
         var result = true // empty object is fine
         msoMdoc.issuerAuthAlgorithms?.let {
             result = result and it.any { it.matchesAny(supportedCoseAlgorithms) }
@@ -177,7 +168,6 @@ internal fun VpFormatsSupported.supportsAlgorithm(
         result
     } ?: false
 
-    else -> false
 }
 
 private fun CoseAlgorithm.matchesAny(algorithms: Collection<CoseAlgorithm.Signature>) =

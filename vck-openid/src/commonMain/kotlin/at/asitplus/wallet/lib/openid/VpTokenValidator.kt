@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormat
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
@@ -85,7 +84,7 @@ internal class VpTokenValidator(
 
             relatedPresentation.jsonArray.map {
                 verifyPresentationResult(
-                    claimFormat = credentialQuery.format.toClaimFormat(),
+                    credentialFormat = credentialQuery.format,
                     relatedPresentation = it.jsonPrimitive,
                     session = session,
                     clientId = authnRequest.clientId,
@@ -117,20 +116,8 @@ internal class VpTokenValidator(
     private fun DCQLQuery.credentialQuery(id: DCQLCredentialQueryIdentifier) =
         credentials.associateBy { it.id }[id]
 
-    private fun CredentialFormatEnum.toClaimFormat(): ClaimFormat = when (this) {
-        CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
-        CredentialFormatEnum.DC_SD_JWT -> ClaimFormat.SD_JWT
-        CredentialFormatEnum.MSO_MDOC,
-        CredentialFormatEnum.MSO_MDOC_ZK -> ClaimFormat.MSO_MDOC
-
-        CredentialFormatEnum.NONE,
-        CredentialFormatEnum.JWT_VC_JSON_LD,
-        CredentialFormatEnum.JSON_LD,
-            -> throw IllegalStateException("Unsupported credential format")
-    }
-
     private suspend fun verifyPresentationResult(
-        claimFormat: ClaimFormat,
+        credentialFormat: CredentialFormatEnum,
         relatedPresentation: JsonElement,
         session: ChallengeSession,
         clientId: String?,
@@ -141,8 +128,8 @@ internal class VpTokenValidator(
         requireCryptographicHolderBinding: Boolean? = null,
         recipientKey: JsonWebKey?,
     ): KmmResult<VerifyPresentationResult> = catching {
-        when (claimFormat) {
-            ClaimFormat.SD_JWT -> {
+        when (credentialFormat) {
+            CredentialFormatEnum.DC_SD_JWT -> {
                 val sdJwt = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
                     throw IllegalArgumentException("relatedPresentation")
                 }
@@ -155,7 +142,7 @@ internal class VpTokenValidator(
                 )
             }
 
-            ClaimFormat.JWT_VP -> if (requireCryptographicHolderBinding != false) {
+            CredentialFormatEnum.JWT_VC -> if (requireCryptographicHolderBinding != false) {
                 session.verifyPresentationVcJwt(
                     input = JwsCompactTyped<VerifiablePresentationJws>(
                         relatedPresentation.extractContent()
@@ -169,7 +156,8 @@ internal class VpTokenValidator(
                 }
             }
 
-            ClaimFormat.MSO_MDOC -> session.verifyPresentationIsoMdoc(
+            CredentialFormatEnum.MSO_MDOC,
+            CredentialFormatEnum.MSO_MDOC_ZK -> session.verifyPresentationIsoMdoc(
                 input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                     .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) },
             ) { challenge ->
@@ -185,7 +173,7 @@ internal class VpTokenValidator(
                 )
             }
 
-            else -> throw IllegalArgumentException("descriptor.format: $claimFormat")
+            else -> throw IllegalArgumentException("descriptor.format: $credentialFormat")
         }.getOrThrow()
     }
 

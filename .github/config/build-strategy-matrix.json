@@ -5,10 +5,6 @@
       "artifactName": "CscDataClasses"
     },
     {
-      "module": "dif-data-classes",
-      "artifactName": "DifDataClasses"
-    },
-    {
       "module": "etsi-data-classes",
       "artifactName": "EtsiDataClasses"
     },
