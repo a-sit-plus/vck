@@ -1,11 +1,11 @@
 package at.asitplus.csc.api.collection_entries
 
 import at.asitplus.csc.api.SignDocRequestParameters
-import at.asitplus.csc.api.enums.ConformanceLevel
-import at.asitplus.csc.api.enums.SignatureFormat
-import at.asitplus.csc.api.enums.SignedEnvelopeProperty
-import at.asitplus.csc.getSignAlgorithm
 import at.asitplus.csc.api.serializers.Asn1EncodableBase64Serializer
+import at.asitplus.csc.datamodel.basic.ConformanceLevel
+import at.asitplus.csc.datamodel.basic.SignatureFormat
+import at.asitplus.csc.datamodel.basic.SignedEnvelopeProperty
+import at.asitplus.csc.getSignAlgorithm
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -96,10 +96,10 @@ data class Document(
         result = 31 * result + signatureFormat.hashCode()
         result = 31 * result + (conformanceLevel?.hashCode() ?: 0)
         result = 31 * result + signAlgoOid.hashCode()
-        result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
-        result = 31 * result + (signedProps?.hashCode() ?: 0)
-        result = 31 * result + (signedEnvelopeProperty?.hashCode() ?: 0)
-        result = 31 * result + (signAlgorithm?.hashCode() ?: 0)
+        result = 31 * result + signAlgoParams.hashCode()
+        result = 31 * result + signedProps.hashCode()
+        result = 31 * result + signedEnvelopeProperty.hashCode()
+        result = 31 * result + signAlgorithm.hashCode()
         return result
     }
 

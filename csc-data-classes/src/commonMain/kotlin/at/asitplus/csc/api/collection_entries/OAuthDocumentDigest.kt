@@ -1,6 +1,6 @@
 package at.asitplus.csc.api.collection_entries
 
-import at.asitplus.csc.datamodel.DocumentInfo
+import at.asitplus.csc.datamodel.documents.DocumentInfo
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
