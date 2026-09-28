@@ -2,7 +2,6 @@ package at.asitplus.csc.api.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.csc.api.Method
 import at.asitplus.csc.iff
 import at.asitplus.csc.or
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier

@@ -1,6 +1,5 @@
 package at.asitplus.csc.api
 
-import at.asitplus.csc.enums.CertificateOptions
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

@@ -3,7 +3,7 @@ package at.asitplus.csc.api
 import at.asitplus.csc.api.collection_entries.AuthParameters
 import at.asitplus.csc.api.collection_entries.CertificateParameters
 import at.asitplus.csc.api.collection_entries.KeyParameters
-import at.asitplus.csc.datamodel.SignatureQualifier
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

@@ -1,10 +1,8 @@
 package at.asitplus.csc.api
 
-import at.asitplus.csc.enums.OperationMode
+import at.asitplus.csc.api.serializers.Asn1EncodableBase64Serializer
 import at.asitplus.csc.getHashAlgorithm
 import at.asitplus.csc.getSignAlgorithm
-import at.asitplus.csc.api.serializers.Asn1EncodableBase64Serializer
-import at.asitplus.csc.datamodel.documents.AccessControlMethod
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
