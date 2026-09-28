@@ -55,7 +55,6 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.IsoDeviceRetrieval
-import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -97,9 +96,6 @@ class DcApiVerifier @JvmOverloads constructor(
     private val decryptionKeyMaterial: KeyMaterial? = null,
     /** Creates one ephemeral encryption key per authentication request (Annex C and OpenID4VP) */
     private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
-    @Deprecated("Will be derived from [ephemeralEncryptionKeyService] and [decryptionKeyMaterial]")
-    private val decryptJwe: DecryptJweFun =
-        DecryptJweWithEphemeralKey(ephemeralEncryptionKeyService, decryptionKeyMaterial),
     /** Signs authentication requests for signed DC API requests. */
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
@@ -353,7 +349,6 @@ class DcApiVerifier @JvmOverloads constructor(
         }
 
         AuthnResponseResult(
-            idTokenValidationResult = null,
             vpTokenValidationResult = validateVpToken(authnRequest, input, expectedOrigin, session),
             request = authnRequest,
         )

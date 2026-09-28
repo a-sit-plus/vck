@@ -73,17 +73,6 @@ class VerifiablePresentationFactory(
         unprotectedHeaderModifier = CoseHeaderNone()
     )
 ) {
-    @Deprecated("Use createVerifiablePresentation(request, isoPresentationParameters) instead")
-    suspend fun createVerifiablePresentation(
-        request: PresentationRequestParameters,
-        credentialAndDisclosedAttributes: Map<StoreEntry.Iso, Collection<NormalizedJsonPath>>,
-    ): KmmResult<CreatePresentationResult.DeviceResponse> = createVerifiablePresentation(
-        request = request,
-        isoPresentationParameters = credentialAndDisclosedAttributes.map { (credential, claims) ->
-            IsoPresentationParameters.create(credential, claims).getOrThrow()
-        }
-    )
-
     /**
      * Creates one Device Response while preserving every selected document and its order. A collection is used rather
      * than a map because one credential may satisfy more than one `DocRequest`.
@@ -118,11 +107,13 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                isoPresentationParameters = listOf(IsoPresentationParameters.create(
-                    credential = credential,
-                    claims = disclosedAttributes,
-                    zkMetadata = zkMetadata
-                ).getOrThrow()),
+                isoPresentationParameters = listOf(
+                    IsoPresentationParameters.create(
+                        credential = credential,
+                        claims = disclosedAttributes,
+                        zkMetadata = zkMetadata
+                    ).getOrThrow()
+                ),
             )
         }
     }
@@ -149,8 +140,10 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                isoPresentationParameters = listOf(IsoPresentationParameters.create(
-                    credential, disclosedAttributes.toRequestedIsoClaims(credential), zkMetadata).getOrThrow()
+                isoPresentationParameters = listOf(
+                    IsoPresentationParameters.create(
+                        credential, disclosedAttributes.toRequestedIsoClaims(credential), zkMetadata
+                    ).getOrThrow()
                 ),
             )
         }
@@ -252,18 +245,15 @@ class VerifiablePresentationFactory(
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         val input = IsoDeviceSignatureInput(schemeIdentifier, deviceNameSpaceBytes)
 
-        @Suppress("DEPRECATION")
-        val deviceSignature = request.calcIsoDeviceSignaturePlain(input) ?: run {
-            val sessionTranscript = request.calcIsoSessionTranscript()
-                ?: throw PresentationException("calcIsoSessionTranscript not implemented")
+        val sessionTranscript = request.calcIsoSessionTranscript()
+            ?: throw PresentationException("calcIsoSessionTranscript not implemented")
 
-            calculateIsoDeviceAuthenticationBytes(input, sessionTranscript).transform {
-                Napier.d("Device authentication signature input is ${it.toHexString()}")
-                calculateIsoDeviceSignature(it, signDeviceAuthDetached)
-            }.getOrElse { e ->
-                Napier.w("Could not create DeviceAuth for presentation", e)
-                throw PresentationException(e)
-            }
+        val deviceSignature = calculateIsoDeviceAuthenticationBytes(input, sessionTranscript).transform {
+            Napier.d("Device authentication signature input is ${it.toHexString()}")
+            calculateIsoDeviceSignature(it, signDeviceAuthDetached)
+        }.getOrElse { e ->
+            Napier.w("Could not create DeviceAuth for presentation", e)
+            throw PresentationException(e)
         }
 
         Document(

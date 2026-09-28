@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
-import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.RequestParametersFrom.*
 import at.asitplus.wallet.lib.agent.CredentialMatchingResult
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -124,14 +123,14 @@ class DcApiHolder @JvmOverloads constructor(
  * [DcApiHolder.getMatchingCredentials] and [DcApiHolder.finalizeAuthorizationResponse].
  */
 sealed class DcApiPreparationState {
-    abstract val request: RequestParametersFrom.DcApiRequest
+    abstract val request: DcApiRequest
     abstract val presentationRequest: CredentialPresentationRequest?
 
     data class OpenId4Vp(
         val state: AuthorizationResponsePreparationState,
     ) : DcApiPreparationState() {
-        override val request: RequestParametersFrom.DcApiRequest
-            get() = state.request as RequestParametersFrom.DcApiRequest
+        override val request: DcApiRequest
+            get() = state.request as DcApiRequest
         override val presentationRequest: CredentialPresentationRequest?
             get() = state.credentialPresentationRequest
     }

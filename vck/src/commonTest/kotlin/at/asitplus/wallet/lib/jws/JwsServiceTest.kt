@@ -132,15 +132,6 @@ val JwsServiceTest by matrixSuite {
             shouldThrowAny { VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow() }
         }
 
-        @Suppress("DEPRECATION")
-        test("deprecated publicKeyLookup enforces its keys instead of the one in the header") {
-            val signer = SignJwt<String>(it.keyMaterial, JwsHeaderJwk())
-            val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
-
-            val publicKeyLookup = PublicJsonWebKeyLookup { _ -> setOf(EphemeralKeyWithoutCert().jsonWebKey) }
-            shouldThrowAny { VerifyJwsObject(publicKeyLookup = publicKeyLookup)(signed.jws).getOrThrow() }
-        }
-
         test("encrypted object can be decrypted") {
             val encrypter = EncryptJwe()
             val decrypterKey = EphemeralKeyWithoutCert()

@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.IdToken
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -18,28 +17,16 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
-import at.asitplus.wallet.lib.agent.PresentationResponseParameters.*
-import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.DCQLParameters
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.DeviceRetrievalParameters
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 
 internal class PresentationFactory(
     private val supportedAlgorithms: Set<SignatureAlgorithm>,
 ) {
-
-    @Deprecated(
-        message = "signDeviceAuthDetached is no longer used, because Iso Device Signature has been moved into" +
-                " Holder's presentation creation. Support for SIOPv2 has been removed",
-        replaceWith = ReplaceWith( expression = "PresentationFactory(supportedAlgorithms)", ),
-    )
-    constructor(
-        supportedAlgorithms: Set<SignatureAlgorithm>,
-        signDeviceAuthDetached:  SignCoseDetachedFun<ByteArray>,
-        signIdToken: SignJwtFun<IdToken>
-    ) : this(supportedAlgorithms)
 
     private val dcApiSessionTranscript = DcApiSessionTranscriptCalculator()
     private val urlSessionTranscript = UrlSessionTranscriptCalculator()
@@ -95,7 +82,6 @@ internal class PresentationFactory(
     ) {
         when (presentation) {
             is DCQLParameters -> presentation.verifyFormatSupport(this)
-            is PresentationExchangeParameters -> presentation.verifyFormatSupport(this)
             is DeviceRetrievalParameters ->
                 throw InvalidRequest("ISO Device Retrieval responses are not OpenID4VP presentations")
         }
@@ -133,16 +119,6 @@ internal class PresentationFactory(
     private fun AuthenticationRequestParameters.verifyResponseType() {
         if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             throw InvalidRequest("response_type invalid: $responseType")
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    @Throws(OAuth2Exception::class)
-    private fun PresentationExchangeParameters.verifyFormatSupport(
-        supportedFormats: VpFormatsSupported,
-    ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
-        if (!supportedFormats.supportsAlgorithm(descriptor.format, supportedJwsAlgorithms, supportedCoseAlgorithms)) {
-            throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
         }
     }
 

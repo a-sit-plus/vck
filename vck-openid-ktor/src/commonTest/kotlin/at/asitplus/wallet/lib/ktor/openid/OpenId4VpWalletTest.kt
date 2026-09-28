@@ -69,7 +69,6 @@ import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
-import at.asitplus.wallet.lib.openid.VpTokenValidationResultPresentationExchange
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -531,8 +530,6 @@ private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DC
             .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
             .containsAllAttributes(expectedAttributes)
 
-        is VpTokenValidationResultPresentationExchange -> vpTokenValidationResult.inputDescriptorResponseValidations.values
-            .shouldBeSingleton().first().getOrThrow().containsAllAttributes(expectedAttributes)
     }
 }.getOrElse {
     false

@@ -14,13 +14,6 @@ sealed interface CredentialMatchingResult<Credential : Any> {
     val matchingResult: HolderPresentationRequestMatchingResult<Credential>
 }
 
-@Suppress("DEPRECATION")
-@Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-data class PresentationExchangeMatchingResult<Credential : Any>(
-    override val presentationRequest: CredentialPresentationRequest.PresentationExchangeRequest,
-    override val matchingResult: HolderPresentationExchangeQueryMatchingResult<Credential>,
-) : CredentialMatchingResult<Credential>
-
 data class DCQLMatchingResult<Credential : Any>(
     override val presentationRequest: CredentialPresentationRequest.DCQLRequest,
     override val matchingResult: HolderDCQLQueryMatchingResult<Credential>,

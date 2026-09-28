@@ -1,8 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
@@ -14,13 +12,11 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.oidvci.randomString
-import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.Json
@@ -61,17 +57,6 @@ val TransactionDataInterop by matrixSuite {
         val serialized = joseCompliantSerializer.encodeToString(Base64URLTransactionDataSerializer, input)
 
         joseCompliantSerializer.decodeFromString(Base64URLTransactionDataSerializer, serialized)
-            .shouldBe(input)
-    }
-
-    @Suppress("DEPRECATION")
-    "DifInputDescriptor Sanity Check" {
-        val input = DifInputDescriptor(id = uuid4().toString())
-        val serialized = joseCompliantSerializer.encodeToString(input).also {
-            it shouldNotContain "type"
-        }
-
-        joseCompliantSerializer.decodeFromString(InputDescriptor.serializer(), serialized)
             .shouldBe(input)
     }
 

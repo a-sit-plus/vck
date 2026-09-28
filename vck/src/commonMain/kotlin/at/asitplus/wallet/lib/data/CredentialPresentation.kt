@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
 import at.asitplus.wallet.lib.agent.DeviceRequestCredentialDisclosure
-import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import kotlinx.serialization.Serializable
 
@@ -19,14 +18,6 @@ sealed interface CredentialPresentation {
 
     /** The verifier request against which the submission is checked. */
     val presentationRequest: CredentialPresentationRequest
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    @Serializable
-    data class PresentationExchangePresentation(
-        override val presentationRequest: CredentialPresentationRequest.PresentationExchangeRequest,
-        val inputDescriptorSubmissions: Map<String, PresentationExchangeCredentialDisclosure<SubjectCredentialStore.StoreEntry>>? = null
-    ) : CredentialPresentation
 
     /** DCQL submissions keyed by credential query identifier, as required for an OpenID4VP DCQL `vp_token`. */
     @Serializable

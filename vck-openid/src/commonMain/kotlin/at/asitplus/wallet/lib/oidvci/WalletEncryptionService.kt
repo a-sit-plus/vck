@@ -15,8 +15,6 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.symmetric.isAuthenticated
 import at.asitplus.signum.indispensable.symmetric.requiresNonce
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.DecryptJweFun
@@ -46,8 +44,6 @@ class WalletEncryptionService @JvmOverloads constructor(
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
     /** Algorithm to fallback to for credential response encryption. */
     private val fallbackJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
-    @Deprecated("Use [ephemeralEncryptionKeyService] instead")
-    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Creates one ephemeral encryption key per credential request. */
     private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
     /** Used to decrypt the credential response sent by the issuer. */

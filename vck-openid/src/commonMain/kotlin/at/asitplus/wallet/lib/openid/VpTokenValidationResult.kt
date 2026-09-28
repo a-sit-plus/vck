@@ -20,12 +20,3 @@ data class VpTokenValidationResultDCQL(
         }
 }
 
-@Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-data class VpTokenValidationResultPresentationExchange(
-    val inputDescriptorResponseValidations: Map<String, KmmResult<VerifyPresentationResult>>,
-) : VpTokenValidationResult {
-    override val presentationResults: Collection<KmmResult<VerifyPresentationResult>>
-        get() = inputDescriptorResponseValidations.map {
-            it.value
-        }
-}
