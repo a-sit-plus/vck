@@ -1,4 +1,4 @@
-package at.asitplus.csc.api.enums
+package at.asitplus.csc.datamodel.basic
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -1,4 +1,4 @@
-package at.asitplus.csc.api.enums
+package at.asitplus.csc.api
 
 import kotlinx.serialization.SerialName
 

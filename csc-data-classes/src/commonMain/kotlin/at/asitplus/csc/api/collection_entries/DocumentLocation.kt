@@ -1,6 +1,6 @@
 package at.asitplus.csc.api.collection_entries
 
-import at.asitplus.csc.datamodel.DocumentReference
+import at.asitplus.csc.datamodel.documents.DocumentReference
 import at.asitplus.csc.api.Method
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

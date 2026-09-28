@@ -4,9 +4,9 @@ import at.asitplus.csc.api.Hashes
 import at.asitplus.csc.api.SignDocRequestParameters
 import at.asitplus.csc.api.contentEquals
 import at.asitplus.csc.api.contentHashCode
-import at.asitplus.csc.api.enums.ConformanceLevel
-import at.asitplus.csc.api.enums.SignatureFormat
-import at.asitplus.csc.api.enums.SignedEnvelopeProperty
+import at.asitplus.csc.enums.ConformanceLevel
+import at.asitplus.csc.enums.SignatureFormat
+import at.asitplus.csc.datamodel.basic.SignedEnvelopeProperty
 import at.asitplus.csc.getHashAlgorithm
 import at.asitplus.csc.getSignAlgorithm
 import at.asitplus.csc.api.serializers.Asn1EncodableBase64Serializer

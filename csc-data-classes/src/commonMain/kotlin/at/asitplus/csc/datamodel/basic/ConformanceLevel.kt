@@ -1,10 +1,11 @@
-package at.asitplus.csc.api.enums
+package at.asitplus.csc.datamodel.basic
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+
 /**
- * CSC v2.0.0.2:
+ * CSC Data Model 1.0.0:
  * The required signature conformance level
  */
 @Suppress("unused")
@@ -58,12 +59,12 @@ enum class ConformanceLevel {
      * of a baseline etsits level LT signature
      */
     @SerialName("AdES-LT")
-    ADESTLT,
+    ADESLT,
 
     /**
      * “AdES-LTA” SHALL be used to request the creation
      * of a baseline etsits level LTA signature.
      */
     @SerialName("AdES-LTA")
-    ADESTLTA
+    ADESLTA
 }

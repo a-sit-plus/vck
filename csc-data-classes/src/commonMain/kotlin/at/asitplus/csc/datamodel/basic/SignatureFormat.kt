@@ -1,11 +1,11 @@
-package at.asitplus.csc.api.enums
+package at.asitplus.csc.datamodel.basic
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
 /**
- * CSC v2.0.0.2 Signature formats
+ * CSC Data Model 1.0.0 Signature formats
  */
 @Suppress("unused")
 @Serializable
