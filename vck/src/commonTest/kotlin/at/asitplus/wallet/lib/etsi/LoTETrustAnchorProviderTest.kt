@@ -1912,6 +1912,8 @@ private fun certificateOf(
 private val asitCert = certificateOf(pidLote, LoteProfile.PID, "A-SIT")
 private val pidOnlyCert = certificateOf(pidLote, LoteProfile.PID, "PID Provider1")
 private val wrpacOnlyCert = certificateOf(wrpacLote, LoteProfile.WRPAC, "Idakto")
+private val referenceRevocationCert =
+    certificateOf(pidLote, LoteProfile.PID, "Reference implementation TEST EU PID Provider", ServiceKind.REVOCATION)
 
 private fun List<X509Certificate>.containsCert(cert: X509Certificate): Boolean {
     val der = cert.encodeToDer()
@@ -1975,8 +1977,17 @@ val LoTETrustAnchorProviderTest by matrixSuite {
         provider(trustListsFor = { emptyList() }).issuanceAnchors("urn:eudi:pid:1") shouldBe emptyList()
     }
 
-    "the published list's only revocation service is dropped, because its O matches TETradeName, not TEName" {
-        provider().revocationAnchors("urn:eudi:pid:1") shouldBe emptyList()
+    "the PID revocation anchor is returned, although its certificate O is the TETradeName" {
+        val anchors = provider().revocationAnchors("urn:eudi:pid:1")
+        anchors.containsCert(referenceRevocationCert) shouldBe true
+        anchors.size shouldBe 1 
+    }
+
+    "revocation anchors hold no issuance-only certificates and nothing from another list" {
+        val anchors = provider().revocationAnchors("urn:eudi:pid:1")
+        anchors.containsCert(asitCert) shouldBe false
+        anchors.containsCert(pidOnlyCert) shouldBe false
+        anchors.containsCert(wrpacOnlyCert) shouldBe false
     }
 
     "the WRPAC list has no revocation services" {
