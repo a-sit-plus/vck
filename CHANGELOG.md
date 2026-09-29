@@ -1,6 +1,9 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- CSC data classes:
+    - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
+    - Implement CSC Data Model 1.0.0
 - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
 - Trusted relying parties:
