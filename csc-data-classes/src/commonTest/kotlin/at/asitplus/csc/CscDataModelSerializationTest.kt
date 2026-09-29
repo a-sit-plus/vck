@@ -85,6 +85,37 @@ val CscDataModelSerializationTest by matrixSuite {
         json.decodeFromString<SignatureCreationRequest>(encoded) shouldBe request
     }
 
+    test("signatureCreationRequest round-trips a flattened document reference") {
+        val request = SignatureCreationRequest(
+            document = DocumentReference(
+                label = "Contract",
+                access = AccessControlMethod.Public,
+                href = "https://example.com/contract.pdf",
+                checksum = Hash(
+                    value = byteArrayOf(7, 8, 9),
+                    algorithmOid = ObjectIdentifier("2.16.840.1.101.3.4.2.1"),
+                ),
+            ),
+            adesParameters = AdesParameters(signatureFormat = SignatureFormat.PADES),
+            signingAlgorithm = SigningAlgorithm(ObjectIdentifier("1.2.840.10045.4.3.2")),
+        )
+
+        val encoded = json.encodeToString(request)
+
+        encoded.asJson() shouldBe """{
+            "label":"Contract",
+            "access":{"type":"public"},
+            "href":"https://example.com/contract.pdf",
+            "checksum":{
+                "value":"BwgJ",
+                "algorithmOID":"2.16.840.1.101.3.4.2.1"
+            },
+            "signature_format":"P",
+            "signAlgo":"1.2.840.10045.4.3.2"
+        }""".asJson()
+        json.decodeFromString<SignatureCreationRequest>(encoded) shouldBe request
+    }
+
     test("signatureRequest flattens a document reference and uses responseURI") {
         val request = SignatureRequest(
             document = DocumentReference(
