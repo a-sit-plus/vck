@@ -16,11 +16,10 @@ data class CredentialDeletionRequest(
 ) {
     init {
         require(credentialId.isNotBlank()) { "credentialID must not be blank" }
-        require(revoke != true || revocationReason != null) {
-            "revocationReason is required when revoke is true"
-        }
-        require(revocationReason == null || revocationReason in 0..10 && revocationReason != 7) {
-            "revocationReason must be an RFC 5280 reason code from 0 to 10 other than 7"
+        require(
+            revoke != true || (revocationReason != null && revocationReason in 0..10 && revocationReason != 7)
+        ) {
+            "revocationReason must be present and valid when revoke is true"
         }
     }
 }
