@@ -40,6 +40,8 @@ val CscDataModelAssertionsTest by matrixSuite {
             CredentialDeletionRequest("credential", revoke = true, revocationReason = 7)
         }
         CredentialDeletionRequest("credential", revoke = true, revocationReason = 1).revocationReason shouldBe 1
+        CredentialDeletionRequest("credential", revoke = false, revocationReason = 7).revocationReason shouldBe 7
+        CredentialDeletionRequest("credential", revocationReason = 11).revocationReason shouldBe 11
     }
 
     test("document representations require one or more non-empty hashes") {
