@@ -1,6 +1,7 @@
 package at.asitplus.csc.datamodel.documents
 
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.csc.datamodel.basic.Attribute
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -16,7 +17,7 @@ data class DocumentInfo(
     @SerialName("hashType")
     val hashType: HashType? = null,
     @SerialName("signed_props")
-    val signedProps: List<String>? = null,
+    val signedProps: List<Attribute>? = null,
     @SerialName("circumstantialData")
     @Serializable(with = ByteArrayBase64Serializer::class)
     val circumstantialData: ByteArray? = null,

@@ -4,6 +4,8 @@ import at.asitplus.csc.api.collection_entries.DocumentLocation
 import at.asitplus.csc.api.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.datamodel.authorization.SignatureCreationApproval
 import at.asitplus.csc.datamodel.basic.AdesParameters
+import at.asitplus.csc.datamodel.basic.Attribute
+import at.asitplus.csc.datamodel.basic.AttributeName
 import at.asitplus.csc.datamodel.basic.ConformanceLevel
 import at.asitplus.csc.datamodel.basic.Hash
 import at.asitplus.csc.datamodel.basic.SignatureFormat
@@ -184,7 +186,7 @@ val CscDataModelSerializationTest by matrixSuite {
                 signatureFormat = SignatureFormat.JADES,
                 conformanceLevel = ConformanceLevel.ADESBT,
                 signedEnvelopeProperty = SignedEnvelopeProperty.DETACHED,
-                signedProps = listOf("signing-time"),
+                signedProps = listOf(Attribute(AttributeName.SIGNING_TIME, "2026-09-29T12:00:00Z")),
                 referenceUri = "https://example.com/contract.json",
             ),
             signatureQualifier = SignatureQualifier.EU_EIDAS_AES,
@@ -196,7 +198,7 @@ val CscDataModelSerializationTest by matrixSuite {
                 "signature_format":"J",
                 "conformance_level":"AdES-B-T",
                 "signed_envelope_property":"Detached",
-                "signed_props":["signing-time"],
+                "signed_props":[{"attribute_name":"signing-time","attribute_value":"2026-09-29T12:00:00Z"}],
                 "referenceUri":"https://example.com/contract.json",
                 "signatureQualifier":"eu_eidas_aes"
             }""",

@@ -14,7 +14,7 @@ data class AdesParameters(
     @SerialName("signed_envelope_property")
     val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
     @SerialName("signed_props")
-    val signedProps: List<String>? = null,
+    val signedProps: List<Attribute>? = null,
     @SerialName("referenceUri")
     val referenceUri: String? = null,
 ) {
