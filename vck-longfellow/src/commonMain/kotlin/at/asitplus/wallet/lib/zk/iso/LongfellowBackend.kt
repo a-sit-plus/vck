@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
@@ -91,14 +92,21 @@ class LongfellowBackend : IsoMdocZkBackend {
      * Determines whether the given [candidate] specification is supported by this backend.
      *
      * Support requires matching the backend [system] name and a known `circuit_hash`.
-     * Other parameters (e.g., `num_attributes`) are ignored during lookup.
+     * Candidate specs may be underspecified (omitting optional parameters) but cannot be
+     * overspecified (containing extra or non-matching parameters).
      *
      * @param candidate The [ZkSystemSpec] to evaluate for support.
      * @return `true` if supported; `false` otherwise.
      * @throws IllegalStateException if [initialize] has not been called.
      */
-    override fun supports(candidate: ZkSystemSpec): Boolean =
-        candidate.system == system && candidate.params[CIRCUIT_HASH_KEY] in currentState.supportedHashes
+    override fun supports(candidate: ZkSystemSpec): Boolean {
+        val multipazCandidate = catching { candidate.toMultipazZkSystemSpec() }.getOrElse { return false }
+        return supports(multipazCandidate)
+    }
+
+    private fun supports(candidate: MultipazZkSystemSpec): Boolean =
+        currentState.backend.systemSpecs.firstOrNull { candidate.isCompatibleWith(it) } != null
+
 
     private fun chooseZkSystemSpec(
         credential: StoreEntry.Iso,
@@ -108,28 +116,32 @@ class LongfellowBackend : IsoMdocZkBackend {
         val multipazRequestedClaims = requestedClaims.map {
             it.toMdocRequestedClaim(credential.schemeIdentifier)
         }
-        val multipazZkSystemSpecs: List<MultipazZkSystemSpec> = requestedZkSystemSpecs
-            .filter(::supports)
-            .map { it.toMultipazZkSystemSpec() }
 
-        val matchedSpec = currentState.backend.getMatchingSystemSpec(
-            multipazZkSystemSpecs,
+        val multipazRequestedZkSystemSpecs = requestedZkSystemSpecs
+            .filter { it.system == system }
+            .mapNotNull { catching { it.toMultipazZkSystemSpec() }.getOrNull() }
+            .filter(::supports)
+
+        if (multipazRequestedZkSystemSpecs.isEmpty()) return null
+
+        val backendSpec = currentState.backend.getMatchingSystemSpec(
+            multipazRequestedZkSystemSpecs,
             multipazRequestedClaims
         ) ?: return null
 
-        val matchedHash = checkNotNull(matchedSpec.getParam<String>(CIRCUIT_HASH_KEY)) {
-            "Backend matched spec is missing mandatory parameter: $CIRCUIT_HASH_KEY"
+        val selectedRequestedSpec = multipazRequestedZkSystemSpecs
+            .filter { it.isCompatibleWith(backendSpec) }
+            .maxByOrNull { it.params.size }
+            ?: return null
+
+        if (!selectedRequestedSpec.matchesExactly(backendSpec)) {
+            Napier.i(
+                "Requested compatible ZkSystemSpecs are underspecified! " +
+                        "Using id=${selectedRequestedSpec.id} with fallback parameters: ${selectedRequestedSpec.params}"
+            )
         }
 
-        val exactMatch: MultipazZkSystemSpec? = multipazZkSystemSpecs.firstOrNull { candidate ->
-            candidate.system == matchedSpec.system && candidate.params == matchedSpec.params
-        }
-        // Resolve final candidate (falling back to CIRCUIT_HASH_KEY if exact match fails)
-        val matchedCandidate: MultipazZkSystemSpec = exactMatch ?: multipazZkSystemSpecs.firstOrNull { candidate ->
-            candidate.getParam<String>(CIRCUIT_HASH_KEY) == matchedHash
-        } ?: error("Backend matched spec returned an unknown $CIRCUIT_HASH_KEY: $matchedHash")
-
-        return matchedSpec.copyWithParameters(id = matchedCandidate.id)
+        return backendSpec.copyWithParameters(id = selectedRequestedSpec.id)
     }
 
     /**

@@ -20,6 +20,7 @@ import at.asitplus.wallet.lib.agent.calculateIsoDeviceSignature
 import at.asitplus.wallet.lib.agent.discloseItem
 import at.asitplus.wallet.lib.agent.toIsoNamespaceAttribute
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
+import at.asitplus.wallet.lib.zk.iso.LongfellowBackend.Companion.CIRCUIT_HASH_KEY
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -175,3 +176,26 @@ internal fun NormalizedJsonPath.toMdocRequestedClaim(
         intentToRetain = false, // TODO: Consider using the actual value instead of a place holder "false"
     )
 }
+
+internal fun MultipazZkSystemSpec.matchesExactly(target: MultipazZkSystemSpec): Boolean =
+    this.system == target.system && this.params == target.params
+
+/**
+ * Determines whether [this] candidate specification can fulfill the given [target].
+ *
+ * A candidate is compatible if:
+ * - Its system matches `target.system`.
+ * - Its parameters are a non-conflicting subset of `target.params`.
+ * - It contains a valid `circuit_hash`.
+ *
+ * Note: Parameters alone are insufficient to uniquely identify a circuit. The `circuit_hash` acts as a unique
+ * identifier to ensure consistency between the prover and verifier during proof generation and verification and cannot
+ * be omitted.
+ */
+internal fun MultipazZkSystemSpec.isCompatibleWith(target: MultipazZkSystemSpec): Boolean {
+    if (!this.hasStringCircuitHash || this.system != target.system) return false
+    return this.params.all { (key, value) -> target.params[key] == value }
+}
+
+private val MultipazZkSystemSpec.hasStringCircuitHash: Boolean
+    get() = getParam<String>(CIRCUIT_HASH_KEY) != null
