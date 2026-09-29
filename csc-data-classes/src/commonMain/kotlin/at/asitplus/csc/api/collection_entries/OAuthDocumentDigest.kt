@@ -1,6 +1,5 @@
 package at.asitplus.csc.api.collection_entries
 
-import at.asitplus.csc.datamodel.documents.DocumentInfo
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -10,6 +9,7 @@ import kotlinx.serialization.Serializable
  * Entry for document to be signed
  * Used as part of `at.asitplus.openid.CscAuthorizationDetails`.
  */
+@Deprecated("Replaced", ReplaceWith("DocumentInfo", "at.asitplus.csc.datamodel.documents.DocumentInfo"))
 @Serializable
 data class OAuthDocumentDigest(
     /**
@@ -29,8 +29,6 @@ data class OAuthDocumentDigest(
     @SerialName("label")
     val label: String,
 ) {
-    /** Lossless migration to the CSC Data Model 1.0 representation. */
-    fun toCsc22(): DocumentInfo = DocumentInfo(label = label, hash = hash)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

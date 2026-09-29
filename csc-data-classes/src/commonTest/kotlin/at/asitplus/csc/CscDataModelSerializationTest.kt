@@ -230,19 +230,4 @@ val CscDataModelSerializationTest by matrixSuite {
             }""",
         )
     }
-
-    test("legacy API bridges preserve the new data-model representation") {
-        DocumentLocation(
-            uri = "https://example.com/contract.pdf",
-            method = AccessControlMethod.Oauth2,
-        ).shouldRoundTripAs(
-            """{
-                "uri":"https://example.com/contract.pdf",
-                "method":{"type":"OAuth_20"}
-            }""",
-        )
-
-        OAuthDocumentDigest(hash = byteArrayOf(1, 2, 3), label = "Contract").toCsc22() shouldBe
-                DocumentInfo(label = "Contract", hash = byteArrayOf(1, 2, 3))
-    }
 }
