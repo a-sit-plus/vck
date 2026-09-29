@@ -41,7 +41,6 @@ class LongfellowBackend : IsoMdocZkBackend {
         val backend: LongfellowZkSystem
     ) {
         val zkSystemSpecs: List<ZkSystemSpec> = backend.systemSpecs.map { it.toZkSystemSpec() }
-        val supportedHashes: Set<String> = zkSystemSpecs.mapNotNull { it.params[CIRCUIT_HASH_KEY] as? String }.toSet()
     }
 
     private val initMutex = Mutex()
