@@ -61,11 +61,6 @@ publishing {
                 }
                 developers {
                     developer {
-                        id.set("JesusMcCloud")
-                        name.set("Bernd Prünster")
-                        email.set("bernd.pruenster@a-sit.at")
-                    }
-                    developer {
                         id.set("nodh")
                         name.set("Christian Kollmann")
                         email.set("christian.kollmann@a-sit.at")
