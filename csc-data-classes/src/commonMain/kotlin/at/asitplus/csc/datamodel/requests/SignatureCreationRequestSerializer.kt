@@ -29,7 +29,9 @@ object SignatureCreationRequestSerializer :
 
     override fun transformSerialize(element: JsonElement): JsonElement = buildJsonObject {
         element.jsonObject.values.forEach { component ->
-            component.jsonObject.forEach(::put)
+            component.jsonObject.forEach { (key, value) ->
+                put(key, value)
+            }
         }
     }
 
