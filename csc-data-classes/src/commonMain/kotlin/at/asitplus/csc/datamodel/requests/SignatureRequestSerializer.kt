@@ -25,7 +25,9 @@ object SignatureRequestSerializer :
             if (propertyName == SignatureRequest::document.name ||
                 propertyName == SignatureRequest::adesParameters.name
             ) {
-                propertyValue.jsonObject.forEach(::put)
+                propertyValue.jsonObject.forEach { (key, value) ->
+                    put(key, value)
+                }
             } else {
                 put(propertyName, propertyValue)
             }
