@@ -1,5 +1,7 @@
 package at.asitplus.csc
 
+import at.asitplus.csc.api.collection_entries.DocumentLocation
+import at.asitplus.csc.api.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.datamodel.authorization.SignatureCreationApproval
 import at.asitplus.csc.datamodel.basic.AdesParameters
 import at.asitplus.csc.datamodel.basic.ConformanceLevel
@@ -14,12 +16,14 @@ import at.asitplus.csc.datamodel.documents.DocumentInfo
 import at.asitplus.csc.datamodel.documents.DocumentReference
 import at.asitplus.csc.datamodel.documents.DocumentRepresentations
 import at.asitplus.csc.datamodel.documents.DocumentType
-import at.asitplus.csc.datamodel.documents.HashType
 import at.asitplus.csc.datamodel.requests.SignatureCreationRequest
 import at.asitplus.csc.datamodel.requests.SignatureRequest
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.asn1.Asn1Null
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import kotlinx.serialization.json.Json
 
 private val json = Json {
@@ -29,28 +33,67 @@ private val json = Json {
 
 private fun String.asJson() = Json.parseToJsonElement(this)
 
-val CscDataModelSerializationTest by matrixSuite {
-    test("CSC enumeration values use their specified wire names") {
-        json.decodeFromString<SignatureQualifier>("\"eu_eidas_qes\"") shouldBe SignatureQualifier.EU_EIDAS_QES
-        json.encodeToString(DocumentType.SFD) shouldBe "\"sfd\""
-        json.decodeFromString<HashType>("\"dtbsr\"") shouldBe HashType.DTBSR
-    }
+private inline fun <reified T> T.shouldRoundTripAs(expected: String) {
+    val encoded = json.encodeToString(this)
+    encoded.asJson() shouldBe expected.asJson()
+    json.decodeFromString<T>(encoded) shouldBe this
+}
 
-    test("ETSI conformance levels use the Data Model 1.0 wire values") {
+val CscDataModelSerializationTest by matrixSuite {
+    test("corrected ETSI conformance levels use the Data Model 1.0 wire values") {
         json.encodeToString(ConformanceLevel.ADESLT) shouldBe "\"AdES-LT\""
         json.encodeToString(ConformanceLevel.ADESLTA) shouldBe "\"AdES-LTA\""
     }
 
-    test("hash uses standard padded Base64 and has content equality") {
+    test("algorithm value objects preserve Base64, OIDs, parameters, and conversions") {
         val hash = Hash(byteArrayOf(1, 2, 3), ObjectIdentifier("2.16.840.1.101.3.4.2.1"))
-        json.encodeToString(hash).asJson() shouldBe
-                """{"value":"AQID","algorithmOID":"2.16.840.1.101.3.4.2.1"}""".asJson()
-        json.decodeFromString<Hash>(json.encodeToString(hash)) shouldBe hash
-        hash shouldBe hash.copy(value = byteArrayOf(1, 2, 3))
+        hash.shouldRoundTripAs("""{"value":"AQID","algorithmOID":"2.16.840.1.101.3.4.2.1"}""")
+        hash.toDigestOrNull() shouldBe Digest.SHA256
+        Hash(byteArrayOf(1), ObjectIdentifier("1.2.3.4")).toDigestOrNull() shouldBe null
+
+        val algorithm = SigningAlgorithm(ObjectIdentifier("1.2.840.10045.4.3.2"))
+        algorithm.toSignatureAlgorithmOrNull() shouldNotBe null
+
+        val withParameters = SigningAlgorithm(ObjectIdentifier("1.2.3.4"), Asn1Null)
+        withParameters.shouldRoundTripAs("""{"signAlgo":"1.2.3.4","signAlgoParams":"BQA="}""")
     }
 
-    test("signatureCreationRequest flattens document data, AdES, and algorithm parameters") {
-        val request = SignatureCreationRequest(
+    test("byte-array data models use content equality and matching hash codes") {
+        fun assertContentEquality(first: Any, equal: Any, different: Any) {
+            first shouldBe equal
+            first.hashCode() shouldBe equal.hashCode()
+            first shouldNotBe different
+        }
+
+        assertContentEquality(
+            Hash(byteArrayOf(1, 2), ObjectIdentifier("2.16.840.1.101.3.4.2.1")),
+            Hash(byteArrayOf(1, 2), ObjectIdentifier("2.16.840.1.101.3.4.2.1")),
+            Hash(byteArrayOf(1, 3), ObjectIdentifier("2.16.840.1.101.3.4.2.1")),
+        )
+        assertContentEquality(
+            DocumentData(document = byteArrayOf(1, 2), circumstantialData = byteArrayOf(3)),
+            DocumentData(document = byteArrayOf(1, 2), circumstantialData = byteArrayOf(3)),
+            DocumentData(document = byteArrayOf(1, 3), circumstantialData = byteArrayOf(3)),
+        )
+        assertContentEquality(
+            DocumentInfo(hash = byteArrayOf(1, 2), circumstantialData = byteArrayOf(3)),
+            DocumentInfo(hash = byteArrayOf(1, 2), circumstantialData = byteArrayOf(3)),
+            DocumentInfo(hash = byteArrayOf(1, 3), circumstantialData = byteArrayOf(3)),
+        )
+        assertContentEquality(
+            DocumentReference(href = "https://example.com", circumstantialData = byteArrayOf(1, 2)),
+            DocumentReference(href = "https://example.com", circumstantialData = byteArrayOf(1, 2)),
+            DocumentReference(href = "https://example.com", circumstantialData = byteArrayOf(1, 3)),
+        )
+        assertContentEquality(
+            DocumentRepresentations(hashes = listOf(byteArrayOf(1), byteArrayOf(2))),
+            DocumentRepresentations(hashes = listOf(byteArrayOf(1), byteArrayOf(2))),
+            DocumentRepresentations(hashes = listOf(byteArrayOf(1), byteArrayOf(3))),
+        )
+    }
+
+    test("signatureCreationRequest flattens document data") {
+        SignatureCreationRequest(
             document = DocumentData(label = "Contract", document = byteArrayOf(1, 2, 3)),
             adesParameters = AdesParameters(
                 signatureFormat = SignatureFormat.PADES,
@@ -58,35 +101,33 @@ val CscDataModelSerializationTest by matrixSuite {
                 signedEnvelopeProperty = SignedEnvelopeProperty.CERTIFICATION,
             ),
             signingAlgorithm = SigningAlgorithm(ObjectIdentifier("1.2.840.10045.4.3.2")),
+        ).shouldRoundTripAs(
+            """{
+                "label":"Contract",
+                "document":"AQID",
+                "signature_format":"P",
+                "conformance_level":"AdES-B-B",
+                "signed_envelope_property":"Certification",
+                "signAlgo":"1.2.840.10045.4.3.2"
+            }""",
         )
-        val encoded = json.encodeToString(request)
-        encoded.asJson() shouldBe """{
-            "label":"Contract",
-            "document":"AQID",
-            "signature_format":"P",
-            "conformance_level":"AdES-B-B",
-            "signed_envelope_property":"Certification",
-            "signAlgo":"1.2.840.10045.4.3.2"
-        }""".asJson()
-        json.decodeFromString<SignatureCreationRequest>(encoded) shouldBe request
     }
 
-    test("signatureCreationRequest supports flattened document representations") {
-        val request = SignatureCreationRequest(
+    test("signatureCreationRequest flattens document representations") {
+        SignatureCreationRequest(
             document = DocumentRepresentations(label = "Contract", hashes = listOf(byteArrayOf(4, 5, 6))),
             signingAlgorithm = SigningAlgorithm(ObjectIdentifier("1.2.840.113549.1.1.1")),
+        ).shouldRoundTripAs(
+            """{
+                "label":"Contract",
+                "hashes":["BAUG"],
+                "signAlgo":"1.2.840.113549.1.1.1"
+            }""",
         )
-        val encoded = json.encodeToString(request)
-        encoded.asJson() shouldBe """{
-            "label":"Contract",
-            "hashes":["BAUG"],
-            "signAlgo":"1.2.840.113549.1.1.1"
-        }""".asJson()
-        json.decodeFromString<SignatureCreationRequest>(encoded) shouldBe request
     }
 
-    test("signatureCreationRequest round-trips a flattened document reference") {
-        val request = SignatureCreationRequest(
+    test("signatureCreationRequest flattens document references") {
+        SignatureCreationRequest(
             document = DocumentReference(
                 label = "Contract",
                 access = AccessControlMethod.Public,
@@ -98,26 +139,20 @@ val CscDataModelSerializationTest by matrixSuite {
             ),
             adesParameters = AdesParameters(signatureFormat = SignatureFormat.PADES),
             signingAlgorithm = SigningAlgorithm(ObjectIdentifier("1.2.840.10045.4.3.2")),
+        ).shouldRoundTripAs(
+            """{
+                "label":"Contract",
+                "access":{"type":"public"},
+                "href":"https://example.com/contract.pdf",
+                "checksum":{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"},
+                "signature_format":"P",
+                "signAlgo":"1.2.840.10045.4.3.2"
+            }""",
         )
-
-        val encoded = json.encodeToString(request)
-
-        encoded.asJson() shouldBe """{
-            "label":"Contract",
-            "access":{"type":"public"},
-            "href":"https://example.com/contract.pdf",
-            "checksum":{
-                "value":"BwgJ",
-                "algorithmOID":"2.16.840.1.101.3.4.2.1"
-            },
-            "signature_format":"P",
-            "signAlgo":"1.2.840.10045.4.3.2"
-        }""".asJson()
-        json.decodeFromString<SignatureCreationRequest>(encoded) shouldBe request
     }
 
-    test("signatureRequest flattens a document reference and uses responseURI") {
-        val request = SignatureRequest(
+    test("signatureRequest flattens document references and preserves responseURI") {
+        SignatureRequest(
             document = DocumentReference(
                 label = "Contract",
                 access = AccessControlMethod.Public,
@@ -126,33 +161,86 @@ val CscDataModelSerializationTest by matrixSuite {
             adesParameters = AdesParameters(signatureFormat = SignatureFormat.PADES),
             signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
             responseUri = "https://example.com/signature",
+        ).shouldRoundTripAs(
+            """{
+                "label":"Contract",
+                "access":{"type":"public"},
+                "href":"https://example.com/contract.pdf",
+                "signature_format":"P",
+                "signatureQualifier":"eu_eidas_qes",
+                "responseURI":"https://example.com/signature"
+            }""",
         )
-        val encoded = json.encodeToString(request)
-        encoded.asJson() shouldBe """{
-            "label":"Contract",
-            "access":{"type":"public"},
-            "href":"https://example.com/contract.pdf",
-            "signature_format":"P",
-            "signatureQualifier":"eu_eidas_qes",
-            "responseURI":"https://example.com/signature"
-        }""".asJson()
-        json.decodeFromString<SignatureRequest>(encoded) shouldBe request
     }
 
-    test("signatureCreationApproval uses canonical field names") {
-        val approval = SignatureCreationApproval(
+    test("signatureRequest flattens document data with optional AdES fields") {
+        SignatureRequest(
+            document = DocumentData(
+                label = "Contract",
+                document = byteArrayOf(1, 2, 3),
+                documentType = DocumentType.SFD,
+            ),
+            adesParameters = AdesParameters(
+                signatureFormat = SignatureFormat.JADES,
+                conformanceLevel = ConformanceLevel.ADESBT,
+                signedEnvelopeProperty = SignedEnvelopeProperty.DETACHED,
+                signedProps = listOf("signing-time"),
+                referenceUri = "https://example.com/contract.json",
+            ),
+            signatureQualifier = SignatureQualifier.EU_EIDAS_AES,
+        ).shouldRoundTripAs(
+            """{
+                "label":"Contract",
+                "document":"AQID",
+                "documentType":"sfd",
+                "signature_format":"J",
+                "conformance_level":"AdES-B-T",
+                "signed_envelope_property":"Detached",
+                "signed_props":["signing-time"],
+                "referenceUri":"https://example.com/contract.json",
+                "signatureQualifier":"eu_eidas_aes"
+            }""",
+        )
+    }
+
+    test("signatureCreationApproval supports either credential identification path") {
+        val byQualifier = SignatureCreationApproval(
             signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
             numSignatures = 1,
             documentDigests = listOf(DocumentInfo(label = "Contract", hash = byteArrayOf(7, 8, 9))),
             hashAlgorithmOid = ObjectIdentifier("2.16.840.1.101.3.4.2.1"),
         )
-        val encoded = json.encodeToString(approval)
-        encoded.asJson() shouldBe """{
-            "signatureQualifier":"eu_eidas_qes",
-            "numSignatures":1,
-            "documentDigests":[{"label":"Contract","hash":"BwgJ"}],
-            "hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"
-        }""".asJson()
-        json.decodeFromString<SignatureCreationApproval>(encoded) shouldBe approval
+        byQualifier.shouldRoundTripAs(
+            """{
+                "signatureQualifier":"eu_eidas_qes",
+                "numSignatures":1,
+                "documentDigests":[{"label":"Contract","hash":"BwgJ"}],
+                "hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"
+            }""",
+        )
+
+        byQualifier.copy(credentialId = "credential-1", signatureQualifier = null).shouldRoundTripAs(
+            """{
+                "credentialID":"credential-1",
+                "numSignatures":1,
+                "documentDigests":[{"label":"Contract","hash":"BwgJ"}],
+                "hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"
+            }""",
+        )
+    }
+
+    test("legacy API bridges preserve the new data-model representation") {
+        DocumentLocation(
+            uri = "https://example.com/contract.pdf",
+            method = AccessControlMethod.Oauth2,
+        ).shouldRoundTripAs(
+            """{
+                "uri":"https://example.com/contract.pdf",
+                "method":{"type":"OAuth_20"}
+            }""",
+        )
+
+        OAuthDocumentDigest(hash = byteArrayOf(1, 2, 3), label = "Contract").toCsc22() shouldBe
+                DocumentInfo(label = "Contract", hash = byteArrayOf(1, 2, 3))
     }
 }
