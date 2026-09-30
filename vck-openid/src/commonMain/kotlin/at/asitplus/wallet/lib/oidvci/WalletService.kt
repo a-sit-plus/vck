@@ -328,6 +328,58 @@ class WalletService @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Creates the credential request to be sent to the credential issuer.
+     * Callers need to send the correct access token and other authentication.
+     * For sample ktor code see `OpenId4VciClient` in `vck-openid-ktor`.
+     *
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
+     * @param credentialConfigurationId the exact `credential_configuration_id` to request
+     * @param credentialFormat which credential to request (needed to build the correct proof)
+     * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
+     * the value from there, exactly [ClientNonceResponse.clientNonce]
+     */
+    suspend fun createCredential(
+        metadata: IssuerMetadata,
+        credentialConfigurationId: String,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<CredentialRequest>> = catching {
+        createCredentialRequestInternal(
+            metadata = metadata,
+            credentialConfigurationId = credentialConfigurationId,
+            credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
+            clock = clock
+        ).getOrThrow().map {
+            encryptionService.wrapCredentialRequest(it, metadata).getOrThrow()
+        }
+    }
+
+    private suspend fun createCredentialRequestInternal(
+        metadata: IssuerMetadata,
+        credentialConfigurationId: String,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<CredentialRequestParameters>> = catching {
+        listOf(
+            CredentialRequestParameters(
+                credentialConfigurationId = credentialConfigurationId,
+                proofs = createCredentialRequestProof(
+                    credentialIssuer = metadata.credentialIssuer,
+                    credentialFormat = credentialFormat,
+                    clientNonce = clientNonce,
+                    clock = clock
+                ).takeIf { it.jwt != null || it.attestation != null }, // do not send empty proofs
+                credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
+            )
+        ).also {
+            Napier.i("createCredentialRequest returns $it")
+        }
+    }
+
     private suspend fun createCredentialRequestInternal(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
