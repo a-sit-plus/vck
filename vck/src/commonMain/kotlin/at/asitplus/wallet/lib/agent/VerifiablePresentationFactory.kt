@@ -18,6 +18,8 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.DeviceSignedItem
+import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.Document
@@ -28,7 +30,9 @@ import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
+import at.asitplus.openid.QesApprovalRequest
 import at.asitplus.openid.truncateToSeconds
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsCompact
@@ -56,8 +60,12 @@ import io.github.aakira.napier.Napier
 import io.github.z4kn4fein.semver.Version
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlin.time.Clock
 
 class VerifiablePresentationFactory(
@@ -242,7 +250,20 @@ class VerifiablePresentationFactory(
             }
         }
 
-        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+        val approvalDigest = request.qesApprovalDigest(encodedTransactionData = false)
+        val deviceNamespaces = approvalDigest?.let { digest ->
+            mapOf(
+                at.asitplus.csc.bindings.QesApprovalBinding.NAMESPACE to DeviceSignedItemList(
+                    listOf(
+                        DeviceSignedItem(
+                            key = at.asitplus.csc.bindings.QesApprovalBinding.DATA_ELEMENT_IDENTIFIER,
+                            value = digest,
+                        ),
+                    ),
+                ),
+            )
+        }.orEmpty()
+        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(deviceNamespaces))
         val input = IsoDeviceSignatureInput(schemeIdentifier, deviceNameSpaceBytes)
 
         val sessionTranscript = request.calcIsoSessionTranscript()
@@ -418,10 +439,35 @@ class VerifiablePresentationFactory(
             sdHash = digest.digest(hashInput.encodeToByteArray()),
             transactionDataHashes = request.transactionData?.hash(request.transactionDataHashesAlgorithm),
             transactionDataHashesAlgorithmString = request.transactionDataHashesAlgorithm?.toIanaName(),
+            qesApproval = request.qesApprovalDigest(encodedTransactionData = true),
         ),
         KeyBindingJws.serializer(),
     ).getOrElse {
         throw PresentationException(it)
+    }
+
+    /**
+     * CSC Data Model Bindings 1.0.0 section 7.2.1: CONDITIONAL
+     * When qesApprovalRequest is present, hash the decoded request JSON for mdoc and the original base64url
+     * `transaction_data` string for SD-JWT VC.
+     */
+    private fun PresentationRequestParameters.qesApprovalDigest(encodedTransactionData: Boolean): ByteArray? {
+        val matching = transactionData.orEmpty().mapNotNull { transactionData ->
+            val decoded = transactionData.content.decodeToByteArray(Base64UrlStrict)
+            val json = Json.parseToJsonElement(decoded.decodeToString()).jsonObject
+            if (json["type"]?.jsonPrimitive?.content != QesApprovalRequest.TYPE) {
+                null
+            } else {
+                val request = Json.decodeFromJsonElement(QesApprovalRequest.serializer(), json)
+                Triple(transactionData.content, decoded, request)
+            }
+        }
+        if (matching.size > 1) throw PresentationException("Only one qesApprovalRequest may be presented")
+        val (encoded, decoded, approvalRequest) = matching.singleOrNull() ?: return null
+        val digest = Digest.entries.firstOrNull { it.oid == approvalRequest.hashAlgorithmOid }
+            ?: throw PresentationException("Unsupported qesApproval hash algorithm ${approvalRequest.hashAlgorithmOid}")
+        val input = if (encodedTransactionData) encoded.encodeToByteArray() else decoded
+        return digest.digest(input)
     }
 
     /**

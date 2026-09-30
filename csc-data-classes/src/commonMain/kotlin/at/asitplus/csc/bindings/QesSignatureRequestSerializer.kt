@@ -41,9 +41,14 @@ object QesSignatureRequestSerializer :
 
     override fun transformDeserialize(element: JsonElement): JsonElement = buildJsonObject {
         val properties = element.jsonObject
+        val document = properties.filterKeys(documentKeys::contains).toMutableMap()
+        (document[QesSignatureRequest::checksum.name] as? JsonObject)?.let {
+            document.remove(QesSignatureRequest::checksum.name)
+            put(QesSignatureRequest::checksum.name, it)
+        }
         put(
             QesSignatureRequest::document.name,
-            JsonObject(properties.filterKeys(documentKeys::contains)),
+            JsonObject(document),
         )
         put(
             QesSignatureRequest::adesParameters.name,
@@ -52,9 +57,8 @@ object QesSignatureRequestSerializer :
         properties.filterKeys(signingAlgorithmKeys::contains).takeIf { it.isNotEmpty() }?.let {
             put(QesSignatureRequest::signingAlgorithm.name, JsonObject(it))
         }
-        val responseUriKey = QesSignatureRequest.serializer().descriptor.getElementName(3)
-        properties[responseUriKey]?.let {
-            put(responseUriKey, it)
+        listOf("responseURI", QesSignatureRequest::signatureQualifier.name).forEach { key ->
+            properties[key]?.let { put(key, it) }
         }
     }
 }

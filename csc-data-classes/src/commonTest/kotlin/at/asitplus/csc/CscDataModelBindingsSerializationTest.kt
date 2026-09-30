@@ -35,10 +35,10 @@ val CscDataModelBindingsSerializationTest by matrixSuite {
             document = DocumentReference(
                 label = "Contract",
                 href = "https://example.test/contract.pdf",
-                checksum = Hash(byteArrayOf(7, 8, 9), ObjectIdentifier("2.16.840.1.101.3.4.2.1")),
             ),
             adesParameters = AdesParameters(signatureFormat = SignatureFormat.PADES),
             responseUri = "https://example.test/signatures/1",
+            checksum = Hash(byteArrayOf(7, 8, 9), ObjectIdentifier("2.16.840.1.101.3.4.2.1")),
         ).shouldRoundTripAs(
             """{"label":"Contract","href":"https://example.test/contract.pdf","checksum":{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"},"signature_format":"P","responseURI":"https://example.test/signatures/1"}""",
         )
