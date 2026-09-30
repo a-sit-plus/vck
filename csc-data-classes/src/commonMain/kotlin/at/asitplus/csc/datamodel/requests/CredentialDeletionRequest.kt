@@ -7,17 +7,20 @@ import kotlinx.serialization.Serializable
 /** CSC Data Model 1.0.0 section 9.2. */
 @Serializable
 data class CredentialDeletionRequest(
-    /** CSC Data Model 1.0.0 section 9.2: REQUIRED
+    /**
+     * CSC Data Model 1.0.0 section 9.2: REQUIRED
      * Identifier of the credential to delete.
      */
     @SerialName("credentialID")
     val credentialId: String,
-    /** CSC Data Model 1.0.0 section 9.2: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 9.2: OPTIONAL
      * Whether deletion also revokes the credential.
      */
     @SerialName("revoke")
     val revoke: Boolean? = null,
-    /** CSC Data Model 1.0.0 section 9.2: CONDITIONAL
+    /**
+     * CSC Data Model 1.0.0 section 9.2: CONDITIONAL
      * Required when [revoke] is `true`; MUST be ignored when [revoke] is absent or `false` (RFC 5280).
      */
     @SerialName("revocationReason")
