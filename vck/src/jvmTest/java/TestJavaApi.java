@@ -1,12 +1,29 @@
+import at.asitplus.iso.MobileSecurityObject;
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued;
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert;
 import at.asitplus.wallet.lib.agent.InMemoryIssuerCredentialStore;
+import at.asitplus.wallet.lib.agent.IssuerAgent;
+import at.asitplus.wallet.lib.agent.KeyMaterial;
+import at.asitplus.wallet.lib.agent.RandomSource;
 import at.asitplus.wallet.lib.agent.StatusListAgent;
+import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate;
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone;
+import at.asitplus.wallet.lib.cbor.SignCose;
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws;
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo;
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus;
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier;
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk;
+import at.asitplus.wallet.lib.jws.SignJwt;
+import at.asitplus.wallet.lib.jws.SignJwtExt;
 import io.ktor.http.Url;
+import kotlinx.serialization.json.JsonObject;
+import kotlin.time.Clock;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
+import java.util.Set;
 
 public class TestJavaApi {
 
@@ -56,4 +73,25 @@ public class TestJavaApi {
         }
     }
 
+    public void createIssuerAgentFromJavaApi() throws MalformedURLException {
+        URL identifier = new URL("https://example.com");
+        new IssuerAgent(identifier.toString());
+
+        KeyMaterial keyMaterial = new EphemeralKeyWithoutCert();
+        InMemoryIssuerCredentialStore store = new InMemoryIssuerCredentialStore();
+        new IssuerAgent(
+                identifier.toString(),
+                keyMaterial,
+                store,
+                Clock.System.INSTANCE,
+                -180_000L,
+                Set.of(keyMaterial.getSignatureAlgorithm()),
+                new SignJwtExt<JsonObject>(keyMaterial, new JwsHeaderCertOrJwk()),
+                new SignJwt<VerifiableCredentialJws>(keyMaterial, new JwsHeaderCertOrJwk()),
+                new SignCose<MobileSecurityObject>(
+                        keyMaterial, new CoseHeaderNone(), new CoseHeaderCertificate()),
+                RandomSource.Secure.INSTANCE,
+                new StatusListAgent()
+        );
+    }
 }

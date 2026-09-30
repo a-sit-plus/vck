@@ -7,4 +7,7 @@ val TestJavaApiTest by matrixSuite {
     "creates nested claims through the Java API" {
         TestJavaApi().createsNestedClaimFromJavaApi()
     }
+    "creates IssuerAgent from Java API" {
+        TestJavaApi().createIssuerAgentFromJavaApi()
+    }
 }
