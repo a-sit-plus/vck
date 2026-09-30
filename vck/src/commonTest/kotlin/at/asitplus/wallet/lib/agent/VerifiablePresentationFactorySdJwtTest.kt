@@ -1,9 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.csc.bindings.QesApprovalBinding
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -14,8 +18,13 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.decodeFromString
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -115,6 +124,32 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
                     }
                 }
             }
+        }
+        "QES approval is hashed over encoded transaction_data in the SD-JWT Key Binding JWT" {
+            val approvalJson = """{"type":"https://cloudsignatureconsortium.org/2025/qes-approval","credential_ids":["approval-credential"],"signatureQualifier":"eu_eidas_qes","numSignatures":1,"documentDigests":[{"label":"Contract","hash":"AQID"}],"hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"}"""
+            val encodedTransactionData = approvalJson.encodeToByteArray().encodeToString(Base64UrlStrict)
+            val request = PresentationRequestParameters(
+                nonce = uuid4().toString(),
+                audience = "https://verifier.example.org",
+                transactionData = listOf(JsonPrimitive(encodedTransactionData)),
+            )
+
+            val result = it.verifiablePresentationFactory.createVerifiablePresentation(
+                request = request,
+                credential = it.sdJwtCredential,
+                disclosedAttributes = emptyList(),
+            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val expectedDigest = Digest.SHA256.digest(encodedTransactionData.encodeToByteArray())
+            val keyBinding = result.sdJwt.keyBindingJws.shouldNotBeNull()
+            keyBinding.payload.qesApproval.shouldNotBeNull().contentEquals(expectedDigest) shouldBe true
+
+            val payloadJson = keyBinding.toString().split('.')[1]
+                .decodeToByteArray(Base64UrlStrict).decodeToString()
+            val encodedApproval = Json.parseToJsonElement(payloadJson).jsonObject
+                .getValue(QesApprovalBinding.SD_JWT_CLAIM).jsonPrimitive.content
+            Json.decodeFromString(ByteArrayBase64Serializer, "\"$encodedApproval\"")
+                .contentEquals(expectedDigest) shouldBe true
         }
     }
 }

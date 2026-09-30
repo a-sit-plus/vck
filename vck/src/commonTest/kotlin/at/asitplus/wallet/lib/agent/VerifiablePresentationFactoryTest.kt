@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.csc.bindings.QesApprovalBinding
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
@@ -9,6 +10,8 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemSpec
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemType
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreIsoMdoc
@@ -288,6 +291,26 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>().apply {
                 disclosedIsoClaimNames(namespace) shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_PORTRAIT)
             }
+        }
+
+        "QES approval is hashed over decoded transaction_data and embedded as mdoc device data" {
+            val approvalJson = """{"type":"https://cloudsignatureconsortium.org/2025/qes-approval","credential_ids":["approval-credential"],"signatureQualifier":"eu_eidas_qes","numSignatures":1,"documentDigests":[{"label":"Contract","hash":"AQID"}],"hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"}"""
+            val encodedTransactionData = approvalJson.encodeToByteArray().encodeToString(Base64UrlStrict)
+            val request = presentationRequest().copy(
+                transactionData = listOf(JsonPrimitive(encodedTransactionData)),
+            )
+
+            val result = it.verifiablePresentationFactory.createVerifiablePresentation(
+                request = request,
+                credential = it.isoCredential,
+                disclosedAttributes = emptyList(),
+            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
+
+            val deviceNamespaces = result.deviceResponse.documents.shouldNotBeNull().single().deviceSigned.namespaces.value
+            val approval = deviceNamespaces.entries[QesApprovalBinding.NAMESPACE]
+                ?.entries?.single { item -> item.key == QesApprovalBinding.DATA_ELEMENT_IDENTIFIER }
+                ?.value.shouldNotBeNull()
+            (approval as ByteArray).contentEquals(Digest.SHA256.digest(approvalJson.encodeToByteArray())) shouldBe true
         }
 
         "iso createVerifiablePresentation uses disclosedAttributes (dcql query results) an ZKP request without fallback" {
