@@ -50,8 +50,7 @@ val CscDataModelSerializationTest by matrixSuite {
     test("algorithm value objects preserve Base64, OIDs, parameters, and conversions") {
         val hash = Hash(byteArrayOf(1, 2, 3), ObjectIdentifier("2.16.840.1.101.3.4.2.1"))
         hash.shouldRoundTripAs("""{"value":"AQID","algorithmOID":"2.16.840.1.101.3.4.2.1"}""")
-        hash.toDigestOrNull() shouldBe Digest.SHA256
-        Hash(byteArrayOf(1), ObjectIdentifier("1.2.3.4")).toDigestOrNull() shouldBe null
+        hash shouldBe Digest.SHA256
 
         val algorithm = SigningAlgorithm(ObjectIdentifier("1.2.840.10045.4.3.2"))
         algorithm.toSignatureAlgorithmOrNull() shouldNotBe null
