@@ -9,28 +9,33 @@ import kotlinx.serialization.Serializable
 /** Remote document reference, CSC Data Model 1.0.0 section 8.3. */
 @Serializable
 data class DocumentReference(
-    /** CSC Data Model 1.0.0 section 8.3: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 8.3: OPTIONAL
      * Human-readable document label.
      */
     @SerialName("label")
     val label: String? = null,
-    /** CSC Data Model 1.0.0 section 8.3: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 8.3: OPTIONAL
      * Access method for the remote document.
      */
     @SerialName("access")
     val access: AccessControlMethod? = null,
-    /** CSC Data Model 1.0.0 section 8.3: REQUIRED
+    /**
+     * CSC Data Model 1.0.0 section 8.3: REQUIRED
      * URI locating the remote document.
      */
     @SerialName("href")
     val href: String,
-    /** CSC Data Model 1.0.0 section 8.3: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 8.3: OPTIONAL
      * Integrity checksum for the remote document.
      */
     @SerialName("checksum")
     @Serializable(with = ChecksumSerializer::class)
     val checksum: Hash? = null,
-    /** CSC Data Model 1.0.0 section 8.3: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 8.3: OPTIONAL
      * Application-defined document context.
      */
     @SerialName("circumstantialData")

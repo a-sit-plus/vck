@@ -19,13 +19,15 @@ import kotlinx.serialization.Transient
  */
 @Serializable
 data class Hash(
-    /** CSC Data Model 1.0.0 section 7.4: REQUIRED
+    /**
+     * CSC Data Model 1.0.0 section 7.4: REQUIRED
      * Digest value, encoded as Base64.
      */
     @SerialName("value")
     @Serializable(with = ByteArrayBase64Serializer::class)
     val value: ByteArray,
-    /** CSC Data Model 1.0.0 section 7.4: REQUIRED
+    /**
+     * CSC Data Model 1.0.0 section 7.4: REQUIRED
      * Object identifier of the digest algorithm.
      */
     @SerialName("algorithmOID")

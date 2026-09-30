@@ -9,28 +9,33 @@ import kotlinx.serialization.Serializable
 /** Document digest and authorization metadata, CSC Data Model 1.0.0 section 8.2. */
 @Serializable
 data class DocumentInfo(
-    /** CSC Data Model 1.0.0 section 8.2: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 8.2: OPTIONAL
      * Human-readable document label.
      */
     @SerialName("label")
     val label: String? = null,
-    /** CSC Data Model 1.0.0 section 8.2: REQUIRED
+    /**
+     * CSC Data Model 1.0.0 section 8.2: REQUIRED
      * Document digest, encoded as Base64.
      */
     @SerialName("hash")
     @Serializable(with = ByteArrayBase64Serializer::class)
     val hash: ByteArray,
-    /** CSC Data Model 1.0.0 section 8.2: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 8.2: OPTIONAL
      * Meaning of the supplied document digest; defaults to `dtbsr`.
      */
     @SerialName("hashType")
     val hashType: HashType? = null,
-    /** CSC Data Model 1.0.0 section 8.2: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 8.2: OPTIONAL
      * Signed document properties.
      */
     @SerialName("signed_props")
     val signedProps: List<Attribute>? = null,
-    /** CSC Data Model 1.0.0 section 8.2: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 8.2: OPTIONAL
      * Application-defined document context.
      */
     @SerialName("circumstantialData")

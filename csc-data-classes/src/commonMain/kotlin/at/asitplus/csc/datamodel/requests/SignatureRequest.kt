@@ -17,19 +17,23 @@ import kotlinx.serialization.Serializable
 @KeepGeneratedSerializer
 @Serializable(with = SignatureRequestSerializer::class)
 data class SignatureRequest(
-    /** CSC Data Model 1.0.0 section 9.4: REQUIRED
+    /**
+     * CSC Data Model 1.0.0 section 9.4: REQUIRED
      * Full document content or a remote document reference.
      */
     val document: SignatureRequestContent,
-    /** CSC Data Model 1.0.0 section 9.4: REQUIRED
+    /**
+     * CSC Data Model 1.0.0 section 9.4: REQUIRED
      * AdES signature format and document properties.
      */
     val adesParameters: AdesParameters = AdesParameters(),
-    /** CSC Data Model 1.0.0 section 9.4: REQUIRED
+    /**
+     * CSC Data Model 1.0.0 section 9.4: REQUIRED
      * Signature trust framework, such as `eu_eidas_qes`.
      */
     val signatureQualifier: SignatureQualifier,
-    /** CSC Data Model 1.0.0 section 9.4: OPTIONAL
+    /**
+     * CSC Data Model 1.0.0 section 9.4: OPTIONAL
      * URI for returning the created signature.
      */
     @SerialName("responseURI")
