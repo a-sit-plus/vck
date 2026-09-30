@@ -1,6 +1,7 @@
 package at.asitplus.csc.bindings
 
 import at.asitplus.csc.datamodel.basic.AdesParameters
+import at.asitplus.csc.datamodel.basic.SigningAlgorithm
 import at.asitplus.csc.datamodel.documents.SignatureRequestContent
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -15,6 +16,8 @@ data class QesSignatureRequest(
     val document: SignatureRequestContent,
     /** CSC Data Model 1.0.0 AdES format, conformance, and signed-property options. */
     val adesParameters: AdesParameters = AdesParameters(),
+    /** TS 119 432 Annex A.6.4: Algorithm requested for creating this document's signature. */
+    val signingAlgorithm: SigningAlgorithm? = null,
     /** CSC Data Model 1.0.0 callback URI for the signature result. */
     @SerialName("responseURI")
     val responseUri: String? = null,
