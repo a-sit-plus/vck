@@ -3,6 +3,7 @@
 Release 8.0.0 (unreleased):
 - Trusted issuers: Accept an exactly listed, CA-issued end-entity certificate as a direct credential signer, without requiring it to be self-signed
 - Credential issuance: Preserve credential-offer retrieval failures instead of masking them with a JSON parsing error
+- Build: Upgrade to android jvm target 17 for compatibility with `vck-longfellow`
 - Build: Upgrade to the 20260828 conventions plugin and AGP 9
     - migrate Android library targets to the new Kotlin Multiplatform Android library plugin API
     - no more conventions plugin submodule
@@ -29,6 +30,7 @@ Release 8.0.0 (unreleased):
     - Rename `ZkMetadata.IsoMdocZk.zkInfo` to `zkRequest`, change DCQL ZK numeric parameters from `Int` to `Long`,
       and update the ZK integration APIs to use `ZkSystemSpec`
     - Remove the unused `ZkInfo` and `ZkSystem` preparation abstractions
+    - Add `vck-longfellow` module containing an implementation of a registerable `Longfellow-ZK` backend
   - Credentials:
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject

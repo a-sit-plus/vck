@@ -24,6 +24,7 @@ class VcLibVersions(private val project: Project) {
     val jsonpath get() = versionOf("jsonpath")
     val obor get() = versionOf("obor")
     val semver get() = versionOf("semver")
+    val multipaz get() = versionOf("multipaz")
 
     val Jvm = JvmVersions()
 
