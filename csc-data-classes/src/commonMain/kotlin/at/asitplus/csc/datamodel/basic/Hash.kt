@@ -35,13 +35,11 @@ data class Hash(
     val algorithmOid: ObjectIdentifier,
 ) {
     @Transient
-    val digest: Digest? = Digest.entries.find { it.oid == algorithmOid }
+    val digest: Digest = Digest.entries.first { it.oid == algorithmOid }
 
     init {
         require(value.isNotEmpty()) { "value must not be empty" }
     }
-
-    fun toDigestOrNull(): Digest? = digest
 
     override fun equals(other: Any?): Boolean =
         this === other || other is Hash && value.contentEquals(other.value) && algorithmOid == other.algorithmOid
