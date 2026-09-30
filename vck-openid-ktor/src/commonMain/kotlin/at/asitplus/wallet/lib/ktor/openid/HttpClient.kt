@@ -1,6 +1,10 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.HttpExchange
+import at.asitplus.wallet.lib.HttpStep
+import at.asitplus.wallet.lib.PreparedHttpRequest
+import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -10,6 +14,7 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 
 @Deprecated(
@@ -78,5 +83,45 @@ private fun HttpClientConfig<*>.installResponseValidation() {
                 ?: return@handleResponseExceptionWithRequest
             throw HttpErrorResponseException(response, response.bodyAsText())
         }
+    }
+}
+
+/**
+ * Sends all requests of [exchange] with this client, and returns its result.
+ *
+ * Failures because of a non-success response are thrown as the deprecated [HttpErrorResponseException] of this module
+ * (built from the last ktor response), so that callers catching it keep catching everything until it is removed.
+ */
+@Suppress("DEPRECATION")
+internal suspend fun <T> HttpClient.execute(exchange: HttpExchange<T>): T {
+    var lastResponse: HttpResponse? = null
+    try {
+        var step = exchange.next().getOrThrow()
+        while (step is HttpStep.Send) {
+            val response = send(step.request.http)
+            lastResponse = response
+            step = exchange.next(ReceivedHttpResponse(response.status, response.headers, response.bodyAsText()))
+                .getOrThrow()
+        }
+        return (step as HttpStep.Done).value
+    } catch (error: at.asitplus.wallet.lib.HttpErrorResponseException) {
+        throw lastResponse
+            ?.let { HttpErrorResponseException(it, error.responseBody, error.oauth2Error, error.problemDetails) }
+            ?: error
+    }
+}
+
+/** Sends [prepared] without ktor's response validation, so that every status code reaches the exchange. */
+private suspend fun HttpClient.send(prepared: PreparedHttpRequest): HttpResponse = request(prepared.url) {
+    method = prepared.method
+    expectSuccess = false
+    prepared.headers.forEach { name, values ->
+        // the content type is set with the body, see below
+        if (!name.equals(HttpHeaders.ContentType, ignoreCase = true)) values.forEach { headers.append(name, it) }
+    }
+    prepared.body?.let { body ->
+        val contentType = prepared.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
+            ?: ContentType.Text.Plain
+        setBody(TextContent(body, contentType))
     }
 }

@@ -28,6 +28,18 @@ Release 9.0.0 (unreleased):
       classes from `vck-openid`
     - Deprecate `HttpErrorResponseException.dpopNonce()` and `HttpErrorResponseException.attestationChallenge()` in
       `vck-openid-ktor`, replace with `oauth2Error.dpopNonce(headers)` and `oauth2Error.attestationChallenge(headers)`
+- OAuth 2.0 client:
+    - Add `OAuth2ProtocolClient` in `vck-openid`, implementing the client side of OAuth 2.0 (PAR, JAR, token requests,
+      token introspection, userinfo) including DPoP and attestation-based client authentication, without sending
+      requests itself: each call returns an `HttpExchange`, whose requests (`ProtocolRequest`) callers send with any
+      HTTP stack
+    - `OAuth2KtorClient` sends the requests of `OAuth2ProtocolClient`, keeping its API
+    - Move `TokenResponseWithDpopNonce`, `LoadInstanceAttestationInput` and `OpenUrlForAuthnRequest` to `vck-openid`
+      (`at.asitplus.wallet.lib.oauth2`, the latter two nested in `OAuth2ProtocolClient`), deprecate the typealiases
+      left in `vck-openid-ktor`
+    - Deprecate `OAuth2KtorClient.callTokenIntrospection` with the parameters `token` (never used) and `retryCount`
+      (now ignored), replace with the overload without them
+    - Fix: A retried token introspection request passes `issuerMetadata` to `loadInstanceAttestation`
 
 Release 8.0.0:
 

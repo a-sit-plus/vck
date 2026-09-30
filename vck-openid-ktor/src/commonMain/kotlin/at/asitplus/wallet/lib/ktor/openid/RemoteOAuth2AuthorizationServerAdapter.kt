@@ -92,7 +92,6 @@ class RemoteOAuth2AuthorizationServerAdapter(
         oauth2Client.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
             request = request,
-            token = token,
             popAudience = publicContext
         ).toTokenInfo(token)
     }
