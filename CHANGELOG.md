@@ -246,6 +246,7 @@ Release 7.0.0:
     - In `SdJwtInputValidationResult` transport error during integrity validation in `integrityValidationResult` instead of `isIntegrityGood`
     - `vck-openid-ktor` HTTP clients throw `HttpErrorResponseException` for non-success responses, preserving OAuth errors, RFC 9457 problem details, and the raw response body
     - Add `ClaimToBeIssued(OpenId4VciClaimsPathPointer, value)` shorthand and Java-safe `ClaimToBeIssued.fromPath(List<String>, value)` for creating nested claims from string path segments.
+    - Additional Java-Safe APIs for `IssuerMetadata`, `ClaimDescrption`, `StatusIssuer`, `ReferencedTokenStore`
 - Trust Evaluation:
     - Add `LoTEFilterService` for extracting trust list certificates from `LoTE` based on `ServiceTypeIdentifier`
     - Add signature and time validity checks of certificate against the trust list
