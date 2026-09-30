@@ -31,14 +31,22 @@ Release 9.0.0 (unreleased):
       (now ignored), replace with the overload without them
     - Fix: A retried token introspection request passes `issuerMetadata` to `loadInstanceAttestation`
     - `RemoteOAuth2AuthorizationServerAdapter` loads the authorization server metadata and the user info through
-      `OAuth2ProtocolClient`; the DPoP proof for the userinfo endpoint uses the latest nonce of that endpoint's origin
-      (RFC 9449 9.) instead of the nonce of the token response
+      `OAuth2ProtocolClient`; the DPoP proof for the userinfo endpoint uses the nonce the userinfo endpoint provided,
+      instead of the nonce of the token response
+    - `OAuth2ProtocolClient` keeps DPoP nonces from responses of the authorization server (for requests with client
+      authentication) apart from those of resource servers (for requests with an access token), even on the same
+      origin, as RFC 9449 9. requires; `OAuth2KtorClient.applyToken` falls back to the latest nonce of the resource
+      server at that origin
 - OpenID for Verifiable Credential Issuance client:
     - Add `OpenId4VciProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the credential issuer
       (metadata, nonce, credential), built on `OAuth2ProtocolClient`, which handles DPoP for the credential issuer with
-      the nonces of the credential issuer's origin
+      the credential issuer's own nonces
     - Move `CredentialIdentifierInfo` to `vck-openid` (`at.asitplus.wallet.lib.oidvci`), deprecate the typealias left
       in `vck-openid-ktor`; the serialized form is unchanged
+    - `OpenId4VciClient` sends the requests of `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` in the order of each
+      flow, keeping its API
+    - Fix: Credential requests use only DPoP nonces of the credential issuer, never the one of the authorization server
+      from the token response, as nonces are only accepted by the server that issued them (RFC 9449 9.)
 
 Release 8.0.0:
 
