@@ -329,55 +329,33 @@ class WalletService @JvmOverloads constructor(
     }
 
     /**
-     * Creates the credential request to be sent to the credential issuer.
+     * Creates the credential request for exactly one credential, to be sent to the credential issuer.
      * Callers need to send the correct access token and other authentication.
      * For sample ktor code see `OpenId4VciClient` in `vck-openid-ktor`.
      *
+     * Only use this when the token response did not contain `credential_identifiers` in its
+     * `authorization_details`, because then `credential_configuration_id` MUST NOT be used (OID4VCI 1.0 Section 8.2),
+     * see [CredentialRequestParameters.credentialConfigurationId].
+     * Otherwise, use the overload accepting [TokenResponseParameters].
+     *
      * @param metadata the issuer's metadata, see [IssuerMetadata]
-     * @param credentialConfigurationId the exact `credential_configuration_id` to request
-     * @param credentialFormat which credential to request (needed to build the correct proof)
+     * @param credentialConfigurationId the exact `credential_configuration_id` to request, one of the keys from
+     * [IssuerMetadata.supportedCredentialConfigurations]
      * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
      * the value from there, exactly [ClientNonceResponse.clientNonce]
      */
     suspend fun createCredential(
         metadata: IssuerMetadata,
         credentialConfigurationId: String,
-        credentialFormat: SupportedCredentialFormat,
         clientNonce: String? = null,
         clock: Clock = Clock.System,
-    ): KmmResult<Collection<CredentialRequest>> = catching {
-        createCredentialRequestInternal(
-            metadata = metadata,
-            credentialConfigurationId = credentialConfigurationId,
-            credentialFormat = credentialFormat,
-            clientNonce = clientNonce,
-            clock = clock
-        ).getOrThrow().map {
-            encryptionService.wrapCredentialRequest(it, metadata).getOrThrow()
-        }
-    }
-
-    private suspend fun createCredentialRequestInternal(
-        metadata: IssuerMetadata,
-        credentialConfigurationId: String,
-        credentialFormat: SupportedCredentialFormat,
-        clientNonce: String? = null,
-        clock: Clock = Clock.System,
-    ): KmmResult<Collection<CredentialRequestParameters>> = catching {
-        listOf(
-            CredentialRequestParameters(
-                credentialConfigurationId = credentialConfigurationId,
-                proofs = createCredentialRequestProof(
-                    credentialIssuer = metadata.credentialIssuer,
-                    credentialFormat = credentialFormat,
-                    clientNonce = clientNonce,
-                    clock = clock
-                ).takeIf { it.jwt != null || it.attestation != null }, // do not send empty proofs
-                credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
-            )
-        ).also {
-            Napier.i("createCredentialRequest returns $it")
-        }
+    ): KmmResult<CredentialRequest> = catching {
+        val credentialFormat = metadata.supportedCredentialConfigurations[credentialConfigurationId]
+            ?: throw UnknownCredentialConfiguration(credentialConfigurationId)
+        CredentialRequestParameters(credentialConfigurationId = credentialConfigurationId)
+            .withProofAndEncryption(metadata, credentialFormat, clientNonce, clock)
+            .also { Napier.i("createCredentialRequest returns $it") }
+            .let { encryptionService.wrapCredentialRequest(it, metadata).getOrThrow() }
     }
 
     private suspend fun createCredentialRequestInternal(
@@ -389,20 +367,24 @@ class WalletService @JvmOverloads constructor(
         clock: Clock = Clock.System,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
         tokenResponse.toCredentialRequestParameters(metadata, credentialFormat, previouslyRequestedScope)
-            .map {
-                it.copy(
-                    proofs = createCredentialRequestProof(
-                        credentialIssuer = metadata.credentialIssuer,
-                        credentialFormat = credentialFormat,
-                        clientNonce = clientNonce,
-                        clock = clock
-                    ).takeIf { it.jwt != null || it.attestation != null }, // do not send empty proofs
-                    credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
-                )
-            }.also {
-                Napier.i("createCredentialRequest returns $it")
-            }
+            .map { it.withProofAndEncryption(metadata, credentialFormat, clientNonce, clock) }
+            .also { Napier.i("createCredentialRequest returns $it") }
     }
+
+    private suspend fun CredentialRequestParameters.withProofAndEncryption(
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String?,
+        clock: Clock,
+    ): CredentialRequestParameters = copy(
+        proofs = createCredentialRequestProof(
+            credentialIssuer = metadata.credentialIssuer,
+            credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
+            clock = clock
+        ).takeIf { it.jwt != null || it.attestation != null }, // do not send empty proofs
+        credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
+    )
 
     private fun TokenResponseParameters.toCredentialRequestParameters(
         metadata: IssuerMetadata,
@@ -511,19 +493,20 @@ class WalletService @JvmOverloads constructor(
     private fun String.mapScopeToCredentialRequestParameters(
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
-    ): Set<CredentialRequestParameters> = mapScopeToCredentialConfigurationId(metadata, credentialFormat)
+    ): Set<CredentialRequestParameters> = mapScopeToCredentialConfigurationIds(metadata, credentialFormat)
         .map { CredentialRequestParameters(credentialConfigurationId = it) }
         .toSet()
 
-    private fun String.mapScopeToCredentialConfigurationId(
+    private fun String.mapScopeToCredentialConfigurationIds(
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
     ): Set<String> {
         if (credentialFormat.scope == null)
             throw UnknownCredentialConfiguration("Credential does not support scope: $credentialFormat")
-        if (!this.trim().contains(credentialFormat.scope!!))
+        val scopes = split(" ").filter(String::isNotBlank)
+        if (credentialFormat.scope !in scopes)
             throw UnknownCredentialConfiguration(this)
-        return split(" ").mapNotNull { singleScope ->
+        return scopes.mapNotNull { singleScope ->
             metadata.supportedCredentialConfigurations.entries
                 .firstOrNull { it.value.scope == singleScope && it.value.format == credentialFormat.format }
                 ?.key
