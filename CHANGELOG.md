@@ -30,6 +30,9 @@ Release 9.0.0 (unreleased):
     - Deprecate `OAuth2KtorClient.callTokenIntrospection` with the parameters `token` (never used) and `retryCount`
       (now ignored), replace with the overload without them
     - Fix: A retried token introspection request passes `issuerMetadata` to `loadInstanceAttestation`
+    - `RemoteOAuth2AuthorizationServerAdapter` loads the authorization server metadata and the user info through
+      `OAuth2ProtocolClient`; the DPoP proof for the userinfo endpoint uses the latest nonce of that endpoint's origin
+      (RFC 9449 9.) instead of the nonce of the token response
 
 Release 8.0.0:
 
