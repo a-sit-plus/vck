@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
 import at.asitplus.wallet.lib.oauth2.dpopNonce
+import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
@@ -494,14 +495,9 @@ sealed interface CredentialIssuanceResult {
     ) : CredentialIssuanceResult
 }
 
-/**
- * Gets parsed from the credential issuer's metadata, essentially an entry from
- * [IssuerMetadata.supportedCredentialConfigurations]
- */
-@Serializable
-data class CredentialIdentifierInfo(
-    val issuerMetadata: IssuerMetadata,
-    val credentialIdentifier: String,
-    val supportedCredentialFormat: SupportedCredentialFormat,
+@Deprecated(
+    "Moved to vck-openid, which does not depend on a ktor client",
+    ReplaceWith("CredentialIdentifierInfo", "at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo"),
 )
+typealias CredentialIdentifierInfo = at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
 

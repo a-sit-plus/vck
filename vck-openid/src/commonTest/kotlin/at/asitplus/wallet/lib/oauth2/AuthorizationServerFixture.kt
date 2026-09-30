@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -25,15 +26,18 @@ import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
 /**
- * An authorization server (with attestation-based client authentication and DPoP) and a credential issuer, reachable
- * through [http], plus an [OAuth2ProtocolClient] to use them.
+ * An authorization server (with attestation-based client authentication and DPoP) and a credential issuer (issuing
+ * credentials from [DummyOAuth2IssuerCredentialDataProvider]), reachable through [http], plus an
+ * [OAuth2ProtocolClient] to use them.
  */
 class AuthorizationServerFixture(
     requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
@@ -46,6 +50,8 @@ class AuthorizationServerFixture(
     dpopAlgorithms: Set<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256),
     /** DPoP combined mode has a single key: the attested key is also the DPoP key. */
     useSingleKey: Boolean = false,
+    /** Origin of the credential issuer, which may differ from the one of the authorization server. */
+    credentialIssuerPublicContext: String = "https://issuer.example.com",
 ) {
     val strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet)
     val requestedScope = strategy.validScopes().split(" ").first()
@@ -84,6 +90,7 @@ class AuthorizationServerFixture(
         ),
         authorizationService = authorizationService,
         credentialSchemes = AttributeIndex.schemeSet,
+        publicContext = credentialIssuerPublicContext,
     )
 
     val issuedAttestationChallenges = mutableListOf<String>()
@@ -142,6 +149,36 @@ class AuthorizationServerFixture(
             .also { issuedAttestationChallenges += it }
 
     private suspend fun route(request: PreparedHttpRequest): ReceivedHttpResponse = when {
+        request.path == "/.well-known/oauth-authorization-server" -> jsonResponse(metadata())
+
+        request.path == "/.well-known/openid-credential-issuer" -> jsonResponse(credentialIssuer.metadata)
+
+        request.path.startsWith("/nonce") -> credentialIssuer.nonceWithDpopNonce().getOrThrow().let { result ->
+            jsonResponse(result.response) {
+                append(HttpHeaders.CacheControl, "no-store")
+                result.dpopNonce?.let { append(HttpHeaders.DPoPNonce, it) }
+            }
+        }
+
+        request.path.startsWith("/credential") -> credentialIssuer.credential(
+            authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull(),
+            params = WalletService.CredentialRequest.parse(request.body.orEmpty()).getOrThrow(),
+            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            request = request.toRequestInfo(),
+        ).fold(
+            onSuccess = {
+                when (it) {
+                    is CredentialIssuer.CredentialResponse.Plain -> jsonResponse(it.response)
+                    is CredentialIssuer.CredentialResponse.Encrypted -> ReceivedHttpResponse(
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT),
+                        body = it.response.serialize(),
+                    )
+                }
+            },
+            onFailure = { it.toErrorResponse() },
+        )
+
         request.path.startsWith("/challenge") && serveChallengeEndpoint -> {
             val response = authorizationService.attestationChallenge().getOrThrow().shouldNotBeNull()
             issuedAttestationChallenges += response.attestationChallenge
