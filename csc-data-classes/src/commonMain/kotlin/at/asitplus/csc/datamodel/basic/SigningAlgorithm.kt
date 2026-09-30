@@ -12,11 +12,15 @@ import kotlinx.serialization.Serializable
 /** Cryptographic signing algorithm parameters from CSC Data Model 1.0.0 section 7.6. */
 @Serializable
 data class SigningAlgorithm(
-    /** CSC Data Model 1.0.0 section 7.6: Signature algorithm object identifier. */
+    /** CSC Data Model 1.0.0 section 7.6: REQUIRED
+     * Signature algorithm object identifier.
+     */
     @SerialName("signAlgo")
     @Serializable(with = ObjectIdentifierStringSerializer::class)
     val signAlgo: ObjectIdentifier,
-    /** CSC Data Model 1.0.0 section 7.6: Optional DER-encoded algorithm parameters. */
+    /** CSC Data Model 1.0.0 section 7.6: CONDITIONAL
+     * Required by some signature algorithms; DER-encoded and Base64-encoded.
+     */
     @SerialName("signAlgoParams")
     @Serializable(with = Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,

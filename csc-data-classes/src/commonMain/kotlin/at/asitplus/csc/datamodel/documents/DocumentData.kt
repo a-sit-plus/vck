@@ -8,17 +8,25 @@ import kotlinx.serialization.Serializable
 /** Full document content, CSC Data Model 1.0.0 section 8.1. */
 @Serializable
 data class DocumentData(
-    /** CSC Data Model 1.0.0 section 8.1: Human-readable document label. */
+    /** CSC Data Model 1.0.0 section 8.1: OPTIONAL
+     * Human-readable document label.
+     */
     @SerialName("label")
     val label: String? = null,
-    /** CSC Data Model 1.0.0 section 8.1: Document bytes, encoded as Base64. */
+    /** CSC Data Model 1.0.0 section 8.1: REQUIRED
+     * Document bytes, encoded as Base64.
+     */
     @SerialName("document")
     @Serializable(with = ByteArrayBase64Serializer::class)
     val document: ByteArray,
-    /** CSC Data Model 1.0.0 section 8.1: Indicates original or formatted document bytes. */
+    /** CSC Data Model 1.0.0 section 8.1: OPTIONAL
+     * Indicates original or formatted document bytes; defaults to `sod`.
+     */
     @SerialName("documentType")
     val documentType: DocumentType = DocumentType.SOD,
-    /** CSC Data Model 1.0.0 section 8.1: Optional application-defined document context. */
+    /** CSC Data Model 1.0.0 section 8.1: OPTIONAL
+     * Application-defined document context.
+     */
     @SerialName("circumstantialData")
     @Serializable(with = ByteArrayBase64Serializer::class)
     val circumstantialData: ByteArray? = null,

@@ -10,11 +10,15 @@ import kotlinx.serialization.json.JsonObject
 /** CSC Data Model 1.0.0 section 9.1. */
 @Serializable
 data class CredentialCreationRequest(
-    /** CSC Data Model 1.0.0 section 9.1: Certificate policy OID for the credential to create. */
+    /** CSC Data Model 1.0.0 section 9.1: CONDITIONAL
+     * Required when creating a credential under a specified certificate policy.
+     */
     @SerialName("certificatePolicy")
     @Serializable(with = ObjectIdentifierStringSerializer::class)
     val certificatePolicy: ObjectIdentifier? = null,
-    /** CSC Data Model 1.0.0 section 9.1: Optional subject attributes for the new credential. */
+    /** CSC Data Model 1.0.0 section 9.1: OPTIONAL
+     * Subject attributes for the new credential.
+     */
     @SerialName("subjectData")
     val subjectData: JsonObject? = null,
 )

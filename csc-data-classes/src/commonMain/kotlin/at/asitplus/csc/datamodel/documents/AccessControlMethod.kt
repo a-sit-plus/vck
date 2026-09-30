@@ -3,13 +3,14 @@ package at.asitplus.csc.datamodel.documents
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** CSC Data Model 1.0.0 section 8.3: Access methods for documents referenced by URI. */
+/** CSC Data Model 1.0.0 section 8.3: REQUIRED
+ * Access method for a document referenced by URI; `type` is the required discriminator.
+ */
 @Serializable
 sealed class AccessControlMethod {
 
-    /**
-     * In this case, no further authorization is needed to access a remote resource. This does not preclude the option
-     * that the resource locator is secret, and access is thereby restricted to clients who know it.
+    /** CSC Data Model 1.0.0 section 8.3: REQUIRED
+     * Public access; the `type` discriminator is `public`.
      */
     @Serializable
     @SerialName("public")
@@ -18,7 +19,9 @@ sealed class AccessControlMethod {
     @Serializable
     @SerialName("OTP")
     data class OTP(
-        /** CSC Data Model 1.0.0 section 8.3: One-time password used to retrieve the document. */
+        /** CSC Data Model 1.0.0 section 8.3: REQUIRED
+         * One-time password used to retrieve the document.
+         */
         @SerialName("oneTimePassword")
         val oneTimePassword: String
     ) : AccessControlMethod()
