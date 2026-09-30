@@ -1,8 +1,8 @@
 package at.asitplus.openid
 
-import at.asitplus.csc.Hashes
-import at.asitplus.csc.enums.SignatureQualifier
-import at.asitplus.csc.serializers.HashesSerializer
+import at.asitplus.csc.api.Hashes
+import at.asitplus.csc.api.serializers.HashesSerializer
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.data.NonEmptyList
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery

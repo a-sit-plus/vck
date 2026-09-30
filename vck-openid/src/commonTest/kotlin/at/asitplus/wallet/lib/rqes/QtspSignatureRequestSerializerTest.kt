@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.csc.QtspSignatureRequest
-import at.asitplus.csc.SignDocRequestParameters
-import at.asitplus.csc.SignHashRequestParameters
-import at.asitplus.csc.collection_entries.Document
-import at.asitplus.csc.collection_entries.DocumentDigest
-import at.asitplus.csc.enums.ConformanceLevel
-import at.asitplus.csc.enums.SignatureFormat
-import at.asitplus.csc.enums.SignedEnvelopeProperty
+import at.asitplus.csc.api.QtspSignatureRequest
+import at.asitplus.csc.api.SignDocRequestParameters
+import at.asitplus.csc.api.SignHashRequestParameters
+import at.asitplus.csc.api.collection_entries.Document
+import at.asitplus.csc.api.collection_entries.DocumentDigest
+import at.asitplus.csc.datamodel.basic.ConformanceLevel
+import at.asitplus.csc.datamodel.basic.SignatureFormat
+import at.asitplus.csc.datamodel.basic.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
@@ -186,7 +186,7 @@ val QtspSignatureRequestSerializerTest by matrixSuite {
                             hashes = listOf("1234".decodeToByteArray(Base64Strict)),
                             hashAlgorithmOid = null,
                             signatureFormat = SignatureFormat.PADES,
-                            conformanceLevel = ConformanceLevel.ADESTLT,
+                            conformanceLevel = ConformanceLevel.ADESLT,
                             signAlgoOid = X509SignatureAlgorithm.RS512.oid,
                             signAlgoParams = null,
                             signedProps = null,

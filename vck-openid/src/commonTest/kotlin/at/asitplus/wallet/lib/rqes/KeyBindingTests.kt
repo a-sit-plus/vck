@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.csc.contentEquals
+import at.asitplus.csc.api.contentEquals
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance

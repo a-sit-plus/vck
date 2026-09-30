@@ -9,6 +9,9 @@ Release 8.0.0 (unreleased):
     - no more conventions plugin submodule
     - no more version catalog messing around
     - no more build hacks
+- CSC data classes:
+    - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
+    - Implement CSC Data Model 1.0.0
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input
     - Add `WalletRelyingParty` ETSI data classes for `WRPAC` and `WRPRC` validation

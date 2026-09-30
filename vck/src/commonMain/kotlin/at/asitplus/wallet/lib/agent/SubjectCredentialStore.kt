@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.csc.serializers.Base64X509CertificateSerializer
+import at.asitplus.csc.api.serializers.Base64X509CertificateSerializer
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.sha256
