@@ -271,9 +271,9 @@ class WalletService @JvmOverloads constructor(
     fun selectSupportedCredentialFormat(
         requestOptions: RequestOptions,
         metadata: IssuerMetadata,
-    ) = metadata.supportedCredentialConfigurations?.values?.filter {
+    ) = metadata.supportedCredentialConfigurations.values.filter {
         it.format.toRepresentation() == requestOptions.representation
-    }?.firstOrNull {
+    }.firstOrNull {
         when (requestOptions.representation) {
             PLAIN_JWT -> when (it) {
                 is SupportedCredentialFormatW3cVcJwt -> it.credentialDefinition.types
@@ -464,8 +464,8 @@ class WalletService @JvmOverloads constructor(
         if (!scope.trim().contains(credentialFormat.scope!!))
             throw OAuth2Exception.UnknownCredentialConfiguration(scope)
         return scope.split(" ").mapNotNull { singleScope ->
-            metadata.supportedCredentialConfigurations
-                ?.entries?.firstOrNull { it.value.scope == singleScope && it.value.format == credentialFormat.format }
+            metadata.supportedCredentialConfigurations.entries
+                .firstOrNull { it.value.scope == singleScope && it.value.format == credentialFormat.format }
                 ?.key
                 ?.let { CredentialRequestParameters(credentialConfigurationId = it) }
         }.toSet().ifEmpty {

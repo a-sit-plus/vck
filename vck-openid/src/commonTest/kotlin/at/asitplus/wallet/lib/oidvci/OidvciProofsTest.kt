@@ -123,7 +123,7 @@ val OidvciProofsTest by matrixSuite {
 }
 
 private fun IssuerMetadata.withEmptySupportedProofs(): IssuerMetadata = copy(
-    supportedCredentialConfigurations = supportedCredentialConfigurations!!.mapValues {
+    supportedCredentialConfigurations = supportedCredentialConfigurations.mapValues {
         when (val format = it.value) {
             is SupportedCredentialFormatIsoMdoc -> format.copy(supportedProofTypes = emptyMap())
             is SupportedCredentialFormatSdJwt -> format.copy(supportedProofTypes = emptyMap())
