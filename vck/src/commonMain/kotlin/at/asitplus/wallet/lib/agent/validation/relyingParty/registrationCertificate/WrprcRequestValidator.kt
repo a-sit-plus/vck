@@ -114,7 +114,7 @@ object WrprcRequestValidator {
 
         SD_JWT -> {
             val claim = attribute as? JsonClaimReference ?: return false
-            val segments = claim.normalizedJsonPath.segments.map { (it as? NameSegment)?.memberName }
+            val segments = claim.normalizedJsonPath.map { (it as? NameSegment)?.memberName }
             if (segments.contains(null)) return false
             if (segments.lastOrNull() == "vct") return true
             this.claim.any { it.path == segments }
