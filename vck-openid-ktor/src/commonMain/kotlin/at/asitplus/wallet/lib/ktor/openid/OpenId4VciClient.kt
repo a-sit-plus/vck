@@ -25,6 +25,7 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
+import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
 import at.asitplus.wallet.lib.oauth2.dpopNonce
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
