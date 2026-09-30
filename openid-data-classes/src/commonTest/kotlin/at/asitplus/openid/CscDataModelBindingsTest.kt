@@ -18,6 +18,8 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /** CSC Data Model Bindings v1.0.0 Sec. 6.2.1.2 */
 private val testvec: String = """{
@@ -57,11 +59,19 @@ private val testvec: String = """{
 }""".trimIndent()
 
 
-private fun checksumFromIntegrityString(value: String): Hash = Json.decodeFromString(
-    """{"value":"${value.substringAfter('-')}","algorithmOID":"2.16.840.1.101.3.4.2.1"}""",
+@OptIn(ExperimentalEncodingApi::class)
+private fun sha256Hash(base64: String) = Hash(
+    value = Base64.Default.decode(
+        base64.padEnd(
+            base64.length + (4 - base64.length % 4) % 4,
+            '='
+        )
+    ),
+    algorithmOid = Digest.SHA256.oid,
 )
 
 val CscDataModelBindingsTest by matrixSuite {
+
     test("qes request uses its binding type and flattened CSC signature requests") {
         val json = Json.encodeToString<TransactionData>(
             QesRequest(
@@ -69,7 +79,10 @@ val CscDataModelBindingsTest by matrixSuite {
                 signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
                 signatureRequests = listOf(
                     QesSignatureRequest(
-                        document = DocumentReference(label = "Contract", href = "https://example.test/contract.pdf"),
+                        document = DocumentReference(
+                            label = "Contract",
+                            href = "https://example.test/contract.pdf",
+                        ),
                         responseUri = "https://example.test/signatures/1",
                     ),
                 ),
@@ -78,13 +91,18 @@ val CscDataModelBindingsTest by matrixSuite {
         )
 
         json shouldBe """{"type":"${QesRequest.TYPE}","credential_ids":["certificate"],"signatureQualifier":"eu_eidas_qes","signatureRequests":[{"label":"Contract","href":"https://example.test/contract.pdf","responseURI":"https://example.test/signatures/1"}],"transaction_data_hashes_alg":["sha-384"]}"""
-        Json.decodeFromString<TransactionData>(json).shouldBeInstanceOf<QesRequest>()
+
+        Json.decodeFromString<TransactionData>(json)
+            .shouldBeInstanceOf<QesRequest>()
             .transactionDataHashAlgorithms shouldBe setOf("sha-384")
     }
 
-    test("TS 119 432 Annex A transaction request example round-trips") {
-        val signatureAlgorithm = SigningAlgorithm(ObjectIdentifier("1.2.840.113549.1.1.1"))
-        val request = QesRequest(
+    test("CSC Data Model Bindings 1.0.0 §6.2.1.2 transaction authorization request") {
+        val signatureAlgorithm = SigningAlgorithm(
+            ObjectIdentifier("1.2.840.113549.1.1.1")
+        )
+
+        val expected = QesRequest(
             credentialIds = setOf("xyz123"),
             signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
             signatureRequests = listOf(
@@ -93,7 +111,9 @@ val CscDataModelBindingsTest by matrixSuite {
                         label = "Example Contract",
                         access = AccessControlMethod.OTP("51623"),
                         href = "https://protected.rp.example/contract-01.pdf?token=HS9naJKWwp901hBkC34BIUHuH8374",
-                        checksum = checksumFromIntegrityString("sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI"),
+                        checksum = sha256Hash(
+                            "sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI"
+                        ),
                     ),
                     adesParameters = AdesParameters(
                         signatureFormat = SignatureFormat.PADES,
@@ -107,7 +127,9 @@ val CscDataModelBindingsTest by matrixSuite {
                         label = "Example Terms of Service",
                         access = AccessControlMethod.Public,
                         href = "https://public.rp-cdn.example/terms-and-conditions.pdf",
-                        checksum = checksumFromIntegrityString("sha256-HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0"),
+                        checksum = sha256Hash(
+                            "HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0"
+                        ),
                     ),
                     adesParameters = AdesParameters(
                         signatureFormat = SignatureFormat.PADES,
@@ -130,18 +152,29 @@ val CscDataModelBindingsTest by matrixSuite {
                 ),
             ),
         )
-        val encoded = Json.encodeToString<TransactionData>(request)
-        Json.parseToJsonElement(encoded) shouldBe Json.parseToJsonElement(testvec)
-        val decoded = Json.decodeFromString<TransactionData>(encoded).shouldBeInstanceOf<QesRequest>()
 
-        decoded.signatureRequests.size shouldBe 3
-        decoded.signatureRequests[0].signingAlgorithm shouldBe signatureAlgorithm
-        decoded.signatureRequests[0].document.shouldBeInstanceOf<DocumentReference>().checksum?.digest shouldBe
-                Digest.SHA256
-        decoded.signatureRequests[0].document.shouldBeInstanceOf<DocumentReference>().access shouldBe
-                AccessControlMethod.OTP("51623")
-        decoded.signatureRequests[2].document.shouldBeInstanceOf<DocumentReference>().href shouldBe
-                "data:application/json;base64,eyJleGFtcGxlS2V5IjoiaXhhbXBsZSJ9"
+        Json.parseToJsonElement(
+            Json.encodeToString<TransactionData>(expected)
+        ) shouldBe Json.parseToJsonElement(testvec)
+
+        val decoded = Json.decodeFromString<TransactionData>(testvec)
+            .shouldBeInstanceOf<QesRequest>()
+
+        decoded shouldBe expected
+
+        val contract = decoded.signatureRequests[0].document
+            .shouldBeInstanceOf<DocumentReference>()
+
+        contract.checksum?.digest shouldBe Digest.SHA256
+        contract.checksum?.value?.size shouldBe 32
+        contract.access shouldBe AccessControlMethod.OTP("51623")
+
+        val terms = decoded.signatureRequests[1].document
+            .shouldBeInstanceOf<DocumentReference>()
+
+        terms.checksum?.digest shouldBe Digest.SHA256
+        terms.checksum?.value?.size shouldBe 32
+        terms.access shouldBe AccessControlMethod.Public
     }
 
     test("qes approval request accepts documentInfo and documentReference") {
