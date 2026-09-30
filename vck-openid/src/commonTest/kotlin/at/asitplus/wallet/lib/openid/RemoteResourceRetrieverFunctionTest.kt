@@ -92,6 +92,7 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
             parameters.append("credential_offer_uri", offerUri)
         }.buildString()
 
+        @Suppress("DEPRECATION") // the only user of this retriever contract for credential offers
         walletService.parseCredentialOffer(input).getOrThrow() shouldBe offer
     }
 }
