@@ -318,7 +318,7 @@ class VerifiablePresentationFactory(
         val payload = JwsCompact(issuerSignedJwsSerialized).getPayload<JsonObject>()
             .getOrElse { throw PresentationException(it) }
         return requestedClaims.flatMapTo(mutableSetOf()) { claim ->
-            payload.loadDisclosuresForPath(claim.segments, disclosuresByDigest)
+            payload.loadDisclosuresForPath(claim, disclosuresByDigest)
         }
     }
 
