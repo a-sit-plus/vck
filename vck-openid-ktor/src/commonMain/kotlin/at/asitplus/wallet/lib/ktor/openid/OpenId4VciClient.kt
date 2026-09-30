@@ -14,6 +14,7 @@ import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
+import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -24,6 +25,7 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
+import at.asitplus.wallet.lib.oauth2.dpopNonce
 import at.asitplus.wallet.lib.oidvci.WalletService
 import at.asitplus.wallet.lib.oidvci.toRepresentation
 import com.benasher44.uuid.uuid4
@@ -340,7 +342,7 @@ class OpenId4VciClient(
             ).getOrThrow()
         }
     } catch (error: HttpErrorResponseException) {
-        error.dpopNonce()
+        error.oauth2Error.dpopNonce(error.headers)
             ?.takeIf { retryCount == 0 }
             ?.let { fetchCredential(url, request, tokenResponse, format, scheme, it, retryCount + 1) }
             ?: throw error
