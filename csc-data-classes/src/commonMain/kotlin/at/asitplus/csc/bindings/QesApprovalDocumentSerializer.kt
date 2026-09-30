@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonTransformingSerializer
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 
-/** Flattens either CSC document form into the qesApprovalRequest documentDigests array. */
+/** Applies the CSC Data Model Bindings 7.1 and TS 119 432 Annex B.6.2 document union on the wire. */
 object QesApprovalDocumentSerializer :
     JsonTransformingSerializer<QesApprovalDocument>(QesApprovalDocument.generatedSerializer()) {
 

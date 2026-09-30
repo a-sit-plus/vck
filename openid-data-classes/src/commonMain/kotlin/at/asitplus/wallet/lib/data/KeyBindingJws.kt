@@ -51,9 +51,12 @@ data class KeyBindingJws(
     val sdHash: ByteArray,
 
     /**
-     * OID4VP: Array of hashes, where each hash is calculated using a hash function over the strings received in the
-     * `transaction_data` request parameter (see `SignatureRequestParameters`). Each hash value ensures the integrity
-     * of, and maps to, the respective transaction data object.
+     * OID4VP: A non-empty array of strings where each element is a base64url-encoded hash.
+     * Each of these hashes is calculated using a hash function over the string received in the transaction_data
+     * request parameter (base64url decoding is not performed before hashing). Each hash value ensures the integrity of,
+     * and maps to, the respective transaction data object. If transaction_data_hashes_alg was specified in the request,
+     * the hash function MUST be one of its values. If transaction_data_hashes_alg was not specified in the request,
+     * the hash function MUST be sha-256.
      */
     @SerialName("transaction_data_hashes")
     val transactionDataHashes: List<@Serializable(ByteArrayBase64UrlSerializer::class) ByteArray>? = null,

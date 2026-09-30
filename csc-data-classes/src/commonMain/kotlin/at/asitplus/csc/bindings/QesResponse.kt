@@ -10,9 +10,11 @@ import kotlinx.serialization.builtins.ListSerializer
 /** CSC Data Model Bindings 1.0.0 section 6.2.2. */
 @Serializable
 data class QesResponse(
+    /** CSC Data Model Bindings 6.2.2: Signed documents returned inline. */
     @SerialName("documentWithSignature")
     @Serializable(with = Base64ByteArrayListSerializer::class)
     val documentWithSignature: List<ByteArray>? = null,
+    /** CSC Data Model Bindings 6.2.2: Detached signatures returned inline. */
     @SerialName("signatureObject")
     @Serializable(with = Base64ByteArrayListSerializer::class)
     val signatureObject: List<ByteArray>? = null,

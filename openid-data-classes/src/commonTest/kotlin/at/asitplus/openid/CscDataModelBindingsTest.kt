@@ -25,11 +25,13 @@ val CscDataModelBindingsTest by matrixSuite {
                         responseUri = "https://example.test/signatures/1",
                     ),
                 ),
+                transactionDataHashAlgorithms = setOf("sha-384"),
             ),
         )
 
-        json shouldBe """{"type":"${QesRequest.TYPE}","credential_ids":["certificate"],"signatureQualifier":"eu_eidas_qes","signatureRequests":[{"label":"Contract","href":"https://example.test/contract.pdf","responseURI":"https://example.test/signatures/1"}]}"""
+        json shouldBe """{"type":"${QesRequest.TYPE}","credential_ids":["certificate"],"signatureQualifier":"eu_eidas_qes","signatureRequests":[{"label":"Contract","href":"https://example.test/contract.pdf","responseURI":"https://example.test/signatures/1"}],"transaction_data_hashes_alg":["sha-384"]}"""
         Json.decodeFromString<TransactionData>(json).shouldBeInstanceOf<QesRequest>()
+            .transactionDataHashAlgorithms shouldBe setOf("sha-384")
     }
 
     test("qes approval request accepts documentInfo and documentReference") {
@@ -42,11 +44,13 @@ val CscDataModelBindingsTest by matrixSuite {
                 QesApprovalDocument(documentReference = DocumentReference(label = "Terms", href = "https://example.test/terms.pdf")),
             ),
             hashAlgorithmOid = ObjectIdentifier("2.16.840.1.101.3.4.2.1"),
+            transactionDataHashAlgorithms = setOf("sha-384"),
         )
 
         val json = Json.encodeToString<TransactionData>(request)
-        json shouldBe """{"type":"${QesApprovalRequest.TYPE}","credential_ids":["approval-credential"],"numSignatures":1,"signatureQualifier":"eu_eidas_qes","documentDigests":[{"label":"Contract","hash":"AQID"},{"label":"Terms","href":"https://example.test/terms.pdf"}],"hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"}"""
+        json shouldBe """{"type":"${QesApprovalRequest.TYPE}","credential_ids":["approval-credential"],"numSignatures":1,"signatureQualifier":"eu_eidas_qes","documentDigests":[{"label":"Contract","hash":"AQID"},{"label":"Terms","href":"https://example.test/terms.pdf"}],"hashAlgorithmOID":"2.16.840.1.101.3.4.2.1","transaction_data_hashes_alg":["sha-384"]}"""
         val decoded = Json.decodeFromString<TransactionData>(json).shouldBeInstanceOf<QesApprovalRequest>()
+        decoded.transactionDataHashAlgorithms shouldBe setOf("sha-384")
         decoded.documentDigests.size shouldBe 2
         decoded.documentDigests[0].documentInfo?.label shouldBe "Contract"
         decoded.documentDigests[0].documentInfo?.hash?.contentEquals(byteArrayOf(1, 2, 3)) shouldBe true

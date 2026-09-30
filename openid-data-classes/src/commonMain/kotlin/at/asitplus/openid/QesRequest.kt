@@ -10,18 +10,20 @@ import kotlinx.serialization.Serializable
 @Serializable
 @SerialName(QesRequest.TYPE)
 data class QesRequest(
-    /** OID4VP credential query identifiers; omitted when the transaction-data protocol does not require them. */
+    /** OID4VP: Credential-query identifiers; omitted when the transaction-data protocol does not require them. */
     @SerialName("credential_ids")
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     override val credentialIds: Set<String> = emptySet(),
 
-    /** The trust framework for the requested qualified signature. */
+    /** TS 119 432 Annex A.6.4: Trust framework for the requested signature, such as `eu_eidas_qes`. */
     @SerialName("signatureQualifier")
     val signatureQualifier: SignatureQualifier,
 
+    /** CSC Data Model Bindings 6.2.1 / TS 119 432 Annex A.6.4: Documents and signature options for this QES transaction. */
     @SerialName("signatureRequests")
     val signatureRequests: List<QesSignatureRequest>,
 
+    /** OID4VP Annex B.3.3.1: Hash algorithms for binding this transaction into an SD-JWT VC Key Binding JWT. */
     @SerialName("transaction_data_hashes_alg")
     override val transactionDataHashAlgorithms: Set<String>? = null,
 ) : TransactionData() {

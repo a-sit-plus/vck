@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonTransformingSerializer
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 
-/** Flattens a [at.asitplus.openid.QesSignatureRequest] into the CSC signatureRequest JSON object. */
+/** Applies the CSC Data Model Bindings 6.2.1 flattened signatureRequest shape on the wire. */
 object QesSignatureRequestSerializer :
     JsonTransformingSerializer<QesSignatureRequest>(QesSignatureRequest.generatedSerializer()) {
 
