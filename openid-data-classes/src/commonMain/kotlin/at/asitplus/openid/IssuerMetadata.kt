@@ -112,7 +112,7 @@ data class IssuerMetadata(
      * Section 4.1.1 to communicate to the Wallet which Credential is being offered, see [CredentialOffer].
      */
     @SerialName("credential_configurations_supported")
-    val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
+    val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>,
 
     /**
      * OPTIONAL. Duration specifying a PID or Attestation Provider's preference for the remaining status maintenance
@@ -159,7 +159,7 @@ data class IssuerMetadata(
         credentialRequestEncryption: SupportedAlgorithmsContainer? = null,
         batchCredentialIssuance: BatchCredentialIssuanceMetadata? = null,
         displayProperties: Set<DisplayProperties>? = null,
-        supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
+        supportedCredentialConfigurations: Map<String, SupportedCredentialFormat> = mapOf(),
         preferredClientStatusPeriodSeconds: Long? = null,
         subject: String? = null,
         issuedAtEpochSeconds: Long? = null,

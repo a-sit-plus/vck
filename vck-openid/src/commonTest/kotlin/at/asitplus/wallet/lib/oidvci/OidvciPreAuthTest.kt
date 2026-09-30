@@ -87,7 +87,7 @@ val OidvciPreAuthTest by matrixSuite {
                 credentialIssuer = it.issuer.publicContext,
                 schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
 
             val token = it.getToken(credentialOffer, setOf(credentialIdToRequest)).apply {
@@ -118,7 +118,7 @@ val OidvciPreAuthTest by matrixSuite {
                 credentialIssuer = it.issuer.publicContext,
                 schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
 
             val token = it.getToken(credentialOffer, setOf(credentialIdToRequest)).apply {
@@ -146,7 +146,7 @@ val OidvciPreAuthTest by matrixSuite {
                 credentialIssuer = it.issuer.publicContext,
                 schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
-            val freshFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
+            val freshFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
             val freshToken = it.getToken(freshOffer, setOf(credentialIdToRequest)).apply {
                 authorizationDetails.shouldNotBeNull()
@@ -183,8 +183,8 @@ val OidvciPreAuthTest by matrixSuite {
 
             authnDetails.forEach { authnDetail ->
                 authnDetail.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
-                val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                    .shouldNotBeNull()[authnDetail.credentialIdentifiers.shouldNotBeNull().first()]
+                val first = authnDetail.credentialIdentifiers.shouldNotBeNull().first()
+                val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[first]
                     .shouldNotBeNull()
                 it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
@@ -211,9 +211,8 @@ val OidvciPreAuthTest by matrixSuite {
             )
             val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)
             // OID4VCI 5.1.2 Using scope Parameter to Request Issuance of a Credential
-            val supportedCredentialFormat =
-                it.issuer.metadata.supportedCredentialConfigurations?.get(credentialIdToRequest)
-                    .shouldNotBeNull()
+            val supportedCredentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
+                .shouldNotBeNull()
             val scope = supportedCredentialFormat.scope
                 .shouldNotBeNull()
 
@@ -304,8 +303,8 @@ val OidvciPreAuthTest by matrixSuite {
                 credentialIssuer = it.issuer.publicContext,
                 schemes = setOf(AtomicAttribute2023 to PLAIN_JWT),
             )
-            val notOffered = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
-                .keys.first { id -> id != offered }
+            val notOffered = it.issuer.metadata.supportedCredentialConfigurations.keys
+                .first { id -> id != offered }
 
             shouldThrow<OAuth2Exception> {
                 it.getToken(credentialOffer, setOf(notOffered))
@@ -319,7 +318,7 @@ val OidvciPreAuthTest by matrixSuite {
                 credentialIssuer = it.issuer.publicContext,
                 schemes = setOf(AtomicAttribute2023 to PLAIN_JWT),
             )
-            val notOfferedScope = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
+            val notOfferedScope = it.issuer.metadata.supportedCredentialConfigurations
                 .filterKeys { id -> id != offered }.values
                 .firstNotNullOf { configuration -> configuration.scope }
 
