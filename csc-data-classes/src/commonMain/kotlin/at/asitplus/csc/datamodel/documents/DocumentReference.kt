@@ -20,6 +20,7 @@ data class DocumentReference(
     val href: String,
     /** CSC Data Model 1.0.0 section 8.3: Optional integrity checksum for the remote document. */
     @SerialName("checksum")
+    @Serializable(with = ChecksumSerializer::class)
     val checksum: Hash? = null,
     /** CSC Data Model 1.0.0 section 8.3: Optional application-defined document context. */
     @SerialName("circumstantialData")
@@ -38,10 +39,10 @@ data class DocumentReference(
             circumstantialData.contentEquals(other.circumstantialData)
 
     override fun hashCode(): Int {
-        var result = label?.hashCode() ?: 0
-        result = 31 * result + (access?.hashCode() ?: 0)
+        var result = label.hashCode()
+        result = 31 * result + access.hashCode()
         result = 31 * result + href.hashCode()
-        result = 31 * result + (checksum?.hashCode() ?: 0)
+        result = 31 * result + checksum.hashCode()
         result = 31 * result + (circumstantialData?.contentHashCode() ?: 0)
         return result
     }
