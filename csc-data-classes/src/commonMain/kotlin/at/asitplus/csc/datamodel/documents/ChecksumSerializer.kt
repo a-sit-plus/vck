@@ -2,6 +2,7 @@ package at.asitplus.csc.datamodel.documents
 
 import at.asitplus.csc.datamodel.basic.Hash
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.io.Base64Strict
 import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.base64.Base64ConfigBuilder
@@ -32,7 +33,7 @@ object ChecksumSerializer : KSerializer<Hash> {
         encoder.encodeString(
             "${digest.name.toLowerCasePreservingASCIIRules()}-${
                 value.value.encodeToString(
-                    Base64NoPaddingStrict
+                    Base64Strict
                 )
             }"
         )
@@ -42,11 +43,13 @@ object ChecksumSerializer : KSerializer<Hash> {
         val (digestName, valueString) = decoder.decodeString().split("-")
             .also { require(it.size == 2) { "Invalid hash format: $it" } }
         return Hash(
-            valueString.decodeToByteArray(Base64NoPaddingStrict),
+            valueString.decodeToByteArray(Base64Strict),
             Digest.entries.first { it.name.toLowerCasePreservingASCIIRules() == digestName }.oid
         )
     }
 
+    //TODO: Although theoretically defined like this no one actually uses no padding so we cant either
+    @Suppress("Unused")
     private val Base64NoPaddingStrict = Base64(config = Base64ConfigBuilder().apply {
         lineBreakInterval = 0
         encodeToUrlSafe = false
