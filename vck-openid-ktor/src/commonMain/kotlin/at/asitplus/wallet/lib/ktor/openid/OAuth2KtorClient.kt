@@ -29,6 +29,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -42,6 +43,8 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oauth2.OAuthClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationChallenge
 import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationPop
+import at.asitplus.wallet.lib.oauth2.attestationChallenge
+import at.asitplus.wallet.lib.oauth2.dpopNonce
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
@@ -519,13 +522,13 @@ class OAuth2KtorClient(
         retryCount: Int,
         action: suspend () -> T
     ): T = run {
-        updateDpopNonce(url, response.headers[HttpHeaders.DPoPNonce])
-        updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
-        (dpopNonce()
+        updateDpopNonce(url, headers[HttpHeaders.DPoPNonce])
+        updateAttestationChallenge(url, headers[HttpHeaders.OAuthClientAttestationChallenge])
+        (oauth2Error.dpopNonce(headers)
             ?.let { updateDpopNonce(url, it) }
             ?.takeIf { retryCount <= 1 } // may need two retries: one for DPoP, one for Attestation Challenge
             ?.let { action() })
-            ?: (attestationChallenge()
+            ?: (oauth2Error.attestationChallenge(headers)
                 ?.let { updateAttestationChallenge(url, it) }
                 ?.takeIf { retryCount <= 1 } // may need two retries: one for DPoP, one for Attestation Challenge
                 ?.let { action() })

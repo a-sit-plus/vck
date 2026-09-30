@@ -17,6 +17,17 @@ Release 9.0.0 (unreleased):
       `credential_configurations_supported` is REQUIRED in OID4VCI; issuer metadata without it now fails to deserialize
     - Add `WalletService.createCredential(metadata, credentialConfigurationId, ...)` to request exactly one credential
       by its `credential_configuration_id`
+- HTTP error handling:
+    - Add `HttpErrorResponseException` and `ProblemDetails` in `vck-openid` (package `at.asitplus.wallet.lib`), so
+      OAuth 2.0 errors and RFC 9457 problem details of non-success responses are available without a ktor client.
+      The exception carries `status` and `headers` instead of a ktor `HttpResponse`
+    - Add `OAuth2Error?.dpopNonce(Headers)` and `OAuth2Error?.attestationChallenge(Headers)` in `vck-openid`
+    - BREAKING: `HttpErrorResponseException` in `vck-openid-ktor` now extends the new class instead of ktor's
+      `ResponseException`; it keeps its constructor and `response`, and is still an `IllegalStateException`
+    - Deprecate `HttpErrorResponseException` and the typealias `ProblemDetails` in `vck-openid-ktor`, replace with the
+      classes from `vck-openid`
+    - Deprecate `HttpErrorResponseException.dpopNonce()` and `HttpErrorResponseException.attestationChallenge()` in
+      `vck-openid-ktor`, replace with `oauth2Error.dpopNonce(headers)` and `oauth2Error.attestationChallenge(headers)`
 
 Release 8.0.0:
 

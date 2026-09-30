@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -14,6 +15,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
+import at.asitplus.wallet.lib.oauth2.dpopNonce
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
@@ -128,7 +130,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
             oauth2Client.applyToken(params, userInfoEndpoint, HttpMethod.Get, dpopNonce)()
         }.body()
     } catch (error: HttpErrorResponseException) {
-        error.dpopNonce()
+        error.oauth2Error.dpopNonce(error.headers)
             ?.takeIf { retryCount == 0 }
             ?.let { fetchUserInfo(userInfoEndpoint, params, it, retryCount + 1) }
             ?: throw error
