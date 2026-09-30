@@ -10,10 +10,14 @@ import kotlinx.serialization.Serializable
 /** One or more signer-document representations, CSC Data Model 1.0.0 section 8.4. */
 @Serializable
 data class DocumentRepresentations(
-    /** CSC Data Model 1.0.0 section 8.4: Human-readable document label. */
+    /** CSC Data Model 1.0.0 section 8.4: OPTIONAL
+     * Human-readable document label.
+     */
     @SerialName("label")
     val label: String? = null,
-    /** CSC Data Model 1.0.0 section 8.4: Digests identifying available signer-document representations. */
+    /** CSC Data Model 1.0.0 section 8.4: REQUIRED
+     * One or more Base64 digests identifying signer-document representations.
+     */
     @SerialName("hashes")
     val hashes: Hashes,
 ): SignatureCreationRequestContent {

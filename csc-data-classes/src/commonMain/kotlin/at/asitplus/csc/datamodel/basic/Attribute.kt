@@ -7,10 +7,14 @@ import kotlinx.serialization.Serializable
 /** CSC Data Model 1.0.0 section 7.2. */
 @Serializable
 data class Attribute(
-    /** CSC Data Model 1.0.0 section 7.2: Name of the signed attribute. */
+    /** CSC Data Model 1.0.0 section 7.2: REQUIRED
+     * Name of the signed attribute.
+     */
     @SerialName("attribute_name")
     val attributeName: AttributeName,
-    /** CSC Data Model 1.0.0 section 7.2: Optional value of the signed attribute. */
+    /** CSC Data Model 1.0.0 section 7.2: OPTIONAL
+     * Value of the signed attribute.
+     */
     @SerialName("attribute_value")
     val attributeValue: String? = null,
 )

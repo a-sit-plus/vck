@@ -24,8 +24,9 @@ object ChecksumSerializer : KSerializer<Hash> {
         encoder: Encoder,
         value: Hash
     ) {
+        val digest = requireNotNull(value.digest) { "Unsupported checksum algorithm OID: ${value.algorithmOid}" }
         encoder.encodeString(
-            "${value.digest.name.toLowerCasePreservingASCIIRules()}-${
+            "${digest.name.toLowerCasePreservingASCIIRules()}-${
                 value.value.encodeToString(
                     Base64NoPaddingStrict
                 )
