@@ -7,14 +7,24 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 
 
-/** CSC Data Model Bindings 1.0.0 section 6.2.2. */
+/**
+ * CSC Data Model Bindings 1.0.0 section 6.2.2: CONDITIONAL
+ * Return the representation required by the signature format when no responseURI is specified; omit both fields
+ * when the response is sent to responseURI.
+ */
 @Serializable
 data class QesResponse(
-    /** CSC Data Model Bindings 6.2.2: Signed documents returned inline. */
+    /**
+     * CSC Data Model Bindings 1.0.0 section 6.2.2: CONDITIONAL
+     * Required when signatures are embedded in the document and no responseURI is specified; otherwise omit.
+     */
     @SerialName("documentWithSignature")
     @Serializable(with = Base64ByteArrayListSerializer::class)
     val documentWithSignature: List<ByteArray>? = null,
-    /** CSC Data Model Bindings 6.2.2: Detached signatures returned inline. */
+    /**
+     * CSC Data Model Bindings 1.0.0 section 6.2.2: CONDITIONAL
+     * Required for detached or enveloping signatures when no responseURI is specified; otherwise omit.
+     */
     @SerialName("signatureObject")
     @Serializable(with = Base64ByteArrayListSerializer::class)
     val signatureObject: List<ByteArray>? = null,

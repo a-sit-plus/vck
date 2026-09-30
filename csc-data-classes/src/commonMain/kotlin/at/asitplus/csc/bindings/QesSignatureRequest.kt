@@ -1,6 +1,8 @@
 package at.asitplus.csc.bindings
 
 import at.asitplus.csc.datamodel.basic.AdesParameters
+import at.asitplus.csc.datamodel.basic.Hash
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.csc.datamodel.basic.SigningAlgorithm
 import at.asitplus.csc.datamodel.documents.SignatureRequestContent
 import kotlinx.serialization.KeepGeneratedSerializer
@@ -8,17 +10,42 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
-/** A CSC Data Model Bindings 6.2.1 signature request flattened as required by TS 119 432 Annex A.6.4. */
+/**
+ * CSC Data Model Bindings 1.0.0 section 6.2.1 / ETSI TS 119 432 Annex A.6.4: REQUIRED
+ * Flattened QES signature request.
+ */
 @KeepGeneratedSerializer
 @Serializable(with = QesSignatureRequestSerializer::class)
 data class QesSignatureRequest(
-    /** CSC Data Model 1.0.0 document data or reference to be signed. */
+    /**
+     * CSC Data Model 1.0.0 sections 8.1 and 8.3: REQUIRED
+     * Document data or reference to be signed.
+     */
     val document: SignatureRequestContent,
-    /** CSC Data Model 1.0.0 AdES format, conformance, and signed-property options. */
+    /**
+     * CSC Data Model 1.0.0 section 7.1: REQUIRED
+     * AdES parameters; individual parameters are optional as specified.
+     */
     val adesParameters: AdesParameters = AdesParameters(),
-    /** TS 119 432 Annex A.6.4: Algorithm requested for creating this document's signature. */
+    /**
+     * ETSI TS 119 432 Annex A.6.4: OPTIONAL
+     * Signing algorithm for this document.
+     */
     val signingAlgorithm: SigningAlgorithm? = null,
-    /** CSC Data Model 1.0.0 callback URI for the signature result. */
+    /**
+     * CSC Data Model Bindings 1.0.0 section 6.2.1: OPTIONAL
+     * Callback URI for the signature result.
+     */
     @SerialName("responseURI")
     val responseUri: String? = null,
+    /**
+     * ETSI TS 119 432 Annex A.6.4: OPTIONAL
+     * Structured checksum; CSC Data Model Bindings uses an SRI string instead.
+     */
+    val checksum: Hash? = null,
+    /**
+     * ETSI TS 119 432 Annex A.6.4: REQUIRED
+     * CSC Data Model Bindings places the qualifier on the enclosing qesRequest.
+     */
+    val signatureQualifier: SignatureQualifier? = null,
 )
