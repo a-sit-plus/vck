@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
-/** Identifies the meaning of [DocumentInfo.hash]. */
+/** CSC Data Model 1.0.0 section 8.2: Identifies the meaning of [DocumentInfo.hash]. */
 @Serializable
 enum class HashType {
     @SerialName("sdr")

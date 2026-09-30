@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
-/** Identifies whether document bytes are the signer's original or formatted document. */
+/** CSC Data Model 1.0.0 section 8.1: Identifies original or formatted document bytes. */
 @Serializable
 enum class DocumentType {
     @SerialName("sod")

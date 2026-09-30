@@ -13,7 +13,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 
 /**
- * Flattens a [SignatureCreationRequest] into its CSC JSON union and reconstructs its component objects when decoding.
+ * CSC Data Model 1.0.0 section 9.3: Flattens a [SignatureCreationRequest] into its JSON union and reconstructs its
+ * component objects when decoding.
  */
 object SignatureCreationRequestSerializer :
     JsonTransformingSerializer<SignatureCreationRequest>(SignatureCreationRequest.generatedSerializer()) {

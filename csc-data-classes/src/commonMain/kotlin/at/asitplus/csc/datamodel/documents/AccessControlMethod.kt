@@ -3,7 +3,7 @@ package at.asitplus.csc.datamodel.documents
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-//TODO: currently contains legacy names from WP3 - maybe remove stale entries
+/** CSC Data Model 1.0.0 section 8.3: Access methods for documents referenced by URI. */
 @Serializable
 sealed class AccessControlMethod {
 
@@ -18,6 +18,7 @@ sealed class AccessControlMethod {
     @Serializable
     @SerialName("OTP")
     data class OTP(
+        /** CSC Data Model 1.0.0 section 8.3: One-time password used to retrieve the document. */
         @SerialName("oneTimePassword")
         val oneTimePassword: String
     ) : AccessControlMethod()
