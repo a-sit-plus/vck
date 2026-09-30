@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
-/** Classes that may be used as content in [SignatureRequest] */
+/** CSC Data Model 1.0.0 section 9.4: Document forms allowed in [SignatureRequest]. */
 @Serializable(with = SignatureRequestContent.JsonPolymorphicSerializer::class)
 sealed interface SignatureRequestContent {
     object JsonPolymorphicSerializer :

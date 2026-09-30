@@ -8,12 +8,14 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
-/** A Base64-encoded digest and the OID of the algorithm used to create it. */
+/** CSC Data Model 1.0.0 section 7.3: Base64-encoded digest and the OID of its algorithm. */
 @Serializable
 data class Hash(
+    /** CSC Data Model 1.0.0 section 7.3: Digest value, encoded as Base64. */
     @SerialName("value")
     @Serializable(with = ByteArrayBase64Serializer::class)
     val value: ByteArray,
+    /** CSC Data Model 1.0.0 section 7.3: Object identifier of the digest algorithm. */
     @SerialName("algorithmOID")
     @Serializable(with = ObjectIdentifierStringSerializer::class)
     val algorithmOid: ObjectIdentifier,
