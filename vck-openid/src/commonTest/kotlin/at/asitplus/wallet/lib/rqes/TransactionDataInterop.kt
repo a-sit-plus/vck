@@ -64,6 +64,7 @@ val TransactionDataInterop by matrixSuite {
             .shouldBe(input)
     }
 
+    @Suppress("DEPRECATION")
     "DifInputDescriptor Sanity Check" {
         val input = DifInputDescriptor(id = uuid4().toString())
         val serialized = joseCompliantSerializer.encodeToString(input).also {

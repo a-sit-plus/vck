@@ -127,6 +127,7 @@ data class AuthenticationRequestParameters(
     @SerialName("id_token_type")
     val idTokenType: String? = null,
 
+    @Suppress("DEPRECATION")
     @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
     @SerialName("presentation_definition")
     val presentationDefinition: PresentationDefinition? = null,

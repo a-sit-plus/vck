@@ -48,6 +48,7 @@ sealed interface CredentialPresentationRequest {
         )
 
         companion object {
+            @Suppress("DEPRECATION")
             @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
             fun forAttributeNames(vararg attributeName: String) = PresentationExchangeRequest(
                 PresentationDefinition(

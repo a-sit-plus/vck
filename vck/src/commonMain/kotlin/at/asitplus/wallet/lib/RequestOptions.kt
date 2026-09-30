@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.ConstraintFilter
-import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.FormatHolder
@@ -39,7 +38,7 @@ data class RequestOptionsCredential(
     val credentialScheme: CredentialScheme,
     /** Required representation, see [CredentialRepresentation]. */
     val representation: CredentialRepresentation = PLAIN_JWT,
-    /** ID to be used in [DifInputDescriptor], or [DCQLCredentialQuery] */
+    /** ID to be used in [DCQLCredentialQuery] */
     val id: String = uuid4().toString(),
     /**
      * List of JSON claim paths that shall be requested explicitly (selective disclosure),

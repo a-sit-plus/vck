@@ -209,6 +209,7 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
     }
 }
 
+@Suppress("DEPRECATION")
 private fun inputDescriptor(
     scheme: CredentialScheme,
     claim: String,

@@ -87,6 +87,7 @@ interface SubjectCredentialStore {
     @Serializable
     sealed interface StoreEntry {
         val credentialFormat: CredentialFormatEnum
+        @Deprecated("Use [credentialFormat] instead")
         val claimFormat: ClaimFormat
         val renewalInfo: CredentialRenewalInfo?
         val issuer: X509Certificate?
@@ -112,6 +113,7 @@ interface SubjectCredentialStore {
                 AttributeIndex.resolveIdentifier(schemeIdentifier, PLAIN_JWT)
 
             override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.JWT_VC
+            @Deprecated("Use [credentialFormat] instead")
             override val claimFormat: ClaimFormat = ClaimFormat.JWT_VP
         }
 
@@ -137,6 +139,7 @@ interface SubjectCredentialStore {
                 AttributeIndex.resolveIdentifier(schemeIdentifier, SD_JWT)
 
             override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.DC_SD_JWT
+            @Deprecated("Use [credentialFormat] instead")
             override val claimFormat: ClaimFormat = ClaimFormat.SD_JWT
         }
 
@@ -157,6 +160,7 @@ interface SubjectCredentialStore {
                 AttributeIndex.resolveIdentifier(schemeIdentifier, ISO_MDOC)
 
             override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.MSO_MDOC
+            @Deprecated("Use [credentialFormat] instead")
             override val claimFormat: ClaimFormat = ClaimFormat.MSO_MDOC
         }
 

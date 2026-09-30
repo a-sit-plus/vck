@@ -29,6 +29,8 @@ sealed class PresentationSubmissionValidator {
             return KmmResult.success(verifier)
         }
 
+        @Suppress("DEPRECATION")
+        @Deprecated("Presentation Exchange is deprecated, use DCQL or DeviceRequest instead")
         fun createInstance(
             presentationDefinition: PresentationDefinition,
         ): KmmResult<PresentationSubmissionValidator> = createInstance(

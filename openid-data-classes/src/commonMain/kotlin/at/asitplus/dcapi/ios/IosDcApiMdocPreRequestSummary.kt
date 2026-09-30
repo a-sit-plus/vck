@@ -25,6 +25,7 @@ data class IosDcApiMdocPreRequestSummary(
     fun isConsistentWith(rawRequest: IsoMdocRequest): Boolean =
         normalizedDocumentRequests() == rawRequest.normalizedDocumentRequests()
 
+    @Suppress("DEPRECATION")
     @Deprecated("Support for Presentation Exchange been removed, use toDeviceRequest")
     fun toDifInputDescriptors(): List<DifInputDescriptor> = listOf()
 

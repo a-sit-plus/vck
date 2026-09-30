@@ -65,6 +65,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 .shouldBe(params)
         }
 
+        @Suppress("DEPRECATION")
         "Json test $representation" {
             val authnRequest = joseCompliantSerializer.encodeToString(
                 verifierOid4vp.createAuthnRequest(reqOptions, byReference).getOrThrow()
