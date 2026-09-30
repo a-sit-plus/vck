@@ -4,8 +4,10 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import io.ktor.util.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 
 /** CSC Data Model 1.0.0 section 7.3: Base64-encoded digest and the OID of its algorithm. */
@@ -20,6 +22,9 @@ data class Hash(
     @Serializable(with = ObjectIdentifierStringSerializer::class)
     val algorithmOid: ObjectIdentifier,
 ) {
+    @Transient
+    val digest = Digest.entries.find { it.oid == algorithmOid } ?: throw IllegalArgumentException("Unknown Digest")
+
     init {
         require(value.isNotEmpty()) { "value must not be empty" }
     }
