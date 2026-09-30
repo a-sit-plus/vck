@@ -136,7 +136,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
                 candidates = listOf(ProtocolRequest.Nonce(PreparedHttpRequest(url = url, method = HttpMethod.Post))),
                 parse = { joseCompliantSerializer.decodeFromString<ClientNonceResponse>(it.body).clientNonce },
                 onResponse = { requestUrl, response ->
-                    oauth2Client.recordNoncesAndChallenges(requestUrl, response.headers)
+                    oauth2Client.recordResourceServerResponse(requestUrl, response.headers)
                 },
             )
         }
