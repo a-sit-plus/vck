@@ -71,6 +71,7 @@ import kotlin.time.Duration
  *  * [EUDI TS3 Wallet Unit Attestation 1.5.2](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
  *
  * DPoP nonces and attestation challenges are tracked per origin in this instance, and shared by all its exchanges.
+ * DPoP nonces from the authorization server and from resource servers are kept apart, even when both share an origin.
  */
 @OptIn(ExperimentalAtomicApi::class)
 class OAuth2ProtocolClient @JvmOverloads constructor(
@@ -147,27 +148,38 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         }
 
     /**
-     * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce
-     * issued by the server that provided it.
+     * Stores the latest DPoP nonce per origin that the authorization server provided, for requests with client
+     * authentication, see [RFC 9449 8.](https://datatracker.ietf.org/doc/html/rfc9449#name-authorization-server-provid).
      */
-    private val dpopNonceByOriginRef = AtomicReference(mapOf<String, String>())
+    private val authorizationServerDpopNonces = AtomicReference(mapOf<String, String>())
+
+    /**
+     * Stores the latest DPoP nonce per origin that a resource server (e.g. the credential issuer) provided, for requests
+     * with an access token, see [RFC 9449 9.](https://datatracker.ietf.org/doc/html/rfc9449#section-9): nonces of an
+     * authorization server and a resource server "are different and should not be confused with one another", even
+     * when both share an origin.
+     */
+    private val resourceServerDpopNonces = AtomicReference(mapOf<String, String>())
 
     private fun String.origin(): String = Url(this).let { parsed ->
         "${parsed.protocol.name}://${parsed.host}:${parsed.port}"
     }
 
-    private fun currentDpopNonce(url: String): String? = dpopNonceByOriginRef.load()[url.origin()]
+    private fun AtomicReference<Map<String, String>>.current(url: String): String? = load()[url.origin()]
 
-    private fun updateDpopNonce(url: String, nonce: String?): String? =
-        nonce?.takeIf { it.isNotBlank() }?.let { nonce ->
-            dpopNonceByOriginRef.update { it + (url.origin() to nonce) }
-            nonce
-        }
+    private fun AtomicReference<Map<String, String>>.updateNonce(url: String, nonce: String?) {
+        nonce?.takeIf { it.isNotBlank() }?.let { nonce -> update { it + (url.origin() to nonce) } }
+    }
 
-    /** Stores the DPoP nonce and the attestation challenge from any response to a request to [url]. */
-    internal fun recordNoncesAndChallenges(url: String, headers: Headers) {
-        updateDpopNonce(url, headers[HttpHeaders.DPoPNonce])
+    /** Stores the DPoP nonce and the attestation challenge from any response of the authorization server to [url]. */
+    internal fun recordAuthorizationServerResponse(url: String, headers: Headers) {
+        authorizationServerDpopNonces.updateNonce(url, headers[HttpHeaders.DPoPNonce])
         updateAttestationChallenge(url, headers[HttpHeaders.OAuthClientAttestationChallenge])
+    }
+
+    /** Stores the DPoP nonce from any response of a resource server, e.g. the credential issuer, to [url]. */
+    internal fun recordResourceServerResponse(url: String, headers: Headers) {
+        resourceServerDpopNonces.updateNonce(url, headers[HttpHeaders.DPoPNonce])
     }
 
     /**
@@ -526,7 +538,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
 
     /**
      * Headers to access [resourceUrl] with the access token from [tokenResponse], i.e. [HttpHeaders.Authorization]
-     * and, for DPoP-bound tokens, [HttpHeaders.DPoP]. Uses [dpopNonce], or the latest DPoP nonce from that origin.
+     * and, for DPoP-bound tokens, [HttpHeaders.DPoP]. Uses [dpopNonce], or the latest DPoP nonce that the resource
+     * server at that origin provided.
      */
     @JvmOverloads
     suspend fun accessTokenHeaders(
@@ -541,7 +554,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 url = resourceUrl,
                 httpMethod = httpMethod.value,
                 accessToken = tokenResponse.accessToken,
-                nonce = dpopNonce ?: currentDpopNonce(resourceUrl),
+                nonce = dpopNonce ?: resourceServerDpopNonces.current(resourceUrl),
                 randomSource = randomSource
             )
         } else null
@@ -606,7 +619,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         if (hasAttestationChallenge(resourceUrl)) return null
         val modes = oauthMetadata.clientAttestationModes()
         val needsChallenge = (clientAttestation != null && modes.normal) ||
-                (modes.combined && oauthMetadata.supportsDPoP() && currentDpopNonce(resourceUrl) == null)
+                (modes.combined && oauthMetadata.supportsDPoP() && authorizationServerDpopNonces.current(resourceUrl) == null)
         return if (needsChallenge) PreparedHttpRequest(challengeEndpoint, HttpMethod.Post) else null
     }
 
@@ -645,10 +658,10 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 httpMethod = httpMethod.value,
                 nonce = if (modes.combined) {
                     takeAttestationChallenge(resourceUrl)
-                        ?: currentDpopNonce(resourceUrl)
+                        ?: authorizationServerDpopNonces.current(resourceUrl)
                         ?: fetchedChallenge
                 } else {
-                    currentDpopNonce(resourceUrl)
+                    authorizationServerDpopNonces.current(resourceUrl)
                 },
                 randomSource = randomSource,
             )

@@ -1,9 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.openid.ClientNonceResponse
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
@@ -15,8 +18,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.oauth2.AuthorizationServerFixture
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.FakeHttpStack
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
+import at.asitplus.wallet.lib.oauth2.jsonResponse
 import at.asitplus.wallet.lib.oauth2.kinds
 import at.asitplus.wallet.lib.oauth2.path
 import at.asitplus.wallet.lib.oauth2.scripted
@@ -238,23 +243,69 @@ val OpenId4VciProtocolClientTest by matrixSuite {
 
     // DPoP nonces belong to the server that issued them
 
-    test("credential request uses the DPoP nonce of the credential issuer's origin") {
+    /**
+     * [RFC 9449 9.](https://datatracker.ietf.org/doc/html/rfc9449#section-9): nonces of an authorization server and a
+     * resource server "are different and should not be confused with one another", even on the same origin.
+     */
+    test("nonces of the authorization server and the credential issuer are kept apart on the same origin") {
         with(AuthorizationServerFixture(requirePAR = false)) {
-            val vci = vciClient()
+            val oauth2Client = OAuth2ProtocolClient(oAuth2Client = OAuth2Client(clientId = clientId))
+            val vci = OpenId4VciProtocolClient(WalletService(clientId = clientId), oauth2Client)
             val format = vci.selectFormat(this)
-            val token = preAuthorizedToken(format)
-            val tokenNonce = token.dpopNonce.shouldNotBeNull()
-            val issuerMetadata = credentialIssuer.metadata.copy(nonceEndpointUrl = null)
+            val issuerMetadata = credentialIssuer.metadata
+            val origin = Url(issuerMetadata.credentialEndpointUrl).let { "${it.protocol.name}://${it.host}" }
+            val oauthMetadata = OAuth2AuthorizationServerMetadata(
+                issuer = origin,
+                tokenEndpoint = "$origin/token",
+                dpopSigningAlgValuesSupportedStrings = setOf(JwsAlgorithm.Signature.ES256.identifier),
+            )
+            val scriptedHttp = FakeHttpStack(
+                scripted(
+                    jsonResponse(
+                        TokenResponseParameters(
+                            accessToken = uuid4().toString(),
+                            tokenType = TOKEN_TYPE_DPOP,
+                            refreshToken = uuid4().toString(),
+                            scope = format.scope,
+                        )
+                    ) { append(HttpHeaders.DPoPNonce, "as-nonce") },
+                    jsonResponse(ClientNonceResponse(clientNonce = uuid4().toString())) {
+                        append(HttpHeaders.DPoPNonce, "rs-nonce")
+                    },
+                )
+            )
+            val token = scriptedHttp.execute(
+                oauth2Client.requestTokenWithPreAuthorizedCode(
+                    oauthMetadata = oauthMetadata,
+                    authorizationServer = origin,
+                    preAuthorizedCode = uuid4().toString(),
+                    transactionCode = null,
+                    scope = format.scope,
+                    authorizationDetails = setOf(),
+                )
+            )
+            val clientNonce = scriptedHttp.execute(vci.nonceRequest(issuerMetadata).shouldNotBeNull())
             val request = vci.oid4vciService.createCredential(
-                token.params, issuerMetadata, format, previouslyRequestedScope = format.scope,
+                token.params, issuerMetadata, format, clientNonce, previouslyRequestedScope = format.scope,
             ).getOrThrow().first()
 
-            val credentialRequest = http.firstRequest<ProtocolRequest.Credential>(
-                vci.credentialRequest(request, issuerMetadata, token.params, format, vci.resolveCredentialScheme(format).shouldNotBeNull())
+            val credentialRequest = scriptedHttp.firstRequest<ProtocolRequest.Credential>(
+                vci.credentialRequest(
+                    request, issuerMetadata, token.params, format, vci.resolveCredentialScheme(format).shouldNotBeNull()
+                )
+            )
+            val refreshTokenRequest = scriptedHttp.firstRequest<ProtocolRequest.Token>(
+                oauth2Client.requestTokenWithRefreshToken(
+                    oauthMetadata = oauthMetadata,
+                    credentialIssuer = issuerMetadata.credentialIssuer,
+                    refreshToken = token.params.refreshToken.shouldNotBeNull(),
+                    scope = format.scope,
+                    authorizationDetails = setOf(),
+                )
             )
 
-            // The authorization server shares the origin with the credential issuer here
-            credentialRequest.toRequestInfo().dpop.shouldNotBeNull().payload.nonce shouldBe tokenNonce
+            credentialRequest.toRequestInfo().dpop.shouldNotBeNull().payload.nonce shouldBe "rs-nonce"
+            refreshTokenRequest.toRequestInfo().dpop.shouldNotBeNull().payload.nonce shouldBe "as-nonce"
         }
     }
 
