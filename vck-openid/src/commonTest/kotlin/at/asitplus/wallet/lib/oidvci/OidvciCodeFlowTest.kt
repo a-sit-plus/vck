@@ -142,8 +142,7 @@ val OidvciCodeFlowTest by matrixSuite {
         }
     } - {
         test("metadata validation") {
-            val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
-                .shouldNotBeEmpty()
+            val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeEmpty()
             issuerCredentialFormats.forEach { entry: Map.Entry<String, SupportedCredentialFormat> ->
                 entry.key.shouldNotBeEmpty()
                 entry.value.shouldNotBeNull().apply {
@@ -412,8 +411,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                .shouldNotBeNull()[credentialConfigurationId]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialConfigurationId]
                 .shouldNotBeNull()
             val token = it.getToken(authorizationDetails)
 
@@ -441,8 +439,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                .shouldNotBeNull()[credentialConfigurationId]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialConfigurationId]
                 .shouldNotBeNull()
             val token = it.getToken(authorizationDetails, false) // do not set authn details in token request
 
