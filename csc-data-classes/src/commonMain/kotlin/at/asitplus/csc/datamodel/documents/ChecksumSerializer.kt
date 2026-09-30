@@ -2,7 +2,6 @@ package at.asitplus.csc.datamodel.documents
 
 import at.asitplus.csc.datamodel.basic.Hash
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.base64.Base64ConfigBuilder
@@ -37,7 +36,10 @@ object ChecksumSerializer : KSerializer<Hash> {
     override fun deserialize(decoder: Decoder): Hash {
         val (digestName, valueString) = decoder.decodeString().split("-")
             .also { require(it.size == 2) { "Invalid hash format: $it" } }
-        return Hash(valueString.decodeToByteArray(Base64NoPaddingStrict), Digest.entries.first { it.name.toLowerCasePreservingASCIIRules() == digestName }.oid)
+        return Hash(
+            valueString.decodeToByteArray(Base64NoPaddingStrict),
+            Digest.entries.first { it.name.toLowerCasePreservingASCIIRules() == digestName }.oid
+        )
     }
 
     private val Base64NoPaddingStrict = Base64(config = Base64ConfigBuilder().apply {
