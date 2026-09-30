@@ -12,6 +12,11 @@ Release 9.0.0 (unreleased):
     - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
 - Status lists:
     - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
+- OpenID for Verifiable Credential Issuance:
+    - BREAKING: Make `IssuerMetadata.supportedCredentialConfigurations` non-null without a default, as
+      `credential_configurations_supported` is REQUIRED in OID4VCI; issuer metadata without it now fails to deserialize
+    - Add `WalletService.createCredential(metadata, credentialConfigurationId, ...)` to request exactly one credential
+      by its `credential_configuration_id`
 
 Release 8.0.0:
 
