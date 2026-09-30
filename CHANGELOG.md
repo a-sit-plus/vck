@@ -43,6 +43,12 @@ Release 9.0.0 (unreleased):
     - `RemoteOAuth2AuthorizationServerAdapter` loads the authorization server metadata and the user info through
       `OAuth2ProtocolClient`; the DPoP proof for the userinfo endpoint uses the latest nonce of that endpoint's origin
       (RFC 9449 9.) instead of the nonce of the token response
+- OpenID for Verifiable Credential Issuance client:
+    - Add `OpenId4VciProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the credential issuer
+      (metadata, nonce, credential), built on `OAuth2ProtocolClient`, which handles DPoP for the credential issuer with
+      the nonces of the credential issuer's origin
+    - Move `CredentialIdentifierInfo` to `vck-openid` (`at.asitplus.wallet.lib.oidvci`), deprecate the typealias left
+      in `vck-openid-ktor`; the serialized form is unchanged
 
 Release 8.0.0:
 
