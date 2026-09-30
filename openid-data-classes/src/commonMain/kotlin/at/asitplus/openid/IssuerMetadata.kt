@@ -1,8 +1,10 @@
 package at.asitplus.openid
 
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
+import kotlin.time.Instant
 
 /**
  * Metadata about the credential issuer in
@@ -119,4 +121,26 @@ data class IssuerMetadata(
     @SerialName("preferred_client_status_period")
     @Serializable(with = DurationSecondsIntSerializer::class)
     val preferredClientStatusPeriod: Duration? = null,
+
+    /**
+     * OID4VCI: REQUIRED in signed metadata. String matching the Credential Issuer Identifier, see
+     * [credentialIssuer]. Absent from unsigned metadata.
+     */
+    @SerialName("sub")
+    val subject: String? = null,
+
+    /**
+     * OID4VCI: REQUIRED in signed metadata. Time at which the signed metadata was issued. Absent from unsigned
+     * metadata.
+     */
+    @SerialName("iat")
+    @Serializable(with = InstantLongSerializer::class)
+    val issuedAt: Instant? = null,
+
+    /**
+     * OID4VCI: OPTIONAL in signed metadata. Time at which the signed metadata expires. Absent from unsigned metadata.
+     */
+    @SerialName("exp")
+    @Serializable(with = InstantLongSerializer::class)
+    val expiration: Instant? = null,
 )

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.KmmResult
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
@@ -16,8 +17,6 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.toTokenStatusResolver
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -57,7 +56,7 @@ class ProofValidator @JvmOverloads constructor(
     /** Time leeway for verification of timestamps in proof elements in credential requests. */
     private val timeLeeway: Duration = 5.minutes,
     /** Callback to verify a received [KeyAttestationJwt] proof in credential requests. */
-    @Deprecated("Set a statusListTokenResolver and provide keyAttestationIssuer instead")
+    @Deprecated("Set a statusListTokenResolver and provide verifyKeyAttestationSignature instead")
     private val verifyAttestationProof: suspend (JwsCompactTyped<KeyAttestationJwt>) -> Boolean = { true },
     /** Turn on to require key attestation support in the [validProofTypes]. */
     private val requireKeyAttestation: Boolean = false,
@@ -65,8 +64,15 @@ class ProofValidator @JvmOverloads constructor(
     private val clientNonceService: NonceService = DefaultNonceService(),
     /** Used to verify the validity of a key attestation. */
     private val statusListTokenResolver: StatusListTokenResolver? = null,
-    /** Used to verify the signature of the key attestation statements. */
-    private val keyAttestationIssuer: KeyMaterial = EphemeralKeyWithoutCert()
+    /**
+     * Used to verify the signature of the key attestation statements, i.e. to establish trust in the wallet provider.
+     * Without a configured verifier, key attestations are rejected. To accept key attestations of trusted
+     * wallet providers, e.g. as listed in a List of Trusted Entities, pass
+     * [at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate] with their certificates.
+     */
+    private val verifyKeyAttestationSignature: VerifyJwsObjectFun = VerifyJwsObjectFun {
+        KmmResult.failure(IllegalStateException("No trusted key attestation verifier configured"))
+    },
 ) {
 
     /** Valid proof types for [SupportedCredentialFormat.supportedProofTypes]. */
@@ -227,7 +233,7 @@ class ProofValidator @JvmOverloads constructor(
             throw InvalidProof("TokenStatus invalid")
         }
 
-        verifyJwsSignatureWithKey(jws, keyAttestationIssuer.jsonWebKey)
+        verifyKeyAttestationSignature(jws)
             .onFailure { throw InvalidProof("key attestation not verified: $this", it) }
 
         return payload.attestedKeys.map { it.toCryptoPublicKey().getOrThrow() }

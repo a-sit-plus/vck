@@ -14,8 +14,8 @@ import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.decodeFromFragmentOrQuery
 import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
@@ -54,22 +54,19 @@ class ResponseParser @JvmOverloads constructor(
 
     /** Treat input as POST body, parse parameters */
     private fun String.parseAsPostBody() = if (contains("=")) {
-        decodeFromPostBody<AuthenticationResponseParameters>()
+        decodeFromFormUrlEncoded<AuthenticationResponseParameters>()
             .let { ResponseParametersFrom.Post(it) }
     } else null
 
     private fun parseUrlSafe(input: String) =
         catchingUnwrapped { input.parseAsUrl() }.getOrNull()
 
-    /** Treat input as URL, parse fragment or query */
+    /**
+     * Treat input as URL, parse fragment or query. Returns `null` if the input carries neither, which is how a POST
+     * body gets here: [Url] happily parses it as a path, and only the absence of parameters tells us it is not a URL.
+     */
     private fun String.parseAsUrl() = with(Url(this)) {
-        if (encodedFragment.isNotEmpty()) {
-            encodedFragment.decodeFromUrlQuery<AuthenticationResponseParameters>()
-                .let { ResponseParametersFrom.Uri(this, it) }
-        } else {
-            encodedQuery.decodeFromUrlQuery<AuthenticationResponseParameters>()
-                .let { ResponseParametersFrom.Uri(this, it) }
-        }
+        decodeFromFragmentOrQuery<AuthenticationResponseParameters>()?.let { ResponseParametersFrom.Uri(this, it) }
     }
 
     /**

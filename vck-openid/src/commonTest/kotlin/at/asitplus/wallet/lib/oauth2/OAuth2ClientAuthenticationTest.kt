@@ -47,7 +47,6 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
     fixture {
         runBlocking {
             val walletProviderCa = TestCertificateAuthority()
-            val walletProviderCaCert = walletProviderCa.certificate()
             val attesterBackend = SignJwt<JsonWebToken>(walletProviderCa.issue(), JwsHeaderCertOrJwk())
             val clientKey = EphemeralKeyWithSelfSignedCert()
             val client = OAuth2Client()
@@ -65,7 +64,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 clientAuthenticationService = AttestationBasedClientAuthenticationService(
                     issuerIdentifier = AUTHORIZATION_SERVER,
                     verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                        trustedIssuers = { setOf(walletProviderCaCert) }
+                        trustedIssuers = { setOf(walletProviderCa.certificate) }
                     ),
                 )
             )
@@ -86,7 +85,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 val clientAttestationPop = clientAttestationPop
                 val signClientAttestationPop = signClientAttestationPop
                 val attesterBackend = attesterBackend
-                val walletProviderCaCert = walletProviderCaCert
+                val walletProviderCaCert = walletProviderCa.certificate
 
                 suspend fun signPop(payload: JsonWebToken) = signClientAttestationPop(
                     type = JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
@@ -523,7 +522,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 clientAuthenticationService = AttestationBasedClientAuthenticationService(
 
                     verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                        trustedIssuers = { setOf(TestCertificateAuthority().certificate()) }
+                        trustedIssuers = { setOf(TestCertificateAuthority().certificate) }
                     ),
                 ),
             )

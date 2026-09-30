@@ -1,6 +1,7 @@
 # Changelog
 
 Release 8.0.0 (unreleased):
+- Trusted issuers: Accept an exactly listed, CA-issued end-entity certificate as a direct credential signer, without requiring it to be self-signed
 - Credential issuance: Preserve credential-offer retrieval failures instead of masking them with a JSON parsing error
 - Build: Upgrade to android jvm target 17 for compatibility with `vck-longfellow`
 - Build: Upgrade to the 20260828 conventions plugin and AGP 9
@@ -10,10 +11,13 @@ Release 8.0.0 (unreleased):
     - no more build hacks
 - ETSI data classes:
     - Normalize decoded RFC 5646 language tags to lowercase instead of rejecting non-lowercase input
+    - Add `WalletRelyingParty` ETSI data classes for `WRPAC` and `WRPRC` validation
 - ISO mdoc data classes:
   - BREAKING: Update `ZkDocumentData.timestamp` type to `Instant` instead of `DateTime` to conform to upcoming ISO-18013-5 draft
   - Add support for correctly (de-)serializing RFC9360-conformant single-chain cbor-encoded `ZkDocumentData`
   - Add missing equality overrides for `ZkDocumentData`, `ZkSignedItem`
+- Openid data classes:
+  - Add fields `eUWrprc` and `euWrpRegistrarInfo` to data class `DocRequestInfo`
 - ISO mDoc Zero-Knowledge Proofs:
   - Add the `ZkRequest`-based ISO mDoc ZK presentation path and convert DCQL ZK metadata into
   `ZkRequest` for holder-side proof generation
@@ -30,6 +34,7 @@ Release 8.0.0 (unreleased):
   - Credentials:
     - In `SubjectCredentialStore.StoreEntry` make the `schemeIdentifier` non-nullable. Deserialization of old previously stored entries need to be handled by calling applications.
     - Derive SD-JWT Digital Credentials API identifiers from the JWT ID or serialized credential instead of the subject
+    - Preserve and validate every status mechanism when a credential's `status` object contains both `status_list` and `identifier_list`; combined values are exposed through `StatusListInfo.tokenStatusInfo` while the 7.0.1 `RevocationListInfo` properties and singleton behavior remain compatible
 - Verifiable Presentations:
     - Compute ISO mDoc `DeviceAuthentication` signatures automatically using the `calcIsoSessionTranscript` callback instead of requiring `calcIsoDeviceSignaturePlain` 
     - Replace `PresentationRequestParameters.calcIsoDeviceSignaturePlain` with the `PresentationRequestParameters.calcIsoSessionTranscript` callback to return a nullable `SessionTranscript`. DeviceSignature and DeviceAuth is now calculated based on the Transcript.
@@ -63,6 +68,7 @@ Release 8.0.0 (unreleased):
     - Send `wallet_metadata` and `wallet_nonce` only when fetching the request object with `request_uri_method=post`
     - Terminate request processing if the request object does not carry back the `wallet_nonce` we sent, as required by OpenID4VP 1.0, Section 5.10.1
     - Reject a JAR request whose request object can not be retrieved from `request_uri`, that carries neither `request` nor `request_uri`, or whose request object nests another `request`/`request_uri` (RFC 9101, Section 6.2), with `invalid_request` in `RequestParser`
+    - Retain the underlying payload deserialization failure as the cause of `invalid_request` when parsing a structurally valid signed request object
     - In `OpenId4VpHolder` reject requests that are not authorization requests, e.g. RQES signature requests, with `invalid_request` instead of failing with a `ClassCastException` during request validation
     - Pass `requireEncryptedRequests = true` to `OpenId4VpHolder` to reject a plain request object served at a `request_uri` fetched with POST
     - Add `decryptedFrom` to `RequestParametersFrom.Jws` and `RequestParametersFrom.Json`, holding the header of the JWE a request was decrypted from, and `requestWasEncrypted` to `AuthorizationResponsePreparationState`
@@ -71,6 +77,9 @@ Release 8.0.0 (unreleased):
     - Deprecate `CreationOptions.RequestByReference` at error level: it serves an unsigned request object by reference, which OpenID4VP 1.0, Section 5.10.1 forbids, instead use `CreationOptions.SignedRequestByReference`
 - OpenID for Verifiable Credential Issuance:
     - Rework validation of key attestation statements
+    - In `ProofValidator` replace the unreleased `keyAttestationIssuer` with `verifyKeyAttestationSignature` to accept key attestations of trusted wallet providers, e.g. with `VerifyJwsObjectTrustedCertificate`; key attestations are rejected unless a trusted verifier is configured
+    - Sign metadata in `CredentialIssuer.signedMetadata()` as per OpenID4VCI 1.0, Section 12.2.3, i.e. with `typ` set to `openidvci-issuer-metadata+jwt` and the claims `sub` and `iat`, added as `subject`, `issuedAt` and `expiration` to `IssuerMetadata`
+    - Add `displayProperties` to `CredentialIssuer`, to include them in both `metadata` and `signedMetadata()`
     - Make sure a `nonce` provided by the credential issuer can only be used for one request to the credential endpoint
     - Security fix: encrypt the credential request whenever it carries `credential_response_encryption`, as required by OpenID4VCI 1.0, i.e. *"Credential Request encryption MUST be used if the `credential_response_encryption` parameter is included, to prevent it being substituted by an attacker"*. `WalletEncryptionService` previously sent its response encryption key in a plain request unless request encryption was required by either side, and `CredentialIssuer` accepted such requests
     - In `WalletEncryptionService`, if the issuer publishes no key to encrypt the request with, `credential_response_encryption` is omitted, or the request fails if the issuer requires response encryption
@@ -101,9 +110,27 @@ Release 8.0.0 (unreleased):
     - Enforce the `pre-registered` client identifier scheme against `RelyingPartyTrust.PreRegisteredClients`
     - Requests using a scheme for which no trust material is configured are rejected. This includes `entity_id` and `did`, which are handed to `RelyingPartyTrust.Custom` and rejected when none is configured, so that a relying party cannot bypass the configured trust anchors by naming itself with a scheme this library does not evaluate natively. Only `redirect_uri` is not covered, as it forbids signed requests anyway
     - `RequestParser` no longer verifies anything and lost its `requestObjectJwsVerifier` parameter, so parsing a request is purely parsing. Consequently `RequestParametersSigned.verified` is removed, with the `verified` property of `Jws`, `OpenId4VpDcApiSigned` and `OpenId4VpDcApiMultiSigned` and its serialized form. Stored JSON still carrying `"verified"` deserializes fine, as unknown keys are ignored
+    - Add `WrprcValidator`, `WrpacValidator`, `WrpAuthenticationRequestValidator` and `WrpChainValidator` to validate WRPAC and WRPRC during presentation.
+    - Verify ISO mdoc `readerAuth`/`readerAuthAll` against the session transcript before accepting a WRPAC from the request. ISO mdoc validation now uses a suspend `WrpAuthenticationRequestValidator.invoke` overload requiring a `SessionTranscript`; `IsoMdocDcApi.validateWrpAuthenticationRequest()` calculates it from the DC API request. Remove the unauthenticated `DeviceRequest.extractCertificateChain()` helper.
+    - `DcApiVerifier` signs `readerAuth` of every ISO 18013-7 Annex C document request with its key material, when that has a certificate, transporting the chain of the certificate-based client identifier scheme. Pass the CBOR-encoded WRPRC in the new `OpenId4VpRequestOptions.euWrprc` to set it in the `DocRequestInfo` of every document request.
 - Trust List filtering:
     - Replace `LoTEServiceType`/`LoTEFilterCriteria` with `LoteProfile`, a sealed class defining PID, mDL, WRPAC, WALLET, and EAA profiles with built-in matching against scheme type, status approach, community rules URIs, and country code
     - Add support for LoTEs with issuance and revocation certificates
+    - Add `LoTEStage`, enumerating the base URLs of the European Commission's development, acceptance, and production trust infrastructure, so that applications can fetch the lists of any stage
+    - Replace the hardcoded acceptance URL in `LoteProfile.fetchUrl` with the relative `LoteProfile.fileName`, resolved against a base URL by `LoteProfile.fetchUrl(baseUrl)` or `LoteProfile.fetchUrl(stage)`
+    - Replace `LoteProfile.defaultUrls` with `LoteProfile.entries` and `LoteProfile.fetchUrls()`, which take the stages or the base URL to fetch from
+    - Add `TrustAnchorProvider` which lets apps supply trust anchors per credential type (vct/doctype) or per `LoteProfile`, for issuers as well as for status list signers (JWT and CWT)
+- Form-url-encoded parameters:
+    - Preserve opaque string parameters when decoding polymorphic requests, and ignore unknown object parameters before parsing their values as JSON
+    - Use `RequestParametersSerializer.decodeFormParameters()` to decode form parameters whose concrete request type is determined by their parameter names
+    - Extract the sketch in `SerializerSketch.kt` of `vck-openid` into a documented API in `FormUrlEncoding.kt`, covered by `FormUrlEncodingTest`
+    - Move it from `at.asitplus.wallet.lib.oidvci` in `vck-openid` to `at.asitplus.openid` in `openid-data-classes`, next to the parameter classes it encodes, since it is specific to neither issuance nor presentation. The previous declarations remain as deprecated forwarders
+    - Rename `Parameters` to `FormParameters`, to disambiguate it from `io.ktor.http.Parameters`
+    - Replace `String.decodeFromPostBody()` and `String.decodeFromUrlQuery()`, which were two names for the same thing, with `String.decodeFromFormUrlEncoded()`
+    - Add `Url.decodeFromQuery()`, `Url.decodeFromFragment()` and `Url.decodeFromFragmentOrQuery()`, which read the parameters off a URL instead of leaving that to callers
+    - Add `T.encodeToFormUrlEncoded()` and `String.toFormParameters()`
+    - Deprecate `FormParameters.decodeFromUrlQuery()`: its receiver is already decoded in nearly all call sites, so it decoded percent-encoding a second time and mangled every value containing a percent sign. This fixes parsing credential offers, authentication requests and authentication responses carrying such values
+    - Split the payload with `io.ktor.http.parseQueryString()` instead of by hand, which drops names without a value instead of throwing, and reads `+` as a space in URL queries too
 - OAuth 2.0:
     - Update implementation of [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html) to Draft 10 from 2026-07-06
     - Support DPoP combined mode, advertised with `dpop_combined` in `client_attestation_pop_methods_supported` to combine client authentication with DPoP proofs from RFC 9449
@@ -132,7 +159,7 @@ Release 8.0.0 (unreleased):
     - Remove code deprecated in 7.0.0, e.g. various `Iso180137AnnexC*` and related classes
     - Deprecate all classes used for Presentation Exchange requests and so on, e.g., `CredentialPresentationRequest.PresentationExchangeRequest` or `PresentationExchangeCredentialDisclosure` or `CredentialPresentation.PresentationExchangePresentation`
     - Deprecate member `invalidItems` in `IsoDocumentParsed`, method `ValidatorMdoc.verifyDocument()` will throw instead of filling invalid items
-    - In `ProofValidator` deprecate constructor argument `verifyAttestationProof`, replace with `statusListTokenResolver` and `keyAttestationIssuer`
+    - In `ProofValidator` deprecate constructor argument `verifyAttestationProof`, replace with `statusListTokenResolver` and `verifyKeyAttestationSignature`
     - In `NonceChallengeVerifier` deprecate `verifyPresentationSdJwt()`, `verifyPresentationVcJwt()` and `verifyPresentationIsoMdoc()`, which take the challenge from the presentation itself, to be replaced with `consumeChallenge()` and the returned `ChallengeSession`
     - `NonceChallengeVerifier` does not implement `Verifier` and `NonceService` anymore, so a presentation cannot be verified without accounting for the challenge it answers; use the `ChallengeSession` from `consumeChallenge()`, or the properties `verifier` for challenge-free verification and `nonceService` for raw nonce access
     - Deprecate passing `publicKeyLookup` to `VerifyJwsObject` and `VerifyCoseSignature`, callers are rerouted to the trusted variants, use `VerifyJwsObjectTrusted` resp. `VerifyCoseSignatureTrusted` explicitly, or drop the parameter to keep verifying against the asserted key
@@ -162,8 +189,10 @@ Release 8.0.0 (unreleased):
     - Return the validated token from `validateAccessToken()` in `TokenVerificationService` and `OAuth2AuthorizationServerAdapter` as `ValidatedAccessToken`, and move `validCredentialIdentifiers` from `TokenInfo` to `ValidatedAccessToken`
     - Authorize credential requests in `CredentialIssuer` from the `ValidatedAccessToken`
     - In `EncryptJwe` remove `keyMaterial` as it always relies on ephemeral keys embedded in the JWE header
+    - Add `SingleClaimReference` (moved from Valera)
  - Dependencies:
     - Update to [Signum 3.25.0](https://github.com/a-sit-plus/signum/releases/tag/3.25.0) for HPKE support
+    - Add `etsi-data-classes` as api dependency to `openid-data-classes`
 
 Release 7.0.0:
 - Credential definitions:

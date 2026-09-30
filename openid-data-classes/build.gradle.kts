@@ -32,6 +32,7 @@ kotlin {
             dependencies {
                 api(project(":dif-data-classes"))
                 api(project(":csc-data-classes"))
+                api(project(":etsi-data-classes"))
                 api(ktor("http"))
                 api("io.github.z4kn4fein:semver:${VcLibVersions.semver}")
                 implementation(project(":rfc3986-uri-syntax"))

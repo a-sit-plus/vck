@@ -247,7 +247,7 @@ val AgentSdJwtTest by matrixSuite {
                     ).second
                 },
                 verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(
-                    trustedIssuers = { setOf(it.statusListCa.certificate()) },
+                    trustedIssuers = { setOf(it.statusListCa.certificate) },
                 ),
             )
 
@@ -291,7 +291,7 @@ val AgentSdJwtTest by matrixSuite {
                     ).second
                 },
                 verifyJwsObjectIntegrity = VerifyStatusListTokenHAIP(
-                    trustedIssuers = { setOf(TestCertificateAuthority().certificate()) },
+                    trustedIssuers = { setOf(TestCertificateAuthority().certificate) },
                 ),
             )
 

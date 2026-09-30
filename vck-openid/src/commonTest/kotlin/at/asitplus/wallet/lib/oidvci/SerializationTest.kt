@@ -24,6 +24,10 @@ import io.ktor.http.*
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
+import at.asitplus.openid.formUrlEncode
+import at.asitplus.openid.encodeToParameters
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.decode
 
 
 val SerializationTest by matrixSuite {
@@ -103,7 +107,7 @@ val SerializationTest by matrixSuite {
 
         intermediateMap.decode<AuthenticationRequestParameters>() shouldBe params
 
-        formEncoded.decodeFromPostBody<AuthenticationRequestParameters>() shouldBe params
+        formEncoded.decodeFromFormUrlEncoded<AuthenticationRequestParameters>() shouldBe params
     }
 
     test("createTokenRequest as POST") {
@@ -112,7 +116,7 @@ val SerializationTest by matrixSuite {
         val formEncoded = intermediateMap.formUrlEncode()
 
         intermediateMap.decode<TokenRequestParameters>() shouldBe params
-        formEncoded.decodeFromPostBody<TokenRequestParameters>() shouldBe params
+        formEncoded.decodeFromFormUrlEncoded<TokenRequestParameters>() shouldBe params
     }
 
     test("createTokenResponse as JSON") {

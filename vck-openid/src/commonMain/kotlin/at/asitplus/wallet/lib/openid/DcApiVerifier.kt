@@ -15,9 +15,12 @@ import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest.*
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest.OpenId4Vp.SignedDataElement
+import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceResponse
+import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.EncryptionInfo
 import at.asitplus.iso.EncryptionParameters
+import at.asitplus.iso.ReaderAuthentication
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
@@ -28,6 +31,8 @@ import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.openid.dcql.toIso180137AnnexCDeviceRequest
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JweEncryption
@@ -44,6 +49,8 @@ import at.asitplus.wallet.lib.agent.NonceChallengeVerifier
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier.ChallengeSession
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
@@ -58,6 +65,7 @@ import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
 import io.ktor.utils.io.core.*
+import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlin.coroutines.cancellation.CancellationException
@@ -109,6 +117,14 @@ class DcApiVerifier @JvmOverloads constructor(
     private val stateToIsoMdocRequestStore: MapStore<String, IsoMdocRequest> = DefaultMapStore(),
     /** Algorithms supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
+    /**
+     * Signs `readerAuth` of ISO 18013-7 Annex C document requests, when [keyMaterial] has a certificate,
+     * transporting the certificate chain of [clientIdScheme].
+     */
+    private val signReaderAuth: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+        keyMaterial = keyMaterial,
+        unprotectedHeaderModifier = CoseHeaderClientIdScheme(clientIdScheme),
+    ),
 ) {
     private val mdocDeviceSignatureVerifier = MdocDeviceSignatureVerifier(verifyCoseSignature = verifyCoseSignature)
 
@@ -213,12 +229,52 @@ class DcApiVerifier @JvmOverloads constructor(
                 else -> throw IllegalArgumentException(
                     "ISO 18013-7 Annex C requires a Device Request or DCQL presentation"
                 )
-            }
+            }.withRegistrationCertificate(requestOptions.euWrprc)
+                .withReaderAuthentication(encryptionInfo, requestOptions.expectedOrigins)
             IsoMdoc(
                 IsoMdocRequest(deviceRequest = deviceRequest, encryptionInfo = encryptionInfo)
                     .also { stateToIsoMdocRequestStore.put(requestOptions.state, it) }
             )
         }
+    }
+
+    /** Sets [euWrprc] in the request info of every document request, as it is covered by `readerAuth`. */
+    private fun DeviceRequest.withRegistrationCertificate(euWrprc: ByteArray?): DeviceRequest =
+        if (euWrprc == null) this else copy(
+            docRequests = docRequests.map { docRequest ->
+                val itemsRequest = docRequest.itemsRequest.value
+                val requestInfo = (itemsRequest.requestInfo ?: DocRequestInfo()).copy(euWrprc = euWrprc)
+                docRequest.copy(itemsRequest = ByteStringWrapper(itemsRequest.copy(requestInfo = requestInfo)))
+            }.toTypedArray()
+        )
+
+    /**
+     * Signs `readerAuth` of every document request (ISO/IEC 18013-5, 12.5), bound to the DC API session transcript,
+     * which the wallet calculates from [encryptionInfo] and the calling origin, i.e. the single entry of
+     * [expectedOrigins]. Without a certificate in [keyMaterial] there is nothing to authenticate the reader with.
+     */
+    private suspend fun DeviceRequest.withReaderAuthentication(
+        encryptionInfo: EncryptionInfo,
+        expectedOrigins: List<String>?,
+    ): DeviceRequest {
+        if (keyMaterial.getCertificate() == null) return this
+        val origin = expectedOrigins?.singleOrNull()
+            ?: return this.also { Napier.w("Not signing readerAuth, requires one expected origin: $expectedOrigins") }
+        val serializedOrigin = origin.serializeOrigin()
+            ?: throw IllegalArgumentException("Expected origin invalid: $origin")
+        val sessionTranscript = createDcApiSessionTranscriptAnnexC(DCAPIInfo(encryptionInfo, serializedOrigin))
+        return copy(
+            docRequests = docRequests.map { docRequest ->
+                docRequest.copy(
+                    readerAuth = signReaderAuth(
+                        protectedHeader = null,
+                        unprotectedHeader = CoseHeader(),
+                        payload = ReaderAuthentication.detachedPayload(docRequest, sessionTranscript),
+                        serializer = ByteArraySerializer(),
+                    ).getOrThrow()
+                )
+            }.toTypedArray()
+        )
     }
 
     /**

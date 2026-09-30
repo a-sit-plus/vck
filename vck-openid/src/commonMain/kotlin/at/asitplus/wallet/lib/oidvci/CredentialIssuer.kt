@@ -7,6 +7,7 @@ import at.asitplus.openid.BatchCredentialIssuanceMetadata
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.DisplayProperties
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
@@ -36,6 +37,7 @@ import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 
@@ -87,6 +89,10 @@ class CredentialIssuer @JvmOverloads constructor(
     private val credentialSchemeMapper: CredentialSchemeMapper = DefaultCredentialSchemeMapper(),
     /** Used for [IssuerMetadata.preferredClientStatusPeriod]. */
     private val preferredClientStatusPeriod: Duration? = 31.days,
+    /** Used for [IssuerMetadata.displayProperties]. */
+    private val displayProperties: Set<DisplayProperties>? = null,
+    /** Used for [IssuerMetadata.issuedAt] in [signedMetadata]. */
+    private val clock: Clock = Clock.System,
 ) {
 
     sealed interface CredentialResponse {
@@ -140,6 +146,7 @@ class CredentialIssuer @JvmOverloads constructor(
             credentialResponseEncryption = encryptionService.metadataCredentialResponseEncryption,
             credentialRequestEncryption = encryptionService.metadataCredentialRequestEncryption,
             preferredClientStatusPeriod = preferredClientStatusPeriod,
+            displayProperties = displayProperties,
         )
     }
 
@@ -149,9 +156,15 @@ class CredentialIssuer @JvmOverloads constructor(
      * component and the path component, if any.
      * Use this only when the client accepts (see `Accept` header [io.ktor.http.HttpHeaders.Accept]) the media type
      * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]), otherwise serve [metadata].
+     *
+     * Implements OID4VCI 1.0, Section 12.2.3, i.e. sets `typ` to [OpenIdConstants.ISSUER_METADATA_JWT_TYPE] and adds
+     * the claims `sub` and `iat` to [metadata].
      */
-    suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata>> =
-        signMetadata(null, metadata, IssuerMetadata.serializer())
+    suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata>> = signMetadata(
+        OpenIdConstants.ISSUER_METADATA_JWT_TYPE,
+        metadata.copy(subject = metadata.credentialIssuer, issuedAt = clock.now()),
+        IssuerMetadata.serializer(),
+    )
 
     /**
      * Metadata about the credential issuer in

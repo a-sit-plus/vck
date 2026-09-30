@@ -88,6 +88,14 @@ data class OpenId4VpRequestOptions(
      * through another mechanism, e.g., a profile-specific static configuration.
      */
     val verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.AUTO,
+
+    /**
+     * ISO/IEC 18013-5:2026 `euWrprc`: The CBOR-encoded, COSE-signed registration certificate (WRPRC) of the
+     * relying party, set in the [at.asitplus.iso.DocRequestInfo] of every document request of an
+     * ISO/IEC 18013-7 Annex C request, see [DcApiCreationOptions.Iso180137AnnexC].
+     * Registration certificates for OpenID4VP are passed in [verifierInfo] instead.
+     */
+    val euWrprc: ByteArray? = null,
 ) : RequestOptions {
 
     init {

@@ -17,7 +17,13 @@ data object Success
 
 /**
  * Verifies if this certificate is directly signed and trusted by any anchor in the [trustStore].
- * Enforces time validity, cryptographic integrity
+ * Enforces time validity, that the anchor may issue certificates at all, and cryptographic integrity.
+ *
+ * An anchor that does not assert `BasicConstraints` with `cA` set is skipped, per
+ * [RFC 5280, Section 4.2.1.9](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.9): its public key
+ * "MUST NOT be used to verify certificate signatures". Without that check an end entity certificate that ends
+ * up on a trust list -- a document signer rather than its CA, say -- would be able to issue certificates for
+ * anything, which is the difference between trusting an issuer and trusting everything it ever signed.
  */
 fun X509Certificate.isTrustedBy(
     trustStore: CertificateChain,
@@ -25,13 +31,17 @@ fun X509Certificate.isTrustedBy(
 ): KmmResult<Success> = catching {
     if (!this.isValidAt(date)) throw Exception("Certificate is not valid at $date")
 
-    trustStore
+    val valid = trustStore.filter { it.isValidAt(date) }
+    val authorities = valid.filter { it.isCertificateAuthority }
+    authorities
         .asSequence()
-        .filter { it.isValidAt(date) }
         .map { it.isIssuerOf(this) }
         .firstOrNull { it.isSuccess }
         ?: throw IllegalArgumentException(
-            "No valid trust anchor could verify certificate"
+            if (valid.isNotEmpty() && authorities.isEmpty())
+                "No valid trust anchor could verify certificate: none of the ${valid.size} anchor(s) valid at " +
+                        "$date asserts BasicConstraints with cA set, so none of them may issue certificates"
+            else "No valid trust anchor could verify certificate"
         )
     Success
 }

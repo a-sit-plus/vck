@@ -48,8 +48,8 @@ import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -232,8 +232,7 @@ class OAuth2KtorClient(
         Napier.i("requestTokenWithAuthCode")
         Napier.d("requestTokenWithAuthCode: $url")
 
-        val authnResponse = Url(url).parameters.flattenEntries().toMap()
-            .decodeFromUrlQuery<AuthenticationResponseParameters>()
+        val authnResponse = Url(url).decodeFromQuery<AuthenticationResponseParameters>()
         val code = authnResponse.code
             ?: throw Exception("No authn code in $url")
 

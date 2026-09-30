@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -86,6 +87,13 @@ fun StatusListTokenResolver.toTokenStatusResolver(
     }
 }
 
+/** Resolves every advertised status mechanism and requires them to agree. */
+suspend fun TokenStatusResolver.resolve(status: TokenStatusInfo): KmmResult<TokenStatus> = catching {
+    val resolved = status.mechanisms.map { invoke(it).getOrThrow() }.distinct()
+    require(resolved.size == 1) { "Token status mechanisms returned conflicting results" }
+    resolved.single()
+}
+
 /**
  * Decompress the Status List with a decompressor that is compatible with DEFLATE
  * from [RFC1951](https://datatracker.ietf.org/doc/html/rfc1951) and
@@ -129,5 +137,10 @@ suspend operator fun TokenStatusResolver.invoke(credentialWrapper: CredentialWra
     is CredentialWrapper.SdJwt -> credentialWrapper.sdJwt.statusElement
     is CredentialWrapper.VcJws -> credentialWrapper.verifiableCredentialJws.vc.credentialStatus
 }?.let {
-    invoke(it)
+    val statusInfo = TokenStatusInfo.from(it)
+    if (statusInfo.mechanisms.size > 1) {
+        resolve(statusInfo)
+    } else {
+        invoke(it)
+    }
 }

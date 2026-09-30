@@ -23,8 +23,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.digest
 import at.asitplus.wallet.lib.data.toBase64UrlJsonString
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
@@ -155,7 +155,7 @@ val KeyBindingTests by matrixSuite {
                 requestOptions = requestOptions,
                 creationOptions = CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url.run {
-                Url(this).encodedQuery.decodeFromUrlQuery<AuthenticationRequestParameters>()
+                Url(this).decodeFromQuery<AuthenticationRequestParameters>()
             }
 
             val malignResponse = it.holderOid4vp.createAuthnResponse(
@@ -188,7 +188,7 @@ val KeyBindingTests by matrixSuite {
                 requestOptions = requestOptions,
                 creationOptions = CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url.run {
-                Url(this).encodedQuery.decodeFromUrlQuery<AuthenticationRequestParameters>()
+                Url(this).decodeFromQuery<AuthenticationRequestParameters>()
             }
             val malignResponse = it.holderOid4vp.createAuthnResponse(
                 joseCompliantSerializer.encodeToString(

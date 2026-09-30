@@ -33,7 +33,7 @@ val TrustedIssuerTest by matrixSuite {
         val ca = TestCertificateAuthority()
         val signed = signJws(ca.issue())
 
-        VerifyJwsObjectTrustedCertificate(trustedIssuers = { setOf(ca.certificate()) })(signed)
+        VerifyJwsObjectTrustedCertificate(trustedIssuers = { setOf(ca.certificate) })(signed)
             .getOrThrow()
     }
 
@@ -43,7 +43,7 @@ val TrustedIssuerTest by matrixSuite {
 
         val otherCa = TestCertificateAuthority()
         shouldThrowAny {
-            VerifyJwsObjectTrustedCertificate(trustedIssuers = { setOf(otherCa.certificate()) })(signed)
+            VerifyJwsObjectTrustedCertificate(trustedIssuers = { setOf(otherCa.certificate) })(signed)
                 .getOrThrow()
         }.message.shouldNotBeNull() shouldContain "No valid trust anchor"
     }
@@ -57,12 +57,21 @@ val TrustedIssuerTest by matrixSuite {
         )(signed).getOrThrow()
     }
 
+    "JWS signed by a directly listed CA-issued end-entity certificate is verified" {
+        val signer = TestCertificateAuthority().issue()
+        val signed = signJws(signer)
+
+        VerifyJwsObjectTrustedCertificate(
+            trustedIssuers = { setOf(signer.getCertificate()!!) },
+        )(signed).getOrThrow()
+    }
+
     "JWS signed by an untrusted self-signed certificate is not verified" {
         val signed = signJws(selfSignedKey())
 
         shouldThrowAny {
             VerifyJwsObjectTrustedCertificate(
-                trustedIssuers = { setOf(TestCertificateAuthority().certificate()) },
+                trustedIssuers = { setOf(TestCertificateAuthority().certificate) },
             )(signed).getOrThrow()
         }.message.shouldNotBeNull() shouldContain "must not be self-signed"
     }
@@ -81,7 +90,7 @@ val TrustedIssuerTest by matrixSuite {
     "JWS transporting the trust anchor in its certificate chain is not verified" {
         val ca = TestCertificateAuthority()
         val issuerKey = ca.issue()
-        val anchor = ca.certificate()
+        val anchor = ca.certificate
         // the trust anchor has to be known out-of-band, so shipping it with the JWS must not help
         val signed = signJws(issuerKey, JwsHeaderIdentifierFun { header, keyMaterial ->
             header.copy(certificateChain = listOf(keyMaterial.getCertificate()!!, anchor))
@@ -98,7 +107,7 @@ val TrustedIssuerTest by matrixSuite {
         val signed = signJws(issuerKey, JwsHeaderJwk())
 
         shouldThrowAny {
-            VerifyJwsObjectTrustedCertificate(trustedIssuers = { setOf(ca.certificate()) })(signed)
+            VerifyJwsObjectTrustedCertificate(trustedIssuers = { setOf(ca.certificate) })(signed)
                 .getOrThrow()
         }.message.shouldNotBeNull() shouldContain "No certificate"
     }
@@ -116,7 +125,16 @@ val TrustedIssuerTest by matrixSuite {
         val signed = signCose(ca.issue())
 
         VerifyCoseSignatureTrustedCertificate<ByteArray>(
-            trustedIssuers = { setOf(ca.certificate()) },
+            trustedIssuers = { setOf(ca.certificate) },
+        )(signed, byteArrayOf(), null).getOrThrow()
+    }
+
+    "CoseSigned by a directly listed CA-issued end-entity certificate is verified" {
+        val signer = TestCertificateAuthority().issue()
+        val signed = signCose(signer)
+
+        VerifyCoseSignatureTrustedCertificate<ByteArray>(
+            trustedIssuers = { setOf(signer.getCertificate()!!) },
         )(signed, byteArrayOf(), null).getOrThrow()
     }
 
@@ -124,7 +142,7 @@ val TrustedIssuerTest by matrixSuite {
         val signed = signCose(TestCertificateAuthority().issue())
 
         VerifyCoseSignatureTrustedCertificate<ByteArray>(
-            trustedIssuers = { setOf(TestCertificateAuthority().certificate()) },
+            trustedIssuers = { setOf(TestCertificateAuthority().certificate) },
         )(signed, byteArrayOf(), null).isFailure shouldBe true
     }
 
@@ -140,13 +158,13 @@ val TrustedIssuerTest by matrixSuite {
             holderKey,
         ) as Issuer.IssuedCredential.Iso
 
-        ValidatorMdoc(verifyCoseSignature = issuerCoseVerifier<MobileSecurityObject> { setOf(ca.certificate()) })
+        ValidatorMdoc(verifyCoseSignature = issuerCoseVerifier<MobileSecurityObject> { setOf(ca.certificate) })
             .verifyIsoCred(credential.issuerSigned).getOrThrow()
 
         shouldThrowAny {
             ValidatorMdoc(
                 verifyCoseSignature = issuerCoseVerifier<MobileSecurityObject> {
-                    setOf(TestCertificateAuthority().certificate())
+                    setOf(TestCertificateAuthority().certificate)
                 },
             ).verifyIsoCred(credential.issuerSigned).getOrThrow()
         }
@@ -167,11 +185,11 @@ val TrustedIssuerTest by matrixSuite {
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
 
-        HolderAgent(holderKey, trustedIssuers = { setOf(ca.certificate()) })
+        HolderAgent(holderKey, trustedIssuers = { setOf(ca.certificate) })
             .storeCredential(credential).getOrThrow()
 
         shouldThrowAny {
-            HolderAgent(holderKey, trustedIssuers = { setOf(TestCertificateAuthority().certificate()) })
+            HolderAgent(holderKey, trustedIssuers = { setOf(TestCertificateAuthority().certificate) })
                 .storeCredential(credential).getOrThrow()
         }
     }

@@ -30,9 +30,10 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.encodeToParameters
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
@@ -178,7 +179,7 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequestUrl = it.verifierOid4vp.createAuthnRequest(
                 it.defaultRequestOptions, CreationOptions.SignedRequestByValue(it.walletUrl)
             ).getOrThrow().url
-            val authnRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            val authnRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             authnRequest.clientId shouldBe it.clientId
             val jar = authnRequest.request.shouldNotBeNull()
             val jwsObject = JwsCompactTyped<AuthenticationRequestParameters>(jar)
@@ -276,7 +277,7 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequestUrlParams = Url(authnRequest.url).encodedQuery
 
             val parsedAuthnRequest: AuthenticationRequestParameters =
-                authnRequestUrlParams.decodeFromUrlQuery()
+                authnRequestUrlParams.decodeFromFormUrlEncoded()
             val authnResponse = it.holderOid4vp.createAuthnResponse(
                 RequestParametersFrom.Uri(
                     Url(authnRequestUrlParams),
