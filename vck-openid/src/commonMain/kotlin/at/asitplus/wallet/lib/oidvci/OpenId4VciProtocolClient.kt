@@ -4,6 +4,8 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.ClientNonceResponse
+import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.CredentialOfferUrlParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
@@ -25,7 +27,9 @@ import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
+import at.asitplus.wallet.lib.oauth2.LazyExchange
 import at.asitplus.wallet.lib.oauth2.PlainExchange
+import at.asitplus.wallet.lib.oauth2.ValueExchange
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
@@ -40,6 +44,7 @@ import kotlin.jvm.JvmOverloads
  * The caller runs the exchanges of a flow in order, using [oauth2Client] for the authorization server, and
  * [oid4vciService] for the credential requests:
  *
+ *  * Credential offer, if any: [loadCredentialOffer], then the pre-authorized code or authorization code flow for it.
  *  * Pre-authorized code: [loadIssuerMetadata], [parseCredentialMetadata], [OAuth2ProtocolClient.loadAuthorizationServerMetadata]
  *    of [selectAuthorizationServer], [OAuth2ProtocolClient.requestTokenWithPreAuthorizedCode], [nonceRequest],
  *    [WalletService.createCredential], and [credentialRequest] for each of those credential requests.
@@ -60,6 +65,26 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
     /** Implements OAuth 2.0 with the authorization server, and authenticates requests to the credential issuer. */
     val oauth2Client: OAuth2ProtocolClient,
 ) {
+
+    /**
+     * Loads the [CredentialOffer] from [input], which is either a JSON-encoded credential offer, or a credential offer
+     * URL with an embedded `credential_offer` (by value) or a `credential_offer_uri` (by reference).
+     * The resource at `credential_offer_uri` is the JSON-encoded credential offer, see [CredentialOfferUrlParameters];
+     * another credential offer URL in its place is rejected.
+     *
+     * Sends no request for a credential offer passed by value, and `CredentialOffer` for one passed by reference.
+     */
+    fun loadCredentialOffer(input: String): HttpExchange<CredentialOffer> = LazyExchange {
+        when (val parsed = oid4vciService.parseCredentialOfferInput(input)) {
+            is WalletService.CredentialOfferInput.ByValue -> ValueExchange(parsed.offer)
+            is WalletService.CredentialOfferInput.ByReference -> PlainExchange(
+                candidates = listOf(
+                    ProtocolRequest.CredentialOffer(PreparedHttpRequest(url = parsed.uri, method = HttpMethod.Get))
+                ),
+                parse = { with(oid4vciService) { it.body.decodeCredentialOffer() } },
+            )
+        }
+    }
 
     /**
      * Loads [IssuerMetadata] from [credentialIssuer], see [WellKnownPaths.CredentialIssuer].

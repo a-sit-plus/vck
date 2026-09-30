@@ -47,6 +47,11 @@ Release 9.0.0 (unreleased):
       flow, keeping its API
     - Fix: Credential requests use only DPoP nonces of the credential issuer, never the one of the authorization server
       from the token response, as nonces are only accepted by the server that issued them (RFC 9449 9.)
+    - Add `OpenId4VciProtocolClient.loadCredentialOffer` and `OpenId4VciClient.loadCredentialOffer` to load a credential
+      offer passed by value or by reference; the resource at `credential_offer_uri` must be the JSON-encoded offer, so
+      another offer URL or a redirect in its place is rejected
+    - Deprecate `WalletService.parseCredentialOffer`, which retrieved offers passed by reference with the
+      `remoteResourceRetriever` of `WalletService`; that constructor parameter is only used by the deprecated method
 
 Release 8.0.0:
 

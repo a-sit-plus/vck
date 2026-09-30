@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.ClientNonceResponse
+import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
@@ -29,6 +30,7 @@ import at.asitplus.wallet.lib.oauth2.toRequestInfo
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
@@ -37,6 +39,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.serialization.SerializationException
 
 val OpenId4VciProtocolClientTest by matrixSuite {
 
@@ -87,6 +90,70 @@ val OpenId4VciProtocolClientTest by matrixSuite {
     }
 
     // Step sequences, see the KDoc of the methods of OpenId4VciProtocolClient
+
+    val offer = CredentialOffer(
+        credentialIssuer = "https://issuer.example.org",
+        configurationIds = setOf("example-credential"),
+    )
+    val offerJson = joseCompliantSerializer.encodeToString(offer)
+    val offerByReference = "haip-vci://?credential_offer_uri=https://issuer.example.org/offer"
+
+    fun offerClient() = OpenId4VciProtocolClient(
+        oauth2Client = OAuth2ProtocolClient(oAuth2Client = OAuth2Client()),
+    )
+
+    test("credential offer passed by value sends no request") {
+        val http = FakeHttpStack(scripted())
+        val embedded = URLBuilder("haip-vci://").apply { parameters.append("credential_offer", offerJson) }
+            .buildString()
+
+        http.execute(offerClient().loadCredentialOffer("  $offerJson")) shouldBe offer
+        http.execute(offerClient().loadCredentialOffer(embedded)) shouldBe offer
+        http.sent.shouldBeEmpty()
+    }
+
+    test("credential offer passed by reference is loaded from credential_offer_uri") {
+        val http = FakeHttpStack(scripted(jsonResponse(offer)))
+
+        http.execute(offerClient().loadCredentialOffer(offerByReference)) shouldBe offer
+
+        http.sent.kinds() shouldBe listOf("CredentialOffer")
+        http.sent.single().http.apply {
+            url shouldBe "https://issuer.example.org/offer"
+            method shouldBe HttpMethod.Get
+        }
+    }
+
+    test("credential offer passed by reference must be the JSON-encoded offer") {
+        val nestedReference = ReceivedHttpResponse(
+            status = HttpStatusCode.OK,
+            headers = Headers.Empty,
+            body = "haip-vci://?credential_offer_uri=https://issuer.example.org/second",
+        )
+        val malformed = ReceivedHttpResponse(HttpStatusCode.OK, Headers.Empty, "{\"credential_issuer\":")
+        val http = FakeHttpStack(scripted(nestedReference, malformed))
+
+        // another reference is not followed, so the sequence stays a single request
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            http.execute(offerClient().loadCredentialOffer(offerByReference))
+        }
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            http.execute(offerClient().loadCredentialOffer(offerByReference))
+        }.cause.shouldBeInstanceOf<SerializationException>()
+        http.sent.kinds() shouldBe listOf("CredentialOffer", "CredentialOffer")
+    }
+
+    test("credential offer fails for an error response, or input that is no credential offer") {
+        val http = FakeHttpStack(scripted(ReceivedHttpResponse(HttpStatusCode.NotFound, Headers.Empty, "")))
+
+        shouldThrow<HttpErrorResponseException> {
+            http.execute(offerClient().loadCredentialOffer(offerByReference))
+        }.status shouldBe HttpStatusCode.NotFound
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            http.execute(offerClient().loadCredentialOffer("haip-vci://?unrelated=value"))
+        }
+        http.sent.kinds() shouldBe listOf("CredentialOffer")
+    }
 
     test("issuer metadata comes from the well-known path") {
         with(AuthorizationServerFixture(requirePAR = false)) {
