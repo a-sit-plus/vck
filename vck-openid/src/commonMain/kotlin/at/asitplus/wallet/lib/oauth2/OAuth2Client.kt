@@ -32,6 +32,9 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 /**
  * Simple OAuth 2.0 client to authorize the client against an OAuth 2.0 Authorization Server and request tokens.
  *
+ * Builds the request parameters only; [OAuth2ProtocolClient] builds the HTTP requests from them, including DPoP proofs
+ * and attestation-based client authentication.
+ *
  * Can be used in OID4VCI flows, e.g. [WalletService].
  */
 class OAuth2Client(
@@ -215,8 +218,8 @@ class OAuth2Client(
      * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
      * ```
      *
-     * Be sure to include a DPoP header if [OAuth2AuthorizationServerMetadata.dpopSigningAlgValuesSupported] is set,
-     * see [at.asitplus.wallet.lib.oidvci.BuildDPoPHeader].
+     * The token endpoint may require a DPoP proof (see [OAuth2AuthorizationServerMetadata.dpopSigningAlgValuesSupported])
+     * and client authentication: [OAuth2ProtocolClient] sends token requests with both.
      *
      * @param state to keep internal state in further requests
      * @param authorization for the token endpoint

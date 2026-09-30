@@ -256,6 +256,24 @@ val success = client.resumeWithAuthCode(redirectUrl, loadProvisioningContext()).
 success.credentials.forEach { holderAgent.storeCredential(it, success.refreshToken) }
 ```
 
+Without Ktor, use `OAuth2ProtocolClient` and `OpenId4VciProtocolClient` from `vck-openid`, which `OpenId4VciClient`
+builds on. They never send requests themselves, but return an `HttpExchange` for each call, including DPoP and
+attestation-based client authentication: send each of its requests with your HTTP stack, and pass the response back.
+Their KDoc lists the requests of each call, and the order of calls in each flow.
+
+```kotlin
+suspend fun <T> execute(exchange: HttpExchange<T>): T {
+    var step = exchange.next().getOrThrow()
+    // send(): your HTTP stack returns the response for every status code, without following redirects
+    while (step is HttpStep.Send) step = exchange.next(send(step.request.http)).getOrThrow()
+    return (step as HttpStep.Done).value
+}
+
+val oauth2 = OAuth2ProtocolClient(oAuth2Client = OAuth2Client(clientId = walletClientId))
+val vci = OpenId4VciProtocolClient(oid4vciService = walletService, oauth2Client = oauth2)
+val issuerMetadata = execute(vci.loadIssuerMetadata(offer.credentialIssuer))
+```
+
 ### Registering credential schemes
 
 Credential schemes are derived from [SD-JWT Type Metadata](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)

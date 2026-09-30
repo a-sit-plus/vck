@@ -294,11 +294,8 @@ class WalletService @JvmOverloads constructor(
 
     /**
      * Creates the credential request to be sent to the credential issuer.
-     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
-     * see [TokenResponseParameters.toHttpHeaderValue].
-     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
-     * see [BuildDPoPHeader].
-     * For sample ktor code see `OpenId4VciClient` in `vck-openid-ktor`.
+     * Send each request with [OpenId4VciProtocolClient.credentialRequest], which adds the access token from
+     * [tokenResponse] and, for DPoP-bound tokens, the DPoP proof, and parses the response.
      *
      * @param tokenResponse from the authorization server token endpoint
      * @param metadata the issuer's metadata, see [IssuerMetadata]
@@ -330,8 +327,8 @@ class WalletService @JvmOverloads constructor(
 
     /**
      * Creates the credential request for exactly one credential, to be sent to the credential issuer.
-     * Callers need to send the correct access token and other authentication.
-     * For sample ktor code see `OpenId4VciClient` in `vck-openid-ktor`.
+     * Send it with [OpenId4VciProtocolClient.credentialRequest], which adds the access token and, for DPoP-bound
+     * tokens, the DPoP proof, and parses the response.
      *
      * Only use this when the token response did not contain `credential_identifiers` in its
      * `authorization_details`, because then `credential_configuration_id` MUST NOT be used (OID4VCI 1.0 Section 8.2),
