@@ -48,7 +48,6 @@ import at.asitplus.openid.decodeFromQuery
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -98,10 +97,8 @@ class WalletService @JvmOverloads constructor(
     /** Used to prove possession of the key material for [CredentialRequestProofContainer], i.e., the holder key. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /**
-     * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
-     * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
-     * Implementations need to fetch the url passed in, and return either the body, if there is one,
-     * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
+     * Only used by the deprecated [parseCredentialOffer], to retrieve the resource referenced by
+     * `credential_offer_uri`; use [OpenId4VciProtocolClient.loadCredentialOffer] instead.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Handles credential request encryption and credential response decryption. */
@@ -196,40 +193,62 @@ class WalletService @JvmOverloads constructor(
      * Parses [input] as either a JSON-encoded [CredentialOffer] or a credential offer URL.
      *
      * A credential offer URL may contain an embedded `credential_offer` or a `credential_offer_uri`.
-     * Resources referenced by `credential_offer_uri` are retrieved and parsed.
+     * Resources referenced by `credential_offer_uri` are retrieved with [remoteResourceRetriever] and parsed.
      */
+    @Deprecated(
+        "Retrieving a credential offer by reference is a request to the credential issuer: use " +
+                "OpenId4VciProtocolClient.loadCredentialOffer, or OpenId4VciClient.loadCredentialOffer with ktor",
+    )
     suspend fun parseCredentialOffer(input: String): KmmResult<CredentialOffer> = catching {
-        if (input.trimStart().startsWith("{")) {
-            catchingUnwrapped {
-                joseCompliantSerializer.decodeFromString<CredentialOffer>(input)
-            }.getOrElse {
-                throw InvalidRequest("could not parse credential offer", it)
+        when (val parsed = parseCredentialOfferInput(input)) {
+            is CredentialOfferInput.ByValue -> parsed.offer
+            is CredentialOfferInput.ByReference -> {
+                val response = remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(parsed.uri))
+                    ?: throw InvalidRequest("credential offer retrieval returned no response")
+                @Suppress("DEPRECATION")
+                parseCredentialOffer(response).getOrThrow()
             }
+        }
+    }
+
+    /** A credential offer passed by value, or the `credential_offer_uri` to load it from. */
+    internal sealed interface CredentialOfferInput {
+        data class ByValue(val offer: CredentialOffer) : CredentialOfferInput
+        data class ByReference(val uri: String) : CredentialOfferInput
+    }
+
+    /**
+     * Parses [input] as either a JSON-encoded [CredentialOffer], or a credential offer URL with an embedded
+     * `credential_offer` or a `credential_offer_uri`, without retrieving anything.
+     */
+    internal fun parseCredentialOfferInput(input: String): CredentialOfferInput =
+        if (input.trimStart().startsWith("{")) {
+            CredentialOfferInput.ByValue(input.decodeCredentialOffer())
         } else {
             val parameters = catchingUnwrapped { input.extractParams() }.getOrElse {
                 throw InvalidRequest("could not parse credential offer URL", it)
             }
-            parameters.fetchCredentialOffer()
+            parameters.credentialOffer?.let { offer ->
+                CredentialOfferInput.ByValue(
+                    catchingUnwrapped {
+                        joseCompliantSerializer.decodeFromJsonElement<CredentialOffer>(offer)
+                    }.getOrElse {
+                        throw InvalidRequest("could not parse embedded credential offer", it)
+                    }
+                )
+            } ?: parameters.credentialOfferUrl?.let { CredentialOfferInput.ByReference(it) }
+            ?: throw InvalidRequest("credential offer URL contains neither credential_offer nor credential_offer_uri")
         }
+
+    /** Decodes a JSON-encoded [CredentialOffer], e.g. the resource referenced by `credential_offer_uri`. */
+    internal fun String.decodeCredentialOffer(): CredentialOffer = catchingUnwrapped {
+        joseCompliantSerializer.decodeFromString<CredentialOffer>(this)
+    }.getOrElse {
+        throw InvalidRequest("could not parse credential offer", it)
     }
 
     private fun String.extractParams(): CredentialOfferUrlParameters =
         Url(this).decodeFromQuery<CredentialOfferUrlParameters>()
-
-    private suspend fun CredentialOfferUrlParameters.fetchCredentialOffer(): CredentialOffer {
-        credentialOffer?.let { offer ->
-            return catchingUnwrapped {
-                joseCompliantSerializer.decodeFromJsonElement<CredentialOffer>(offer)
-            }.getOrElse {
-                throw InvalidRequest("could not parse embedded credential offer", it)
-            }
-        }
-        val uri = credentialOfferUrl
-            ?: throw InvalidRequest("credential offer URL contains neither credential_offer nor credential_offer_uri")
-        val response = remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
-            ?: throw InvalidRequest("credential offer retrieval returned no response")
-        return parseCredentialOffer(response).getOrThrow()
-    }
 
 
     /**

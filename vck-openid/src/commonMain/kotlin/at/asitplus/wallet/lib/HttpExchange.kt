@@ -39,6 +39,9 @@ sealed class ProtocolRequest {
         val openidConfiguration: Boolean,
     ) : ProtocolRequest()
 
+    /** GET the credential offer from the `credential_offer_uri` of a credential offer passed by reference. */
+    data class CredentialOffer(override val http: PreparedHttpRequest) : ProtocolRequest()
+
     /** GET the credential issuer metadata from `/.well-known/openid-credential-issuer`. */
     data class CredentialIssuerMetadata(override val http: PreparedHttpRequest) : ProtocolRequest()
 

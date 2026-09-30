@@ -219,15 +219,14 @@ suspend fun credential(authorizationHeader: String, requestBody: String, request
 ```
 
 On the wallet side, `WalletService` builds credential requests and parses responses. For a Ktor-based wallet, prefer
-`OpenId4VciClient`; it handles issuer metadata, OAuth2, DPoP, credential requests, and response parsing. Without a
-credential offer, load metadata with `loadCredentialMetadata(issuerUrl)`, let the user pick a credential, and call
-`startProvisioningWithAuthRequestReturningResult`.
+`OpenId4VciClient`; it handles credential offers, issuer metadata, OAuth2, DPoP, credential requests, and response
+parsing. Without a credential offer, load metadata with `loadCredentialMetadata(issuerUrl)`, let the user pick a
+credential, and call `startProvisioningWithAuthRequestReturningResult`.
 
 ```kotlin
 val walletService = WalletService(
     clientId = walletClientId,
     keyMaterial = holderKeyMaterial,
-    remoteResourceRetriever = { request -> httpClient.get(request.url).bodyAsText() },
 )
 
 val client = OpenId4VciClient(
@@ -236,7 +235,7 @@ val client = OpenId4VciClient(
     oid4vciService = walletService,
 )
 
-val offer = walletService.parseCredentialOffer(credentialOfferUrl).getOrThrow()
+val offer = client.loadCredentialOffer(credentialOfferUrl).getOrThrow()
 val credentials = client.loadCredentialMetadata(offer.credentialIssuer).getOrThrow()
 val selectedCredential = credentials.first { it.credentialIdentifier in offer.configurationIds }
 

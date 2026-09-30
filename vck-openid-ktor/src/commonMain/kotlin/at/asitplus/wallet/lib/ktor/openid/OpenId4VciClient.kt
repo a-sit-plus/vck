@@ -68,6 +68,17 @@ class OpenId4VciClient(
     private val vci = OpenId4VciProtocolClient(oid4vciService = oid4vciService, oauth2Client = oauth2)
 
     /**
+     * Loads the [CredentialOffer] from [input], i.e. the content of a QR code or deep link: a JSON-encoded credential
+     * offer, or a credential offer URL with the offer embedded (`credential_offer`) or passed by reference
+     * (`credential_offer_uri`), which will be loaded from the credential issuer.
+     */
+    suspend fun loadCredentialOffer(
+        input: String,
+    ): KmmResult<CredentialOffer> = catching {
+        client.execute(vci.loadCredentialOffer(input))
+    }
+
+    /**
      * Loads credential metadata info from [host], call parseCredentialMetadata to parse it,
      * returns a list of [CredentialIdentifierInfo].
      */

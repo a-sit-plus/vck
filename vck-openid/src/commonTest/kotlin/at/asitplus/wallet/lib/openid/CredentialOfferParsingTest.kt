@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION") // tests the deprecated WalletService.parseCredentialOffer until it is removed
+
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
