@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -8,15 +11,14 @@ import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
+import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -28,33 +30,13 @@ import kotlinx.coroutines.runBlocking
 
 val OpenId4VpSdJwtProtocolTest by matrixSuite {
 
-    fixture({
+    fixture {
         runBlocking {
             val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val holderAgent = HolderAgent(holderKeyMaterial).also {
-                it.storeCredential(
-                    IssuerAgent(
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default
-                    ).issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            holderKeyMaterial.publicKey,
-                            AtomicAttribute2023,
-                            SD_JWT
-                        )
-                            .getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                )
-                it.storeCredential(
-                    IssuerAgent(
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default
-                    ).issueCredential(
-                        DummyCredentialDataProvider.getCredential(holderKeyMaterial.publicKey, euPidSdJwtScheme, SD_JWT)
-                            .getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                )
+                issueAndStoreSdJwt(it, holderKeyMaterial)
+                issueAndStoreSdJwt(it, holderKeyMaterial, euPidSdJwtScheme)
             }
             object {
                 val euPidSdJwtScheme = euPidSdJwtScheme
@@ -66,13 +48,15 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                     holder = holderAgent,
                     randomSource = RandomSource.Default,
                 )
+                val stateToAuthnRequestStore = DefaultMapStore<String, AuthenticationRequestParameters>()
                 val verifierOid4vp = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
-                    clientIdScheme = ClientIdScheme.RedirectUri(clientId)
+                    clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+                    stateToAuthnRequestStore = stateToAuthnRequestStore,
                 )
             }
         }
-    }) - {
+    } - {
 
         "Selective Disclosure with custom credential" {
             val requestedClaim = CLAIM_GIVEN_NAME
@@ -124,6 +108,64 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).isFailure shouldBe true
+        }
+
+        "a rejected response consumes the request, so the genuine one is not accepted afterwards" {
+            val state = uuid4().toString()
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestOptionsCredential(
+                            credentialScheme = AtomicAttribute2023,
+                            representation = SD_JWT,
+                            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
+                        )
+                    ).toDCQLRequest(),
+                    state = state,
+                ),
+                CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            // anyone knowing the state may post a response: this one carries no vp_token and is not accepted,
+            // but it burns the request, as authentication responses are never retryable
+            it.verifierOid4vp.validateAuthnResponse(
+                ResponseParametersFrom.Post(AuthenticationResponseParameters(state = state))
+            ).getOrThrow().vpTokenValidationResult.shouldNotBeNull().isFailure shouldBe true
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).isFailure shouldBe true
+        }
+
+        "the challenge is consumed even when the response is rejected" {
+            val state = uuid4().toString()
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestOptionsCredential(
+                            credentialScheme = AtomicAttribute2023,
+                            representation = SD_JWT,
+                            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
+                        )
+                    ).toDCQLRequest(),
+                    state = state,
+                ),
+                CreationOptions.Query(it.walletUrl)
+            ).getOrThrow().url
+
+            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val storedRequest = it.stateToAuthnRequestStore.get(state).shouldNotBeNull()
+
+            it.verifierOid4vp.validateAuthnResponse(
+                ResponseParametersFrom.Post(AuthenticationResponseParameters(state = state))
+            ).getOrThrow().vpTokenValidationResult.shouldNotBeNull().isFailure shouldBe true
+
+            // restore the stored request, so only the consumed challenge can reject the genuine response
+            it.stateToAuthnRequestStore.put(state, storedRequest)
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                .exceptionOrNull().shouldNotBeNull().message shouldContain "nonce invalid or already used"
         }
 
         "Selective Disclosure with EU PID credential" {

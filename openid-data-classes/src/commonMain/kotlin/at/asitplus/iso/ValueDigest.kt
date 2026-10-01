@@ -1,6 +1,8 @@
 package at.asitplus.iso
 
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.supreme.hash.digest
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
@@ -39,13 +41,18 @@ data class ValueDigest(
          *
          * See ISO/IEC 18013-5:2021, 9.1.2.5 Message digest function
          */
-        fun fromIssuerSignedItem(value: IssuerSignedItem, namespace: String): ValueDigest =
-            ValueDigest(
-                value.digestId,
+        fun fromIssuerSignedItem(
+            value: IssuerSignedItem,
+            namespace: String,
+            digest: Digest = Digest.SHA256,
+        ): ValueDigest = ValueDigest(
+            key = value.digestId,
+            value = digest.digest(
                 // Ensure wrapping it in the whole "bytes" cbor structure, afterward wrapping it with D818
                 coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), value.serialize(namespace))
-                    .wrapInCborTag(24).sha256()
+                    .wrapInCborTag(24)
             )
+        )
 
         private fun IssuerSignedItem.serialize(namespace: String): ByteArray =
             coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)

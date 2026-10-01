@@ -18,6 +18,7 @@ class SimpleQtspAuthorizationService private constructor(
         acceptedCredentials: Collection<CredentialScheme>,
     ) : this(
         authorizationService = SimpleAuthorizationService(
+            requirePushedAuthorizationRequests = false,
             strategy = QtspAuthorizationServiceStrategy(
                 authorizationServiceStrategy = CredentialAuthorizationServiceStrategy(
                     acceptedCredentials.toSet()

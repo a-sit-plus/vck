@@ -13,6 +13,7 @@ import kotlinx.serialization.cbor.ValueTags
 data class ZkDocument (
     @SerialName("documentData")
     @ValueTags(24U)
+    @Serializable(with = ZkDocumentDataWrapperSerializer::class)
     val zkDocumentDataBytes: ByteStringWrapper<ZkDocumentData>,
     @SerialName("proof")
     @ByteString

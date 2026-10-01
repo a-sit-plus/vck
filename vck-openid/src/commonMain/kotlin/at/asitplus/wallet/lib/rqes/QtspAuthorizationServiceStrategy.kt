@@ -14,6 +14,18 @@ class QtspAuthorizationServiceStrategy(
 ) : AuthorizationServiceStrategy by authorizationServiceStrategy {
 
     /**
+     * A QTSP authorizes with the CSC scopes, not with credential scopes, so [authorizationServiceStrategy] can not
+     * filter them. See CSC API v2.0.0.2, 8.3.2 and [RqesWalletService.RqesOauthScope].
+     */
+    override fun validScopes(): String = RqesWalletService.RqesOauthScope.entries
+        .joinToString(" ") { it.value }
+
+    override fun filterScope(scope: String): String? = scope.trim().split(" ")
+        .filter { requested -> RqesWalletService.RqesOauthScope.entries.any { it.value == requested } }
+        .joinToString(" ")
+        .takeIf { it.isNotBlank() }
+
+    /**
      * QTSP can be assumed to only know CSC-related authn details ([at.asitplus.openid.CscAuthorizationDetails]) and rejet all others
      */
     override fun validateAuthorizationDetails(

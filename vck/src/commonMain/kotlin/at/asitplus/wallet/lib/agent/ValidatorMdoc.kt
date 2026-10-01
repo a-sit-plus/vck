@@ -8,19 +8,18 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
-import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
-import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessIso
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocInputValidator
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
+import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -30,11 +29,16 @@ import kotlin.jvm.JvmOverloads
 
 class ValidatorMdoc @JvmOverloads constructor(
     private val verifySignature: VerifySignatureFun = VerifySignature(),
-    private val verifyCoseSignatureWithKey: VerifyCoseSignatureWithKeyFun<MobileSecurityObject> =
-        VerifyCoseSignatureWithKey(verifySignature),
+    /**
+     * Verifies the signature of the issuer on [IssuerSigned.issuerAuth], resolving the issuer key itself.
+     * Pass [at.asitplus.wallet.lib.cbor.VerifyCoseSignatureTrustedCertificate] to require the issuer to be
+     * trusted, the default only verifies against the certificate transported in the COSE headers.
+     */
+    private val verifyCoseSignature: VerifyCoseSignatureFun<MobileSecurityObject> =
+        VerifyCoseSignature(VerifyCoseSignatureWithKey<MobileSecurityObject>(verifySignature)),
     /** Structure / Integrity / Semantics validator. */
     private val mdocInputValidator: MdocInputValidator =
-        MdocInputValidator(verifyCoseSignatureWithKey = verifyCoseSignatureWithKey),
+        MdocInputValidator(verifyCoseSignature = verifyCoseSignature),
     private val validator: Validator = Validator(),
 ) {
 
@@ -68,19 +72,11 @@ class ValidatorMdoc @JvmOverloads constructor(
     ): IsoDocumentParsed {
         val documentErrors = document.errors.orEmpty()
         val issuerSigned = document.issuerSigned
-        val issuerAuth = issuerSigned.issuerAuth
 
-        val certificateHead = issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()
-            ?: throw IllegalArgumentException("No issuer certificate in header")
-        val x509Certificate = X509Certificate.decodeFromDerSafe(certificateHead).getOrElse {
-            throw IllegalArgumentException("Could not parse issuer certificate from header", it)
-        }
-        val issuerKey = x509Certificate.decodedPublicKey.getOrThrow().toCoseKey().getOrElse {
-            throw IllegalArgumentException("Could not parse key from certificate", it)
-        }
-
-        verifyCoseSignatureWithKey(issuerAuth, issuerKey, byteArrayOf(), null).onFailure {
-            throw IllegalArgumentException("IssuerAuth not verified", it)
+        mdocInputValidator(issuerSigned).also {
+            if (!it.isSuccess) {
+                throw IllegalArgumentException("IssuerAuth not verified", it.error)
+            }
         }
 
         val mso: MobileSecurityObject? = issuerSigned.issuerAuth.payload
@@ -92,22 +88,18 @@ class ValidatorMdoc @JvmOverloads constructor(
             "document callback failed: $document"
         }
 
-        val validItems = mutableListOf<IssuerSignedItem>()
-        val invalidItems = mutableListOf<IssuerSignedItem>()
-        issuerSigned.namespaces?.forEach { (namespace, issuerSignedItems) ->
-            issuerSignedItems.entries.forEach {
-                if (it.verify(mso.valueDigests[namespace])) {
-                    validItems += it.value
-                } else {
-                    invalidItems += it.value
+        val validItems = issuerSigned.namespaces?.flatMap { (namespace, issuerSignedItems) ->
+            issuerSignedItems.entries.map {
+                require(it.verify(mso.valueDigests[namespace], mso.digest)) {
+                    "IssuerSigned item has invalid digest: ${it.value.elementIdentifier}"
                 }
+                it.value
             }
         }
         return IsoDocumentParsed(
             document = document,
             mso = mso,
-            validItems = validItems,
-            invalidItems = invalidItems,
+            validItems = validItems.orEmpty(),
             freshnessSummary = validator.checkCredentialFreshness(issuerSigned),
             documentErrors = documentErrors,
         )
@@ -118,7 +110,10 @@ class ValidatorMdoc @JvmOverloads constructor(
      *
      * See ISO/IEC 18013-5:2021, 9.3.1 Inspection procedure for issuer data authentication
      */
-    private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
+    private fun ByteStringWrapper<IssuerSignedItem>.verify(
+        mdlItems: ValueDigestList?,
+        digest: Digest = Digest.SHA256
+    ): Boolean {
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false
         // TODO Only true in AgentIsoMdocTest when we are not deserializing the ByteStringWrappe in the issuerSignedItems
@@ -127,7 +122,7 @@ class ValidatorMdoc @JvmOverloads constructor(
         else coseCompliantSerializer
             .encodeToByteArray(ByteArraySerializer(), serialized)
             .wrapInCborTag(24)
-        val verifierHash = inputToVerifierHash.sha256()
+        val verifierHash = digest.digest(inputToVerifierHash)
         return verifierHash.contentEquals(issuerHash.value)
     }
 
@@ -136,9 +131,9 @@ class ValidatorMdoc @JvmOverloads constructor(
      *
      * @param it The [IssuerSigned] structure from ISO 18013-5
      */
-    suspend fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey?) = catching {
+    suspend fun verifyIsoCred(it: IssuerSigned) = catching {
         Napier.d("Verifying ISO Cred $it")
-        val mdocInputValidator = mdocInputValidator(it, issuerKey)
+        val mdocInputValidator = mdocInputValidator(it)
         if (!mdocInputValidator.isSuccess) {
             throw mdocInputValidator.error ?: IllegalArgumentException("No details available")
         }

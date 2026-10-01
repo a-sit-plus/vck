@@ -129,8 +129,12 @@ class JwtTokenGenerationService @JvmOverloads constructor(
     private val JsonWebKey.jwkThumbprintPlain
         get() = this.jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
 
+    /**
+     * Not consuming: one access token may authorize several credential requests, so the entry has to survive
+     * until it expires with the map store (the token's own `exp` bounds it anyway).
+     */
     suspend fun getUserInfoExtended(jwtId: String) =
-        jwtIdToUserInfoExtended.remove(jwtId) ?: refreshTokenJwtIdToUserInfoExtended.remove(jwtId)
+        jwtIdToUserInfoExtended.get(jwtId) ?: refreshTokenJwtIdToUserInfoExtended.get(jwtId)
 
     override suspend fun dpopNonce() = dpopNonceService.provideNonce()
 }

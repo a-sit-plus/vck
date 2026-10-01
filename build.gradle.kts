@@ -11,7 +11,7 @@ plugins {
     kotlin("multiplatform") version kotlinVer apply false
     kotlin("plugin.serialization") version kotlinVer apply false
     id("com.android.kotlin.multiplatform.library") version libs.versions.agp.get() apply (false)
-    id("at.asitplus.gradle.conventions")
+    alias(libs.plugins.asp)
 }
 
 val dokkaDir = rootProject.layout.buildDirectory.dir("docs")

@@ -32,7 +32,7 @@ import kotlin.time.Duration.Companion.minutes
 
 val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
 
-    fixture({
+    fixture {
         runBlocking {
             val randomRegion = uuid4().toString()
             val randomCountry = uuid4().toString()
@@ -80,7 +80,7 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
                 )
             }
         }
-    }) - {
+    } - {
 
         "Nested paths with DCQL in request options" {
             val requestedClaims = setOf(

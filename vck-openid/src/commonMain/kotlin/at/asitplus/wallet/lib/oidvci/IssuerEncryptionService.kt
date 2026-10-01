@@ -5,16 +5,15 @@ import at.asitplus.catching
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.SupportedAlgorithmsContainer
-import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
 import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.EncryptJwe
@@ -32,7 +31,7 @@ import kotlin.jvm.JvmOverloads
  */
 class IssuerEncryptionService @JvmOverloads constructor(
     /** Encrypt credential response, if requested by client or [requireResponseEncryption] is set. */
-    private val encryptCredentialResponse: EncryptJweFun = EncryptJwe(EphemeralKeyWithoutCert()),
+    private val encryptCredentialResponse: EncryptJweFun = EncryptJwe(),
     /** Whether to indicate in [metadataCredentialResponseEncryption] if credential response encryption is required. */
     internal val requireResponseEncryption: Boolean = false,
     /** Algorithms to indicate support for credential response encryption. */
@@ -47,22 +46,46 @@ class IssuerEncryptionService @JvmOverloads constructor(
     private val decryptCredentialRequest: DecryptJweFun? = DecryptJwe(decryptionKeyMaterial),
 ) {
 
-    val metadataCredentialRequestEncryption = if (requireResponseEncryption || requireRequestEncryption)
+    /**
+     * Advertised whenever we are able to decrypt credential requests. Requiring response encryption implies requiring
+     * request encryption, since the client's response encryption key may only be sent in an encrypted request.
+     */
+    val metadataCredentialRequestEncryption = if (decryptCredentialRequest != null)
         SupportedAlgorithmsContainer(
             supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
-            encryptionRequired = requireRequestEncryption,
+            encryptionRequired = requireRequestEncryption || requireResponseEncryption,
             jsonWebKeySet = JsonWebKeySet(
-                listOf(decryptionKeyMaterial.publicKey.toJsonWebKey(decryptionKeyMaterial.identifier).forEncryption())
+                listOf(decryptionKeyMaterial.toEncryptionJsonWebKey())
             )
         )
     else null
 
-    val metadataCredentialResponseEncryption = if (requireResponseEncryption || requireRequestEncryption)
-        SupportedAlgorithmsContainer(
-            supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
-            supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
-            encryptionRequired = requireResponseEncryption,
-        ) else null
+    /** Advertised unconditionally: we can always encrypt a response to the key the client sends us. */
+    val metadataCredentialResponseEncryption = SupportedAlgorithmsContainer(
+        supportedAlgorithmsStrings = supportedJweAlgorithms.map { it.identifier }.toSet(),
+        supportedEncryptionAlgorithmsStrings = supportedJweEncryptionAlgorithms.map { it.identifier }.toSet(),
+        encryptionRequired = requireResponseEncryption,
+    )
+
+    /**
+     * Rejects a credential request that should have been encrypted, as per OID4VCI: *"When encryption of a message was
+     * required but the received message is unencrypted, it SHOULD be rejected"*, and *"Credential Request encryption
+     * MUST be used if the `credential_response_encryption` parameter is included, to prevent it being substituted by
+     * an attacker"*.
+     */
+    @Throws(OAuth2Exception::class)
+    internal fun validateRequestEncryption(
+        request: CredentialRequestParameters,
+        hasBeenEncrypted: Boolean
+    ) {
+        if (hasBeenEncrypted) return
+        if (requireRequestEncryption)
+            throw InvalidEncryptionParameters("Credential request has not been encrypted")
+        if (request.credentialResponseEncryption != null)
+            throw InvalidEncryptionParameters(
+                "Credential response encryption parameters may only be sent in an encrypted credential request"
+            )
+    }
 
     /** Decrypts credential requests from the client. */
     internal suspend fun decrypt(
@@ -94,11 +117,14 @@ class IssuerEncryptionService @JvmOverloads constructor(
     ): CredentialIssuer.CredentialResponse =
         request.credentialResponseEncryption?.let {
             val recipientKey = it.jsonWebKey
-            val jweAlg = it.jweAlgorithm
-                ?: (recipientKey.algorithm as? JweAlgorithm)
-                ?: supportedJweAlgorithms.firstOrNull()
+            val jweAlg = (recipientKey.algorithm as? JweAlgorithm)
+                ?: throw InvalidEncryptionParameters("Response encryption JWK has no supported alg")
+            if (jweAlg !in supportedJweAlgorithms)
+                throw InvalidEncryptionParameters("Unsupported alg: ${jweAlg.identifier}")
             val jweEnc = it.jweEncryption
                 ?: throw InvalidEncryptionParameters("Unsupported enc: ${it.jweEncryptionString}")
+            if (jweEnc !in supportedJweEncryptionAlgorithms)
+                throw InvalidEncryptionParameters("Unsupported enc: ${jweEnc.identifier}")
             Napier.d("encrypting response for $recipientKey")
             CredentialIssuer.CredentialResponse.Encrypted(
                 encryptCredentialResponse(
@@ -116,8 +142,4 @@ class IssuerEncryptionService @JvmOverloads constructor(
                 throw InvalidEncryptionParameters("Response encryption required, no params sent")
             CredentialIssuer.CredentialResponse.Plain(response)
         }
-
-    // should always be ecdh-es for encryption
-    private fun JsonWebKey.forEncryption(): JsonWebKey =
-        this.copy(algorithm = JweAlgorithm.ECDH_ES, publicKeyUse = "enc")
 }

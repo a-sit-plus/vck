@@ -14,7 +14,6 @@ import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
-import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -22,6 +21,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.MediaTypes
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oidvci.WalletService
@@ -46,7 +46,7 @@ import kotlinx.serialization.Serializable
  *  * Pre-authorized grants
  *  * Authentication code flows
  *  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
- *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+ *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  *  * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126)
  */
 class OpenId4VciClient(
@@ -336,6 +336,7 @@ class OpenId4VciClient(
             oid4vciService.parseCredentialResponse(
                 response = response.bodyAsText(),
                 isEncrypted = response.contentType()?.match(ContentType.parse(MediaTypes.Application.JWT)) == true,
+                request = request,
                 representation = format.format.toRepresentation(),
                 scheme = scheme
             ).getOrThrow()
@@ -503,5 +504,3 @@ data class CredentialIdentifierInfo(
     val supportedCredentialFormat: SupportedCredentialFormat,
 )
 
-private val JsonWebKey.jwkThumbprintPlain: String
-    get() = jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")

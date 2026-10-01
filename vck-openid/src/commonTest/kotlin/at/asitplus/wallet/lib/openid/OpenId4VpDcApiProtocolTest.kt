@@ -24,16 +24,24 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalMatchingResult
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import com.benasher44.uuid.uuid4
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -54,23 +62,27 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         RequestOptionsCredential(AtomicAttribute2023, SD_JWT),
     ).toDCQLRequest()
 
+    val isoMdocDcqlRequest = CredentialPresentationRequestBuilder(
+        RequestOptionsCredential(
+            credentialScheme = AtomicAttribute2023,
+            representation = ISO_MDOC,
+            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+        ),
+    ).toDCQLRequest()
+
     fixture {
         runBlocking {
             val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val issuerAgent = IssuerAgent(
+                keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default,
+            )
             val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
-                agent.storeCredential(
-                    IssuerAgent(
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default,
-                    ).issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            holderKeyMaterial.publicKey,
-                            AtomicAttribute2023,
-                            SD_JWT,
-                        ).getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                )
+                issueAndStoreSdJwt(agent, holderKeyMaterial)
+                issueAndStoreIsoMdoc(agent, holderKeyMaterial)
             }
+            val storedCredentialIds = holderAgent.getCredentials()!!.map { it.getDcApiId() }
             object {
                 val allowedOriginSchemes = OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES.toMutableSet()
                 val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
@@ -92,6 +104,26 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     ),
                 )
 
+                /**
+                 * Lets the holder answer [authnRequest] from [origin], as the browser would, so that its device
+                 * signature covers the session transcript both sides derive from nonce and origin.
+                 */
+                suspend fun responseFor(
+                    authnRequest: AuthenticationRequestParameters,
+                    origin: String,
+                ): OpenId4VpResponseUnsigned = RequestParametersFrom.OpenId4VpDcApiUnsigned(
+                    parameters = authnRequest,
+                    jsonString = joseCompliantSerializer.encodeToString(authnRequest),
+                    credentialIds = storedCredentialIds,
+                    callingPackageName = callingPackageName,
+                    callingOrigin = origin,
+                ).let { request ->
+                    holderOid4vp.startAuthorizationResponsePreparation(request).getOrThrow()
+                        .let { holderOid4vp.finalizeAuthorizationResponse(it).getOrThrow() }
+                        .shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+                        .params.shouldBeInstanceOf<OpenId4VpResponseUnsigned>()
+                }
+
                 /** Extracts the unsigned authn request from the browser-facing [CredentialRequestOptions]. */
                 suspend fun createUnsignedAuthnRequest(
                     reqOptions: OpenId4VpRequestOptions,
@@ -108,6 +140,27 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     .singleRequest<DigitalCredentialGetRequest.OpenId4VpSigned>()
                     .data.request
                     .typed<AuthenticationRequestParameters, JwsCompact>()
+
+                suspend fun preparationStateFor(
+                    presentationRequest: CredentialPresentationRequest?,
+                ): AuthorizationResponsePreparationState {
+                    val authnRequest = createUnsignedAuthnRequest(
+                        OpenId4VpRequestOptions(
+                            presentationRequest = dcqlRequest,
+                            responseMode = OpenIdConstants.ResponseMode.DcApi,
+                            expectedOrigins = listOf(callingOrigin),
+                        )
+                    )
+                    return holderOid4vp.startAuthorizationResponsePreparation(
+                        RequestParametersFrom.OpenId4VpDcApiUnsigned(
+                            parameters = authnRequest,
+                            jsonString = joseCompliantSerializer.encodeToString(authnRequest),
+                            credentialIds = storedCredentialIds,
+                            callingPackageName = callingPackageName,
+                            callingOrigin = callingOrigin,
+                        )
+                    ).getOrThrow().copy(credentialPresentationRequest = presentationRequest)
+                }
             }
         }
     } - {
@@ -159,29 +212,74 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API Annex C: createAuthnRequest renders the DCQL query as ISO device request") { f ->
-            val isoDcqlRequest = CredentialPresentationRequestBuilder(
-                RequestOptionsCredential(
-                    credentialScheme = AtomicAttribute2023,
-                    representation = ISO_MDOC,
-                    attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
-                ),
-            ).toDCQLRequest()
             val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = isoDcqlRequest,
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    RequestOptionsCredential(
+                        credentialScheme = AtomicAttribute2023,
+                        representation = ISO_MDOC,
+                        attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+                    ),
+                ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
 
-            val isoMdocRequest = f.dcApiVerifier.createAuthnRequest(reqOptions, DcApiCreationOptions.Iso180137AnnexC)
+            f.dcApiVerifier.createAuthnRequest(reqOptions, DcApiCreationOptions.Iso180137AnnexC)
                 .getOrThrow().singleRequest<DigitalCredentialGetRequest.IsoMdoc>()
-                .data
+                .data.apply {
+                    encryptionInfo.type shouldBe DCAPIHandover.TYPE_DCAPI
+                    encryptionInfo.encryptionParameters.nonce.shouldNotBeNull()
+                    deviceRequest.docRequests.single().itemsRequest.value.apply {
+                        docType shouldBe AtomicAttribute2023.isoDocType
+                        namespaces[AtomicAttribute2023.isoNamespace]!!.entries.single() shouldBe
+                                SingleItemsRequest(CLAIM_GIVEN_NAME, false)
 
-            val itemsRequest = isoMdocRequest.deviceRequest.docRequests.single().itemsRequest.value
-            itemsRequest.docType shouldBe AtomicAttribute2023.isoDocType
-            itemsRequest.namespaces[AtomicAttribute2023.isoNamespace]!!.entries.single() shouldBe
-                    SingleItemsRequest(CLAIM_GIVEN_NAME, false)
-            isoMdocRequest.encryptionInfo.type shouldBe DCAPIHandover.TYPE_DCAPI
-            isoMdocRequest.encryptionInfo.encryptionParameters.nonce.shouldNotBeNull()
+                    }
+                }
+        }
+
+
+        test("DC API Annex C: createAuthnRequest renders the Device Retrieval request as ISO device request") { f ->
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    RequestOptionsCredential(
+                        credentialScheme = AtomicAttribute2023,
+                        representation = ISO_MDOC,
+                        attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+                    ),
+                ).toIsoDeviceRetrievalRequest(),
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+            )
+
+            f.dcApiVerifier.createAuthnRequest(reqOptions, DcApiCreationOptions.Iso180137AnnexC)
+                .getOrThrow().singleRequest<DigitalCredentialGetRequest.IsoMdoc>()
+                .data.apply {
+                    encryptionInfo.type shouldBe DCAPIHandover.TYPE_DCAPI
+                    encryptionInfo.encryptionParameters.nonce.shouldNotBeNull()
+                    deviceRequest.docRequests.single().itemsRequest.value.apply {
+                        docType shouldBe AtomicAttribute2023.isoDocType
+                        namespaces[AtomicAttribute2023.isoNamespace]!!.entries.single() shouldBe
+                                SingleItemsRequest(CLAIM_GIVEN_NAME, false)
+                        encryptionInfo.type shouldBe DCAPIHandover.TYPE_DCAPI
+                        encryptionInfo.encryptionParameters.nonce.shouldNotBeNull()
+                    }
+                }
+        }
+
+        test("getMatchingCredentials matches ISO Device Retrieval requests") { f ->
+            val request = CredentialPresentationRequestBuilder(
+                RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC),
+            ).toIsoDeviceRetrievalRequest()
+
+            f.holderOid4vp.getMatchingCredentials(f.preparationStateFor(request)).getOrThrow()
+                .shouldBeInstanceOf<IsoDeviceRetrievalMatchingResult<*>>()
+                .matchingResult.documentMatches.shouldBeSingleton().single().shouldBeSingleton()
+        }
+
+        test("getMatchingCredentials rejects requests without a credential presentation") { f ->
+            f.holderOid4vp.getMatchingCredentials(f.preparationStateFor(null))
+                .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "presentation request"
         }
 
         test("createAuthnRequest combines several exchange protocols in one browser call") { f ->
@@ -192,24 +290,23 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
                 ),
             ).toDCQLRequest()
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = isoDcqlRequest,
-                responseMode = OpenIdConstants.ResponseMode.DcApi,
-                expectedOrigins = listOf(callingOrigin),
-            )
 
-            val requests = f.dcApiVerifier.createAuthnRequest(
-                reqOptions,
+            f.dcApiVerifier.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = isoDcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf(callingOrigin),
+                ),
                 DcApiCreationOptions.OpenId4VpUnsigned,
                 DcApiCreationOptions.Iso180137AnnexC,
             ).getOrThrow().digital.requests
-
-            requests.shouldHaveSize(2)
-            requests[0].shouldBeInstanceOf<DigitalCredentialGetRequest.OpenId4VpUnsigned>()
-                .data.dcqlQuery shouldBe isoDcqlRequest!!.dcqlQuery
-            requests[1].shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>()
-                .data.deviceRequest.docRequests.single().itemsRequest.value.docType shouldBe
-                    AtomicAttribute2023.isoDocType
+                .shouldHaveSize(2).shouldHaveSize(2).apply {
+                    first().shouldBeInstanceOf<DigitalCredentialGetRequest.OpenId4VpUnsigned>()
+                        .data.dcqlQuery shouldBe isoDcqlRequest!!.dcqlQuery
+                    last().shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>()
+                        .data.deviceRequest.docRequests.single().itemsRequest.value.docType shouldBe
+                            AtomicAttribute2023.isoDocType
+                }
         }
 
         test("createAuthnRequest rejects empty creation options") { f ->
@@ -250,12 +347,13 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             )
 
             val preparationState = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
-            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiUnsigned>()
-                .callingOrigin shouldBe callingOrigin
+                .apply {
+                    request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiUnsigned>()
+                        .callingOrigin shouldBe callingOrigin
+                }
 
-            val response = f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
-
-            response.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+            f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
                 .params.shouldBeInstanceOf<OpenId4VpResponseUnsigned>()
         }
 
@@ -318,6 +416,126 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             validation.getOrThrow()
         }
 
+        test("DC API unsigned: mdoc response validates against the DC API session transcript") { f ->
+            val transactionId = uuid4().toString()
+            val authnRequest = f.createUnsignedAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = isoMdocDcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                )
+            )
+
+            val response = f.responseFor(authnRequest, callingOrigin)
+
+            f.dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult>()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.single().single().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
+                .documents.single().apply {
+                    validItems.firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
+                        .shouldNotBeNull().elementValue shouldBe "Susanne"
+                    invalidItems.shouldBeEmpty()
+                }
+        }
+
+        test("DC API unsigned: mdoc device signature is bound to the calling origin") { f ->
+            val transactionId = uuid4().toString()
+            val authnRequest = f.createUnsignedAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = isoMdocDcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                )
+            )
+
+            val response = f.responseFor(authnRequest, callingOrigin)
+
+            // the origin is hashed into the session transcript, so claiming another one does not verify
+            f.dcApiVerifier.validateAuthnResponse(response, transactionId, "https://evil.example.com").getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult>()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.single().single()
+                .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain
+                    "deviceSignature not matching"
+        }
+
+        test("DC API unsigned: mdoc device signature is bound to the nonce of its own request") { f ->
+            val answeredId = uuid4().toString()
+            val answeredRequest = f.createUnsignedAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = isoMdocDcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = answeredId,
+                )
+            )
+            val otherId = uuid4().toString()
+            f.createUnsignedAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = isoMdocDcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = otherId,
+                )
+            )
+
+            val response = f.responseFor(answeredRequest, callingOrigin)
+
+            // the nonce is hashed into the session transcript, so this response does not answer the other request,
+            // even though origin, client and credential are the same
+            f.dcApiVerifier.validateAuthnResponse(response, otherId, callingOrigin).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult>()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.single().single()
+                .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain
+                    "deviceSignature not matching"
+        }
+
+        test("DC API unsigned: encrypted mdoc response validates, binding the recipient key") { f ->
+            // the fixture verifier uses ClientIdScheme.PreRegistered, which populates no client metadata,
+            // so encryption needs a scheme that conveys the encryption key in the request
+            val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            val dcApiVerifier = DcApiVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.CertificateHash(
+                    chain = listOf(verifierKeyMaterial.getCertificate()!!),
+                    redirectUri = "https://example.com/callback",
+                ),
+            )
+            val transactionId = uuid4().toString()
+            val authnRequest = dcApiVerifier.createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = isoMdocDcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApiJwt,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                ),
+                DcApiCreationOptions.OpenId4VpUnsigned,
+            ).getOrThrow().singleRequest<DigitalCredentialGetRequest.OpenId4VpUnsigned>().data
+
+            val response = f.responseFor(authnRequest, callingOrigin)
+
+            // an encrypted response hashes the verifier's encryption key into the session transcript as well
+            response.data.response.shouldNotBeNull().count { it == '.' } shouldBe 4
+
+            dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult>()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.single().single().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
+                .documents.single().validItems
+                .firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
+                .shouldNotBeNull().elementValue shouldBe "Susanne"
+        }
+
         test("DC API signed: parsed as DcApiSigned, validates and responds with OpenId4VpResponseSigned") { f ->
             val reqOptions = OpenId4VpRequestOptions(
                 presentationRequest = dcqlRequest,
@@ -328,19 +546,19 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
             )
 
             val preparationState = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
-            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiSigned>()
-                .callingOrigin shouldBe callingOrigin
+                .apply {
+                    request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiSigned>()
+                        .callingOrigin shouldBe callingOrigin
+                }
 
-            val response = f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
-
-            response.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+            f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
                 .params.shouldBeInstanceOf<OpenId4VpResponseSigned>()
         }
 
@@ -355,7 +573,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = androidCallingOrigin,
@@ -383,20 +600,74 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(signedRequest.jws.toJwsFlattened())),
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
             )
 
             val preparationState = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
-            preparationState.request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiMultiSigned>()
-                .callingOrigin shouldBe callingOrigin
+                .apply {
+                    request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiMultiSigned>()
+                        .callingOrigin shouldBe callingOrigin
+                }
 
-            val response = f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
-
-            response.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+            f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
                 .params.shouldBeInstanceOf<OpenId4VpResponseMultiSigned>()
+        }
+
+        test("DC API signed: wrong typ is rejected") { f ->
+            // OpenID4VP 1.0, A.3.2.1 encodes the DC API signed request as "a request object as defined in Section 5",
+            // so Section 5's "Wallets MUST NOT process Request Objects where the typ Header Parameter is not present
+            // or does not have the value oauth-authz-req+jwt" applies here too
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+            )
+            val payload = f.createSignedAuthnRequest(reqOptions).payload
+
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
+                jwsTyped = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
+                    JwsContentTypeConstants.JWT, payload, AuthenticationRequestParameters.serializer()
+                ).getOrThrow(),
+                credentialIds = listOf(credentialId),
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+
+            f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).apply {
+                isFailure shouldBe true
+                exceptionOrNull()!!.message!! shouldContain "typ"
+            }
+        }
+
+        test("DC API multisigned: every signature has to carry the typ, not just one") { f ->
+            // one request object, several protected headers, see OpenID4VP 1.0, A.3.2.2: a verifier typing only the
+            // signature we happen to rely on is not enough
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+            )
+            val signedRequest = f.createSignedAuthnRequest(reqOptions)
+            val untyped = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
+                JwsContentTypeConstants.JWT, signedRequest.payload, AuthenticationRequestParameters.serializer()
+            ).getOrThrow()
+
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = JwsTyped<AuthenticationRequestParameters>(
+                    listOf(signedRequest.jws.toJwsFlattened(), untyped.jws.toJwsFlattened())
+                ),
+                credentialIds = listOf(credentialId),
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+
+            f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).apply {
+                isFailure shouldBe true
+                exceptionOrNull()!!.message!! shouldContain "typ"
+            }
         }
 
         test("DC API multisigned: origin mismatch rejects with InvalidRequest when expected_origins is set") { f ->
@@ -409,15 +680,15 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(signedRequest.jws.toJwsFlattened())),
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = "https://evil.example.com",  // does not match expectedOrigins
             )
 
-            val result = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest)
-            result.isFailure shouldBe true
-            result.exceptionOrNull()!!.message!! shouldContain "expected_origins"
+            f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).apply {
+                isFailure shouldBe true
+                exceptionOrNull()!!.message!! shouldContain "expected_origins"
+            }
         }
 
         test("DC API signed: origin mismatch rejects with InvalidRequest when expected_origins is set") { f ->
@@ -430,15 +701,15 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = "https://evil.example.com",  // does not match expectedOrigins
             )
 
-            val result = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest)
-            result.isFailure shouldBe true
-            result.exceptionOrNull()!!.message!! shouldContain "expected_origins"
+            f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).apply {
+                isFailure shouldBe true
+                exceptionOrNull()!!.message!! shouldContain "expected_origins"
+            }
         }
 
         test("DC API signed: origins are compared as exact strings") { f ->
@@ -450,7 +721,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
@@ -472,7 +742,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = ftpOrigin,
@@ -495,7 +764,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = signedRequest,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = httpOrigin,
@@ -519,15 +787,15 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             )
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = withoutExpectedOrigins,
-                verified = false,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
             )
 
-            val result = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest)
-            result.isFailure shouldBe true
-            result.exceptionOrNull()!!.message!! shouldContain "expected_origins must be set"
+            f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).apply {
+                isFailure shouldBe true
+                exceptionOrNull()!!.message!! shouldContain "expected_origins must be set"
+            }
         }
     }
 }

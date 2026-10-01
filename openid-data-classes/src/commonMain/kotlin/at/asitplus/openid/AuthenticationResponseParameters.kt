@@ -25,9 +25,7 @@ data class AuthenticationResponseParameters(
      */
     val code: String? = null,
 
-    /**
-     * [IdToken] serialized, wrapped inside a JWS.
-     */
+    @Deprecated("Support for SIOPv2 has been removed")
     @SerialName("id_token")
     val idToken: String? = null,
 
@@ -44,18 +42,7 @@ data class AuthenticationResponseParameters(
     @SerialName("vp_token")
     val vpToken: JsonElement? = null,
 
-    /**
-     * OID4VP: REQUIRED. The presentation_submission element as defined in DIF.PresentationExchange. It contains
-     * mappings between the requested Verifiable Credentials and where to find them within the returned VP Token.
-     * This is expressed via elements in the `descriptor_map` array, known as Input Descriptor Mapping Objects. These
-     * objects contain a field called path, which, for this specification, MUST have the value `$` (top level root path)
-     * when only one Verifiable Presentation is contained in the VP Token, and MUST have the value `$[n]` (indexed path
-     * from root) when there are multiple Verifiable Presentations, where `n` is the index to select. The `path_nested`
-     * object inside an Input Descriptor Mapping Object is used to describe how to find a returned Credential within a
-     * Verifiable Presentation, and the value of the path field in it will ultimately depend on the credential format.
-     * Non-normative examples can be found further in this section.
-     */
-    @SerialName("presentation_submission")
+    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
     val presentationSubmission: PresentationSubmission? = null,
 
     /**

@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
 
 @Serializable
 data class ClaimDescription(
@@ -34,4 +35,15 @@ data class ClaimDescription(
      */
     @SerialName("display")
     val display: Set<DisplayProperties>? = null
-)
+) {
+    @JvmOverloads
+    internal constructor(
+        path: List<String>,
+        display: Set<DisplayProperties>? = null,
+        mandatory: Boolean? = null,
+    ) : this(
+        path = OpenId4VciClaimsPathPointer(path),
+        mandatory = mandatory,
+        display = display,
+    )
+}

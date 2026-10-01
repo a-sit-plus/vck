@@ -36,7 +36,11 @@ class DummyAuthorizationServiceStrategy(
         tokenRequestAuthnDetails: Set<AuthorizationDetails>,
     ) = throw InvalidAuthorizationDetails()
 
-    override fun filterScope(scope: String): String = scope
+    /** Keeps only the one scope this strategy knows, and returns `null` if nothing is left, like the real one. */
+    override fun filterScope(scope: String): String? = scope.trim().split(" ")
+        .filter { it == this.scope }
+        .joinToString(" ")
+        .takeIf { it.isNotBlank() }
 
     override fun validateScope(
         scope: String,

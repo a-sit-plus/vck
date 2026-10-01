@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dif.ClaimFormat
-import at.asitplus.dif.PresentationSubmission
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
@@ -35,8 +33,9 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
@@ -46,14 +45,18 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
+ * Tests our OpenID4VP implementation against POTENTIAL Piloting Definition Scope
  */
+@Suppress("DEPRECATION")
 val OpenId4VpInteropTest by matrixSuite {
-    fixture({
-        kotlinx.coroutines.runBlocking {
+    fixture {
+        runBlocking {
             var sdAlgorithm: Digest? = null
             val issuerKeyId = uuid4().toString()
             val issuerIdentifier = "https://issuer.example.com"
@@ -66,7 +69,7 @@ val OpenId4VpInteropTest by matrixSuite {
             val holderAgent = HolderAgent(
                 holderKeyMaterial,
                 validatorSdJwt = ValidatorSdJwt(
-                    verifyJwsObject = VerifyJwsObject(publicKeyLookup = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
+                    verifyJwsObject = VerifyJwsObjectTrusted(trustedKeys = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
                 )
             ).also {
                 it.storeCredential(
@@ -102,8 +105,8 @@ val OpenId4VpInteropTest by matrixSuite {
                     verifier = VerifierAgent(
                         identifier = clientIdScheme.clientId,
                         validatorSdJwt = ValidatorSdJwt(
-                            verifyJwsObject = VerifyJwsObject(
-                                publicKeyLookup = {
+                            verifyJwsObject = VerifyJwsObjectTrusted(
+                                trustedKeys = {
                                     setOf(
                                         issuerKeyMaterial.publicKey.toJsonWebKey(),
                                         holderKeyMaterial.publicKey.toJsonWebKey(),
@@ -115,7 +118,7 @@ val OpenId4VpInteropTest by matrixSuite {
                 )
             }
         }
-    }) - {
+    } - {
 
         "process with cross-device flow with request_uri and pre-trusted" {
             val responseNonce = uuid4().toString()
@@ -132,7 +135,7 @@ val OpenId4VpInteropTest by matrixSuite {
                                 DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)
                             )
                         )
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = "https://verifier.example.com/response/$responseNonce",
                 ),
@@ -166,7 +169,7 @@ val OpenId4VpInteropTest by matrixSuite {
             jarPayload.audience shouldBe "https://self-issued.me/v2"
             jarPayload.clientId shouldBe it.verifierClientId
             jarPayload.clientIdWithoutPrefix shouldBe it.verifierClientId
-            jarPayload.presentationDefinition.shouldNotBeNull()
+            jarPayload.dcqlQuery.shouldNotBeNull()
             jarPayload.nonce.shouldNotBeNull()
             jarPayload.state.shouldNotBeNull()
             jarPayload.responseType shouldBe "vp_token"
@@ -184,7 +187,11 @@ val OpenId4VpInteropTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
-                val sdJwt = SdJwtSigned.parseCatching(vpToken).getOrThrow()
+                val presentation = joseCompliantSerializer.decodeFromString<JsonObject>(vpToken)
+                    .values.shouldBeSingleton().first()
+                    .jsonArray.shouldBeSingleton().first()
+                    .jsonPrimitive.content
+                val sdJwt = SdJwtSigned.parseCatching(presentation).getOrThrow()
                 sdJwt.keyBindingJws.shouldNotBeNull().apply {
                     jws.jwsHeader.apply {
                         algorithm shouldBe JwsAlgorithm.Signature.ES256
@@ -217,19 +224,13 @@ val OpenId4VpInteropTest by matrixSuite {
                 }
             }
             response.params.entries.firstOrNull { it.key == "state" }.shouldNotBeNull()
-            response.params.entries.first { it.key == "presentation_submission" }.value.let { presentationSubmission ->
-                val presSub = joseCompliantSerializer.decodeFromString<PresentationSubmission>(presentationSubmission)
-                presSub.definitionId.shouldNotBeNull()
-                presSub.descriptorMap.shouldNotBeNull().first().apply {
-                    path shouldBe "$"
-                    format shouldBe ClaimFormat.SD_JWT
-                }
-            }
+            response.params.entries.firstOrNull { it.key == "presentation_submission" }.shouldBeNull()
 
             it.verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode()).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.shouldBeSingleton().first().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.shouldBeSingleton().first()
+                .shouldBeSingleton().first().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         }
 

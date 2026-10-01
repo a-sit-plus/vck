@@ -1,25 +1,29 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.wallet.lib.agent.HolderDCQLQueryMatchingResult
-import at.asitplus.wallet.lib.agent.HolderPresentationExchangeQueryMatchingResult
-import at.asitplus.wallet.lib.agent.HolderPresentationRequestMatchingResult
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+@Deprecated(
+    "Moved to at.asitplus.wallet.lib.agent",
+    ReplaceWith("CredentialMatchingResult<Credential>", "at.asitplus.wallet.lib.agent.CredentialMatchingResult"),
+)
+typealias CredentialMatchingResult<Credential> = at.asitplus.wallet.lib.agent.CredentialMatchingResult<Credential>
 
-/**
- * This interface represents the result of matching a [CredentialPresentationRequest]
- * against a list of available credentials
- */
-sealed interface CredentialMatchingResult<Credential : Any> {
-    val presentationRequest: CredentialPresentationRequest
-    val matchingResult: HolderPresentationRequestMatchingResult<Credential>
-}
+@Deprecated(
+    "Moved to at.asitplus.wallet.lib.agent",
+    ReplaceWith("PresentationExchangeMatchingResult<Credential>", "at.asitplus.wallet.lib.agent.PresentationExchangeMatchingResult"),
+)
+typealias PresentationExchangeMatchingResult<Credential> =
+        at.asitplus.wallet.lib.agent.PresentationExchangeMatchingResult<Credential>
 
-data class PresentationExchangeMatchingResult<Credential : Any>(
-    override val presentationRequest: CredentialPresentationRequest.PresentationExchangeRequest,
-    override val matchingResult: HolderPresentationExchangeQueryMatchingResult<Credential>,
-) : CredentialMatchingResult<Credential>
+@Deprecated(
+    "Moved to at.asitplus.wallet.lib.agent",
+    ReplaceWith("DCQLMatchingResult<Credential>", "at.asitplus.wallet.lib.agent.DCQLMatchingResult"),
+)
+typealias DCQLMatchingResult<Credential> = at.asitplus.wallet.lib.agent.DCQLMatchingResult<Credential>
 
-data class DCQLMatchingResult<Credential : Any>(
-    override val presentationRequest: CredentialPresentationRequest.DCQLRequest,
-    override val matchingResult: HolderDCQLQueryMatchingResult<Credential>,
-) : CredentialMatchingResult<Credential>
+@Deprecated(
+    "Moved to at.asitplus.wallet.lib.agent",
+    ReplaceWith("IsoDeviceRetrievalMatchingResult<Credential>", "at.asitplus.wallet.lib.agent.IsoDeviceRetrievalMatchingResult"),
+)
+typealias IsoDeviceRetrievalMatchingResult<Credential> =
+        at.asitplus.wallet.lib.agent.IsoDeviceRetrievalMatchingResult<Credential>

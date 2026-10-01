@@ -7,6 +7,8 @@ import at.asitplus.iso.sha256
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
@@ -63,14 +65,12 @@ class ValidatorSdJwt @JvmOverloads constructor(
             throw Throwable("No key binding JWT")
         }
         sdJwtResult.sdJwtSigned.keyBindingJws?.also { keyBindingSigned ->
-            vcSdJwt.confirmationClaim?.let {
-                if (!verifyJwsSignatureWithCnf(keyBindingSigned.jws, it)) {
-                    throw Throwable("Key binding JWT not verified (from cnf)")
-                }
-            } ?: run {
-                verifyJwsObject(keyBindingSigned.jws).getOrElse {
-                    throw Throwable("Key binding JWT not verified. $it")
-                }
+            // The KB-JWT has to be verified against the key the issuer bound the credential to. Falling back to a key
+            // asserted by the KB-JWT itself would prove nothing about the holder, so a missing cnf is an error.
+            val confirmationClaim = vcSdJwt.confirmationClaim
+                ?: throw Throwable("No cnf in SD-JWT to verify the key binding JWT against")
+            if (!verifyJwsSignatureWithCnf(keyBindingSigned.jws, confirmationClaim)) {
+                throw Throwable("Key binding JWT not verified (from cnf)")
             }
 
             val keyBinding = keyBindingSigned.payload
@@ -81,7 +81,8 @@ class ValidatorSdJwt @JvmOverloads constructor(
                 "Audience not correct: ${keyBinding.audience}"
             }
 
-            if (!keyBinding.sdHash.contentEquals(input.hashInput.encodeToByteArray().sha256())) {
+            val digest = vcSdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
+            if (!keyBinding.sdHash.contentEquals(digest.digest(input.hashInput.encodeToByteArray()))) {
                 throw Throwable("KB-JWT does not contain correct sd_hash")
             }
 

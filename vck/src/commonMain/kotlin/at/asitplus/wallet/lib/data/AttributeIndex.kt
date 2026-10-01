@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.data.AttributeIndex.resolveIdentifier
-import at.asitplus.wallet.lib.data.AttributeIndex.resolveIdentifierPlainJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_PRESENTATION
@@ -35,11 +33,6 @@ object AttributeIndex {
         val preloaded = credentialMetadataRegistry.preloadEntries().map { it.toCredentialScheme() }
         schemeSetRef.update { it + preloaded }
     }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use other methods that resolve an identifier")
-    fun resolveSchemaUri(uri: String): CredentialScheme? =
-        schemeSet.firstOrNull { it.schemaUri == uri }
 
     /**
      * Matches the passed [type] against all known types from [CredentialScheme.vcType].

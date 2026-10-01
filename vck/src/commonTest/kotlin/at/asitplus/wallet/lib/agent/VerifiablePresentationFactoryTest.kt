@@ -1,26 +1,23 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.JsonResult
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllMandatoryClaimsMatchingResult
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
-import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
-import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
+import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemSpec
+import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemType
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreIsoMdoc
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -28,6 +25,8 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -39,54 +38,41 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.random.Random
-import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlin.random.Random
 
 val VerifiablePresentationFactoryTest by matrixSuite {
 
-    fixture({ kotlinx.coroutines.runBlocking {
-        val issuer = IssuerAgent(
-            keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            identifier = "https://issuer.example.com/".toUri(),
-            randomSource = RandomSource.Default,
-        )
-        val holderKeyMaterial = EphemeralKeyWithoutCert()
-        val holder = HolderAgent(
-            keyMaterial = holderKeyMaterial,
-        )
-
-        val sdJwtCredential = holder.storeCredential(
-            issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    SD_JWT,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        ).getOrThrow()
-
-        val isoCredential = holder.storeCredential(
-            issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ISO_MDOC,
-                ).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
-        ).getOrThrow()
-
-        object {
-            val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
-            val sdJwtCredential = sdJwtCredential
-            val isoCredential = isoCredential
+    fixture {
+        runBlocking {
+            val issuer = IssuerAgent(
+                keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default,
+            )
+            val holderKeyMaterial = EphemeralKeyWithoutCert()
+            val holder = HolderAgent(
+                keyMaterial = holderKeyMaterial,
+                // Ensure a clean ZK backend registry is being used for these tests.
+                // By default, IsoMdocZkEngine uses IsoMdocZkBackendRegistry.Default, which is a global singleton.
+                // In a test environment, this can lead to state leakage between tests if backends are registered.
+                mdocZkEngine = IsoMdocZkEngine(IsoMdocZkBackendRegistry())
+            )
+            val sdJwtCredential = issueAndStoreSdJwt(holder, holderKeyMaterial, issuer)
+            val isoCredential = issueAndStoreIsoMdoc(holder, holderKeyMaterial, issuer)
+            object {
+                val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
+                val sdJwtCredential = sdJwtCredential
+                val isoCredential = isoCredential
+            }
         }
-    } }) - {
+    } - {
 
         "sd-jwt createVerifiablePresentation uses disclosedAttributes (collection)" {
             val disclosedAttributes = listOf(
@@ -146,6 +132,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                         claimValue = JsonPrimitive("Musterfrau"),
                     )
                 ),
+                schemeIdentifier = "unknown"
             )
 
             it.verifiablePresentationFactory.createVerifiablePresentation(
@@ -219,7 +206,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
         }
 
         "iso createVerifiablePresentation ignores attributes without namespace" {
-            val result = it.verifiablePresentationFactory.createVerifiablePresentation(
+            it.verifiablePresentationFactory.createVerifiablePresentation(
                 request = presentationRequest(),
                 credential = it.isoCredential,
                 disclosedAttributes = listOf(
@@ -245,7 +232,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
 
         "iso createVerifiablePresentation uses disclosedAttributes (dcql all claims)" {
             val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
-            val result = it.verifiablePresentationFactory.createVerifiablePresentation(
+            it.verifiablePresentationFactory.createVerifiablePresentation(
                 request = presentationRequest(),
                 credential = it.isoCredential,
                 disclosedAttributes = AllClaimsMatchingResult,
@@ -271,7 +258,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
         "iso createVerifiablePresentation uses disclosedAttributes (dcql query results)" {
             val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
 
-            val result = it.verifiablePresentationFactory.createVerifiablePresentation(
+            it.verifiablePresentationFactory.createVerifiablePresentation(
                 request = presentationRequest(),
                 credential = it.isoCredential,
                 disclosedAttributes = ClaimsQueryResults(
@@ -284,22 +271,57 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 disclosedIsoClaimNames(namespace) shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_PORTRAIT)
             }
         }
-    }
 
+        "iso createVerifiablePresentation uses disclosedAttributes (dcql query results) and ZKP request with plain fallback" {
+            val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
+
+            it.verifiablePresentationFactory.createVerifiablePresentation(
+                request = presentationRequest(),
+                credential = it.isoCredential,
+                disclosedAttributes = ClaimsQueryResults(
+                    listOf(
+                        IsoMdocResult(namespace, CLAIM_GIVEN_NAME, "Susanne"),
+                        IsoMdocResult(namespace, CLAIM_PORTRAIT, byteArrayOf(1)),
+                    )
+                ),
+                zkMetadata = invalidIsoZkMetaData(zkRequired = false)
+            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>().apply {
+                disclosedIsoClaimNames(namespace) shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_PORTRAIT)
+            }
+        }
+
+        "iso createVerifiablePresentation uses disclosedAttributes (dcql query results) an ZKP request without fallback" {
+            val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
+
+            shouldThrow<PresentationException> {
+                it.verifiablePresentationFactory.createVerifiablePresentation(
+                    request = presentationRequest(),
+                    credential = it.isoCredential,
+                    disclosedAttributes = ClaimsQueryResults(
+                        listOf(
+                            IsoMdocResult(namespace, CLAIM_GIVEN_NAME, "Susanne"),
+                            IsoMdocResult(namespace, CLAIM_PORTRAIT, byteArrayOf(1)),
+                        )
+                    ),
+                    zkMetadata = invalidIsoZkMetaData(zkRequired = true)
+                ).getOrThrow()
+            }
+        }
+
+    }
+}
+// Simple Session Transcript (mostly empty)
+private val simpleTranscriptCallback: () -> SessionTranscript = {
+    SessionTranscript.forQr(
+        deviceEngagementBytes = byteArrayOf(),
+        eReaderKeyBytes = byteArrayOf(),
+    )
 }
 
 private fun presentationRequest() = PresentationRequestParameters(
     nonce = uuid4().toString(),
     audience = "https://verifier.example.org",
-    calcIsoDeviceSignaturePlain = {
-        CoseSigned.create(
-            CoseHeader(algorithm = CoseAlgorithm.Signature.RS256),
-            null,
-            byteArrayOf(),
-            CryptoSignature.RSA(byteArrayOf()),
-            ByteArraySerializer(),
-        )
-    }
+    calcIsoSessionTranscript = simpleTranscriptCallback,
 )
 
 private fun CreatePresentationResult.SdJwt.disclosedClaimNames(): Set<String> =
@@ -315,3 +337,25 @@ private fun CreatePresentationResult.DeviceResponse.disclosedIsoClaimNames(names
         ?: emptySet()
 
 private val setOfDefaultSdJwtClaims = setOf("iss", "nbf", "exp", "cnf", "vct", "status", "sub", "iat")
+
+private fun invalidIsoZkMetaData(zkRequired: Boolean) =  ZkMetadata.IsoMdocZk(
+    zkRequest = DCQLIsoMdocZkSystemType(
+        zkRequired = zkRequired,
+        systemSpecs = listOf(
+            DCQLIsoMdocZkSystemSpec(
+                id = "test-id-1",
+                system = "non-existant-system",
+                circuitHash = "asdf",
+                numAttributes = 2,
+                version = 12,
+            ),
+            DCQLIsoMdocZkSystemSpec(
+                id = "test-id-2",
+                system = "non-existant-system",
+                circuitHash = "qwerty",
+                numAttributes = 3,
+                version = 12,
+            )
+        ),
+    ).also{ it.validate() }.toZkRequest()
+)

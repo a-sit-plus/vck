@@ -3,7 +3,12 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
+import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsFlattened
@@ -14,10 +19,11 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.openid.decodeFromQuery
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
@@ -37,19 +43,18 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
         clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),
     )
     val representations = listOf(PLAIN_JWT, SD_JWT, ISO_MDOC)
+    val byReference = CreationOptions.SignedRequestByReference("https://example.com", "https://example.com")
 
     representations.forEach { representation ->
         val reqOptions = OpenId4VpRequestOptions(
             presentationRequest = CredentialPresentationRequestBuilder(
                 RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, representation)
-            ).toPresentationExchangeRequest(),
+            ).toDCQLRequest()
         )
 
         "URL test $representation" {
-            val authnRequest = verifierOid4vp.createAuthnRequest(
-                reqOptions,
-                CreationOptions.Query(walletUrl)
-            ).getOrThrow().url
+            val authnRequest =
+                verifierOid4vp.createAuthnRequest(reqOptions, CreationOptions.Query(walletUrl)).getOrThrow().url
 
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
@@ -60,9 +65,13 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 .shouldBe(params)
         }
 
+        @Suppress("DEPRECATION")
         "Json test $representation" {
             val authnRequest = joseCompliantSerializer.encodeToString(
-                verifierOid4vp.createPlainAuthnRequest(reqOptions)
+                verifierOid4vp.createAuthnRequest(reqOptions, byReference).getOrThrow()
+                    .loadRequestObject.shouldNotBeNull().invoke(RequestObjectParameters()).getOrThrow().run {
+                        JwsCompactTyped<AuthenticationRequestParameters>(this).payload
+                    }
             )
             authnRequest.shouldNotContain(DifInputDescriptor::class.simpleName!!)
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
@@ -75,7 +84,10 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
         }
 
         "DcApiUnsigned test $representation" {
-            val parameters = verifierOid4vp.createPlainAuthnRequest(reqOptions)
+            val parameters = verifierOid4vp.createAuthnRequest(reqOptions, byReference).getOrThrow()
+                .loadRequestObject.shouldNotBeNull().invoke(RequestObjectParameters()).getOrThrow().run {
+                    JwsCompactTyped<AuthenticationRequestParameters>(this).payload
+                }
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiUnsigned(
                 parameters = parameters,
                 jsonString = joseCompliantSerializer.encodeToString(parameters),
@@ -98,7 +110,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 reqOptions, CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
 
-            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
@@ -115,12 +127,11 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 reqOptions, CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
 
-            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = JwsTyped(serializedRequest),
-                verified = false,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
@@ -140,13 +151,12 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 reqOptions, CreationOptions.SignedRequestByValue(walletUrl)
             ).getOrThrow().url
 
-            val jarRequest: JarRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
             val compactTyped = JwsTyped<AuthenticationRequestParameters>(serializedRequest)
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(compactTyped.jws.toJwsFlattened())),
-                verified = false,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
@@ -160,5 +170,42 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
                 .shouldBe(params)
         }
+    }
+
+    // the JWE header a request was decrypted from, see OpenID4VP 1.0, 5.10, has to survive persisting the state
+    "decryptedFrom survives a round trip" {
+        val authnRequestUrl = verifierOid4vp.createAuthnRequest(
+            OpenId4VpRequestOptions(
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+                ).toDCQLRequest()
+            ),
+            CreationOptions.SignedRequestByValue(walletUrl)
+        ).getOrThrow().url
+        val serializedRequest =
+            Url(authnRequestUrl).decodeFromQuery<JarRequestParameters>().request.shouldNotBeNull()
+
+        val params = RequestParametersFrom.Jws<AuthenticationRequestParameters>(
+            jws = JwsTyped<AuthenticationRequestParameters>(serializedRequest).jws,
+            parameters = JwsTyped<AuthenticationRequestParameters>(serializedRequest).payload,
+            decryptedFrom = JweHeader(
+                algorithm = JweAlgorithm.ECDH_ES,
+                encryption = JweEncryption.A128GCM,
+                keyId = "some-key-id",
+            ),
+        )
+
+        val serialized =
+            joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(params)
+        serialized shouldContain "decryptedFrom"
+        joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            .shouldBe(params)
+
+        // state persisted before this field existed still parses, and reports "not encrypted"
+        joseCompliantSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(
+            joseCompliantSerializer.encodeToString<RequestParametersFrom<AuthenticationRequestParameters>>(
+                params.copy(decryptedFrom = null)
+            )
+        ).decryptedFrom shouldBe null
     }
 }

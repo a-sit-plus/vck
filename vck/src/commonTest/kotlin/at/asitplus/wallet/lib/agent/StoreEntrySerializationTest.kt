@@ -6,6 +6,9 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueIsoMdoc
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -35,13 +38,7 @@ val StoreEntrySerializationTest by matrixSuite {
     }- {
 
         test("serialize stored VC") {
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
+            val credentials = issuePlainJwt(it.issuer, it.holderKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
             val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
@@ -54,13 +51,7 @@ val StoreEntrySerializationTest by matrixSuite {
         }
 
         test("serialize stored SD-JWT") {
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    SD_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
+            val credentials = issueSdJwt(it.issuer, it.holderKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
             val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
@@ -79,13 +70,7 @@ val StoreEntrySerializationTest by matrixSuite {
                 ),
                 ConstantIndex.AtomicAttribute2023.isoNamespace
             )
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ISO_MDOC,
-                ).getOrThrow()
-            ).getOrThrow()
+            val credentials = issueIsoMdoc(it.issuer, it.holderKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
             val entry = it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()

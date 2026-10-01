@@ -6,6 +6,7 @@ import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import io.github.z4kn4fein.semver.Version
 
 /**
  * Renders this DCQL query as an ISO 18013-5 [DeviceRequest],
@@ -16,7 +17,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
  * cannot be expressed in an ISO device request.
  */
 fun DCQLQuery.toIso180137AnnexCDeviceRequest(): DeviceRequest = DeviceRequest(
-    version = "1.0",
+    parsedVersion = Version(1, 0),
     docRequests = credentials.map { it.toDocRequest() }.toTypedArray(),
 )
 

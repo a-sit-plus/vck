@@ -7,18 +7,6 @@ import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataDefinition
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataDocument
 import at.asitplus.wallet.sdjwt.SdJwtVcType
 
-@Deprecated(
-    "Replace with type metadata document",
-    level = DeprecationLevel.ERROR
-)
-object EuPidSdJwtScheme {
-    @Deprecated(
-        "Replace with EuPidSdJwtDataElements",
-        ReplaceWith("EuPidSdJwtDataElements")
-    )
-    object SdJwtAttributes
-}
-
 /** `urn:eudi:pid:1` */
 const val EU_PID_SD_JWT_VCT: String = "urn:eudi:pid:1"
 

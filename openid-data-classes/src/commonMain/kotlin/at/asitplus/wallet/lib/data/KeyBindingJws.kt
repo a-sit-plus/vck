@@ -15,16 +15,37 @@ import kotlin.time.Instant
  */
 @Serializable
 data class KeyBindingJws(
+    /**
+     * RFC 9901: REQUIRED. The value of this claim MUST be the time at which the Key Binding JWT was issued using the
+     * syntax defined in [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519).
+     */
     @SerialName("iat")
     @Serializable(with = InstantLongSerializer::class)
     val issuedAt: Instant? = null,
 
+    /**
+     * RFC 9901: REQUIRED. The value MUST be a single string that identifies the intended receiver of the Key Binding
+     * JWT. How the value is represented is up to the protocol used and is out of scope for this specification.
+     */
     @SerialName("aud")
     val audience: String,
 
+    /**
+     * RFC 9901: REQUIRED. Ensures the freshness of the signature or its binding to the given transaction. The value
+     * type of this claim MUST be a string. How this value is obtained is up to the protocol used and is out of scope
+     * for this specification.
+     */
     @SerialName("nonce")
     val challenge: String,
 
+    /**
+     * RFC 9901: REQUIRED. The base64url-encoded hash value over the Issuer-signed JWT and the selected Disclosures.
+     * The hash value in the `sd_hash` claim binds the KB-JWT to the specific SD-JWT. The `sd_hash` value MUST be
+     * computed over the US-ASCII bytes of the encoded SD-JWT, i.e., the Issuer-signed JWT, a tilde character, and zero
+     * or more Disclosures selected for presentation to the Verifier, each followed by a tilde character:
+     * `<Issuer-signed JWT>~<Disclosure 1>~<Disclosure 2>~...~<Disclosure N>~`
+     * The bytes of the digest MUST then be base64url encoded.
+     */
     @SerialName("sd_hash")
     @Serializable(with = ByteArrayBase64UrlSerializer::class)
     val sdHash: ByteArray,

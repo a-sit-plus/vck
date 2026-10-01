@@ -1,7 +1,3 @@
-import org.tomlj.Toml
-import org.tomlj.TomlParseResult
-import java.io.FileInputStream
-
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {
@@ -30,6 +26,7 @@ include(":vck-openid")
 include(":vck-openid-ktor")
 include(":rfc3986-uri-syntax")
 include(":sd-jwt-type-metadata")
+include(":vck-longfellow")
 
 
 val signumFile = file("../signum/build.gradle.kts")
@@ -38,27 +35,6 @@ if (signumFile.exists()) {
     logger.warn("Including signum as composite build.")
     includeBuild("../signum")
 }
-
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("org.tomlj:tomlj:1.1.1")
-    }
-}
-
-
-val versionCatalogSource: TomlParseResult by lazy {
-    Toml.parse(FileInputStream(rootProject.projectDir.absolutePath + ("/gradle/libs.versions.toml")))
-}
-
-/**
- * Gets the version for the dependencies managed by shorthands. Can be overridden by `gradle/libs.versions.toml`
- */
-internal fun versionOf(dependency: String) =
-    versionCatalogSource.getTable("versions")?.getString(dependency) as String
-
 
 dependencyResolutionManagement {
     repositories {

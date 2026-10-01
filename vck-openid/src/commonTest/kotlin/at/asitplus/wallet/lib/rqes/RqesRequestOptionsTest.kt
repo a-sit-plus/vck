@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
 import at.asitplus.csc.enums.SignatureQualifier
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
@@ -19,7 +20,10 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.toTransactionData
+import io.ktor.http.Url
+import at.asitplus.openid.decodeFromQuery
 import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
@@ -42,13 +46,14 @@ val RqesRequestOptionsTest by matrixSuite {
 
         test("Authentication request contains transactionData") {
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_256))
-            it.verifierOid4Vp.createPlainAuthnRequest(requestOptions).apply {
-                val inputDescriptor = presentationDefinition.shouldNotBeNull().inputDescriptors.first()
-                transactionData.shouldNotBeNull().first().toTransactionData().apply {
-                    transactionDataHashAlgorithms shouldNotBe null
-                    credentialIds.first() shouldBe inputDescriptor.id
+            it.verifierOid4Vp.createAuthnRequest(requestOptions, CreationOptions.Query("https://example.com"))
+                .getOrThrow().url.let { Url(it) }.decodeFromQuery<AuthenticationRequestParameters>().apply {
+                    val dcqlId = dcqlQuery.shouldNotBeNull().credentials.first().id
+                    transactionData.shouldNotBeNull().first().toTransactionData().apply {
+                        transactionDataHashAlgorithms shouldNotBe null
+                        credentialIds.first() shouldBe dcqlId.string
+                    }
                 }
-            }
         }
     }
 }
@@ -69,7 +74,7 @@ internal suspend fun buildRequestOptions(
                 attributePaths = setOf(DCQLClaimsPathPointer(FAMILY_NAME), DCQLClaimsPathPointer(GIVEN_NAME)),
                 id = credentialId
             )
-        ).toPresentationExchangeRequest(),
+        ).toDCQLRequest(),
         transactionData = listOf(
             getTransactionData(setOf(credentialId), transactionDataHashAlgorithms),
             getTransactionData(setOf(credentialId), transactionDataHashAlgorithms)

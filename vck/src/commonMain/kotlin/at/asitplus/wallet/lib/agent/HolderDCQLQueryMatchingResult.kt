@@ -8,10 +8,16 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryMatchingResult
 import io.github.aakira.napier.Napier
 
-data class HolderDCQLQueryMatchingResult<Credential: Any>(
+/**
+ * Holder-facing view of a DCQL match.
+ *
+ * [dcqlQueryMatchingResult] identifies matches by their index in [credentials]. [credentialQueryMatches] resolves
+ * those indices to the actual credentials and retains the matching result that controls which claims are disclosed.
+ */
+data class HolderDCQLQueryMatchingResult<Credential : Any>(
     val dcqlQueryMatchingResult: DCQLQueryMatchingResult,
     override val credentials: List<Credential>,
-): HolderPresentationRequestMatchingResult<Credential> {
+) : HolderPresentationRequestMatchingResult<Credential> {
     val credentialQueryMatches = dcqlQueryMatchingResult.credentialQueryMatches.mapValues {
         it.value.map { (index, matching) ->
             DCQLCredentialSubmissionOption(
@@ -21,6 +27,13 @@ data class HolderDCQLQueryMatchingResult<Credential: Any>(
         }
     }
 
+    /**
+     * Builds a valid automatic submission for the required credential sets in [dcqlQuery].
+     *
+     * For every required set, this selects the first satisfiable option. It then submits the first matching
+     * credential per query, or every match when that query allows `multiple`. Optional credential sets are omitted.
+     * Wallets that obtain a different choice from the user should build the submission map themselves.
+     */
     fun toDefaultSubmission(
         dcqlQuery: DCQLQuery,
     ): KmmResult<Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>> =

@@ -1,13 +1,14 @@
 package at.asitplus.dcapi.ios
 
 import at.asitplus.dcapi.request.IsoMdocRequest
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatHolder
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
+import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.DocRequest
+import at.asitplus.iso.ItemsRequest
+import at.asitplus.iso.ItemsRequestList
+import at.asitplus.iso.SingleItemsRequest
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import io.github.z4kn4fein.semver.Version
 import kotlinx.serialization.Serializable
 
 /**
@@ -24,29 +25,30 @@ data class IosDcApiMdocPreRequestSummary(
     fun isConsistentWith(rawRequest: IsoMdocRequest): Boolean =
         normalizedDocumentRequests() == rawRequest.normalizedDocumentRequests()
 
-    /** Converts the summary into a Presentation Exchange-shaped request for pre-request credential matching. */
-    fun toDifInputDescriptors(): List<DifInputDescriptor> =
-        documentRequests.map { request ->
-            DifInputDescriptor(
-                id = request.docType,
-                format = FormatHolder(msoMdoc = FormatContainerJwt()),
-                constraints = Constraint(
-                    fields = request.namespaces.flatMap { (namespace, elements) ->
-                        elements.map { (element, intentToRetain) ->
-                            ConstraintField(
-                                path = listOf(
-                                    NormalizedJsonPath(
-                                        NameSegment(namespace),
-                                        NameSegment(element),
-                                    ).toString()
-                                ),
-                                intentToRetain = intentToRetain
+    @Suppress("DEPRECATION")
+    @Deprecated("Support for Presentation Exchange been removed, use toDeviceRequest")
+    fun toDifInputDescriptors(): List<DifInputDescriptor> = listOf()
+
+    /** Converts the summary into an ISO device request for pre-request credential matching. */
+    fun toDeviceRequest(): DeviceRequest = DeviceRequest(
+        parsedVersion = Version(1, 0),
+        docRequests = documentRequests.map { request ->
+            DocRequest(
+                itemsRequest = ByteStringWrapper(
+                    ItemsRequest(
+                        docType = request.docType,
+                        namespaces = request.namespaces.mapValues { (_, elements) ->
+                            ItemsRequestList(
+                                elements.map { (element, intentToRetain) ->
+                                    SingleItemsRequest(element, intentToRetain)
+                                }
                             )
-                        }
-                    }.toSet()
+                        },
+                    )
                 )
             )
-        }
+        }.toTypedArray(),
+    )
 
     private fun normalizedDocumentRequests(): List<IosDcApiMdocPreRequestNormalizedDocumentRequest> =
         documentRequests.map { it.normalize() }.sorted()

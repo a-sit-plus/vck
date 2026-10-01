@@ -25,8 +25,8 @@ kotlin {
     if ("true" != disableAppleTargets) {
         iosArm64()
         iosSimulatorArm64()
-
     }
+
     sourceSets {
 
         commonMain {
@@ -34,6 +34,7 @@ kotlin {
                 api(project(":vck"))
                 api(project(":openid-data-classes"))
                 api(project(":vck-openid"))
+                api("io.github.z4kn4fein:semver:${VcLibVersions.semver}")
                 implementation(ktor("client-cio"))
                 implementation(ktor("client-logging"))
                 implementation(ktor("client-content-negotiation"))
@@ -57,9 +58,11 @@ kotlin {
             }
         }
 
-        iosTest {
-            dependencies {
-                implementation(ktor("client-darwin"))
+        if ("true" != disableAppleTargets) {
+            iosTest {
+                dependencies {
+                    implementation(ktor("client-darwin"))
+                }
             }
         }
     }
@@ -71,7 +74,8 @@ if ("true" != disableAppleTargets) exportXCFramework(
     static = false,
     project(":vck-openid"),
     project(":vck"),
-    project(":openid-data-classes")
+    project(":openid-data-classes"),
+    "io.github.z4kn4fein:semver:${VcLibVersions.semver}",
 )
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/vck/tree/main/")
@@ -129,4 +133,3 @@ signing {
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications)
 }
-

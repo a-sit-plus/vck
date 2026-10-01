@@ -46,7 +46,6 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
         val request: JwsCompactTyped<AuthenticationRequestParameters> = testSignedOpenId4VpRequest.data.request.typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
             jwsTyped = request,
-            verified = false,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",
             callingOrigin = "https://wallet.a-sit.at"
@@ -68,7 +67,6 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
             (0..5).map { requestElement }.toJwsGeneral().typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
             jwsTyped = request,
-            verified = false,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",
             callingOrigin = "https://wallet.a-sit.at"
@@ -93,7 +91,6 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
         val request: JwsGeneralTyped<AuthenticationRequestParameters> = listOf(requestElement).toJwsGeneral().typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
             jwsTyped = request,
-            verified = false,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
             callingPackageName = "com.android.chrome",
             callingOrigin = "https://wallet.a-sit.at"

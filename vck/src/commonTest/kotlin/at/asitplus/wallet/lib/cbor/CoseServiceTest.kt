@@ -5,6 +5,7 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.HMAC
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
@@ -19,7 +20,9 @@ import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -80,6 +83,40 @@ val CoseServiceTest by matrixSuite {
                 .shouldBe(signed)
 
             VerifyCoseSignatureWithKey<ByteArray>()(parsed, it.signCoseKey, byteArrayOf(), null).isSuccess shouldBe true
+        }
+
+        test("signed object without key in header, but with a trusted key, can be verified") {
+            val signed = it.signCose(
+                protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
+                unprotectedHeader = null,
+                payload = it.randomPayload,
+                serializer = ByteArraySerializer(),
+            ).getOrThrow()
+
+            val trustedKey = it.signCoseKey
+            VerifyCoseSignatureTrusted<ByteArray>(trustedKeys = { _ -> setOf(trustedKey) })(
+                signed, byteArrayOf(), null
+            ).isSuccess shouldBe true
+        }
+
+        test("signed object with certificate in header, that key not being trusted, can not be verified") {
+            val keyMaterial = EphemeralKeyWithSelfSignedCert()
+            val signCose = SignCose<ByteArray>(keyMaterial, unprotectedHeaderModifier = CoseHeaderCertificate())
+            val signed = signCose(
+                protectedHeader = CoseHeader(algorithm = CoseAlgorithm.Signature.ES256),
+                unprotectedHeader = CoseHeader(),
+                payload = it.randomPayload,
+                serializer = ByteArraySerializer(),
+            ).getOrThrow()
+            val otherKey = EphemeralKeyWithoutCert().publicKey.toCoseKey().getOrThrow()
+
+            // the signature itself is fine, but the signer is not on the trust list
+            VerifyCoseSignatureWithKey<ByteArray>()(
+                signed, keyMaterial.publicKey.toCoseKey().getOrThrow(), byteArrayOf(), null
+            ).isSuccess shouldBe true
+            VerifyCoseSignatureTrusted<ByteArray>(trustedKeys = { setOf(otherKey) })(
+                signed, byteArrayOf(), null
+            ).isSuccess shouldBe false
         }
 
         test("mac object with pseudo-random bytes can be verified") {
@@ -147,8 +184,8 @@ val CoseServiceTest by matrixSuite {
         test("signed object with MSO payload can be verified") {
             val parameterSerializer = MobileSecurityObject.serializer()
             val mso = MobileSecurityObject(
-                version = "1.0",
-                digestAlgorithm = "SHA-256",
+                parsedVersion = Version(1, 0),
+                digest = Digest.SHA256,
                 valueDigests = mapOf(
                     "foo" to ValueDigestList(listOf(ValueDigest(0U, byteArrayOf())))
                 ),
@@ -185,8 +222,8 @@ val CoseServiceTest by matrixSuite {
         test("maced object with MSO payload can be verified") {
             val parameterSerializer = MobileSecurityObject.serializer()
             val mso = MobileSecurityObject(
-                version = "1.0",
-                digestAlgorithm = "SHA-256",
+                parsedVersion = Version(1, 0),
+                digest = Digest.SHA256,
                 valueDigests = mapOf(
                     "foo" to ValueDigestList(listOf(ValueDigest(0U, byteArrayOf())))
                 ),

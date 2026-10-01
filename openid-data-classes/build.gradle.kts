@@ -1,3 +1,4 @@
+import at.asitplus.gradle.VcLibVersions
 import at.asitplus.gradle.commonImplementationAndApiDependencies
 import at.asitplus.gradle.envExtra
 import at.asitplus.gradle.exportXCFramework
@@ -31,7 +32,9 @@ kotlin {
             dependencies {
                 api(project(":dif-data-classes"))
                 api(project(":csc-data-classes"))
+                api(project(":etsi-data-classes"))
                 api(ktor("http"))
+                api("io.github.z4kn4fein:semver:${VcLibVersions.semver}")
                 implementation(project(":rfc3986-uri-syntax"))
                 implementation(napier())
                 commonImplementationAndApiDependencies()
@@ -46,6 +49,7 @@ if ("true" != disableAppleTargets) exportXCFramework(
     static = false,
     project(":dif-data-classes"),
     project(":csc-data-classes"),
+    "io.github.z4kn4fein:semver:${VcLibVersions.semver}",
     ktor("http")
 )
 

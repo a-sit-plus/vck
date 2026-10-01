@@ -60,7 +60,8 @@ sealed class CredentialToBeIssued {
         override val scheme: IsoMdocCredentialScheme,
         override val subjectPublicKey: CryptoPublicKey,
         override val userInfo: OidcUserInfoExtended,
-        val revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST
+        val revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
+        val digest: Digest = Digest.SHA256
     ) : CredentialToBeIssued()
 }
 

@@ -6,6 +6,8 @@ import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.RequestParametersFrom.*
+import at.asitplus.wallet.lib.agent.CredentialMatchingResult
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -23,8 +25,8 @@ import kotlin.jvm.JvmOverloads
  * entry point and delegates the protocol-specific work to [OpenId4VpHolder] or [Iso180137AnnexCHolder].
  */
 class DcApiHolder @JvmOverloads constructor(
-    keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    holder: Holder = HolderAgent(keyMaterial),
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val holder: Holder = HolderAgent(keyMaterial),
     private val openId4VpHolder: OpenId4VpHolder = OpenId4VpHolder(
         keyMaterial = keyMaterial,
         holder = holder,
@@ -40,29 +42,25 @@ class DcApiHolder @JvmOverloads constructor(
      * consent, and resume with [finalizeAuthorizationResponse].
      */
     suspend fun startAuthorizationResponsePreparation(
-        request: RequestParametersFrom.DcApiRequest,
+        request: DcApiRequest,
     ): KmmResult<DcApiPreparationState> = catching {
         when (request) {
-            is RequestParametersFrom.OpenId4VpDcApiSigned ->
-                DcApiPreparationState.OpenId4Vp(
-                    openId4VpHolder.startAuthorizationResponsePreparation(request).getOrThrow()
-                )
+            is OpenId4VpDcApiSigned -> DcApiPreparationState.OpenId4Vp(
+                openId4VpHolder.startAuthorizationResponsePreparation(request).getOrThrow()
+            )
 
-            is RequestParametersFrom.OpenId4VpDcApiMultiSigned ->
-                DcApiPreparationState.OpenId4Vp(
-                    openId4VpHolder.startAuthorizationResponsePreparation(request).getOrThrow()
-                )
+            is OpenId4VpDcApiMultiSigned -> DcApiPreparationState.OpenId4Vp(
+                openId4VpHolder.startAuthorizationResponsePreparation(request).getOrThrow()
+            )
 
-            is RequestParametersFrom.OpenId4VpDcApiUnsigned ->
-                DcApiPreparationState.OpenId4Vp(
-                    openId4VpHolder.startAuthorizationResponsePreparation(request).getOrThrow()
-                )
+            is OpenId4VpDcApiUnsigned -> DcApiPreparationState.OpenId4Vp(
+                openId4VpHolder.startAuthorizationResponsePreparation(request).getOrThrow()
+            )
 
-            is RequestParametersFrom.IsoMdocDcApi ->
-                DcApiPreparationState.Iso180137AnnexC(
-                    request = request,
-                    presentationRequest = iso180137AnnexCHolder.createPresentationRequest(request).getOrThrow(),
-                )
+            is IsoMdocDcApi -> DcApiPreparationState.Iso180137AnnexC(
+                request = request,
+                presentationRequest = iso180137AnnexCHolder.createPresentationRequest(request).getOrThrow(),
+            )
         }
     }
 
@@ -71,11 +69,8 @@ class DcApiHolder @JvmOverloads constructor(
         state: DcApiPreparationState,
     ): KmmResult<CredentialMatchingResult<SubjectCredentialStore.StoreEntry>> =
         when (state) {
-            is DcApiPreparationState.OpenId4Vp ->
-                openId4VpHolder.getMatchingCredentials(state.state)
-
-            is DcApiPreparationState.Iso180137AnnexC ->
-                iso180137AnnexCHolder.getMatchingCredentials(state.request)
+            is DcApiPreparationState.OpenId4Vp -> openId4VpHolder.getMatchingCredentials(state.state)
+            is DcApiPreparationState.Iso180137AnnexC -> iso180137AnnexCHolder.getMatchingCredentials(state.request)
         }
 
     /**
@@ -83,7 +78,7 @@ class DcApiHolder @JvmOverloads constructor(
      *
      * Encode the result with `toAndroidDcApiResponseJson()` on Android or, for an Annex C request,
      * `toIosIsoMdocResponseBytes()` on iOS. Annex C requires a
-     * [CredentialPresentation.PresentationExchangePresentation]; OpenID4VP uses the presentation type requested by
+     * [CredentialPresentation.IsoDeviceRetrievalPresentation]; OpenID4VP uses the presentation type requested by
      * its [CredentialPresentationRequest].
      */
     suspend fun finalizeAuthorizationResponse(
@@ -96,20 +91,24 @@ class DcApiHolder @JvmOverloads constructor(
                     preparationState = state.state,
                     credentialPresentation = credentialPresentation,
                 ).getOrThrow()
-                val dcApiResult = result as? AuthenticationResponseResult.DcApi
-                    ?: throw IllegalStateException("Expected OpenID4VP DC API response")
-                dcApiResult.params as? DigitalCredentialInterface
-                    ?: throw IllegalStateException("OpenID4VP DC API response is not a DigitalCredentialInterface")
+                require(result is AuthenticationResponseResult.DcApi) {
+                    "Expected OpenID4VP DC API response"
+                }
+                require(result.params is DigitalCredentialInterface) {
+                    "OpenID4VP DC API response is not a DigitalCredentialInterface"
+                }
+                result.params
             }
 
             is DcApiPreparationState.Iso180137AnnexC -> {
-                val presentation = credentialPresentation as? CredentialPresentation.PresentationExchangePresentation
-                    ?: throw IllegalArgumentException("ISO 18013-7 Annex C requires a Presentation Exchange presentation")
+                require(credentialPresentation is CredentialPresentation.IsoDeviceRetrievalPresentation) {
+                    "ISO 18013-7 Annex C requires an ISO Device Retrieval presentation"
+                }
                 IsoMdocResponse(
                     DCAPIResponse(
                         iso180137AnnexCHolder.finalizeResponse(
                             request = state.request,
-                            credentialPresentation = presentation,
+                            credentialPresentation = credentialPresentation,
                         ).getOrThrow()
                     )
                 )
@@ -138,7 +137,7 @@ sealed class DcApiPreparationState {
     }
 
     data class Iso180137AnnexC(
-        override val request: RequestParametersFrom.IsoMdocDcApi,
-        override val presentationRequest: CredentialPresentationRequest.PresentationExchangeRequest,
+        override val request: IsoMdocDcApi,
+        override val presentationRequest: CredentialPresentationRequest.IsoDeviceRetrieval,
     ) : DcApiPreparationState()
 }

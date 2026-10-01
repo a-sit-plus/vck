@@ -93,7 +93,7 @@ data class DCQLQuery(
                 parseIsoMdocCredential = parseIsoMdocCredential,
                 parseSdJwtCredential = parseSdJwtCredential,
                 parseVcJwsCredential = parseVcJwsCredential,
-            )
+            ).getOrThrow()
         }
     }
 
@@ -115,4 +115,3 @@ data class DCQLQuery(
         }
     }
 }
-

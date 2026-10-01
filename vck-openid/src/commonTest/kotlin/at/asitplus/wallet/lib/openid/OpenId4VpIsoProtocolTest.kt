@@ -6,21 +6,18 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult.SuccessIso
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.CreationOptions.Query
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
@@ -40,30 +37,13 @@ import kotlinx.serialization.json.JsonObject
 
 val OpenId4VpIsoProtocolTest by matrixSuite {
 
-    fixture({
+    fixture {
         runBlocking {
             val mdlScheme = AttributeIndex.resolveIdentifier(MDL_DOCTYPE, ISO_MDOC)
             val material = EphemeralKeyWithoutCert()
             val agent = HolderAgent(material).also {
-                val issuerAgent = IssuerAgent(
-                    keyMaterial = EphemeralKeyWithSelfSignedCert(),
-                    identifier = "https://issuer.example.com/".toUri(),
-                    randomSource = RandomSource.Default
-                )
-                it.storeCredential(
-                    issuerAgent.issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            material.publicKey, mdlScheme, ISO_MDOC,
-                        ).getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                )
-                it.storeCredential(
-                    issuerAgent.issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            material.publicKey, AtomicAttribute2023, ISO_MDOC,
-                        ).getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                )
+                issueAndStoreIsoMdoc(it, material, mdlScheme)
+                issueAndStoreIsoMdoc(it, material, AtomicAttribute2023)
             }
 
             object {
@@ -77,7 +57,6 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 val holderAgent = agent
                 val verifierOid4vp = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
-                    decryptionKeyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.RedirectUri(clientId),
                     //nonceService = FixedNonceService(),
                 )
@@ -88,7 +67,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 )
             }
         }
-    }) - {
+    } - {
         "test with Fragment for mDL" {
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
@@ -112,7 +91,6 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                         .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
                             validItems.shouldNotBeEmpty()
-                            invalidItems.shouldBeEmpty()
                         }
                 }
         }
@@ -140,7 +118,6 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                         .shouldBeInstanceOf<SuccessIso>()
                         .documents.first().apply {
                             validItems.shouldNotBeEmpty()
-                            invalidItems.shouldBeEmpty()
                         }
                 }
         }
@@ -169,7 +146,6 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                         .documents.first().apply {
                             validItems.shouldBeSingleton()
                             validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                            invalidItems.shouldBeEmpty()
                         }
                 }
         }
@@ -207,7 +183,6 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                         .documents.first().apply {
                             validItems.shouldBeSingleton()
                             validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                            invalidItems.shouldBeEmpty()
                         }
                 }
         }
@@ -245,53 +220,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                         .documents.first().apply {
                             validItems.shouldBeSingleton()
                             validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                            invalidItems.shouldBeEmpty()
                         }
-                }
-        }
-
-        "Selective Disclosure with two documents in presentation exchange" { scope ->
-            val mdlFamilyName = FAMILY_NAME
-            val atomicGivenName = CLAIM_GIVEN_NAME
-            val requestOptions = OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = scope.mdlScheme,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(mdlFamilyName))
-                    ),
-                    RequestOptionsCredential(
-                        credentialScheme = AtomicAttribute2023,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(atomicGivenName))
-                    ),
-                ).toPresentationExchangeRequest(),
-                responseMode = OpenIdConstants.ResponseMode.DirectPost,
-                responseUrl = "https://example.com/response",
-            )
-            val authnRequest = scope.verifierOid4vp.createAuthnRequest(requestOptions, Query(scope.walletUrl))
-                .getOrThrow().url
-
-            val authnResponse = scope.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-                .shouldBeInstanceOf<AuthenticationResponseResult.Post>().apply {
-                    // make sure there are two device responses for two credentials returned in the presentation
-                    params["vp_token"].shouldNotBeEmpty().shouldNotBeNull().apply {
-                        joseCompliantSerializer.decodeFromString<JsonArray>(this).apply {
-                            shouldHaveSize(2)
-                        }
-                    }
-                }
-
-            scope.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.flatMap {
-                    it.getOrThrow().shouldBeInstanceOf<SuccessIso>().documents
-                }.apply {
-                    first { it.mso.docType == AtomicAttribute2023.isoDocType }
-                        .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
-                    first { it.mso.docType == scope.mdlScheme.isoDocType }
-                        .validItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
                 }
         }
 
@@ -363,7 +292,6 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                         .documents.first().apply {
                             validItems.shouldBeSingleton()
                             validItems.shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
-                            invalidItems.shouldBeEmpty()
                         }
                 }
         }

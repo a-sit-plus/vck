@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.data.NonEmptyList
 import at.asitplus.data.validation.third_party.kotlin.collections.requireIsNotNullOrEmpty
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
@@ -7,10 +8,10 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.TransactionData
+import at.asitplus.openid.VerifierInfo
 import at.asitplus.wallet.lib.RequestOptions
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.*
 import com.benasher44.uuid.uuid4
 
 enum class VerifierMetadataMode {
@@ -42,7 +43,7 @@ data class OpenId4VpRequestOptions(
     /**
      * Response type to set in [at.asitplus.openid.AuthenticationRequestParameters.responseType],
      * by default only `vp_token` (as per OpenID4VP spec, see [OpenIdConstants.VP_TOKEN]).
-     * Be sure to separate values by a space, e.g. `vp_token id_token` (see [OpenIdConstants.ID_TOKEN]).
+     * Note that support for requesting an `id_token` has been removed from this library.
      */
     val responseType: String = VP_TOKEN,
 
@@ -66,6 +67,12 @@ data class OpenId4VpRequestOptions(
     val expectedOrigins: List<String>? = null,
 
     /**
+     * OID4VP 1.0: OPTIONAL. A non-empty array of attestations about the Verifier relevant to the Credential Request.
+     * These attestations MAY include Verifier metadata, policies, trust status, or authorizations.
+     */
+    val verifierInfo: NonEmptyList<VerifierInfo>? = null,
+
+    /**
      * Whether the client_id should be added to the request. Required for DC API:
      * The client_id parameter MUST be omitted in unsigned requests defined in Appendix A.3.1.
      * The client_id parameter MUST be present in signed requests defined in Appendix A.3.2, as it communicates to the
@@ -81,27 +88,35 @@ data class OpenId4VpRequestOptions(
      * through another mechanism, e.g., a profile-specific static configuration.
      */
     val verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.AUTO,
+
+    /**
+     * ISO/IEC 18013-5:2026 `euWrprc`: The CBOR-encoded, COSE-signed registration certificate (WRPRC) of the
+     * relying party, set in the [at.asitplus.iso.DocRequestInfo] of every document request of an
+     * ISO/IEC 18013-7 Annex C request, see [DcApiCreationOptions.Iso180137AnnexC].
+     * Registration certificates for OpenID4VP are passed in [verifierInfo] instead.
+     */
+    val euWrprc: ByteArray? = null,
 ) : RequestOptions {
 
     init {
         if (!transactionData.isNullOrEmpty()) {
             val transactionIds = transactionData.map { it.credentialIds.toList() }.flatten().toSet()
-            val credentialIds = when (presentationRequest) {
+            @Suppress("DEPRECATION") val credentialIds = when (presentationRequest) {
                 is DCQLRequest -> presentationRequest.dcqlQuery
                     .credentials.map { it.id.string }
 
                 is PresentationExchangeRequest -> presentationRequest.presentationDefinition
                     .inputDescriptors.map { it.id }
 
+                is IsoDeviceRetrieval -> setOf() // Transaction Data not supported for Device Retrieval
                 null -> setOf()
             }.toSet()
             require(transactionIds == credentialIds) {
-                "OpenId4VP defines that the credential_ids that must be part of a transaction_data element have to be an ID from InputDescriptor"
+                "TransactionIds must match the credentialIds"
             }
         }
         if (isAnyDcApi) {
-            require(isDcql) { "DC API only supports DCQL" }
-            require(!isSiop) { "DC API does not support SIOP (id_token)" }
+            require(isDcql || isDeviceRetrieval) { "DC API only supports DCQL or DeviceRetrieval" }
             if (populateClientId) {
                 // should be a signed DC API request if client_id has to be assigned
                 expectedOrigins.requireIsNotNullOrEmpty { "Expected origins must be set for DC API" }
@@ -111,13 +126,16 @@ data class OpenId4VpRequestOptions(
         }
         if (verifierMetadataMode == VerifierMetadataMode.OMIT_IF_OUT_OF_BAND) {
             require(!responseMode.requiresEncryption) {
-                "verifier metadata cannot be omitted for encrypted response modes without another key distribution mechanism"
+                "verifier metadata cannot be omitted for encrypted response modes without any key distribution mechanism"
             }
         }
     }
 
     val isDcql: Boolean
         get() = presentationRequest is DCQLRequest
+
+    val isDeviceRetrieval: Boolean
+        get() = presentationRequest is IsoDeviceRetrieval
 
     val isAnyDirectPost: Boolean
         get() = (responseMode == ResponseMode.DirectPost) ||
@@ -126,8 +144,10 @@ data class OpenId4VpRequestOptions(
     val isAnyDcApi: Boolean
         get() = responseMode == ResponseMode.DcApi || responseMode == ResponseMode.DcApiJwt
 
+    @Deprecated("Support for SIOPv2 has been removed")
     val isSiop: Boolean
         get() = responseType.contains(OpenIdConstants.ID_TOKEN)
 
+    @Deprecated("Support for SIOPv2 has been removed")
     fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 }

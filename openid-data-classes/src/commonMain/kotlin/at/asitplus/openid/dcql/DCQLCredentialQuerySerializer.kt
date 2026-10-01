@@ -28,6 +28,7 @@ object DCQLCredentialQuerySerializer : JsonContentPolymorphicSerializer<DCQLCred
             }
         return when (credentialFormatIdentifier) {
             CredentialFormatEnum.MSO_MDOC -> DCQLIsoMdocCredentialQuery.serializer()
+            CredentialFormatEnum.MSO_MDOC_ZK -> DCQLIsoMdocZkCredentialQuery.serializer()
             CredentialFormatEnum.DC_SD_JWT -> DCQLSdJwtCredentialQuery.serializer()
             CredentialFormatEnum.JWT_VC -> DCQLJwtVcCredentialQuery.serializer()
             else -> throw IllegalArgumentException("Credential format not supported: ${credentialFormatIdentifier}")

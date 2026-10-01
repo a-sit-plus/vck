@@ -1,6 +1,3 @@
-import org.tomlj.Toml
-import org.tomlj.TomlParseResult
-
 plugins {
     `kotlin-dsl`
     idea
@@ -8,40 +5,11 @@ plugins {
 group = "at.asitplus.gradle"
 
 
-buildscript {
-    dependencies {
-        classpath("org.tomlj:tomlj:1.1.1")
-    }
-}
-
-
-val versionCatalog: TomlParseResult? by lazy {
-    runCatching {
-        Toml.parse(
-            project.rootProject.layout.projectDirectory.dir("..").dir("gradle")
-                .file("libs.versions.toml").asFile.inputStream()
-        )
-    }.getOrNull()
-}
-
-/**
- * Gets the version for the dependencies managed by shorthands. Can be overridden by `gradle/libs.versions.toml`
- */
-internal fun versionOf(dependency: String) =
-    versionCatalog?.getTable("versions")?.getString(dependency) as String
-
-
-val agp = versionOf("agp")
-val kotlinVer = versionOf("kotlin")
-
 dependencies {
-    api("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVer")
-    api("org.jetbrains.kotlin:kotlin-serialization:$kotlinVer")
-    api("at.asitplus.gradle:k2")
-    api("com.squareup:kotlinpoet:1.16.0")
-    api("com.android.tools.build:gradle:$agp")
-    api("org.tomlj:tomlj:1.1.1")
-
+    implementation("org.jetbrains.kotlin.multiplatform:org.jetbrains.kotlin.multiplatform.gradle.plugin:${libs.versions.kotlin.get()}")
+    implementation(libs.agp)
+    implementation(libs.asp)
+    implementation(libs.tomlj)
 }
 
 repositories {

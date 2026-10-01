@@ -21,23 +21,20 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.encodeToParameters
+import at.asitplus.openid.formUrlEncode
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -53,26 +50,16 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
 
 val PreRegisteredClientTest by matrixSuite {
 
-    fixture({
-        kotlinx.coroutines.runBlocking {
+    fixture {
+        runBlocking {
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val holderAgent = HolderAgent(holderKeyMaterial).also {
-                it.storeCredential(
-                    IssuerAgent(
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default
-                    ).issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            holderKeyMaterial.publicKey,
-                            ConstantIndex.AtomicAttribute2023,
-                            PLAIN_JWT,
-                        ).getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                )
+                issueAndStorePlainJwt(it, holderKeyMaterial)
             }
             object {
                 val holderAgent = holderAgent
@@ -87,28 +74,28 @@ val PreRegisteredClientTest by matrixSuite {
                     randomSource = RandomSource.Default,
                     lookupJsonWebKeysForClient = {
                         if (it.clientId == clientId) JsonWebKeySet(listOf(decryptionKeyMaterial.jsonWebKey)) else null
-                    }
+                    },
                 )
                 var verifierOid4vp = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),
-                    decryptionKeyMaterial = decryptionKeyMaterial
+                    decryptionKeyMaterial = decryptionKeyMaterial,
                 )
                 val defaultRequestOptions = OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                 )
             }
         }
-    }) - {
+    } - {
 
         "test with Fragment" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.Fragment,
                 ),
                 CreationOptions.Query(it.walletUrl)
@@ -123,10 +110,10 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first().shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
 
             it.verifierOid4vp.createAuthnRequest(
@@ -144,7 +131,7 @@ val PreRegisteredClientTest by matrixSuite {
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.Query,
                     state = expectedState,
                 ),
@@ -160,40 +147,12 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first().shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>().apply {
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>().apply {
                     vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 }
-        }
-
-        "wrong client nonce in id_token should lead to error" {
-            val clientIdScheme = ClientIdScheme.PreRegistered(it.clientId, it.redirectUrl)
-            it.verifierOid4vp = OpenId4VpVerifier(
-                keyMaterial = it.verifierKeyMaterial,
-                clientIdScheme = clientIdScheme,
-                nonceService = object : NonceService {
-                    override suspend fun provideNonce() = uuid4().toString()
-                    override suspend fun verifyNonce(it: String) = false
-                    override suspend fun verifyAndRemoveNonce(it: String) = false
-                }
-            )
-            val requestOptions = OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                ).toPresentationExchangeRequest(),
-                responseType = OpenIdConstants.ID_TOKEN,
-            )
-            val authnRequest = it.verifierOid4vp.createAuthnRequest(
-                requestOptions, CreationOptions.Query(it.walletUrl)
-            ).getOrThrow().url
-
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-
-            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .idTokenValidationResult.shouldNotBeNull().isFailure shouldBe true
         }
 
         "wrong client nonce in vp_token should lead to error" {
@@ -220,11 +179,9 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequestUrl = it.verifierOid4vp.createAuthnRequest(
                 it.defaultRequestOptions, CreationOptions.SignedRequestByValue(it.walletUrl)
             ).getOrThrow().url
-            val authnRequest: JarRequestParameters =
-                Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+            val authnRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             authnRequest.clientId shouldBe it.clientId
-            val jar = authnRequest.request
-                .shouldNotBeNull()
+            val jar = authnRequest.request.shouldNotBeNull()
             val jwsObject = JwsCompactTyped<AuthenticationRequestParameters>(jar)
             VerifyJwsObject().invoke(jwsObject.jws).getOrThrow()
 
@@ -233,10 +190,10 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first().shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
 
         "test with direct_post" {
@@ -244,7 +201,7 @@ val PreRegisteredClientTest by matrixSuite {
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
                         credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = it.redirectUrl
                 ),
@@ -257,10 +214,10 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first().shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
         }
 
@@ -269,7 +226,7 @@ val PreRegisteredClientTest by matrixSuite {
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.redirectUrl
                 ),
@@ -284,10 +241,10 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first().shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
         }
 
@@ -301,7 +258,7 @@ val PreRegisteredClientTest by matrixSuite {
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                    ).toPresentationExchangeRequest(),
+                    ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.redirectUrl
                 ),
@@ -314,11 +271,13 @@ val PreRegisteredClientTest by matrixSuite {
         }
 
         "test with deserializing" {
-            val authnRequest = it.verifierOid4vp.createPlainAuthnRequest(it.defaultRequestOptions)
-            val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
+            val authnRequest = it.verifierOid4vp
+                .createAuthnRequest(it.defaultRequestOptions, CreationOptions.Query(it.walletUrl))
+                .getOrThrow()
+            val authnRequestUrlParams = Url(authnRequest.url).encodedQuery
 
             val parsedAuthnRequest: AuthenticationRequestParameters =
-                authnRequestUrlParams.decodeFromUrlQuery()
+                authnRequestUrlParams.decodeFromFormUrlEncoded()
             val authnResponse = it.holderOid4vp.createAuthnResponse(
                 RequestParametersFrom.Uri(
                     Url(authnRequestUrlParams),
@@ -331,10 +290,10 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponseParams).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first().shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
         }
 
@@ -349,10 +308,10 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first().shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 .map { it.vcJws }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
@@ -373,10 +332,9 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 .map { it.vcJws }.forEach {
@@ -409,10 +367,9 @@ val PreRegisteredClientTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
                 .vp.freshVerifiableCredentials.shouldNotBeEmpty()
                 .map { it.vcJws }.forEach {
@@ -424,11 +381,36 @@ val PreRegisteredClientTest by matrixSuite {
                 }
         }
 
+        "test with request object from request_uri that can not be retrieved should fail" {
+            val requestUrl = "https://www.example.com/request/${uuid4()}"
+            val (authRequestUrlWithRequestUri, jar) = it.verifierOid4vp.createAuthnRequest(
+                requestOptionsAtomicAttribute(),
+                CreationOptions.SignedRequestByReference(it.walletUrl, requestUrl)
+            ).getOrThrow()
+            jar.shouldNotBeNull()
+
+            it.holderOid4vp = OpenId4VpHolder(
+                holder = it.holderAgent,
+                // Answers a different URL only, i.e. the request object for `requestUrl` can not be retrieved
+                remoteResourceRetriever = { null },
+                randomSource = RandomSource.Default,
+            )
+
+            it.holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri)
+                .exceptionOrNull().shouldNotBeNull()
+                .shouldBeInstanceOf<OAuth2Exception.InvalidRequest>()
+                .message.shouldNotBeNull() shouldContain requestUrl
+        }
+
         "test with request object from request_uri contains wallet_nonce, but not in store should fail" {
             val requestUrl = "https://www.example.com/request/${uuid4()}"
             val (authRequestUrlWithRequestUri, jar) = it.verifierOid4vp.createAuthnRequest(
                 requestOptionsAtomicAttribute(),
-                CreationOptions.RequestByReference(it.walletUrl, requestUrl)
+                // `wallet_nonce` is only sent when fetching the request object with POST, see OpenID4VP 1.0, 5.10,
+                // and 5.10.1 requires the request object served there to be signed
+                CreationOptions.SignedRequestByReference(
+                    it.walletUrl, requestUrl, JarRequestParameters.RequestUriMethod.POST
+                )
             ).getOrThrow()
             jar.shouldNotBeNull()
 
@@ -446,7 +428,7 @@ val PreRegisteredClientTest by matrixSuite {
                 remoteResourceRetriever = {
                     if (it.url == requestUrl) {
                         jar.invoke(it.requestObjectParameters).getOrThrow().also {
-                            joseCompliantSerializer.decodeFromString<AuthenticationRequestParameters>(it).walletNonce.also {
+                            JwsCompactTyped<AuthenticationRequestParameters>(it).payload.walletNonce.also {
                                 it.shouldNotBeNull()
                                 nonceMap.contains(it).shouldBeTrue()
                             }
@@ -462,34 +444,15 @@ val PreRegisteredClientTest by matrixSuite {
             }
         }
 
-        "test with request object not verified" {
-            val requestUrl = "https://www.example.com/request/${uuid4()}"
-            val (authRequestUrlWithRequestUri, jar) = it.verifierOid4vp.createAuthnRequest(
-                requestOptionsAtomicAttribute(),
-                CreationOptions.SignedRequestByReference(it.walletUrl, requestUrl)
-            ).getOrThrow()
-            jar.shouldNotBeNull()
-
-            it.holderOid4vp = OpenId4VpHolder(
-                holder = it.holderAgent,
-                remoteResourceRetriever = {
-                    if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-                },
-                requestObjectJwsVerifier = { _ -> false },
-                randomSource = RandomSource.Default,
-            )
-
-            shouldThrow<OAuth2Exception> {
-                it.holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
-            }
-        }
+        // "test with request object not verified" removed: it injected a RequestObjectJwsVerifier returning
+        // false, which is no longer invoked. Rejecting a relying party is covered by OpenId4VpRelyingPartyTrustTest.
     }
 }
 
 private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
     presentationRequest = CredentialPresentationRequestBuilder(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-    ).toPresentationExchangeRequest(),
+    ).toDCQLRequest(),
 )
 
 private suspend fun verifySecondProtocolRun(
@@ -502,9 +465,8 @@ private suspend fun verifySecondProtocolRun(
         .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
     verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
         .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-        .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-        .inputDescriptorResponseValidations.values.map {
-            it.getOrThrow()
-        }.shouldBeSingleton().first()
+        .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+        .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+        .shouldBeSingleton().first()
         .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
 }

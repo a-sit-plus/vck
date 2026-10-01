@@ -38,6 +38,7 @@ import kotlinx.serialization.json.longOrNull
  *  * Element count check (minItems = 1) for root,
  *  * Check for unique items at root (whatever that means)
  */
+@Deprecated("Support for Presentation Exchange has been removed from OpenID4VP; use DCQL or DeviceRequest")
 object PresentationExchangeInputEvaluator {
     fun evaluateInputDescriptorAgainstCredential(
         inputDescriptor: InputDescriptor,
@@ -170,7 +171,7 @@ object PresentationExchangeInputEvaluator {
 
     /** The resolved node addresses a VC `type` member, whose value is conventionally an array of type strings. */
     private fun NodeListEntry.isVcTypeNode(): Boolean =
-        (normalizedJsonPath.segments.lastOrNull() as? NormalizedJsonPathSegment.NameSegment)?.memberName == "type"
+        (normalizedJsonPath.lastOrNull() as? NormalizedJsonPathSegment.NameSegment)?.memberName == "type"
 }
 
 internal fun JsonElement.matchConstraints(

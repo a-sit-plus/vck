@@ -44,9 +44,7 @@ object BuildDPoPHeader {
             accessTokenHash = accessToken?.encodeToByteArray()?.sha256()?.encodeToString(Base64UrlStrict),
             issuedAt = Clock.System.now().truncateToSeconds(),
             nonce = nonce,
-        ).also {
-            Napier.d("Building DPoP JWT: $it")
-        },
+        ),
         serializer = JsonWebToken.serializer(),
     ).getOrThrow()
 }
@@ -55,10 +53,9 @@ object BuildClientAttestationJwt {
     /**
      * Client attestation JWT, issued by the backend service to a client, which can be sent to an OAuth2 Authorization
      * Server if needed, e.g. as HTTP header `OAuth-Client-Attestation`, see
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
      *
      * @param clientId OAuth 2.0 client ID of the wallet
-     * @param issuer deprecated and ignored. TS3 WUA 1.5 removes `iss`; Wallet Provider identity comes from `x5c`.
      * @param clientKey key to be attested, i.e. included in a [ConfirmationClaim]
      * @param walletName identifier of the Wallet Solution.
      * @param walletVersion version of the Wallet Solution.
@@ -71,8 +68,6 @@ object BuildClientAttestationJwt {
     suspend operator fun invoke(
         signJwt: SignJwtFun<JsonWebToken>,
         clientId: String,
-        @Suppress("UNUSED_PARAMETER")
-        issuer: String? = null,
         clientKey: JsonWebKey,
         walletName: String = clientId,
         walletVersion: String = "unspecified",
@@ -99,9 +94,7 @@ object BuildClientAttestationJwt {
             confirmationClaim = ConfirmationClaim(
                 jsonWebKey = clientKey,
             )
-        ).also {
-            Napier.d("Building client attestation JWT: $it")
-        },
+        ),
         serializer = JsonWebToken.serializer(),
     ).getOrThrow()
 
@@ -117,31 +110,27 @@ object BuildClientAttestationPoPJwt {
     /**
      * Client attestation PoP JWT, issued by the client, which can be sent to an OAuth2 Authorization Server if needed,
      * e.g. as HTTP header `OAuth-Client-Attestation-PoP`, see
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
      *
-     * @param clientId OAuth 2.0 client ID of the wallet
-     * @param audience The RFC8414 issuer identifier URL of the authorization server MUST be used
+     * @param audience The RFC8414 issuer identifier URL of the authorization server or the resource server MUST be used
      * @param nonce optionally provided from the authorization server
-     * @param lifetime validity period of the assertion (minus the [clockSkew])
      * @param clockSkew duration to subtract from [Clock.System.now] when setting the creation timestamp
      */
     suspend operator fun invoke(
         signJwt: SignJwtFun<JsonWebToken>,
-        clientId: String,
         audience: String,
         nonce: String? = null,
-        lifetime: Duration = 10.minutes,
         clockSkew: Duration = 3.minutes,
         randomSource: RandomSource = RandomSource.Secure
     ): JwsCompactTyped<JsonWebToken> = signJwt(
         type = JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
         payload = JsonWebToken(
-            issuer = clientId,
             audience = audience,
             jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
+            // Setting both fields here, this changed in draft 10 of OAuth 2.0 Attestation-Based Client Auth
             nonce = nonce,
+            challenge = nonce,
             issuedAt = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue,
-            expiration = Clock.System.now().truncateToSeconds() - clockSkew.absoluteValue + lifetime,
         ).also {
             Napier.d("Building client attestation PoP JWT: $it")
         },

@@ -59,7 +59,7 @@ val JweServiceJvmTest by matrixSuite {
         val jvmDecrypter = ECDHDecrypter(ephemeralKey.jcaPrivateKey as ECPrivateKey)
 
         val keyMaterial = EphemeralKeyWithoutCert(ephemeralKey)
-        val encrypter = EncryptJwe(keyMaterial)
+        val encrypter = EncryptJwe()
         val decrypter = DecryptJwe(keyMaterial)
         val randomPayload = uuid4().toString()
 

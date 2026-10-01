@@ -19,6 +19,7 @@ import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.sha256
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
@@ -33,6 +34,7 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -92,7 +94,7 @@ class Wallet {
             .shouldNotBeNull()
         val requestedKeys = isoNamespace.entries.filter { it.intentToRetain }.map { it.dataElementIdentifier }
         return DeviceResponse(
-            version = "1.0",
+            parsedVersion = Version(1, 0),
             documents = arrayOf(
                 Document(
                     docType = ConstantIndex.AtomicAttribute2023.isoDocType,
@@ -130,8 +132,8 @@ class Issuer {
         )
 
         val mso = MobileSecurityObject(
-            version = "1.0",
-            digestAlgorithm = "SHA-256",
+            parsedVersion = Version(1, 0),
+            digest = Digest.SHA256,
             valueDigests = mapOf(
                 ConstantIndex.AtomicAttribute2023.isoNamespace to ValueDigestList(entries = issuerSigned.map {
                     ValueDigest.fromIssuerSignedItem(it, ConstantIndex.AtomicAttribute2023.isoNamespace)
@@ -147,7 +149,7 @@ class Issuer {
         )
 
         return DeviceResponse(
-            version = "1.0",
+            parsedVersion = Version(1, 0),
             documents = arrayOf(
                 Document(
                     docType = ConstantIndex.AtomicAttribute2023.isoDocType,

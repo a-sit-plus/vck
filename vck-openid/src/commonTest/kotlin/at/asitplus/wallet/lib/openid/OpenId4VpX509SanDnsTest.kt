@@ -16,37 +16,25 @@ import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.openid.formUrlEncode
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
 
 val OpenId4VpX509SanDnsTest by matrixSuite {
 
-    fixture({
-        kotlinx.coroutines.runBlocking {
+    fixture {
+        runBlocking {
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val holderAgent = HolderAgent(holderKeyMaterial).also {
-                it.storeCredential(
-                    IssuerAgent(
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default
-                    ).issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            holderKeyMaterial.publicKey,
-                            AtomicAttribute2023,
-                            SD_JWT,
-                        ).getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                )
+                issueAndStoreSdJwt(it, holderKeyMaterial)
             }
             val clientId = "example.com"
             val extensions = listOf(
@@ -83,7 +71,7 @@ val OpenId4VpX509SanDnsTest by matrixSuite {
 
             }
         }
-    }) - {
+    } - {
 
         "test with request object" {
             val requestUrl = "https://example.com/request"

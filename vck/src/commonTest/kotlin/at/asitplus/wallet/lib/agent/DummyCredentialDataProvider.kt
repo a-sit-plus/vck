@@ -19,6 +19,7 @@ import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -41,6 +42,66 @@ import kotlin.time.Duration.Companion.minutes
 object DummyCredentialDataProvider {
 
     private val defaultLifetime = 1.minutes
+
+    suspend fun issueAndStoreSdJwt(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        issuer: Issuer
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issueSdJwt(issuer, holderKeyMaterial).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issueSdJwt(
+        issuer: Issuer,
+        holderKeyMaterial: KeyMaterial
+    ): Issuer.IssuedCredential = issuer.issueCredential(
+        getCredential(
+            holderKeyMaterial.publicKey,
+            ConstantIndex.AtomicAttribute2023,
+            SD_JWT,
+        ).getOrThrow()
+    ).getOrThrow()
+
+    suspend fun issueAndStoreIsoMdoc(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        issuer: Issuer,
+        revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issueIsoMdoc(issuer, holderKeyMaterial, revocationKind).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issueIsoMdoc(
+        issuer: Issuer,
+        holderKeyMaterial: KeyMaterial,
+        revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
+    ): Issuer.IssuedCredential = issuer.issueCredential(
+        getCredential(
+            holderKeyMaterial.publicKey,
+            ConstantIndex.AtomicAttribute2023,
+            ISO_MDOC,
+            revocationKind
+        ).getOrThrow()
+    ).getOrThrow()
+
+    suspend fun issueAndStorePlainJwt(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        issuer: Issuer
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issuePlainJwt(issuer, holderKeyMaterial).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issuePlainJwt(
+        issuer: Issuer,
+        holderKeyMaterial: KeyMaterial
+    ): Issuer.IssuedCredential = issuer.issueCredential(
+        getCredential(
+            holderKeyMaterial.publicKey,
+            ConstantIndex.AtomicAttribute2023,
+            PLAIN_JWT,
+        ).getOrThrow()
+    ).getOrThrow()
 
     fun getCredential(
         subjectPublicKey: CryptoPublicKey,

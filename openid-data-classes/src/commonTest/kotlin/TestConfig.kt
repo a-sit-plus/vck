@@ -5,7 +5,7 @@ import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 
 class TestConfig : TestSession(
-    testConfig = DefaultConfiguration.apply { MatrixTestDefaults { execution = ExecutionMode.Sequential } }
+    testConfig = DefaultConfiguration.apply { MatrixTestDefaults { execution = ExecutionMode.Concurrent(8) } }
 ) {
     init {
         Napier.takeLogarithm()

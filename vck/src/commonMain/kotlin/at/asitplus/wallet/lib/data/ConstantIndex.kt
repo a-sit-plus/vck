@@ -2,16 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.openid.ClaimDescription
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
-import at.asitplus.openid.OpenId4VciClaimsPathPointerSegment
-import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentIndex
-import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentString
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.sdjwt.CredentialFormatEnum
-import at.asitplus.wallet.sdjwt.SdJwtTypeMetadata
-import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformation
-import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegment
-import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegmentIndex
-import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegmentName
 
 object ConstantIndex {
 
@@ -21,19 +12,11 @@ object ConstantIndex {
         ISO_MDOC,
     }
 
-    @Deprecated(
-        "Replace with direct import",
-        ReplaceWith("CredentialScheme", "at.asitplus.wallet.lib.data.CredentialScheme")
-    )
-    interface CredentialScheme : at.asitplus.wallet.lib.data.CredentialScheme
-
     object AtomicAttribute2023 : SdJwtCredentialScheme, IsoMdocCredentialScheme, VcJwtCredentialScheme {
         const val CLAIM_GIVEN_NAME = "given_name"
         const val CLAIM_FAMILY_NAME = "family_name"
         const val CLAIM_DATE_OF_BIRTH = "date_of_birth"
         const val CLAIM_PORTRAIT = "portrait"
-        @Deprecated("Use other identifiers instead, e.g. `vcType` or `sdJwtType` or `isoDocType`")
-        override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2023.json"
         override val vcType: String = "AtomicAttribute2023"
         override val sdJwtType: String = "AtomicAttribute2023"
         override val isoNamespace: String = "at.a-sit.wallet.atomic-attribute-2023"
@@ -49,33 +32,6 @@ object ConstantIndex {
             get() = listOf(ISO_MDOC, PLAIN_JWT, SD_JWT)
     }
 
-    @Suppress("DEPRECATION")
-    @Deprecated(
-        "Use type check for SdJwtCredentialScheme",
-        ReplaceWith("this is SdJwtCredentialScheme")
-    )
-    val at.asitplus.wallet.lib.data.CredentialScheme.supportsSdJwt
-        get() = (this is SdJwtCredentialScheme) ||
-                (supportedRepresentations.contains(SD_JWT) && sdJwtType != null)
-
-    @Suppress("DEPRECATION")
-    @Deprecated(
-        "Use type check for VcJwtCredentialScheme",
-        ReplaceWith("this is VcJwtCredentialScheme")
-    )
-    val at.asitplus.wallet.lib.data.CredentialScheme.supportsVcJwt
-        get() = (this is VcJwtCredentialScheme) ||
-                (supportedRepresentations.contains(PLAIN_JWT) && vcType != null)
-
-    @Suppress("DEPRECATION")
-    @Deprecated(
-        "Use type check for IsoMdocCredentialScheme",
-        ReplaceWith("this is IsoMdocCredentialScheme")
-    )
-    val at.asitplus.wallet.lib.data.CredentialScheme.supportsIso
-        get() = (this is IsoMdocCredentialScheme) ||
-                (supportedRepresentations.contains(ISO_MDOC) && isoNamespace != null && isoDocType != null)
-
 }
 
 typealias CredentialRepresentation = ConstantIndex.CredentialRepresentation
@@ -84,9 +40,6 @@ typealias CredentialRepresentation = ConstantIndex.CredentialRepresentation
  * Holds all information needed to define one type of "credential", i.e. a collection of claims about a subject.
  */
 interface CredentialScheme {
-    @Deprecated("Use other identifiers instead, e.g. `vcType` or `sdJwtType` or `isoDocType`")
-    val schemaUri: String
-        get() = ""
 
     /**
      * The `type` of the credential when using [ConstantIndex.CredentialRepresentation.PLAIN_JWT].
@@ -135,14 +88,6 @@ interface CredentialScheme {
      * List of claims that may be issued separately when requested in format [ConstantIndex.CredentialRepresentation.SD_JWT]
      * or [ConstantIndex.CredentialRepresentation.ISO_MDOC].
      */
-    @Deprecated("Use claimDescriptions instead")
-    val claimNames: Collection<String>
-        get() = listOf()
-
-    /**
-     * List of claims that may be issued separately when requested in format [ConstantIndex.CredentialRepresentation.SD_JWT]
-     * or [ConstantIndex.CredentialRepresentation.ISO_MDOC].
-     */
     val claimDescriptions: Set<ClaimDescription>
         get() = setOf()
 
@@ -168,12 +113,6 @@ interface SdJwtCredentialScheme : CredentialScheme {
      */
     override val sdJwtType: String
 
-    @Suppress("DEPRECATION")
-    override val claimDescriptions: Set<ClaimDescription>
-        get() = claimNames.map {
-            ClaimDescription(path = OpenId4VciClaimsPathPointer(it.split(".")))
-        }.toSet()
-
     override val supportedRepresentations: Collection<CredentialRepresentation>
         get() = listOf(SD_JWT)
 }
@@ -194,14 +133,6 @@ interface IsoMdocCredentialScheme : CredentialScheme {
      */
     override val isoNamespace: String
 
-    @Suppress("DEPRECATION")
-    override val claimDescriptions: Set<ClaimDescription>
-        get() = claimNames.map {
-            ClaimDescription(
-                path = OpenId4VciClaimsPathPointer(listOf(isoNamespace) + it.replace("$isoNamespace.", "").split("."))
-            )
-        }.toSet()
-
     override val supportedRepresentations: Collection<CredentialRepresentation>
         get() = listOf(ISO_MDOC)
 }
@@ -214,12 +145,6 @@ interface VcJwtCredentialScheme : CredentialScheme {
      * If more than one value is provided, the order does not matter.
      */
     override val vcType: String
-
-    @Suppress("DEPRECATION")
-    override val claimDescriptions: Set<ClaimDescription>
-        get() = claimNames.map {
-            ClaimDescription(path = OpenId4VciClaimsPathPointer(it.split(".")))
-        }.toSet()
 
     override val supportedRepresentations: Collection<CredentialRepresentation>
         get() = listOf(PLAIN_JWT)

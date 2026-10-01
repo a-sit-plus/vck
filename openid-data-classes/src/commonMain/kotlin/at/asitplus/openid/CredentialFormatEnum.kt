@@ -9,7 +9,8 @@ enum class CredentialFormatEnum(val text: String) {
     DC_SD_JWT("dc+sd-jwt"),
     JWT_VC_JSON_LD("jwt_vc_json-ld"),
     JSON_LD("ldp_vc"),
-    MSO_MDOC("mso_mdoc");
+    MSO_MDOC("mso_mdoc"),
+    MSO_MDOC_ZK("mso_mdoc_zk");
 
     companion object {
         fun parse(text: String) = entries.firstOrNull { it.text == text }

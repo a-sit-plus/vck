@@ -20,3 +20,4 @@ fun Collection<JsonWebKey>.getEncryptionTargetKey(): JsonWebKey? =
 fun JsonWebKey.sessionTranscriptThumbprint(): ByteArray =
     jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
         .decodeToByteArray(Base64UrlStrict)
+

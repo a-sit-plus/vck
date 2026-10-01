@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import kotlinx.serialization.Serializable
 
+@Deprecated("Support for SIOPv2 has been removed")
 @Serializable(with = IdTokenTypeSerializer::class)
 enum class IdTokenType(val text: String) {
 

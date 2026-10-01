@@ -45,6 +45,7 @@ import at.asitplus.wallet.lib.jws.SignJwtExtFun
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.github.z4kn4fein.semver.Version
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -53,25 +54,20 @@ import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 /**
  * An agent that implements [Issuer], i.e., it issues credentials for other agents.
  */
-class IssuerAgent @JvmOverloads constructor(
+class IssuerAgent constructor(
     /** Key material used to sign credentials in [signIssuedVc], [signIssuedSdJwt], [signMobileSecurityObject]. */
     override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
-    @Suppress("unused") @Deprecated("Set value for statusListAgent instead")
-    private val statusListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
-    @Suppress("unused") @Deprecated("Set value for statusListAgent instead")
-    private val identifierListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/identifier",
     private val clock: Clock = Clock.System,
     /** Time to adjust the [Clock.now] for issuance date of credentials. */
     private val issuanceOffset: Duration = (-3).minutes,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
-    @Suppress("unused") @Deprecated("Set value for statusListAgent instead")
-    private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
     /** The identifier used in `issuer` properties of credentials (JWT VC and SD JWT). */
     private val identifier: UniformResourceIdentifier,
     private val signIssuedSdJwt: SignJwtExtFun<JsonObject> =
@@ -87,6 +83,37 @@ class IssuerAgent @JvmOverloads constructor(
         issuerCredentialStore = issuerCredentialStore as? InMemoryIssuerCredentialStore ?: InMemoryIssuerCredentialStore(),
     )
 ) : Issuer {
+
+    @JvmOverloads
+    internal constructor(
+        identifier: String,
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+        issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
+        clock: Clock = Clock.System,
+        issuanceOffsetMilliseconds: Long = (-3).minutes.inWholeMilliseconds,
+        cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
+        signIssuedSdJwt: SignJwtExtFun<JsonObject> = SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
+        signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+        signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
+            SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderCertificate()),
+        randomSource: RandomSource = RandomSource.Secure,
+        statusListAgent: StatusListAgent? = StatusListAgent(
+            issuerCredentialStore = issuerCredentialStore as? InMemoryIssuerCredentialStore
+                ?: InMemoryIssuerCredentialStore(),
+        ),
+    ) : this(
+        keyMaterial = keyMaterial,
+        issuerCredentialStore = issuerCredentialStore,
+        clock = clock,
+        issuanceOffset = issuanceOffsetMilliseconds.milliseconds,
+        cryptoAlgorithms = cryptoAlgorithms,
+        identifier = UniformResourceIdentifier(identifier),
+        signIssuedSdJwt = signIssuedSdJwt,
+        signIssuedVc = signIssuedVc,
+        signMobileSecurityObject = signMobileSecurityObject,
+        randomSource = randomSource,
+        statusListAgent = statusListAgent,
+    )
 
     /**
      * Wraps the credential-to-be-issued in [credential] into a single instance of [CredentialToBeIssued],
@@ -112,11 +139,11 @@ class IssuerAgent @JvmOverloads constructor(
             .getOrElse { throw IllegalStateException("Could not create subject COSE key", it) }
         val deviceKeyInfo = DeviceKeyInfo(coseKey)
         val mso = MobileSecurityObject(
-            version = "1.0",
-            digestAlgorithm = "SHA-256",
+            parsedVersion = Version(1, 0),
+            digest = credential.digest,
             valueDigests = mapOf(
                 credential.scheme.isoNamespace to ValueDigestList(credential.issuerSignedItems.map {
-                    ValueDigest.fromIssuerSignedItem(it, credential.scheme.isoNamespace)
+                    ValueDigest.fromIssuerSignedItem(it, credential.scheme.isoNamespace, credential.digest)
                 })
             ),
             deviceKeyInfo = deviceKeyInfo,

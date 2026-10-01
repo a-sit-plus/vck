@@ -18,26 +18,28 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueIsoMdoc
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
+import at.asitplus.signum.supreme.sign.Verifier.Success
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList.Kind
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.toView
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -45,6 +47,7 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.time.Clock
@@ -52,22 +55,24 @@ import kotlin.time.Duration.Companion.seconds
 
 val AgentRevocationTest by matrixSuite {
 
-    fixture({ kotlinx.coroutines.runBlocking {
-        val issuerCredentialStore = InMemoryIssuerCredentialStore()
-        val expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
-        object {
-            val issuerCredentialStore = issuerCredentialStore
-            val expectedRevokedIndexes = expectedRevokedIndexes
-            val issuer = IssuerAgent(
-                issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            )
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val verifierKeyMaterial = EphemeralKeyWithoutCert()
+    fixture {
+        runBlocking {
+            val issuerCredentialStore = InMemoryIssuerCredentialStore()
+            val expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
+            object {
+                val issuerCredentialStore = issuerCredentialStore
+                val expectedRevokedIndexes = expectedRevokedIndexes
+                val issuer = IssuerAgent(
+                    issuerCredentialStore = issuerCredentialStore,
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                )
+                val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+                val verifierKeyMaterial = EphemeralKeyWithoutCert()
 
+            }
         }
-    } }) - {
+    } - {
 
         "revocation list should contain indices of revoked credential" {
             val statusList = it.statusListIssuer.issueStatusListJwt()
@@ -77,15 +82,7 @@ val AgentRevocationTest by matrixSuite {
         }
 
         "aggregation should contain links if statuses have been set" {
-            it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }
+            issuePlainJwt(it.issuer, it.verifierKeyMaterial)
             it.issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
             val statusListAggregation = it.statusListIssuer.provideStatusListAggregation()
@@ -93,15 +90,7 @@ val AgentRevocationTest by matrixSuite {
         }
 
         "issued jwt should have same status list as provided token when asking for jwt" {
-            it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }
+            issuePlainJwt(it.issuer, it.verifierKeyMaterial)
             it.issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
             val timestamp = Clock.System.now()
@@ -117,15 +106,7 @@ val AgentRevocationTest by matrixSuite {
         }
 
         "issued cwt should have same status list as provided token when asking for cwt" {
-            it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }
+            issuePlainJwt(it.issuer, it.verifierKeyMaterial)
             it.issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0U))
 
             val timestamp = Clock.System.now()
@@ -150,20 +131,13 @@ val AgentRevocationTest by matrixSuite {
                     shouldContain("636c7374") // text(3) "lst"
                     shouldNotContain("d818") // tagged item (24) as payload
                 }
-                VerifyCoseSignature<ByteArray>().invoke(this, byteArrayOf(), null).isSuccess shouldBe true
+                VerifyCoseSignature<ByteArray>().invoke(this, byteArrayOf(), null).getOrThrow() shouldBe Success
             }
         }
 
         "credentials should contain status information" {
-            val result = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+            val result = issuePlainJwt(it.issuer, it.verifierKeyMaterial)
+                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
             ValidatorVcJws().verifyVcJws(result.signedVcJws, it.verifierKeyMaterial.publicKey).getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
@@ -194,37 +168,21 @@ val AgentRevocationTest by matrixSuite {
         }
 
         "ISO_MDOC credential can carry IdentifierList status info" {
-            val issuedCredential = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ISO_MDOC,
-                    revocationKind = RevocationList.Kind.IDENTIFIER_LIST,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+            val issuedCredential = issueIsoMdoc(it.issuer, it.verifierKeyMaterial, Kind.IDENTIFIER_LIST)
+                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
             issuedCredential.mdocIdentifierListInfo().uri.string shouldContain "/identifier/"
         }
 
         "IdentifierList token should contain revoked ISO_MDOC identifier" {
-            val issuedCredential = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ISO_MDOC,
-                    revocationKind = RevocationList.Kind.IDENTIFIER_LIST,
-                ).getOrThrow()
-            ).getOrElse {
-                fail("no issued credentials")
-            }.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+            val issuedCredential = issueIsoMdoc(it.issuer, it.verifierKeyMaterial, Kind.IDENTIFIER_LIST)
+                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
             val statusInfo = issuedCredential.mdocIdentifierListInfo()
 
             it.statusListIssuer.revokeCredentialByIdentifier(timePeriod, statusInfo.identifier) shouldBe true
 
             val payload = StatusListCwt(
-                value = it.statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.IDENTIFIER_LIST),
+                value = it.statusListIssuer.issueStatusListCwt(kind = Kind.IDENTIFIER_LIST),
                 resolvedAt = Clock.System.now(),
             ).parsedPayload.getOrThrow()
 
@@ -241,7 +199,7 @@ val AgentRevocationTest by matrixSuite {
 
         "identifier list JWT should not be issued" {
             catchingUnwrapped {
-                it.statusListIssuer.issueStatusListJwt(kind = RevocationList.Kind.IDENTIFIER_LIST)
+                it.statusListIssuer.issueStatusListJwt(kind = Kind.IDENTIFIER_LIST)
             }.isFailure shouldBe true
         }
 

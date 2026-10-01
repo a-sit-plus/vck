@@ -7029,38 +7029,32 @@ val LoTEFilterTest by matrixSuite {
 
     data class TestData(
         val json: String,
-        val fetchUrl: String,
         val schemeIdentifier: String? = null,
-        val fixedType: LoTEServiceType? = null
+        val fixedProfile: LoteProfile? = null
     )
 
     testSuite("filter lote by type identifier") {
         mapOf(
             "pidProviders" to TestData(
                 json = pidProvidersFixed,
-                fetchUrl = LoTEServiceType.PID.defaultUrl(),
                 schemeIdentifier = "urn:eudi:pid:de:1"
             ),
             "walletProviders" to TestData(
                 json = walletProvidersFixed,
-                fetchUrl = LoTEServiceType.WALLET.defaultUrl(),
-                fixedType = LoTEServiceType.WALLET
+                fixedProfile = LoteProfile.WALLET
             ),
             "wrpacProviders" to TestData(
                 json = wrpacProvidersFixed,
-                fetchUrl = LoTEServiceType.WRPAC.defaultUrl(),
-                fixedType = LoTEServiceType.WRPAC
+                fixedProfile = LoteProfile.WRPAC
             ),
             "mdlProviders" to TestData(
                 json = mdlProvidersFixed,
-                fetchUrl = LoTEServiceType.MDL.defaultUrl(),
                 schemeIdentifier = "org.iso.18013.5.1.mDL"
             ),
         ).asData() test { (_, data) ->
             val lote = Json.decodeFromString<ListOfTrustedEntities>(data.json)
-            val expectedType = data.fixedType ?: LoTEServiceType.fromSchemeIdentifier(data.schemeIdentifier)
-            val criteria = LoTEFilterCriteria(expectedServiceType = expectedType)
-            val trustedCerts = LoTEFilterService().extractTrustedCertificates(data.fetchUrl, lote, criteria)
+            val expectedProfile = data.fixedProfile ?: LoteProfile.fromSchemeIdentifier(data.schemeIdentifier)
+            val trustedCerts = LoTEFilterService().extractIssuanceCertificates(lote, expectedProfile)
 
             trustedCerts.size shouldNotBe 0
         }

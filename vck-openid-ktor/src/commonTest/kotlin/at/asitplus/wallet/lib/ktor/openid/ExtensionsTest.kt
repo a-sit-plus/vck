@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
@@ -11,7 +12,7 @@ import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.buildJsonObject

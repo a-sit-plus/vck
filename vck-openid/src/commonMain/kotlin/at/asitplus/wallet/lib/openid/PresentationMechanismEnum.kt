@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
 enum class PresentationMechanismEnum {
-    PresentationExchange, DCQL, DeviceRequest
+    @Deprecated("Support for Presentation Exchange has been removed from OpenID4VP; use DCQL or DeviceRequest")
+    PresentationExchange,
+    DCQL,
+    DeviceRequest,
 }

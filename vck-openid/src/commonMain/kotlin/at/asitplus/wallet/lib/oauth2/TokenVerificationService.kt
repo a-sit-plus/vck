@@ -11,6 +11,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -50,7 +51,8 @@ interface TokenVerificationService {
         tokenOrAuthHeader: String,
         httpRequest: RequestInfo?,
         dpopNonceService: NonceService? = null,
-    ): KmmResult<Unit>
+        validatedClientKey: JsonWebKey? = null,
+    ): KmmResult<ValidatedAccessToken>
 
     /** Validate a DPoP proof and extract the client's key if the proof exists at all. */
     suspend fun extractValidatedClientKey(
@@ -81,6 +83,10 @@ class JwtTokenVerificationService(
     private val clock: Clock = System,
     /** Time leeway for verification of timestamps in access tokens and refresh tokens. */
     private val timeLeeway: Duration = 5.minutes,
+    /** Maximum age of DPoP proofs. */
+    private val maxAgePoP: Duration = 10.minutes,
+    /** Supported verification algorithms */
+    private val supportedSignatureAlgorithms: Collection<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256),
 ) : TokenVerificationService {
 
     override suspend fun validateRefreshToken(
@@ -90,7 +96,13 @@ class JwtTokenVerificationService(
     ): String {
         val tokenJwt = validateToken(refreshToken, JwsContentTypeConstants.RT_JWT, refreshTokenNonceService)
         // ath is not required on /token endpoints
-        validateDpopProof(null, tokenJwt, httpRequest, dpopNonceService, validatedClientKey)
+        validateDpopProof(
+            accessToken = null,
+            tokenJwt = tokenJwt,
+            httpRequest = httpRequest,
+            dpopNonceService = dpopNonceService,
+            validatedClientKey = validatedClientKey
+        )
         return refreshToken
     }
 
@@ -117,12 +129,20 @@ class JwtTokenVerificationService(
         tokenOrAuthHeader: String,
         httpRequest: RequestInfo?,
         dpopNonceService: NonceService?,
-    ) = catching {
+        validatedClientKey: JsonWebKey?,
+    ): KmmResult<ValidatedAccessToken> = catching {
         val accessToken = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true))
             tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         else tokenOrAuthHeader
         val tokenJwt = validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        validateDpopProof(accessToken, tokenJwt, httpRequest, dpopNonceService ?: this.dpopNonceService, null)
+        validateDpopProof(
+            accessToken = accessToken,
+            tokenJwt = tokenJwt,
+            httpRequest = httpRequest,
+            dpopNonceService = dpopNonceService ?: this.dpopNonceService,
+            validatedClientKey = validatedClientKey
+        )
+        tokenJwt.payload.toValidatedAccessToken(accessToken, null)
     }
 
     /** Validate a DPoP proof and extract the client's key if the proof exists at all. */
@@ -135,15 +155,8 @@ class JwtTokenVerificationService(
         if (!dpopNonceService.verifyAndRemoveNonce(nonce)) {
             throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: $nonce")
         }
-        if (dpopProof.payload.httpTargetUrl != httpRequest.url) {
-            throw InvalidDpopProof("DPoP JWT htu incorrect: ${dpopProof.payload.httpTargetUrl}")
-        }
-        if (dpopProof.payload.httpMethod != httpRequest.method.value.uppercase()) {
-            throw InvalidDpopProof("DPoP JWT htm incorrect: ${dpopProof.payload.httpMethod}")
-        }
         dpopProof.jws.jwsHeader.jsonWebKey
             ?: throw InvalidDpopProof("DPoP JWT contains no public key")
-
     }
 
     private suspend fun verifyDpopProof(
@@ -151,7 +164,32 @@ class JwtTokenVerificationService(
     ): JwsCompactTyped<JsonWebToken> = httpRequest.dpop?.also {
         verifyJwsObject(it.jws).getOrElse { throw InvalidDpopProof("DPoP JWT not verified.", it) }
         if (it.jws.jwsHeader.type != JwsContentTypeConstants.DPOP_JWT) {
-            throw InvalidDpopProof("invalid type: ${it.jws.jwsHeader.type}")
+            throw InvalidDpopProof("DPoP JWT invalid type: ${it.jws.jwsHeader.type}")
+        }
+        if (it.jws.jwsHeader.jsonWebKey == null) {
+            throw InvalidDpopProof("DPoP JWT contains no public key")
+        }
+        if (it.jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
+            it.jws.jwsHeader.algorithm !in supportedSignatureAlgorithms
+        ) {
+            throw InvalidDpopProof("DPoP JWT unsupported alg: ${it.jws.jwsHeader.algorithm}")
+        }
+        if (it.payload.httpTargetUrl != httpRequest.url) {
+            throw InvalidDpopProof("DPoP JWT htu incorrect: ${it.payload.httpTargetUrl}")
+        }
+        if (it.payload.httpMethod != httpRequest.method.value.uppercase()) {
+            throw InvalidDpopProof("DPoP JWT htm incorrect: ${it.payload.httpMethod}")
+        }
+        if (it.payload.jwtId == null) {
+            throw InvalidDpopProof("DPoP JWT contains no jwtId")
+        }
+        val issuedAt = it.payload.issuedAt
+            ?: throw InvalidDpopProof("DPoP JWT contains no issuedAt")
+        if (issuedAt > (clock.now() + timeLeeway)) {
+            throw InvalidDpopProof("DPoP JWT issuedAt in future: $issuedAt")
+        }
+        if (issuedAt < (clock.now() - maxAgePoP - timeLeeway)) {
+            throw InvalidDpopProof("DPoP JWT issued too long ago: $issuedAt")
         }
     } ?: throw InvalidDpopProof("no dpop proof in header")
 
@@ -172,6 +210,7 @@ class JwtTokenVerificationService(
             throw InvalidDpopProof("DPoP JWT JWK not matching cnf.jkt")
         }
         if (validatedClientKey != null) {
+            // DPoP-JWT has already been verified, so we can't check for the nonce twice
             if (jwkThumbprintFromToken != validatedClientKey.jwkThumbprintPlain) {
                 throw InvalidDpopProof(
                     "Key from client ${validatedClientKey.jwkThumbprintPlain}" +
@@ -179,18 +218,11 @@ class JwtTokenVerificationService(
                 )
             }
         } else {
-            // DPoP-JWT has already been verified, so we can't check for the nonce twice
             val nonce = dpopProof.payload.nonce
                 ?: throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce is null")
             if (!dpopNonceService.verifyAndRemoveNonce(nonce)) {
                 throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: $nonce")
             }
-        }
-        if (dpopProof.payload.httpTargetUrl != httpRequest.url) {
-            throw InvalidDpopProof("DPoP JWT htu incorrect: ${dpopProof.payload.httpTargetUrl}")
-        }
-        if (dpopProof.payload.httpMethod != httpRequest.method.value.uppercase()) {
-            throw InvalidDpopProof("DPoP JWT htm incorrect: ${dpopProof.payload.httpMethod}")
         }
         accessToken?.let {
             val ath = accessToken.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
@@ -260,7 +292,14 @@ class BearerTokenVerificationService(
         tokenOrAuthHeader: String,
         httpRequest: RequestInfo?,
         dpopNonceService: NonceService?,
-    ): KmmResult<Unit> = catching { getTokenInfo(tokenOrAuthHeader) }
+        validatedClientKey: JsonWebKey?,
+    ): KmmResult<ValidatedAccessToken> = catching {
+        val token = if (tokenOrAuthHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true))
+            tokenOrAuthHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
+        else tokenOrAuthHeader
+        tokenGenerationService.verifyAccessToken(token)
+            ?: throw InvalidToken("access token not valid: $token")
+    }
 
     override suspend fun getTokenInfo(
         tokenOrAuthHeader: String,

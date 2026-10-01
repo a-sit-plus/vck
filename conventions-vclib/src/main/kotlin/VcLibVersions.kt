@@ -23,9 +23,8 @@ class VcLibVersions(private val project: Project) {
     val supreme get() = versionOf("supreme")
     val jsonpath get() = versionOf("jsonpath")
     val obor get() = versionOf("obor")
-    val eupid get() = versionOf("eupid")
-    val eupidsdjwt get() = versionOf("eupidsdjwt")
-    val mdl get() = versionOf("mdl")
+    val semver get() = versionOf("semver")
+    val multipaz get() = versionOf("multipaz")
 
     val Jvm = JvmVersions()
 

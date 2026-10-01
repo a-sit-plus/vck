@@ -13,12 +13,17 @@ data class ZkRequest (
     @SerialName("systemSpecs")
     val systemSpecs: List<ZkSystemSpec>,
 ) {
-    fun validate() {
+    init {
+        validate()
+    }
+
+    private fun validate() {
         require(!zkRequired || systemSpecs.isNotEmpty()) {
             "systemSpecs list cannot be empty if Zero-Knowledge is enforced"
         }
-    }
-    companion object {
-        val Default = ZkRequest(false, emptyList())
+        val ids = systemSpecs.map { it.id }
+        require(ids.size == ids.distinct().size) {
+            "ZkSystemType IDs are not unique!"
+        }
     }
 }

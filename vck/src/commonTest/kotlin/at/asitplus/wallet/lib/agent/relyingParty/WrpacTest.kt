@@ -1,0 +1,245 @@
+package at.asitplus.wallet.lib.agent.relyingParty
+
+import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.agent.TrustedCertificates
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
+import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import kotlin.time.Clock.System
+import kotlin.time.Duration.Companion.days
+
+val WrpacTest by matrixSuite {
+
+    "WRPAC chain through a provider is trusted by the root" {
+        val fixture = buildWrpFixture()
+
+        WrpChainValidator(
+            chain = fixture.wrpacChain,
+            certificateTrustAnchors = fixture.trustAnchors,
+        ).getOrThrow() shouldBe true
+    }
+
+    "Unrelated intermediate invalidates an otherwise directly trusted leaf" {
+        val ca = TestCertificateAuthority(name = CA_NAME)
+        val leaf = ca.issue(subjectName = WRP_NAME).getCertificate().shouldNotBeNull()
+        val unrelatedIntermediate = TestCertificateAuthority(name = "Unrelated CA").certificate
+
+        WrpChainValidator(
+            chain = listOf(leaf, unrelatedIntermediate),
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
+    }
+
+    "Wrong x509 hash in clientId" {
+        val fixture = buildWrpFixture()
+        val clientId = "x509_hash:wrong"
+
+        WrpacValidator(
+            WrpRequestData(
+                clientId = clientId,
+                accessCertificate = WrpAccessCertificate(fixture.wrpacChain),
+                registrationCertificate = emptyMap(),
+            ),
+            certificateTrustAnchors = fixture.trustAnchors
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("x509_hash binding failed")
+    }
+
+    "Provider certificate expired invalidates the chain" {
+        val ca = TestCertificateAuthority(name = CA_NAME)
+        val providerKey = EphemeralKeyWithoutCert()
+        val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+        val providerCert = ca.issue(
+            subjectName = WRPAC_PROVIDER_NAME,
+            certificateAuthority = true,
+            validity = 1.days,
+            validFrom = System.now() - 2.days,
+            key = providerKey,
+        ).getCertificate().shouldNotBeNull()
+
+        val wrpKey = EphemeralKeyWithoutCert()
+        val wrpCert =
+            provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate().shouldNotBeNull()
+
+        WrpChainValidator(
+            chain = listOf(wrpCert, providerCert),
+            certificateTrustAnchors = TrustedCertificates { setOf(providerCert) }
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
+    }
+
+    "WRP certificate expired invalidates the chain" {
+        val caKey = EphemeralKeyWithoutCert()
+        val ca = TestCertificateAuthority(name = CA_NAME, key = caKey)
+
+        val providerKey = EphemeralKeyWithoutCert()
+        val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+        val providerCert = ca.issue(
+            subjectName = WRPAC_PROVIDER_NAME,
+            certificateAuthority = true,
+            validity = 1.days,
+            key = providerKey,
+        ).getCertificate().shouldNotBeNull()
+
+        val wrpKey = EphemeralKeyWithoutCert()
+        val wrpCert = provider.issue(
+            subjectName = WRP_NAME,
+            validity = 1.days,
+            validFrom = System.now() - 2.days,
+            key = wrpKey,
+        ).getCertificate().shouldNotBeNull()
+
+        WrpChainValidator(
+            chain = listOf(wrpCert, providerCert),
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
+    }
+
+    "All chain certificates expired invalidates the chain" {
+        val caKey = EphemeralKeyWithoutCert()
+        val ca = TestCertificateAuthority(name = CA_NAME, key = caKey)
+
+        val providerKey = EphemeralKeyWithoutCert()
+        val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+        val providerCert = ca.issue(
+            subjectName = WRPAC_PROVIDER_NAME,
+            certificateAuthority = true,
+            validity = 1.days,
+            validFrom = System.now() - 2.days,
+            key = providerKey,
+        ).getCertificate().shouldNotBeNull()
+
+        val wrpKey = EphemeralKeyWithoutCert()
+        val wrpCert = provider.issue(
+            subjectName = WRP_NAME,
+            validity = 1.days,
+            validFrom = System.now() - 2.days,
+            key = wrpKey,
+        ).getCertificate().shouldNotBeNull()
+
+        WrpChainValidator(
+            chain = listOf(wrpCert, providerCert),
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("Certificate is expired")
+    }
+
+    "Self-signed WRP certificate is not accepted as part of the chain" {
+        val caKey = EphemeralKeyWithoutCert()
+        val ca = TestCertificateAuthority(name = CA_NAME, key = caKey)
+
+        val providerKey = EphemeralKeyWithoutCert()
+        val providerCert = ca.issue(
+            subjectName = WRPAC_PROVIDER_NAME,
+            certificateAuthority = true,
+            validity = 1.days,
+            key = providerKey,
+        ).getCertificate().shouldNotBeNull()
+
+        val wrpCert = EphemeralKeyWithSelfSignedCert().getCertificate().shouldNotBeNull()
+
+        WrpChainValidator(
+            chain = listOf(wrpCert, providerCert),
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
+    }
+
+    // RFC 5280 section 4.2.1.9: a key whose certificate does not set cA "MUST NOT be used to verify certificate
+    // signatures". Only the top of the chain is anchored, so without this an end entity certificate could vouch
+    // for anything below it.
+    "Provider certificate that is not a certificate authority invalidates the chain" {
+        val ca = TestCertificateAuthority(name = CA_NAME)
+        val providerKey = EphemeralKeyWithoutCert()
+        val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+        val providerCert = ca.issue(
+            subjectName = WRPAC_PROVIDER_NAME,
+            validity = 1.days,
+            key = providerKey,
+            certificateAuthority = false,
+        ).getCertificate().shouldNotBeNull()
+
+        val wrpKey = EphemeralKeyWithoutCert()
+        val wrpCert =
+            provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate().shouldNotBeNull()
+
+        WrpChainValidator(
+            chain = listOf(wrpCert, providerCert),
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("may not issue certificates")
+    }
+
+    "Wrong provider subject name breaks issuer linkage" {
+        val caKey = EphemeralKeyWithoutCert()
+        val ca = TestCertificateAuthority(name = CA_NAME, key = caKey)
+
+        val providerKey = EphemeralKeyWithoutCert()
+        val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+        val providerCert = ca.issue(
+            subjectName = "Provider Wrong",
+            validity = 1.days,
+            key = providerKey,
+            // A legitimate intermediate whose only defect is its name, so the linkage failure below is the
+            // reason the chain is rejected, not a missing cA flag.
+            certificateAuthority = true,
+        ).getCertificate().shouldNotBeNull()
+
+        val wrpKey = EphemeralKeyWithoutCert()
+        val wrpCert =
+            provider.issue(subjectName = WRP_NAME, validity = 1.days, key = wrpKey).getCertificate().shouldNotBeNull()
+
+        WrpChainValidator(
+            chain = listOf(wrpCert, providerCert),
+            certificateTrustAnchors = TrustedCertificates { setOf(ca.certificate) },
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("is not signed by")
+    }
+
+    "Empty trust anchors reject any chain" {
+        val fixture = buildWrpFixture()
+
+        WrpChainValidator(
+            chain = fixture.wrpacChain,
+            certificateTrustAnchors = TrustedCertificates { setOf() },
+        ).exceptionOrNull()
+            .shouldNotBeNull().message.shouldContain("No trusted root certificates configured for request validation.")
+    }
+
+    "Missing certificate chain yields an exception" {
+        val result = WrpacValidator(
+            validationData = WrpRequestData(
+                clientId = "x509_hash:abc",
+                accessCertificate = WrpAccessCertificate(null),
+                registrationCertificate = emptyMap(),
+            ),
+            certificateTrustAnchors = TrustedCertificates { setOf() },
+        )
+
+        result.exceptionOrNull().shouldNotBeNull().message.shouldContain("certificate chain")
+    }
+
+    "Missing client_id yields no exception" {
+        val fixture = buildWrpFixture()
+
+        val result = WrpacValidator(
+            validationData = WrpRequestData(
+                clientId = null,
+                accessCertificate = WrpAccessCertificate(fixture.wrpacChain),
+                registrationCertificate = emptyMap(),
+            ),
+            certificateTrustAnchors = fixture.trustAnchors,
+        ).getOrNull()
+
+        result.shouldNotBeNull()
+    }
+
+    "No WRP identifier attribute yields an exception" {
+        val fixture = buildWrpFixture(wrpacIdentifier = null)
+
+        val result = fixture.validateWrpac()
+        result.exceptionOrNull()
+            .shouldNotBeNull().message.shouldContain(("Unable to extract access certificate identifier"))
+    }
+}

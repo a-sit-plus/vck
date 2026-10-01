@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
+import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
@@ -136,12 +137,13 @@ class RemoteOAuth2AuthorizationServerAdapter(
     override suspend fun validateAccessToken(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
-    ): KmmResult<Boolean> = catching {
+    ): KmmResult<ValidatedAccessToken> = catching {
         internalTokenVerificationService.validateAccessToken(
             tokenOrAuthHeader = authorizationHeader,
             httpRequest = httpRequest,
-            dpopNonceService = dpopNonceService
-        ).isSuccess
+            dpopNonceService = dpopNonceService,
+            validatedClientKey = null,
+        ).getOrThrow()
     }
 
     override suspend fun getDpopNonce() = dpopNonceService.provideNonce()

@@ -14,8 +14,14 @@ sealed class CreationOptions {
 
     /**
      * Appends [requestUrl] to [walletUrl], callers need to call [CreatedRequest.loadRequestObject] with the
-     * Wallet's request to actually create the authn request object.
+     * Wallet's request to actually create the authn request object, which will be unsigned.
      **/
+    @Deprecated(
+        "Forbidden by OpenID4VP 1.0, 5.10.1: the request URI response MUST be a signed request object. The " +
+                "redirect_uri prefix, the only one that cannot sign, therefore cannot use by-reference at all.",
+        ReplaceWith("SignedRequestByReference(walletUrl, requestUrl, requestUrlMethod)"),
+        level = DeprecationLevel.ERROR,
+    )
     data class RequestByReference(
         val walletUrl: String,
         val requestUrl: String,

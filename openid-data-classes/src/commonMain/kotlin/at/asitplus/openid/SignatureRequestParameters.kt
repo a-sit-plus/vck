@@ -22,7 +22,7 @@ data class SignatureRequestParameters(
      * including what parameters are returned from the endpoints used. When using the Authorization Code Flow, this
      * value is `code`.
      *
-     * For OIDC SIOPv2, this is typically `id_token`. For OID4VP, this is typically `vp_token`.
+     * For OpenID4VP, this is typically `vp_token`.
      *
      * Optional when JAR (RFC9101) is used.
      */

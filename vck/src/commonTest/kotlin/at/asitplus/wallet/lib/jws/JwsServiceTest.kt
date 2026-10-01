@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -10,19 +9,18 @@ import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.Verifier
-import at.asitplus.testballoon.matrix.*
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import com.benasher44.uuid.uuid4
-import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -102,17 +100,49 @@ val JwsServiceTest by matrixSuite {
             shouldThrowAny { VerifyJwsObject()(signed.jws).getOrThrow() }
         }
 
-        test("signed object without public key in header, but retrieved out-of-band can be verified") {
+        test("signed object without public key in header, but with a trusted key can be verified") {
             val signer = SignJwt<String>(it.keyMaterial, JwsHeaderNone())
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
-            val publicKeyLookup = PublicJsonWebKeyLookup { _ -> setOf(it.keyMaterial.jsonWebKey) }
-            VerifyJwsObject(publicKeyLookup = publicKeyLookup)(signed.jws).getOrThrow()
+            val trustedKeys = PublicJsonWebKeyLookup { _ -> setOf(it.keyMaterial.jsonWebKey) }
+            VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow()
+        }
+
+        test("signed object with jsonWebKey in header, that key being trusted, can be verified") {
+            val signer = SignJwt<String>(it.keyMaterial, JwsHeaderJwk())
+            val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
+
+            val trustedKeys = PublicJsonWebKeyLookup { _ -> setOf(it.keyMaterial.jsonWebKey) }
+            VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow()
+        }
+
+        test("signed object with jsonWebKey in header, that key not being trusted, can not be verified") {
+            val signer = SignJwt<String>(it.keyMaterial, JwsHeaderJwk())
+            val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
+
+            val trustedKeys = PublicJsonWebKeyLookup { _ -> setOf(EphemeralKeyWithoutCert().jsonWebKey) }
+            shouldThrowAny { VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow() }
+        }
+
+        test("signed object can not be verified against an empty trust list") {
+            val signer = SignJwt<String>(it.keyMaterial, JwsHeaderJwk())
+            val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
+
+            val trustedKeys = PublicJsonWebKeyLookup { _ -> null }
+            shouldThrowAny { VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow() }
+        }
+
+        @Suppress("DEPRECATION")
+        test("deprecated publicKeyLookup enforces its keys instead of the one in the header") {
+            val signer = SignJwt<String>(it.keyMaterial, JwsHeaderJwk())
+            val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
+
+            val publicKeyLookup = PublicJsonWebKeyLookup { _ -> setOf(EphemeralKeyWithoutCert().jsonWebKey) }
+            shouldThrowAny { VerifyJwsObject(publicKeyLookup = publicKeyLookup)(signed.jws).getOrThrow() }
         }
 
         test("encrypted object can be decrypted") {
-            val encrypterKey = EphemeralKeyWithoutCert()
-            val encrypter = EncryptJwe(encrypterKey)
+            val encrypter = EncryptJwe()
             val decrypterKey = EphemeralKeyWithoutCert()
             val decrypter = DecryptJwe(decrypterKey)
 
@@ -251,10 +281,4 @@ class JwsHeaderJwksUrl(val jsonWebKeySetUrl: String) : JwsHeaderIdentifierFun {
         it: JwsHeader,
         keyMaterial: KeyMaterial,
     ) = it.copy(keyId = keyMaterial.identifier, jsonWebKeySetUrl = jsonWebKeySetUrl)
-}
-
-/** Identify [KeyMaterial] with it's [KeyMaterial.jsonWebKey] in [JwsHeader.jsonWebKey]. */
-class JwsHeaderJwk : JwsHeaderIdentifierFun {
-    override suspend operator fun invoke(it: JwsHeader, keyMaterial: KeyMaterial) =
-        it.copy(jsonWebKey = keyMaterial.jsonWebKey)
 }

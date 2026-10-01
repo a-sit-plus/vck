@@ -49,7 +49,9 @@ sealed class ClientIdScheme(
     ) {
 
         init {
-            require(redirectUri.contains(":/"))
+            require(redirectUri.contains(":/")) {
+                "Redirect URI must contain a scheme and a host"
+            }
         }
     }
 
@@ -78,7 +80,9 @@ sealed class ClientIdScheme(
     ) {
 
         init {
-            require(chain.first().tbsCertificate.subjectAlternativeNames?.dnsNames?.contains(clientIdDnsName) == true)
+            require(chain.first().tbsCertificate.subjectAlternativeNames?.dnsNames?.contains(clientIdDnsName) == true) {
+                "Client Identifier $clientIdDnsName not in DNS names in leaf certificate"
+            }
         }
     }
 
@@ -118,7 +122,9 @@ sealed class ClientIdScheme(
     ) {
 
         init {
-            require(redirectUri.contains(":/"))
+            require(redirectUri.contains(":/")) {
+                "Redirect URI must contain a scheme and a host"
+            }
         }
     }
 
@@ -140,9 +146,17 @@ sealed class ClientIdScheme(
     ) {
 
         init {
-            require(!clientId.contains(":"))
-            require(redirectUri.contains(":/"))
-            issuerUri?.let { require(it.contains(":/")) }
+            require(!clientId.contains(":")) {
+                "Client ID must not contain a scheme"
+            }
+            require(redirectUri.contains(":/")) {
+                "Redirect URI must contain a scheme and a host"
+            }
+            issuerUri?.let {
+                require(it.contains(":/")) {
+                    "Issuer URI must contain a scheme and a host"
+                }
+            }
         }
     }
 }

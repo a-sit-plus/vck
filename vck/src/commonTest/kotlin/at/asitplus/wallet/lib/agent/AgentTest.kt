@@ -13,8 +13,6 @@ package at.asitplus.wallet.lib.agent
  */
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
@@ -23,9 +21,10 @@ import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStorePlainJwt
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -74,76 +73,13 @@ val AgentTest by matrixSuite {
             val challenge = uuid4().toString()
         }
     } - {
-        val singularPresentationDefinition = PresentationExchangePresentation(
-            CredentialPresentationRequest.PresentationExchangeRequest(
-                PresentationDefinition(
-                    DifInputDescriptor(id = uuid4().toString())
-                ),
-            ),
-        )
-
-        test("presex: simple walk-through success") {
-            it.holder.storeCredential(
-                it.issuer.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        it.holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
-            ).getOrThrow()
-
-            it.holder.getCredentials()?.size shouldBe 1
-
-            val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.verifierId
-                ),
-                credentialPresentation = singularPresentationDefinition,
-            ).getOrThrow()
-                .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-
-            val vp = presentationParameters.presentationResults.first()
-                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-        }
-
-        test("presex: wrong keyId in presentation leads to error") {
-            it.holder.storeCredential(
-                it.issuer.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        it.holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
-            ).getOrThrow()
-
-            val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.issuerIdentifier
-                ),
-                credentialPresentation = singularPresentationDefinition,
-            ).getOrThrow()
-                .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-
-            val vp = presentationParameters.presentationResults.first()
-                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-            shouldThrowAny {
-                it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
-            }
-        }
-
-        test("presex: getting credentials when there are no credentials stored") {
+        test("getting credentials when there are no credentials stored") {
             val holderCredentials = it.holder.getCredentials()
             holderCredentials.shouldNotBeNull()
             holderCredentials.shouldBeEmpty()
         }
 
-        test("presex: getting credentials when they are valid") {
+        test("getting credentials when they are valid") {
             val credentials = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -166,7 +102,7 @@ val AgentTest by matrixSuite {
                 }
         }
 
-        test("presex: getting credentials when the issuer has revoked them") {
+        test("getting credentials when the issuer has revoked them") {
             val credential = it.issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     it.holderKeyMaterial.publicKey,
@@ -193,86 +129,6 @@ val AgentTest by matrixSuite {
                 }
         }
 
-        test("presex: building presentation without necessary credentials") {
-            it.holder.createPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = "urn:${uuid4()}"
-                ),
-                credentialPresentation = singularPresentationDefinition,
-            ).getOrNull() shouldBe null
-        }
-
-        test("presex: valid presentation is valid") {
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-            it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.verifierId
-                ),
-                credentialPresentation = singularPresentationDefinition,
-            ).getOrNull()
-                .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-
-            val vp = presentationParameters.presentationResults.firstOrNull()
-                .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .also {
-                    it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
-                    it.vp.invalidVerifiableCredentials.shouldBeEmpty()
-                    it.vp.freshVerifiableCredentials shouldHaveSize 1
-                }
-        }
-
-        test("presex: valid presentation is valid -- some other attributes revoked") {
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-            it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-            val presentationParameters = it.holder.createPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.verifierId
-                ),
-                credentialPresentation = singularPresentationDefinition,
-            ).getOrNull()
-                .shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-
-            val vp = presentationParameters.presentationResults.firstOrNull()
-                .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-
-            val credentialToRevoke = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            it.statusListIssuer.revokeCredentialByIndex(
-                FixedTimePeriodProvider.timePeriod,
-                credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
-            ) shouldBe true
-
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-        }
-
         val singularDCQLRequest = DCQLQuery(
             credentials = DCQLCredentialQueryList(
                 DCQLJwtVcCredentialQuery(
@@ -291,15 +147,7 @@ val AgentTest by matrixSuite {
         )
 
         test("dcql: simple walk-through success") {
-            it.holder.storeCredential(
-                it.issuer.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        it.holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
-            ).getOrThrow()
+            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
 
             it.holder.getCredentials()?.size shouldBe 1
             val presentationParameters = it.holder.createDefaultPresentation(
@@ -318,15 +166,7 @@ val AgentTest by matrixSuite {
         }
 
         test("dcql: wrong keyId in presentation leads to error") {
-            it.holder.storeCredential(
-                it.issuer.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        it.holderKeyMaterial.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        PLAIN_JWT,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
-            ).getOrThrow()
+            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
 
             val presentationParameters = it.holder.createDefaultPresentation(
                 request = PresentationRequestParameters(
@@ -357,14 +197,7 @@ val AgentTest by matrixSuite {
         }
 
         test("dcql: valid presentation is valid") {
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-            it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
             val presentationParameters = it.holder.createDefaultPresentation(
                 request = PresentationRequestParameters(
                     nonce = it.challenge,
@@ -388,14 +221,7 @@ val AgentTest by matrixSuite {
         }
 
         test("dcql: valid presentation is valid -- some other attributes revoked") {
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-            it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
             val presentationParameters = it.holder.createDefaultPresentation(
                 request = PresentationRequestParameters(
                     nonce = it.challenge,
@@ -410,13 +236,7 @@ val AgentTest by matrixSuite {
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
 
-            val credentialToRevoke = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
+            val credentialToRevoke = issuePlainJwt(it.issuer, it.holderKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
             it.statusListIssuer.revokeCredentialByIndex(
@@ -429,14 +249,7 @@ val AgentTest by matrixSuite {
         }
 
         test("dcql: present raw vcjws when requiring no cryptographic holder binding") {
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-            it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
             val presentationParameters = it.holder.createDefaultPresentation(
                 request = PresentationRequestParameters(
                     nonce = it.challenge,

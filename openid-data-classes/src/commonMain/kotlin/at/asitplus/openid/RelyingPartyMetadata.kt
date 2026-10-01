@@ -82,11 +82,7 @@ data class RelyingPartyMetadata(
     @SerialName("id_token_encrypted_response_enc")
     val idTokenEncryptedResponseEncodingString: String? = null,
 
-    /**
-     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
-     * supported Subject Syntax Types.
-     * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
-     */
+    @Deprecated("Support for SIOPv2 has been removed")
     @SerialName("subject_syntax_types_supported")
     val subjectSyntaxTypesSupported: Set<String>? = null,
 

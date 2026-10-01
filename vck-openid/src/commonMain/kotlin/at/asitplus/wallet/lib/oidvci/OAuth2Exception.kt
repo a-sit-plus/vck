@@ -16,9 +16,12 @@ import at.asitplus.openid.OpenIdConstants.Errors.INVALID_SCOPE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
 import at.asitplus.openid.OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTED
 import at.asitplus.openid.OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_CONFIGURATION
+import at.asitplus.openid.OpenIdConstants.Errors.UNSUPPORTED_GRANT_TYPE
 import at.asitplus.openid.OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_IDENTIFIER
 import at.asitplus.openid.OpenIdConstants.Errors.USER_CANCELLED
+import at.asitplus.openid.OpenIdConstants.Errors.USE_ATTESTATION_CHALLENGE
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
+import at.asitplus.openid.OpenIdConstants.Errors.USE_FRESH_ATTESTATION
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
@@ -34,7 +37,7 @@ import kotlinx.serialization.json.JsonElement
 sealed class OAuth2Exception(
     val error: String,
     @Transient val errorDescription: String? = null,
-) : Throwable("$error${errorDescription?.let { ": $it" }}") {
+) : Throwable("$error${errorDescription?.let { ": $it" } ?: ""}") {
 
     fun serialize() = joseCompliantSerializer.encodeToString(OAuth2ExceptionSerializer, this)
 
@@ -67,6 +70,16 @@ sealed class OAuth2Exception(
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
     ) : OAuth2Exception(INVALID_GRANT, description)
+
+    /**
+     * [RFC 6749 5.2](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2): The authorization grant type is
+     * not supported by the authorization server.
+     */
+    @Serializable
+    class UnsupportedGrantType(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(UNSUPPORTED_GRANT_TYPE, description)
 
     @Serializable
     class InvalidCode(
@@ -110,6 +123,20 @@ sealed class OAuth2Exception(
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
     ) : OAuth2Exception(USE_DPOP_NONCE, description), OAuthAuthorizationError
+
+    @Serializable
+    class UseAttestationChallenge(
+        /** Set this as the value for HTTP header `OAuth-Client-Attestation-Challenge` in the response. */
+        val attestationChallenge: String,
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(USE_ATTESTATION_CHALLENGE, description), OAuthAuthorizationError
+
+    @Serializable
+    class UseFreshAttestation(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(USE_FRESH_ATTESTATION, description)
 
     @Serializable
     class InvalidCredentialRequest(

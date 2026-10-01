@@ -29,6 +29,7 @@ val OidvciProofsTest by matrixSuite {
     fixture {
         object {
             val authorizationService = SimpleAuthorizationService(
+                requirePushedAuthorizationRequests = false,
                 strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet),
             )
             val oauth2Client = OAuth2Client()

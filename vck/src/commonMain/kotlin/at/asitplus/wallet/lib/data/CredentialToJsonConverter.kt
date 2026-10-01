@@ -29,14 +29,7 @@ object CredentialToJsonConverter {
 
     fun toJsonElement(credential: SubjectCredentialStore.StoreEntry): JsonElement = when (credential) {
         is SubjectCredentialStore.StoreEntry.Vc -> buildJsonObject {
-            if (credential.schemeIdentifier != null) {
-                put("type", JsonPrimitive(credential.schemeIdentifier))
-            } else {
-                // Legacy entries (serialized before schemeIdentifier existed) expose the full VC type array. A scalar
-                // `$.type` filter (see RequestOptions.toVcConstraint()) matches any element of it, so array-typed VC-JWT
-                // credentials still satisfy the type constraint.
-                put("type", credential.vc.vc.type.toJsonElement())
-            }
+            put("type", JsonPrimitive(credential.schemeIdentifier))
             val vcAsJsonElement = joseCompliantSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject)
             vcAsJsonElement.jsonObject.entries.forEach {
                 put(it.key, it.value)

@@ -22,21 +22,22 @@ import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
-import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.iso.sha256
+import at.asitplus.iso.ZkDocument
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllMandatoryClaimsMatchingResult
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
+import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -50,7 +51,9 @@ import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import io.github.aakira.napier.Napier
+import io.github.z4kn4fein.semver.Version
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -63,15 +66,35 @@ class VerifiablePresentationFactory(
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> =
         SignJwt(keyMaterial, JwsHeaderNone()),
+    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
+    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+        keyMaterial = keyMaterial,
+        protectedHeaderModifier = CoseHeaderNone(),
+        unprotectedHeaderModifier = CoseHeaderNone()
+    )
 ) {
-
+    @Deprecated("Use createVerifiablePresentation(request, isoPresentationParameters) instead")
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         credentialAndDisclosedAttributes: Map<StoreEntry.Iso, Collection<NormalizedJsonPath>>,
-    ): KmmResult<CreatePresentationResult> = catching {
+    ): KmmResult<CreatePresentationResult.DeviceResponse> = createVerifiablePresentation(
+        request = request,
+        isoPresentationParameters = credentialAndDisclosedAttributes.map { (credential, claims) ->
+            IsoPresentationParameters.create(credential, claims).getOrThrow()
+        }
+    )
+
+    /**
+     * Creates one Device Response while preserving every selected document and its order. A collection is used rather
+     * than a map because one credential may satisfy more than one `DocRequest`.
+     */
+    suspend fun createVerifiablePresentation(
+        request: PresentationRequestParameters,
+        isoPresentationParameters: Collection<IsoPresentationParameters>,
+    ): KmmResult<CreatePresentationResult.DeviceResponse> = catching {
         createIsoPresentation(
             request = request,
-            credentialAndRequestedClaims = credentialAndDisclosedAttributes,
+            isoPresentationParameters = isoPresentationParameters,
         )
     }
 
@@ -79,6 +102,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         credential: StoreEntry,
         disclosedAttributes: Collection<NormalizedJsonPath>,
+        zkMetadata: ZkMetadata? = null
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is StoreEntry.Vc -> createVcPresentation(
@@ -94,7 +118,11 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                credentialAndRequestedClaims = mapOf(credential to disclosedAttributes),
+                isoPresentationParameters = listOf(IsoPresentationParameters.create(
+                    credential = credential,
+                    claims = disclosedAttributes,
+                    zkMetadata = zkMetadata
+                ).getOrThrow()),
             )
         }
     }
@@ -103,6 +131,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         credential: StoreEntry,
         disclosedAttributes: DCQLCredentialQueryMatchingResult,
+        zkMetadata: ZkMetadata? = null
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is StoreEntry.Vc -> if (disclosedAttributes !is AllClaimsMatchingResult) {
@@ -120,7 +149,9 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                credentialAndRequestedClaims = mapOf(credential to disclosedAttributes.toRequestedIsoClaims(credential)),
+                isoPresentationParameters = listOf(IsoPresentationParameters.create(
+                    credential, disclosedAttributes.toRequestedIsoClaims(credential), zkMetadata).getOrThrow()
+                ),
             )
         }
     }
@@ -163,44 +194,80 @@ class VerifiablePresentationFactory(
 
     private suspend fun createIsoPresentation(
         request: PresentationRequestParameters,
-        credentialAndRequestedClaims: Map<StoreEntry.Iso, Collection<NormalizedJsonPath>>,
-    ) = CreatePresentationResult.DeviceResponse(
-        deviceResponse = DeviceResponse(
-            version = "1.0",
-            documents = credentialAndRequestedClaims.map { (credential, requestedClaims) ->
-                credential.discloseRequestedClaims(requestedClaims, request)
-            }.toTypedArray(),
-            status = 0U,
-        ),
-    )
+        isoPresentationParameters: Collection<IsoPresentationParameters>,
+    ): CreatePresentationResult.DeviceResponse {
+        suspend fun disclosePlainDocument(param: IsoPresentationParameters) = param.credential
+            .discloseRequestedClaims(param.claims, request)
+            .getOrThrow()
+
+        val plainDocuments = mutableListOf<Document>()
+        val zkDocuments = mutableListOf<ZkDocument>()
+
+        isoPresentationParameters.forEach { param ->
+            val zkMetadata = param.zkMetadata
+            if (zkMetadata is ZkMetadata.IsoMdocZk) {
+                mdocZkEngine.generate(request, param, keyMaterial).fold(
+                    onSuccess = { zkDocuments += it.zkDocument },
+                    onFailure = { error ->
+                        if (zkMetadata.zkRequest.zkRequired) throw error
+                        plainDocuments += disclosePlainDocument(param)
+                    }
+                )
+            } else {
+                plainDocuments += disclosePlainDocument(param)
+            }
+        }
+
+        return CreatePresentationResult.DeviceResponse(
+            deviceResponse = DeviceResponse(
+                parsedVersion = Version(1, 0),
+                documents = plainDocuments.toTypedArray(),
+                zkDocuments = zkDocuments.toTypedArray(),
+                status = 0u
+            ),
+        )
+    }
+
 
     // allows disclosure of attributes from different namespaces
     private suspend fun StoreEntry.Iso.discloseRequestedClaims(
         requestedClaims: Collection<NormalizedJsonPath>,
         request: PresentationRequestParameters,
-    ): Document {
+    ): KmmResult<Document> = catching {
         // grouping by namespace and all requested claims for that namespace
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
-            .mapNotNull { it.toIsoNamespaceAttribute() }
+            .mapNotNull { path -> path.toIsoNamespaceAttribute().also { if (it == null) {
+                Napier.w { "Ignoring requested claim '$path': does not follow namespaced path format (expected 2 segments)." }
+            } } }
             .groupBy { it.first }
             .mapValues { it.value.map { it.second } }
         val disclosedItems = namespaceToAttributesMap.mapValues { entry ->
             entry.value.map {
                 discloseItem(entry.key, it)
+                    .mapFailure { PresentationException(it) }
+                    .getOrThrow()
             }
         }
 
-        val docType = schemeIdentifier
-            ?: issuerSigned.issuerAuth.payload?.docType
-            ?: resolveScheme().isoDocType
-            ?: throw PresentationException("Scheme not known or not registered")
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        val input = IsoDeviceSignatureInput(docType, deviceNameSpaceBytes)
-        val deviceSignature = request.calcIsoDeviceSignaturePlain(input)
-            ?: throw PresentationException("calcIsoDeviceSignature not implemented")
+        val input = IsoDeviceSignatureInput(schemeIdentifier, deviceNameSpaceBytes)
 
-        return Document(
-            docType = docType,
+        @Suppress("DEPRECATION")
+        val deviceSignature = request.calcIsoDeviceSignaturePlain(input) ?: run {
+            val sessionTranscript = request.calcIsoSessionTranscript()
+                ?: throw PresentationException("calcIsoSessionTranscript not implemented")
+
+            calculateIsoDeviceAuthenticationBytes(input, sessionTranscript).transform {
+                Napier.d("Device authentication signature input is ${it.toHexString()}")
+                calculateIsoDeviceSignature(it, signDeviceAuthDetached)
+            }.getOrElse { e ->
+                Napier.w("Could not create DeviceAuth for presentation", e)
+                throw PresentationException(e)
+            }
+        }
+
+        Document(
+            docType = schemeIdentifier,
             issuerSigned = IssuerSigned.fromIssuerSignedItems(
                 namespacedItems = disclosedItems,
                 issuerAuth = issuerSigned.issuerAuth
@@ -214,35 +281,15 @@ class VerifiablePresentationFactory(
         )
     }
 
-    /** Returns map of first element (namespace) to second element (attribute name) */
-    private fun NormalizedJsonPath.toIsoNamespaceAttribute() = with(firstTwoSegments()) {
-        if (size == 2) {
-            first().memberName to last().memberName
-        } else {
-            // Treating non-namespaced attributes as fields that are inherent to the credential for now
-            //  -> no need for selective disclosure
-            Napier.w("Not a namespaced attribute, ignoring: $this. This may be a bug.")
-            null
-        }
-    }
-
-    private fun NormalizedJsonPath.firstTwoSegments() = segments.take(2)
-        .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
-
-    private fun StoreEntry.Iso.discloseItem(
-        namespace: String,
-        attributeName: String
-    ): IssuerSignedItem = issuerSigned.namespaces?.get(namespace)
-        ?.entries?.find { it.value.elementIdentifier == attributeName }
-        ?.value
-        ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
 
     private suspend fun createSdJwtPresentation(
         request: PresentationRequestParameters,
         validSdJwtCredential: StoreEntry.SdJwt,
         disclosures: Set<String>,
     ): CreatePresentationResult.SdJwt {
-        val keyBinding = createKeyBindingJws(request, SdJwtSigned.sdHashInput(validSdJwtCredential, disclosures))
+        val digest = validSdJwtCredential.sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
+        val digestInput = SdJwtSigned.sdHashInput(validSdJwtCredential, disclosures)
+        val keyBinding = createKeyBindingJws(request, digestInput, digest)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
             catching { JwsCompact(issuerSignedJwsSerialized) }
@@ -271,7 +318,7 @@ class VerifiablePresentationFactory(
         val payload = JwsCompact(issuerSignedJwsSerialized).getPayload<JsonObject>()
             .getOrElse { throw PresentationException(it) }
         return requestedClaims.flatMapTo(mutableSetOf()) { claim ->
-            payload.loadDisclosuresForPath(claim.segments, disclosuresByDigest)
+            payload.loadDisclosuresForPath(claim, disclosuresByDigest)
         }
     }
 
@@ -371,13 +418,14 @@ class VerifiablePresentationFactory(
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,
         hashInput: String,
+        digest: Digest,
     ): JwsCompactTyped<KeyBindingJws> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
             issuedAt = Clock.System.now().truncateToSeconds(),
             audience = request.audience,
             challenge = request.nonce,
-            sdHash = hashInput.encodeToByteArray().sha256(),
+            sdHash = digest.digest(hashInput.encodeToByteArray()),
             transactionDataHashes = request.transactionData?.hash(request.transactionDataHashesAlgorithm),
             transactionDataHashesAlgorithmString = request.transactionDataHashesAlgorithm?.toIanaName(),
         ),
@@ -409,3 +457,5 @@ class VerifiablePresentationFactory(
         CreatePresentationResult.VpJws(toString(), this)
     }
 }
+
+

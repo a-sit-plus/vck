@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.iso.DeviceNameSpaces
+import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -16,7 +17,6 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -24,9 +24,9 @@ import kotlinx.serialization.json.putJsonArray
 
 /**
  * Input to create a verifiable presentation of credentials, i.e. contains input required to fill fields in the VP,
- * like a challenge from the verifier, ot their identifier.
+ * like a challenge from the verifier and their identifier.
  *
- * Decouples the reading of that data fields from the protocol input (e.g. OpenID4VP) from the usage in the [Holder].
+ * Decouples the reading of these data fields from the protocol input (e.g., OpenID4VP) from their usage.
  *
  * See [VerifiablePresentationFactory.createVerifiablePresentation] for usage of these data fields.
  */
@@ -38,13 +38,24 @@ data class PresentationRequestParameters(
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenID4VP with ISO/IEC 18013-7)
      */
+    @Deprecated("Compute Device Signature using the calcIsoSessionTranscript callback.")
     val calcIsoDeviceSignaturePlain: (suspend (input: IsoDeviceSignatureInput) -> CoseSigned<ByteArray>?) = { null },
+    @Deprecated(
+        "Only applies to deprecated Presentation Exchange. DCQL uses `DCQLCredentialQuery.multiple`; " +
+                "ISO Device Retrieval always creates one DeviceResponse."
+    )
+    val returnOneDeviceResponse: Boolean = false,
+
     /**
-     * Whether to return one [at.asitplus.iso.DeviceResponse] containing multiple [at.asitplus.iso.Document] objects,
-     * or multiple [at.asitplus.iso.DeviceResponse] objects with one [at.asitplus.iso.Document] each.
-     * This applies to presentation exchange only, as we need to control the behavior for proximity presentations.
+     * Handle calculating Session Transcript for ISO mDocs, as this depends on the transport protocol
+     * (OpenID4VP with ISO/IEC 18013-7)
+     *
+     * Deferred because calculation of a Session Transcript might fail for non-mDoc presentations.
+     * By using a callback, we ensure that it's only calculated when an ISO mDoc is actually
+     * part of the presentation, avoiding unnecessary failures, e.g., for SD-JWT presentations.
      */
-    val returnOneDeviceResponse: Boolean = false
+    val calcIsoSessionTranscript: (suspend () -> SessionTranscript?) = { null },
+
 ) {
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms
@@ -62,14 +73,18 @@ data class IsoDeviceSignatureInput(
     val deviceNameSpaceBytes: ByteStringWrapper<DeviceNameSpaces>,
 )
 
+/**
+ * Format-specific presentation artifacts created from a [at.asitplus.wallet.lib.data.CredentialPresentation].
+ *
+ * These are intermediate between holder selection and the surrounding protocol response. OpenID integrations project
+ * the OpenID-specific subtypes to `vp_token`; direct ISO Device Retrieval consumers use
+ * [PresentationResponseParameters.DeviceRetrievalParameters.deviceResponse] as their protocol response.
+ */
 sealed interface PresentationResponseParameters {
-    val vpToken: JsonElement?
-    val presentationSubmission: PresentationSubmission?
-
     data class DCQLParameters(
         val verifiablePresentations: Map<DCQLCredentialQueryIdentifier, List<CreatePresentationResult>>,
     ) : PresentationResponseParameters {
-        override val vpToken
+        val vpToken
             get() = buildJsonObject {
                 verifiablePresentations.entries.forEach {
                     putJsonArray(it.key.string) {
@@ -80,15 +95,15 @@ sealed interface PresentationResponseParameters {
                 }
             }
 
-        override val presentationSubmission
-            get() = null
     }
 
+    @Deprecated("Support for Presentation Exchange has been removed from OpenID4VP; use DCQL or DeviceRequest")
     data class PresentationExchangeParameters(
         val presentationResults: List<CreatePresentationResult>,
-        override val presentationSubmission: PresentationSubmission,
+        @Deprecated("Presentation Exchange is deprecated, use DCQL or DeviceRequest instead")
+        val presentationSubmission: PresentationSubmission,
     ) : PresentationResponseParameters {
-        override val vpToken = presentationResults.map {
+        val vpToken = presentationResults.map {
             it.toJsonPrimitive()
         }.singleOrArray()
 
@@ -98,6 +113,16 @@ sealed interface PresentationResponseParameters {
             forEach { add(it) }
         }
     }
+
+    /**
+     * Presentation artifacts produced for ISO Device Retrieval.
+     *
+     * Device Retrieval transports consume [deviceResponse] directly. It is intentionally not exposed as an OpenID
+     * `vp_token`: OpenID4VP mdoc presentation continues to use the DCQL response model.
+     */
+    data class DeviceRetrievalParameters(
+        val deviceResponse: at.asitplus.iso.DeviceResponse,
+    ) : PresentationResponseParameters
 
     companion object {
         private fun CreatePresentationResult.toJsonPrimitive() = when (val presentationResult = this) {
@@ -134,8 +159,23 @@ sealed interface CreatePresentationResult {
     ) : CreatePresentationResult
 }
 
+@Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
 @Serializable
 data class PresentationExchangeCredentialDisclosure<Credential : Any>(
+    val credential: Credential,
+    val disclosedAttributes: Collection<NormalizedJsonPath>,
+)
+
+/**
+ * A holder credential selected for an ISO Device Retrieval response and the data elements to disclose.
+ *
+ * [docRequestIndex] identifies the request being fulfilled, so repeated requests for the same docType remain distinct.
+ * ISO namespaces and data-element names are represented as two-segment [NormalizedJsonPath] values because that is
+ * the selective-disclosure path type consumed by [VerifiablePresentationFactory].
+ */
+@Serializable
+data class DeviceRequestCredentialDisclosure<Credential : Any>(
+    val docRequestIndex: Int,
     val credential: Credential,
     val disclosedAttributes: Collection<NormalizedJsonPath>,
 )

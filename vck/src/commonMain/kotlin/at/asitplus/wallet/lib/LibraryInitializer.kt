@@ -4,7 +4,6 @@ package at.asitplus.wallet.lib
 
 import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialMetadataRegistry
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.JsonCredentialSerializer
@@ -27,14 +26,6 @@ object LibraryInitializer {
      */
     fun registerExtensionLibrary(
         credentialScheme: CredentialScheme,
-    ) {
-        AttributeIndex.registerAttributeType(credentialScheme)
-    }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use the other method with CredentialScheme not from ConstantIndex")
-    fun registerExtensionLibrary(
-        credentialScheme: ConstantIndex.CredentialScheme,
     ) {
         AttributeIndex.registerAttributeType(credentialScheme)
     }
@@ -78,17 +69,6 @@ object LibraryInitializer {
         }
     }
 
-    @Suppress("DEPRECATION")
-    @Deprecated("Use registerCredentialMetadataRegistry for schemes and registerCredentialSerializers for serializers")
-    fun registerExtensionLibrary(
-        credentialScheme: ConstantIndex.CredentialScheme,
-        jsonValueEncoder: JsonValueEncoder,
-        itemValueSerializerMap: ElementIdentifierToItemValueSerializerMap = emptyMap(),
-    ) {
-        registerExtensionLibrary(credentialScheme as CredentialScheme)
-        JsonCredentialSerializer.register(jsonValueEncoder)
-        credentialScheme.isoNamespace?.let { CborCredentialSerializer.register(itemValueSerializerMap, it) }
-    }
 }
 
 /**

@@ -12,61 +12,41 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
-import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
 val VerifierAttestationTest by matrixSuite {
 
-    fixture({
-        kotlinx.coroutines.runBlocking {
+    fixture {
+        runBlocking {
             val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
-            val holderAgent: Holder = HolderAgent(holderKeyMaterial).also { agent ->
-                agent.storeCredential(
-                    IssuerAgent(
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default
-                    ).issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            holderKeyMaterial.publicKey,
-                            ConstantIndex.AtomicAttribute2023,
-                            PLAIN_JWT,
-                        ).getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                )
+            val holderAgent: Holder = HolderAgent(holderKeyMaterial).also {
+                issueAndStorePlainJwt(it, holderKeyMaterial)
             }
             object {
                 val holderAgent = holderAgent
@@ -74,14 +54,9 @@ val VerifierAttestationTest by matrixSuite {
                 val clientId: String = "${uuid4()}"
                 val redirectUrl: String = "https://example.com/rp/${uuid4()}"
                 val walletUrl: String = "https://example.com/wallet/${uuid4()}"
-
-                val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
-                    holder = holderAgent,
-                    randomSource = RandomSource.Default,
-                )
             }
         }
-    }) - {
+    } - {
 
         "test with request object and Attestation JWT" {
             val sprsKeyMaterial = EphemeralKeyWithoutCert()
@@ -96,7 +71,9 @@ val VerifierAttestationTest by matrixSuite {
 
             val holderOid4vp = OpenId4VpHolder(
                 holder = it.holderAgent,
-                requestObjectJwsVerifier = attestationJwtVerifier(sprsKeyMaterial.jsonWebKey),
+                relyingPartyTrust = setOf(
+                    RelyingPartyTrust.VerifierAttesterKeys { setOf(sprsKeyMaterial.jsonWebKey) },
+                ),
                 randomSource = RandomSource.Default,
             )
             val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
@@ -104,10 +81,9 @@ val VerifierAttestationTest by matrixSuite {
 
             verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultPresentationExchange>()
-                .inputDescriptorResponseValidations.values.map {
-                    it.getOrThrow()
-                }.shouldBeSingleton().first()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .shouldBeSingleton().first()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>().apply {
                     vp.freshVerifiableCredentials.shouldNotBeEmpty().map { it.vcJws }.forEach {
                         it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
@@ -118,27 +94,8 @@ val VerifierAttestationTest by matrixSuite {
                     }
                 }
         }
-        "test with request object and invalid Attestation JWT" {
-            val sprsKeyMaterial = EphemeralKeyWithoutCert()
-            val attestationJwt = buildAttestationJwt(sprsKeyMaterial, it.clientId, it.verifierKeyMaterial)
-
-            val verifierOid4vp = OpenId4VpVerifier(
-                keyMaterial = it.verifierKeyMaterial,
-                clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, it.redirectUrl)
-            )
-            val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
-                requestOptionsAtomicAttribute(), CreationOptions.SignedRequestByValue(it.walletUrl)
-            ).getOrThrow().url
-
-            val holderOid4vp = OpenId4VpHolder(
-                holder = it.holderAgent,
-                requestObjectJwsVerifier = attestationJwtVerifier(EphemeralKeyWithoutCert().jsonWebKey),
-                randomSource = RandomSource.Default,
-            )
-            shouldThrow<OAuth2Exception> {
-                holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
-            }
-        }
+        // "test with request object and invalid Attestation JWT" removed: an untrusted attester is covered by
+        // OpenId4VpRelyingPartyTrustTest, against the library's own implementation rather than a test-local one.
     }
 }
 
@@ -146,7 +103,7 @@ val VerifierAttestationTest by matrixSuite {
 private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
     presentationRequest = CredentialPresentationRequestBuilder(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-    ).toPresentationExchangeRequest(),
+    ).toDCQLRequest(),
 )
 
 private suspend fun buildAttestationJwt(
@@ -165,16 +122,4 @@ private suspend fun buildAttestationJwt(
     ),
     JsonWebToken.serializer(),
 ).getOrThrow()
-
-private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
-    RequestObjectJwsVerifier { jws: JwsCompactTyped<RequestParameters> ->
-        val attestationJwt: JwsCompactTyped<JsonWebToken> = jws.jws.jwsHeader.attestationJwt?.typed()
-            ?: return@RequestObjectJwsVerifier false
-        val verifyJwsSignatureWithKey = VerifyJwsSignatureWithKey()
-        if (!verifyJwsSignatureWithKey(attestationJwt.jws, trustedKey).isSuccess)
-            return@RequestObjectJwsVerifier false
-        val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
-            ?: return@RequestObjectJwsVerifier false
-        verifyJwsSignatureWithKey(jws.jws, verifierPublicKey).isSuccess
-    }
 

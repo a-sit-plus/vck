@@ -7,10 +7,15 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.WalletService
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.coroutines.runBlocking
 
 private data class FakeHttpResponse(
     val body: String? = null,
@@ -34,13 +39,19 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
         redirectUrl = "https://client.example.org/callback",
         scope = "openid",
     )
-    val authnRequestSerialized = joseCompliantSerializer.encodeToString(RequestParameters.serializer(), authnRequest)
+
+    // OpenID4VP 1.0, 5.10.1 requires the request URI response to be a signed request object, so serve one of those
+    val authnRequestSigned = runBlocking {
+        SignJwt<RequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
+            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST, authnRequest, RequestParameters.serializer()
+        ).getOrThrow().toString()
+    }
 
     "body response is used when present" {
         val retriever = FakeRemoteResourceRetriever(
             mapOf(
                 requestUri to FakeHttpResponse(
-                    body = authnRequestSerialized,
+                    body = authnRequestSigned,
                     location = "https://redirect.example.org/not-used",
                 )
             )
@@ -53,8 +64,8 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
 
         parser.parseRequestParameters(input).getOrThrow().apply {
             shouldBeInstanceOf<RequestParametersFrom<AuthenticationRequestParameters>>()
-            shouldBeInstanceOf<RequestParametersFrom.Json<*>>()
-            jsonString shouldBe authnRequestSerialized
+            shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
+            jws.toString() shouldBe authnRequestSigned
             parameters shouldBe authnRequest
         }
     }

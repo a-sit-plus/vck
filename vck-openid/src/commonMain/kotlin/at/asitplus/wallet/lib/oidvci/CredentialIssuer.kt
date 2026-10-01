@@ -7,9 +7,9 @@ import at.asitplus.openid.BatchCredentialIssuanceMetadata
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.DisplayProperties
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -31,11 +31,13 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 
@@ -73,28 +75,11 @@ class CredentialIssuer @JvmOverloads constructor(
     private val nonceEndpointPath: String = "/nonce",
     /** Turn on to require key attestation support in the [metadata]. */
     private val requireKeyAttestation: Boolean = false,
-    /** Used to verify proof of posession of key material in credential requests. */
+    /** Used to verify proof of possession of key material and key attestations in credential requests. */
     private val proofValidator: ProofValidator = ProofValidator(
         publicContext = publicContext,
         requireKeyAttestation = requireKeyAttestation,
-        verifyAttestationProof = {
-            val tokenStatusValid = catchingUnwrapped {
-                it.payload.keyStorageStatus?.status?.get(StatusListInfo.SerialNames.STATUS_LIST_INFO)?.let { statusList ->
-                    Json.decodeFromJsonElement<StatusListInfo>(statusList).let { statusListInfo ->
-                        if (statusListTokenResolver?.toTokenStatusResolver()
-                                ?.invoke(statusListInfo as RevocationListInfo)
-                                ?.getOrThrow() == TokenStatus.Invalid
-                        ) throw Throwable("TokenStatus invalid")
-                    }
-                }
-            }.isSuccess
-
-            val signatureValid = catchingUnwrapped {
-                VerifyJwsObject().verifyJwsSignature(it.jws, it.jws.jwsHeader.publicKey!!).isSuccess
-            }.getOrDefault(false)
-
-            return@ProofValidator (tokenStatusValid && signatureValid)
-        }
+        statusListTokenResolver = statusListTokenResolver
     ),
     /** Used to provide signed metadata in [signedMetadata]. */
     private val signMetadata: SignJwtFun<IssuerMetadata> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
@@ -104,6 +89,10 @@ class CredentialIssuer @JvmOverloads constructor(
     private val credentialSchemeMapper: CredentialSchemeMapper = DefaultCredentialSchemeMapper(),
     /** Used for [IssuerMetadata.preferredClientStatusPeriod]. */
     private val preferredClientStatusPeriod: Duration? = 31.days,
+    /** Used for [IssuerMetadata.displayProperties]. */
+    private val displayProperties: Set<DisplayProperties>? = null,
+    /** Used for [IssuerMetadata.issuedAt] in [signedMetadata]. */
+    private val clock: Clock = Clock.System,
 ) {
 
     sealed interface CredentialResponse {
@@ -157,6 +146,7 @@ class CredentialIssuer @JvmOverloads constructor(
             credentialResponseEncryption = encryptionService.metadataCredentialResponseEncryption,
             credentialRequestEncryption = encryptionService.metadataCredentialRequestEncryption,
             preferredClientStatusPeriod = preferredClientStatusPeriod,
+            displayProperties = displayProperties,
         )
     }
 
@@ -166,9 +156,15 @@ class CredentialIssuer @JvmOverloads constructor(
      * component and the path component, if any.
      * Use this only when the client accepts (see `Accept` header [io.ktor.http.HttpHeaders.Accept]) the media type
      * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]), otherwise serve [metadata].
+     *
+     * Implements OID4VCI 1.0, Section 12.2.3, i.e. sets `typ` to [OpenIdConstants.ISSUER_METADATA_JWT_TYPE] and adds
+     * the claims `sub` and `iat` to [metadata].
      */
-    suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata>> =
-        signMetadata(null, metadata, IssuerMetadata.serializer())
+    suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata>> = signMetadata(
+        OpenIdConstants.ISSUER_METADATA_JWT_TYPE,
+        metadata.copy(subject = metadata.credentialIssuer, issuedAt = clock.now()),
+        IssuerMetadata.serializer(),
+    )
 
     /**
      * Metadata about the credential issuer in
@@ -240,10 +236,11 @@ class CredentialIssuer @JvmOverloads constructor(
     ): KmmResult<CredentialResponse> = catching {
         Napier.i("credential called")
         Napier.d("credential called with $authorizationHeader, $request")
-        if (!hasBeenEncrypted && encryptionService.requireRequestEncryption)
-            throw InvalidEncryptionParameters("Credential request has not been encrypted")
-        authorizationService.validateAccessToken(authorizationHeader, requestInfo).getOrThrow()
-        val userInfo = request.introspectTokenLoadUserInfo(authorizationHeader, requestInfo)
+        encryptionService.validateRequestEncryption(request, hasBeenEncrypted)
+        val validated = authorizationService.validateAccessToken(authorizationHeader, requestInfo).getOrThrow()
+        request.validateAgainstToken(validated)
+        val userInfo = validated.userInfoExtended
+            ?: loadUserInfo(authorizationHeader, requestInfo)
         val (scheme, representation) = request.extractCredentialRepresentation()
         val responseParameters = proofValidator.validateProofExtractSubjectPublicKeys(request).map { subjectPublicKey ->
             issuer.issueCredential(
@@ -265,42 +262,37 @@ class CredentialIssuer @JvmOverloads constructor(
             .also { Napier.i("credential returns"); Napier.d("credential returns $it") }
     }
 
-    private suspend fun CredentialRequestParameters.introspectTokenLoadUserInfo(
+    private suspend fun loadUserInfo(
         authorizationHeader: String,
         request: RequestInfo?,
-    ): OidcUserInfoExtended = run {
-        validateAgainstToken(authorizationHeader, request)
-        authorizationService.getUserInfo(
-            authorizationHeader = authorizationHeader,
-            httpRequest = request
-        ).getOrThrow().let {
-            OidcUserInfoExtended.fromJsonObject(it).getOrThrow()
-        }
+    ): OidcUserInfoExtended = authorizationService.getUserInfo(
+        authorizationHeader = authorizationHeader,
+        httpRequest = request
+    ).getOrThrow().let {
+        OidcUserInfoExtended.fromJsonObject(it).getOrThrow()
     }
 
-    private suspend fun CredentialRequestParameters.validateAgainstToken(
-        authorizationHeader: String,
-        request: RequestInfo?,
-    ): Unit = authorizationService.getTokenInfo(
-        authorizationHeader = authorizationHeader,
-        httpRequest = request,
-    ).getOrThrow().let {
-        if (it.authorizationDetails != null) {
+    private fun CredentialRequestParameters.validateAgainstToken(
+        token: ValidatedAccessToken,
+    ) {
+        if (token.authorizationDetails != null) {
             if (credentialIdentifier == null)
                 throw InvalidCredentialRequest("credential_identifier expected to be set")
             if (credentialConfigurationId != null)
                 throw InvalidCredentialRequest("credential_configuration_id must not be set when credential_identifier is set")
-            if (!it.validCredentialIdentifiers.contains(credentialIdentifier))
-                throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $it")
-        } else if (it.scope != null) {
+            if (!token.validCredentialIdentifiers.contains(credentialIdentifier))
+                throw InvalidToken("credential_identifier $credentialIdentifier expected to be in $token")
+        } else if (token.scope != null) {
             if (credentialConfigurationId == null)
                 throw InvalidCredentialRequest("credential_configuration_id expected to be set")
             if (credentialIdentifier != null)
                 throw InvalidCredentialRequest("credential_identifier must not be set when credential_configuration_id is set")
             val configurationScope = metadata.supportedCredentialConfigurations?.get(credentialConfigurationId!!)?.scope
                 ?: throw InvalidCredentialRequest("credential_configuration_id $credentialConfigurationId not supported")
-            if (!it.scope.contains(configurationScope))
-                throw InvalidToken("credential_configuration_id $credentialConfigurationId expected to be in $it")
+            val requested = configurationScope.split(" ").filter(String::isNotBlank).toSet()
+            val granted = token.scope.orEmpty().split(" ").filter(String::isNotBlank).toSet()
+            if (!granted.containsAll(requested))
+                throw InvalidToken("credential_configuration_id $credentialConfigurationId not granted by token $token")
         } else {
             throw InvalidToken("Neither scope nor authorization details stored for access token")
         }

@@ -2,35 +2,32 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.catchingUnwrapped
-import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationSubmission
-import at.asitplus.dif.PresentationSubmissionDescriptor
-import at.asitplus.jsonpath.core.NodeList
+import at.asitplus.iso.DeviceRequest
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.signum.indispensable.cosef.CoseKey
-import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
+import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidator
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
+import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
-import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure
+import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -45,16 +42,45 @@ class HolderAgent @JvmOverloads constructor(
     override val keyMaterial: KeyMaterial,
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val validator: Validator = Validator(),
-    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(validator = validator),
-    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(validator = validator),
-    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(validator = validator),
+    /**
+     * Certificates of the issuers we trust, e.g. extracted from an ETSI trust list. When set, credentials whose
+     * issuer certificate is not signed by one of these are rejected on [storeCredential]. When null, issuer
+     * signatures are only verified against the key the credential asserts itself, i.e. no trust decision is made.
+     */
+    trustedIssuers: TrustedCertificates? = null,
+    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(
+        vcJwsInputValidator = VcJwsInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
+        validator = validator,
+    ),
+    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(
+        sdJwtInputValidator = SdJwtInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
+        validator = validator,
+    ),
+    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(
+        verifyCoseSignature = issuerCoseVerifier(trustedIssuers),
+        validator = validator,
+    ),
     private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
         SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
+    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+        keyMaterial = keyMaterial,
+        protectedHeaderModifier = CoseHeaderNone(),
+        unprotectedHeaderModifier = CoseHeaderNone()
+    ),
+    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
-        VerifiablePresentationFactory(keyMaterial, signVerifiablePresentation, signKeyBinding),
+        VerifiablePresentationFactory(
+            keyMaterial = keyMaterial,
+            signVerifiablePresentation = signVerifiablePresentation,
+            signKeyBinding = signKeyBinding,
+            mdocZkEngine = mdocZkEngine,
+            signDeviceAuthDetached = signDeviceAuthDetached
+        ),
     private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {
+
+    private val presentationResponseCreator = PresentationResponseCreator(verifiablePresentationFactory)
 
     /**
      * Stores the verifiable credential in [credential] if it parses and validates,
@@ -92,27 +118,18 @@ class HolderAgent @JvmOverloads constructor(
             }
 
             is Holder.StoreCredentialInput.Iso -> {
-                val validated =
-                    validatorMdoc.verifyIsoCred(credential.issuerSigned, credential.extractIssuerKey()).getOrThrow()
+                val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned).getOrThrow()
                 subjectCredentialStore.storeCredential(
                     issuerSigned = validated.issuerSigned,
                     scheme = credential.scheme,
                     renewalInfo = renewalInfo,
-                    issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)?.let {
-                        X509Certificate.decodeFromDer(
-                            it
-                        )
-                    }
+                    issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)
+                        ?.let { X509Certificate.decodeFromDer(it) }
                 )
             }
         }
     }
 
-    private fun Holder.StoreCredentialInput.Iso.extractIssuerKey(): CoseKey? =
-        issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
-            catchingUnwrapped { X509Certificate.decodeFromDer(it) }.getOrNull()?.decodedPublicKey?.getOrNull()
-                ?.toCoseKey()?.getOrNull()
-        }
 
 
     /**
@@ -158,115 +175,58 @@ class HolderAgent @JvmOverloads constructor(
     ): KmmResult<PresentationResponseParameters> =
         createPresentation(request, credentialPresentationRequest.toCredentialPresentation())
 
+    /** Matches any supported presentation request while preserving its request-specific result type. */
+    @Suppress("DEPRECATION")
+    override suspend fun matchPresentationRequestAgainstCredentialStore(
+        presentationRequest: CredentialPresentationRequest,
+        filterByIds: Collection<String>?,
+    ): KmmResult<CredentialMatchingResult<StoreEntry>> = catching {
+        when (presentationRequest) {
+            is CredentialPresentationRequest.DCQLRequest -> DCQLMatchingResult(
+                presentationRequest = presentationRequest,
+                matchingResult = matchDCQLQueryAgainstCredentialStoreV2(
+                    dcqlQuery = presentationRequest.dcqlQuery,
+                    filterByIds = filterByIds,
+                ).getOrThrow(),
+            )
+
+            is CredentialPresentationRequest.PresentationExchangeRequest -> PresentationExchangeMatchingResult(
+                presentationRequest = presentationRequest,
+                matchingResult = matchInputDescriptorsAgainstCredentialStoreV2(
+                    inputDescriptors = presentationRequest.presentationDefinition.inputDescriptors,
+                    fallbackFormatHolder = presentationRequest.fallbackFormatHolder,
+                    filterByIds = filterByIds,
+                ).getOrThrow(),
+            )
+
+            is CredentialPresentationRequest.IsoDeviceRetrieval -> IsoDeviceRetrievalMatchingResult(
+                presentationRequest = presentationRequest,
+                matchingResult = matchDeviceRetrievalAgainstCredentialStore(
+                    deviceRequest = presentationRequest.deviceRequest,
+                    filterByIds = filterByIds,
+                ).getOrThrow(),
+            )
+        }
+    }
+
+    @Suppress("DEPRECATION")
     override suspend fun createPresentation(
         request: PresentationRequestParameters,
         credentialPresentation: CredentialPresentation,
-    ): KmmResult<PresentationResponseParameters> = when (credentialPresentation) {
-        is CredentialPresentation.DCQLPresentation ->
-            createDCQLPresentation(request, credentialPresentation)
-
-        is CredentialPresentation.PresentationExchangePresentation ->
-            createPresentationExchangePresentation(request, credentialPresentation)
-    }
-
-    private suspend fun createPresentationExchangePresentation(
-        request: PresentationRequestParameters,
-        credentialPresentation: CredentialPresentation.PresentationExchangePresentation,
-    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> = catching {
-        val presentationDefinition = credentialPresentation.presentationRequest.presentationDefinition
-
-        val presentationCredentialSelection = credentialPresentation.inputDescriptorSubmissions
-            ?: matchInputDescriptorsAgainstCredentialStoreV2(
-                inputDescriptors = presentationDefinition.inputDescriptors,
-                fallbackFormatHolder = credentialPresentation.presentationRequest.fallbackFormatHolder,
-            ).getOrThrow().toDefaultSubmission()
-
-        credentialPresentation.presentationRequest.validateSubmission(presentationCredentialSelection)
-            .onFailure { throw PresentationException(it) }
-
-        val submissionList = presentationCredentialSelection.mapValues {
-            PresentationExchangeCredentialDisclosure(
-                credential = it.value.credential,
-                disclosedAttributes = it.value.disclosedAttributes
+    ): KmmResult<PresentationResponseParameters> = presentationResponseCreator.create(
+        request = request,
+        credentialPresentation = credentialPresentation,
+        matchDCQLQuery = { matchDCQLQueryAgainstCredentialStoreV2(it) },
+        matchDeviceRequest = { matchDeviceRetrievalAgainstCredentialStore(it) },
+        matchPresentationExchange = suspend {
+            matchInputDescriptorsAgainstCredentialStoreV2(
+                it.presentationDefinition.inputDescriptors,
+                it.fallbackFormatHolder,
             )
-        }.toList()
+        },
+    )
 
-        if (request.returnOneDeviceResponse) {
-            PresentationResponseParameters.PresentationExchangeParameters(
-                presentationSubmission = PresentationSubmission.fromMatches(
-                    presentationId = presentationDefinition.id,
-                    matches = submissionList,
-                    isSingleIsoMdocPresentation = true
-                ),
-                presentationResults = listOf(
-                    verifiablePresentationFactory.createVerifiablePresentation(
-                        request = request,
-                        credentialAndDisclosedAttributes = submissionList
-                            .associate { it.second.credential as StoreEntry.Iso to it.second.disclosedAttributes },
-                    ).getOrThrow()
-                )
-            )
-        } else {
-            PresentationResponseParameters.PresentationExchangeParameters(
-                presentationSubmission = PresentationSubmission.fromMatches(
-                    presentationId = presentationDefinition.id,
-                    matches = submissionList
-                ),
-                presentationResults = submissionList.map { match ->
-                    verifiablePresentationFactory.createVerifiablePresentation(
-                        request = request,
-                        credential = match.second.credential,
-                        disclosedAttributes = match.second.disclosedAttributes,
-                    ).getOrThrow()
-                },
-            )
-        }
-    }
-
-    private suspend fun createDCQLPresentation(
-        request: PresentationRequestParameters,
-        credentialPresentation: CredentialPresentation.DCQLPresentation,
-    ): KmmResult<PresentationResponseParameters.DCQLParameters> = catching {
-        val dcqlQuery = credentialPresentation.presentationRequest.dcqlQuery
-
-        val requestedCredentialSetQueries =
-            credentialPresentation.presentationRequest.dcqlQuery.requestedCredentialSetQueries
-        val credentialSubmissions = credentialPresentation.credentialQuerySubmissions
-            ?: matchDCQLQueryAgainstCredentialStoreV2(dcqlQuery).getOrThrow()
-                .toDefaultSubmission(dcqlQuery).getOrThrow()
-
-        DCQLQuery.Procedures.checkCredentialSetQueryRequirements(
-            credentialSubmissions = credentialSubmissions.keys,
-            requestedCredentialSetQueries = requestedCredentialSetQueries,
-        ).getOrThrow()
-
-        val verifiablePresentations = credentialSubmissions.mapValues { (queryId, submissions) ->
-            val query = credentialPresentation.presentationRequest.dcqlQuery.credentials.first {
-                it.id == queryId
-            }
-            if (query.multiple != true && submissions.size != 1) {
-                throw IllegalArgumentException("Credential query ${query.id} does not allow multiple submission, but ${submissions.size} were provided.")
-            }
-            submissions.map {
-                val credential = it.credential
-                if (credential is StoreEntry.Vc && !query.requireCryptographicHolderBinding) {
-                    if (it.matchingResult !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
-                        throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
-                    }
-                    CreatePresentationResult.VcJws(credential.vcSerialized)
-                } else {
-                    verifiablePresentationFactory.createVerifiablePresentation(
-                        request = request,
-                        credential = credential,
-                        disclosedAttributes = it.matchingResult,
-                    ).getOrThrow()
-                }
-            }
-        }
-
-        PresentationResponseParameters.DCQLParameters(verifiablePresentations)
-    }
-
+    @Deprecated("Use matchPresentationRequestAgainstCredentialStore instead")
     override suspend fun matchInputDescriptorsAgainstCredentialStoreV2(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
@@ -292,15 +252,17 @@ class HolderAgent @JvmOverloads constructor(
         queryMatchingResult = PresentationExchangeQueryMatchingResult(
             inputDescriptors.associateWith { inputDescriptor ->
                 credentials.map { credential ->
-                    evaluateInputDescriptorAgainstCredential(
+                    difInputEvaluator.evaluateInputDescriptorAgainstCredential(
                         inputDescriptor = inputDescriptor,
-                        credential = credential,
                         fallbackFormatHolder = fallbackFormatHolder,
+                        credentialClaimStructure = CredentialToJsonConverter.toJsonElement(credential),
+                        credentialFormat = credential.credentialFormat,
+                        credentialScheme = credential.schemeIdentifier,
                         pathAuthorizationValidator = {
                             pathAuthorizationValidator?.invoke(credential, it) ?: true
                         },
                     ).onFailure {
-                        Napier.d("findInputDescriptorMatches failed for credential ${credential}", it)
+                        Napier.d("findInputDescriptorMatches failed for credential $credential", it)
                     }
                 }
             }.mapKeys {
@@ -309,6 +271,26 @@ class HolderAgent @JvmOverloads constructor(
         )
     )
 
+    @Deprecated(
+        "Use matchPresentationRequestAgainstCredentialStore instead",
+        ReplaceWith(
+            "matchPresentationRequestAgainstCredentialStore(CredentialPresentationRequest.IsoDeviceRetrieval(deviceRequest), filterByIds)",
+            "at.asitplus.wallet.lib.data.CredentialPresentationRequest",
+        ),
+    )
+    override suspend fun matchDeviceRetrievalAgainstCredentialStore(
+        deviceRequest: DeviceRequest,
+        filterByIds: Collection<String>?
+    ): KmmResult<HolderIsoDeviceRetrievalQueryMatchingResult<StoreEntry>> = catching {
+        val credentials = getValidCredentialsByPriority(filterByIds)
+            ?: throw PresentationException("Credentials could not be retrieved from the store")
+        HolderIsoDeviceRetrievalQueryMatchingResult(
+            credentials = credentials,
+            queryMatchingResult = DeviceRetrievalProcedure.match(deviceRequest, credentials),
+        )
+    }
+
+    @Deprecated("Use matchPresentationRequestAgainstCredentialStore instead")
     override fun evaluateInputDescriptorAgainstCredential(
         inputDescriptor: InputDescriptor,
         credential: StoreEntry,
@@ -319,23 +301,17 @@ class HolderAgent @JvmOverloads constructor(
         fallbackFormatHolder = fallbackFormatHolder,
         credentialClaimStructure = CredentialToJsonConverter.toJsonElement(credential),
         credentialFormat = credential.credentialFormat,
-        credentialScheme = credential.schemeIdentifierForMatching,
+        credentialScheme = credential.schemeIdentifier,
         pathAuthorizationValidator = pathAuthorizationValidator,
     )
 
-    /**
-     * Scheme identifier used to match input descriptors. Store entries serialized before [StoreEntry.schemeIdentifier]
-     * was introduced keep it `null`, so fall back to the identifier carried by the credential itself (the mdoc
-     * docType, the SD-JWT `vct`, or the W3C VC type). Otherwise `MSO_MDOC` input descriptors keyed by docType would
-     * never match legacy entries.
-     */
-    private val StoreEntry.schemeIdentifierForMatching: String?
-        get() = schemeIdentifier ?: when (this) {
-            is StoreEntry.Iso -> issuerSigned.issuerAuth.payload?.docType
-            is StoreEntry.SdJwt -> sdJwt.verifiableCredentialType
-            is StoreEntry.Vc -> vc.vc.type.firstOrNull { it != VERIFIABLE_CREDENTIAL }
-        }
-
+    @Deprecated(
+        "Use matchPresentationRequestAgainstCredentialStore instead",
+        ReplaceWith(
+            "matchPresentationRequestAgainstCredentialStore(CredentialPresentationRequest.DCQLRequest(dcqlQuery), filterByIds)",
+            "at.asitplus.wallet.lib.data.CredentialPresentationRequest",
+        ),
+    )
     override suspend fun matchDCQLQueryAgainstCredentialStoreV2(
         dcqlQuery: DCQLQuery,
         filterByIds: Collection<String>?,
@@ -349,79 +325,5 @@ class HolderAgent @JvmOverloads constructor(
             credentials = credentials,
         )
     }
-
-    private fun PresentationSubmission.Companion.fromMatches(
-        presentationId: String?,
-        matches: List<Pair<String, PresentationExchangeCredentialDisclosure<StoreEntry>>>,
-        isSingleIsoMdocPresentation: Boolean = false,
-    ) = PresentationSubmission(
-        id = uuid4().toString(),
-        definitionId = presentationId,
-        descriptorMap = matches.mapIndexed { index, match ->
-            PresentationSubmissionDescriptor.fromMatch(
-                inputDescriptorId = match.first,
-                credential = match.second.credential,
-                index = if (matches.size == 1 || isSingleIsoMdocPresentation) null else index,
-            )
-        },
-    )
-
-    private fun PresentationSubmissionDescriptor.Companion.fromMatch(
-        credential: StoreEntry,
-        inputDescriptorId: String,
-        index: Int?,
-    ) = PresentationSubmissionDescriptor(
-        id = inputDescriptorId,
-        format = credential.claimFormat,
-        // from https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1-2.4
-        // These objects contain a field called path, which, for this specification,
-        // MUST have the value $ (top level root path) when only 1 Verifiable Presentation is contained in the VP Token,
-        // and MUST have the value $[n] (indexed path from root) when there are multiple Verifiable Presentations,
-        // where n is the index to select.
-        path = index?.let { "\$[$it]" } ?: "\$",
-    )
-
-    private fun CredentialPresentationRequest.PresentationExchangeRequest.validateSubmission(
-        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure<StoreEntry>>,
-    ) = catching {
-        val validator = PresentationSubmissionValidator.createInstance(presentationDefinition).getOrThrow()
-        require(validator.isValidSubmission(credentialSubmissions.keys)) { "Submission requirements are not satisfied" }
-
-        // making sure, that all the submissions actually match the corresponding input descriptor requirements
-        credentialSubmissions.forEach { submission ->
-            val inputDescriptor = presentationDefinition.inputDescriptors
-                .firstOrNull { it.id == submission.key }
-                ?: throw IllegalArgumentException("Invalid input descriptor id: ${submission.key}")
-
-            val constraintFieldMatches = evaluateInputDescriptorAgainstCredential(
-                inputDescriptor = inputDescriptor,
-                credential = submission.value.credential,
-                fallbackFormatHolder = fallbackFormatHolder,
-                pathAuthorizationValidator = { true },
-            ).getOrThrow()
-
-            val disclosedAttributes = submission.value.disclosedAttributes.map { it.toString() }
-
-            // find a matching path for each constraint field
-            constraintFieldMatches.filter {
-                // only need to validate non-optional constraint fields
-                it.key.optional != true
-            }.forEach { constraintField ->
-                val allowedPaths = constraintField.value.map {
-                    it.normalizedJsonPath.toString()
-                }
-                disclosedAttributes.firstOrNull { allowedPaths.contains(it) }
-                    ?: throw IllegalArgumentException(inputDescriptor.errorMessage(constraintField))
-            }
-            // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
-            //  this would be the case if there is only one constraint field with path "$['name']", but two attributes are disclosed
-        }
-    }
-
-    private fun InputDescriptor.errorMessage(field: Map.Entry<ConstraintField, NodeList>): String =
-        "Input descriptor constraints are not satisfied: ${details(field)}"
-
-    private fun InputDescriptor.details(field: Map.Entry<ConstraintField, NodeList>): String =
-        "${id}.${field.key.id?.let { " Missing field: $it" }}"
 
 }

@@ -1,15 +1,15 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -40,6 +40,8 @@ data class CredentialPresentationRequestBuilder(
 ) {
     constructor(vararg credentials: RequestOptionsCredential) : this(credentials.toList())
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
     fun toPresentationExchangeRequest() = CredentialPresentationRequest.PresentationExchangeRequest(
         PresentationDefinition(
             id = uuid4().toString(),
@@ -49,31 +51,44 @@ data class CredentialPresentationRequestBuilder(
         )
     )
 
-    private fun RequestOptionsCredential.toInputDescriptor(): InputDescriptor = DifInputDescriptor(
+    @Suppress("DEPRECATION")
+    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
+    private fun RequestOptionsCredential.toInputDescriptor() = DifInputDescriptor(
         id = buildId(),
         format = toFormatHolder(),
         constraints = toConstraint(),
     )
 
+    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
     private fun RequestOptionsCredential.toFormatHolder() = when (this.representation) {
         PLAIN_JWT -> FormatHolder(jwtVp = FormatContainerJwt())
         SD_JWT -> FormatHolder(sdJwt = FormatContainerSdJwt())
         ISO_MDOC -> FormatHolder(msoMdoc = FormatContainerJwt())
     }
 
-    fun toDCQLRequest(): DCQLRequest? {
-        return DCQLRequest(
+    fun toIsoDeviceRetrievalRequest() = CredentialPresentationRequest.IsoDeviceRetrieval(
+        deviceRequest = DeviceRequest(
+            parsedVersion = io.github.z4kn4fein.semver.Version(1, 0),
+            docRequests = credentials.map { it.toDocRequest() }.toTypedArray(),
+            deviceRequestInfo = null,
+            readerAuthAll = null,
+        )
+    )
+
+    fun toDCQLRequest(): DCQLRequest? = credentials.toQueryList()?.let {
+        DCQLRequest(
             DCQLQuery(
-                credentials = DCQLCredentialQueryList(
-                    credentials.mapNotNull {
-                        it.toQuery()
-                    }.takeIf {
-                        it.isNotEmpty()
-                    }?.toNonEmptyList() ?: return null
-                ),
+                credentials = DCQLCredentialQueryList(it),
             )
         )
     }
+
+    private fun Collection<RequestOptionsCredential>.toQueryList(): NonEmptyList<DCQLCredentialQuery>? =
+        mapNotNull {
+            it.toQuery()
+        }.takeIf {
+            it.isNotEmpty()
+        }?.toNonEmptyList()
 
     private fun RequestOptionsCredential.toQuery(): DCQLCredentialQuery? = when (representation) {
         PLAIN_JWT -> toJwtVcQuery()
@@ -135,10 +150,4 @@ data class CredentialPresentationRequestBuilder(
         effectiveRequestedAttributePaths().map { it to true } +
                 effectiveRequestedOptionalAttributePaths().map { it to false }
 
-    private fun DCQLClaimsPathPointer.toIsoMdocNamespaceAndClaimName(): Pair<String, String> {
-        require(segments.size == 2 && segments.all { it is NameSegment }) {
-            "ISO mdoc requested attribute paths must contain namespace and claim name segments"
-        }
-        return (segments[0] as NameSegment).name to (segments[1] as NameSegment).name
-    }
 }

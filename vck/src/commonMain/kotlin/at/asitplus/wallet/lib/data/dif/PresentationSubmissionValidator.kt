@@ -7,6 +7,7 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.dif.SubmissionRequirement
 import kotlinx.serialization.Serializable
 
+@Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
 @Serializable
 sealed class PresentationSubmissionValidator {
     companion object {
@@ -28,6 +29,8 @@ sealed class PresentationSubmissionValidator {
             return KmmResult.success(verifier)
         }
 
+        @Suppress("DEPRECATION")
+        @Deprecated("Presentation Exchange is deprecated, use DCQL or DeviceRequest instead")
         fun createInstance(
             presentationDefinition: PresentationDefinition,
         ): KmmResult<PresentationSubmissionValidator> = createInstance(

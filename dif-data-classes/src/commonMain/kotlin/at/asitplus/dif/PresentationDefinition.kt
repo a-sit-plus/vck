@@ -5,10 +5,7 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Data class for
- * [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition)
- */
+@Deprecated("Presentation Exchange is deprecated, use DCQL or DeviceRequest instead")
 @Serializable
 data class PresentationDefinition(
     @SerialName("id")

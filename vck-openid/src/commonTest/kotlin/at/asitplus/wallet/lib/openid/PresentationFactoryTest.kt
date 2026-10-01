@@ -11,11 +11,6 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.SignCoseDetached
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.encodeToHexString
@@ -24,11 +19,8 @@ val PresentationFactoryTest by matrixSuite {
 
     fixture {
         object {
-            private val keyMaterial = EphemeralKeyWithoutCert()
             val presentationFactory = PresentationFactory(
-                supportedAlgorithms = setOf(SignatureAlgorithm.ECDSAwithSHA256),
-                signDeviceAuthDetached = SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-                signIdToken = SignJwt(keyMaterial, JwsHeaderCertOrJwk())
+                supportedAlgorithms = setOf(SignatureAlgorithm.ECDSAwithSHA256)
             )
         }
     } - {

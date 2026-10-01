@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 
@@ -17,50 +17,51 @@ class JwtTokenService(
     override val supportsRefreshTokens: Boolean,
 ) : TokenService {
 
+    /** Tokens are DPoP bound, and [validateAccessToken] rejects a subject token bound to another key. */
+    override val supportsTokenExchange: Boolean = true
+
     /**
-     * Provides information about the access token from [authorizationHeader], if it has been issued by [generation].
-     * **Access token needs to be validated before (see [TokenVerificationService.validateAccessToken])**
+     * Validates the access token, and — since [generation] issued it — resolves the user info stored back then,
+     * so callers do not need a second lookup with [readUserInfo].
      */
+    override suspend fun validateAccessToken(
+        authorizationHeader: String,
+        httpRequest: RequestInfo?,
+        validatedClientKey: JsonWebKey?,
+    ): KmmResult<ValidatedAccessToken> = catching {
+        val validated = verification.validateAccessToken(
+            tokenOrAuthHeader = authorizationHeader,
+            httpRequest = httpRequest,
+            validatedClientKey = validatedClientKey
+        ).getOrThrow()
+        validated.jwtId
+            ?.let { generation.getUserInfoExtended(it) }
+            ?.let { validated.copy(userInfoExtended = it) }
+            ?: validated
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
     override suspend fun readUserInfo(
         authorizationHeader: String,
         request: RequestInfo?,
     ): ValidatedAccessToken = if (authorizationHeader.startsWith(OpenIdConstants.TOKEN_TYPE_DPOP, ignoreCase = true)) {
         val accessToken = authorizationHeader.removePrefix(OpenIdConstants.TOKEN_PREFIX_DPOP).split(" ").last()
-        val tokenJwt = catching { JwsCompactTyped<OpenId4VciAccessToken>(accessToken) }
-            .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
+        // Verifies signature, typ, jti, nbf and exp; does not prove possession of the key the token is bound to
+        val tokenJwt = verification.validateToken(accessToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
         val jwtId = tokenJwt.payload.jwtId
             ?: throw InvalidToken("access token not valid: $accessToken")
         with(tokenJwt.payload) {
-            toValidatedAccessToken(accessToken, jwtId)
+            toValidatedAccessToken(accessToken, generation.getUserInfoExtended(jwtId))
         }
     } else {
         throw InvalidToken("authorization header not valid: $authorizationHeader")
     }
 
-    /**
-     * Validates the subject token (that is a token sent by a third party) for token exchange) is one issued from
-     * [generation], and that the client presented a valid proof-of-possession for the key the token is bound to.
-     * Callers need to authenticate the client before calling this method.
-     */
+    @Suppress("OVERRIDE_DEPRECATION")
     override suspend fun validateTokenForTokenExchange(
         subjectToken: String,
-    ): ValidatedAccessToken = run {
-        val tokenJwt = verification.validateToken(subjectToken, JwsContentTypeConstants.OID4VCI_AT_JWT)
-        val jwtId = tokenJwt.payload.jwtId
-            ?: throw InvalidToken("access token not valid: $subjectToken")
-        // can't validate DPoP JWT, as the third party can't forward this
-        with(tokenJwt.payload) {
-            toValidatedAccessToken(subjectToken, jwtId)
-        }
-    }
+        httpRequest: RequestInfo?,
+    ): KmmResult<ValidatedAccessToken> =
+        validateAccessToken(subjectToken, httpRequest, null)
 
-    private suspend fun OpenId4VciAccessToken.toValidatedAccessToken(
-        accessToken: String,
-        jwtId: String,
-    ): ValidatedAccessToken = ValidatedAccessToken(
-        token = accessToken,
-        userInfoExtended = generation.getUserInfoExtended(jwtId),
-        authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
-        scope = scope
-    )
 }

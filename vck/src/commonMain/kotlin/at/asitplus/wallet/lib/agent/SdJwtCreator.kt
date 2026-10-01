@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.agent.SdJwtCreator.disallowedNames
-import at.asitplus.wallet.lib.agent.SdJwtCreator.toIntSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
 import at.asitplus.wallet.lib.data.SdJwtConstants.SD_ALG

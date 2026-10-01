@@ -16,9 +16,11 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyUserProvider.user
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 val OAuth2ClientTest by matrixSuite {
@@ -27,6 +29,7 @@ val OAuth2ClientTest by matrixSuite {
             val scope = randomString()
             val client = OAuth2Client()
             val server = SimpleAuthorizationService(
+                requirePushedAuthorizationRequests = false,
                 strategy = DummyAuthorizationServiceStrategy(scope),
             )
         }
@@ -54,6 +57,22 @@ val OAuth2ClientTest by matrixSuite {
             )
             it.server.token(tokenRequest, null).isSuccess shouldBe true
             it.server.token(tokenRequest, null).isFailure shouldBe true
+        }
+        test("token request with a scope that is only a substring of the granted scope") {
+            val preAuth = it.server.providePreAuthorizedCode(user)
+                .shouldNotBeNull()
+            // Scopes are space-delimited values, so a substring of a granted scope is not itself granted
+            val requestedScope = it.scope.dropLast(1)
+            it.scope shouldContain requestedScope
+            val tokenRequest = it.client.createTokenRequestParameters(
+                state = uuid4().toString(),
+                authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+                scope = requestedScope
+            )
+
+            shouldThrow<OAuth2Exception> {
+                it.server.token(tokenRequest, null).getOrThrow()
+            }
         }
         test("process with pushed authorization request") {
             val state = uuid4().toString()
@@ -232,6 +251,49 @@ val OAuth2ClientTest by matrixSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
                 .apply { active shouldBe true }
+        }
+
+        /**
+         * RFC 8693 token exchange issues a fresh access token for the subject token's user. With bearer tokens the
+         * presenting client can not be bound to that token, so anyone who captured it could renew it indefinitely.
+         */
+        test("token exchange is not supported by default") {
+            val token = it.server.token(
+                it.client.createTokenRequestParameters(
+                    state = uuid4().toString(),
+                    authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(
+                        it.server.providePreAuthorizedCode(user)
+                    ),
+                    scope = it.scope,
+                ),
+                null,
+            ).getOrThrow()
+
+            shouldThrow<OAuth2Exception.UnsupportedGrantType> {
+                it.server.token(
+                    it.client.createTokenRequestParameters(
+                        state = uuid4().toString(),
+                        authorization = OAuth2Client.AuthorizationForToken.TokenExchange(token.accessToken),
+                        resource = it.server.metadata().userInfoEndpoint,
+                    ),
+                    null,
+                ).getOrThrow()
+            }
+        }
+
+        test("token exchange is not advertised when it is not supported") {
+            it.server.metadata().grantTypesSupported.shouldNotBeNull()
+                .shouldNotContain("urn:ietf:params:oauth:grant-type:token-exchange")
+        }
+
+        test("token exchange can not be enabled for bearer tokens") {
+            shouldThrow<IllegalArgumentException> {
+                SimpleAuthorizationService(
+                    strategy = DummyAuthorizationServiceStrategy(it.scope),
+                    tokenService = TokenService.bearer(),
+                    supportTokenExchange = true,
+                )
+            }
         }
     }
 }

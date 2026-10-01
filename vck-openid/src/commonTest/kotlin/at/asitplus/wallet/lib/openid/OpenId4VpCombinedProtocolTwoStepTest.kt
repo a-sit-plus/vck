@@ -2,27 +2,25 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsQueryResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
-import at.asitplus.wallet.lib.data.CredentialScheme
-import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -52,87 +50,80 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
     } - {
 
         test("matching: only credentials of the correct format are matched") {
-            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
-            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
-            it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
+            issueAndStoreIsoMdoc(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
+            issueAndStoreIsoMdoc(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
+            issueAndStoreSdJwt(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
 
-            val authnRequest = it.verifierOid4vp.createPlainAuthnRequest(
-                OpenId4VpRequestOptions(
+
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(
                     CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
-                    ).toPresentationExchangeRequest(),
-                )
-            )
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
-                .getOrThrow()
-            val presentationDefinition = preparationState.credentialPresentationRequest
-                .shouldBeInstanceOf<PresentationExchangeRequest>()
-                .presentationDefinition
-            val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
+                    ).toDCQLRequest(),
+                ),
+                creationOptions = CreationOptions.Query("https://example.com")
+            ).getOrThrow().url
 
-            it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(presentationDefinition.inputDescriptors)
+            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+                .getOrThrow()
+            val dcqlQuery = preparationState.credentialPresentationRequest
+                .shouldBeInstanceOf<DCQLRequest>()
+                .dcqlQuery
+            val credentialQueryId = dcqlQuery.credentials.first().id
+
+            it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(dcqlQuery)
                 .getOrThrow().also {
-                    it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
+                    it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
                         it.value.shouldHaveSize(3)
                     }
-                }.inputDescriptorMatches[inputDescriptorId]
+                }.credentialQueryMatches[credentialQueryId]
                 .shouldNotBeNull().apply {
                     this shouldHaveSize 2
-                    keys.forEach {
-                        it.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
+                    forEach {
+                        it.credential.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
                     }
                 }
         }
 
-        test("submission requirements need to match: all credentials matching an input descriptor should be presentable") {
-            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
-            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
-            it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
+        test("submission requirements need to match: all credentials matching a credential query should be presentable") {
+            issueAndStoreIsoMdoc(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
+            issueAndStoreIsoMdoc(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
+            issueAndStoreSdJwt(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
 
-            val authnRequest = it.verifierOid4vp.createPlainAuthnRequest(
-                OpenId4VpRequestOptions(
+
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(
                     CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
-                    ).toPresentationExchangeRequest(),
-                )
-            )
+                    ).toDCQLRequest(),
+                ),
+                creationOptions = CreationOptions.Query("https://example.com")
+            ).getOrThrow().url
 
-            val preparationState =
-                it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
-                    .getOrThrow()
-            val presentationExchangeRequest = preparationState.credentialPresentationRequest
-                .shouldBeInstanceOf<PresentationExchangeRequest>()
-            val presentationDefinition = presentationExchangeRequest.presentationDefinition
+            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+                .getOrThrow()
+            val dcqlRequest = preparationState.credentialPresentationRequest
+                .shouldBeInstanceOf<DCQLRequest>()
+            val credentialQueryId = dcqlRequest.dcqlQuery.credentials.first().id
 
-            val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
-            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(
-                presentationDefinition.inputDescriptors
-            ).getOrThrow().also {
-                it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
-                    it.value.shouldHaveSize(3) // 2x iso, 1x stJwt
-                }
-            }.inputDescriptorMatches.also { it shouldHaveSize 1 }
+            val matches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(dcqlRequest.dcqlQuery)
+                .getOrThrow().also {
+                    it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
+                        it.value.shouldHaveSize(3) // 2x iso, 1x sdJwt
+                    }
+                }.credentialQueryMatches.also { it shouldHaveSize 1 }
 
-            val inputDescriptorMatches = matches[inputDescriptorId].shouldNotBeNull()
+            val credentialQueryMatches = matches[credentialQueryId].shouldNotBeNull()
                 .also { it shouldHaveSize 2 }
 
             val fx = it
-            inputDescriptorMatches.forEach { match ->
-                val submission = mapOf(
-                    inputDescriptorId to PresentationExchangeCredentialDisclosure(
-                        credential = match.key,
-                        disclosedAttributes = match.value.mapNotNull { attr ->
-                            attr.value.firstOrNull()?.normalizedJsonPath
-                        }
-                    )
-                )
-
+            credentialQueryMatches.forEach { match ->
                 shouldNotThrowAny {
                     fx.holderOid4vp.finalizeAuthorizationResponse(
                         preparationState = preparationState,
-                        credentialPresentation = PresentationExchangePresentation(
-                            presentationRequest = presentationExchangeRequest,
-                            inputDescriptorSubmissions = submission
+                        credentialPresentation = DCQLPresentation(
+                            presentationRequest = dcqlRequest,
+                            credentialQuerySubmissions = mapOf(credentialQueryId to listOf(match))
                         )
                     ).getOrThrow()
                 }
@@ -140,10 +131,10 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
         }
 
         test("submission requirements need to match: not all optional claims need to be presented") {
-            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
+            issueAndStoreIsoMdoc(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
 
-            val authnRequest = it.verifierOid4vp.createPlainAuthnRequest(
-                OpenId4VpRequestOptions(
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(
                     CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(
                             credentialScheme = AtomicAttribute2023,
@@ -153,134 +144,103 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                                 DCQLClaimsPathPointer(AtomicAttribute2023.CLAIM_GIVEN_NAME)
                             ),
                         )
-                    ).toPresentationExchangeRequest(),
-                )
-            )
+                    ).toDCQLRequest(),
+                ),
+                creationOptions = CreationOptions.Query("https://example.com")
+            ).getOrThrow().url
 
-            val preparationState =
-                it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
-                    .getOrThrow()
-            val presentationExchangeRequest = preparationState.credentialPresentationRequest
-                .shouldBeInstanceOf<PresentationExchangeRequest>()
-            val presentationDefinition = presentationExchangeRequest.presentationDefinition
+            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+                .getOrThrow()
+            val dcqlRequest = preparationState.credentialPresentationRequest
+                .shouldBeInstanceOf<DCQLRequest>()
+            val credentialQueryId = dcqlRequest.dcqlQuery.credentials.first().id
 
-            val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
-            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(
-                presentationDefinition.inputDescriptors
-            ).getOrThrow().also {
-                it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
-                    it.value.shouldHaveSize(1)
-                }
-            }.inputDescriptorMatches.also { it shouldHaveSize 1 }
+            val matches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(dcqlRequest.dcqlQuery)
+                .getOrThrow().also {
+                    it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
+                        it.value.shouldHaveSize(1)
+                    }
+                }.credentialQueryMatches.also { it shouldHaveSize 1 }
 
-            matches[inputDescriptorId].shouldNotBeNull().entries
-                .shouldBeSingleton().first().apply {
-                    val submission = mapOf(
-                        inputDescriptorId to PresentationExchangeCredentialDisclosure(
-                            credential = key,
-                            disclosedAttributes = value.mapNotNull {
-                                it.value.firstOrNull()?.normalizedJsonPath
-                                    .takeIf { it.toString().contains(AtomicAttribute2023.CLAIM_GIVEN_NAME) }
-                            }
+            val match = matches[credentialQueryId].shouldNotBeNull()
+                .shouldBeSingleton().first()
+
+            val givenNameOnly = match.matchingResult
+                .shouldBeInstanceOf<DCQLCredentialQueryMatchingResult.ClaimsQueryResults>()
+                .claimsQueryResults.filter {
+                    it.shouldBeInstanceOf<DCQLClaimsQueryResult.IsoMdocResult>()
+                        .claimName == AtomicAttribute2023.CLAIM_GIVEN_NAME
+                }.also { it shouldHaveSize 1 }
+
+            shouldNotThrowAny {
+                it.holderOid4vp.finalizeAuthorizationResponse(
+                    preparationState = preparationState,
+                    credentialPresentation = DCQLPresentation(
+                        presentationRequest = dcqlRequest,
+                        credentialQuerySubmissions = mapOf(
+                            credentialQueryId to listOf(
+                                match.copy(
+                                    matchingResult = DCQLCredentialQueryMatchingResult.ClaimsQueryResults(
+                                        givenNameOnly
+                                    )
+                                )
+                            )
                         )
                     )
-
-                    shouldNotThrowAny {
-                        it.holderOid4vp.finalizeAuthorizationResponse(
-                            preparationState = preparationState,
-                            credentialPresentation = PresentationExchangePresentation(
-                                presentationRequest = presentationExchangeRequest,
-                                inputDescriptorSubmissions = submission
-                            )
-                        ).getOrThrow()
-                    }
-                }
+                ).getOrThrow()
+            }
         }
 
 
-        test("submission requirements need to match: credentials not matching an input descriptor should not yield a valid submission") {
-            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
-            it.holderAgent.storeIsoCredential(it.holderKeyMaterial, AtomicAttribute2023)
-            it.holderAgent.storeSdJwtCredential(it.holderKeyMaterial, AtomicAttribute2023)
+        test("submission requirements need to match: credentials not matching a credential query should not yield a valid submission") {
+            issueAndStoreIsoMdoc(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
+            issueAndStoreIsoMdoc(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
+            issueAndStoreSdJwt(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
 
-            val sdJwtMatches = run {
-                val authnRequestSdJwt = it.verifierOid4vp.createPlainAuthnRequest(
-                    OpenId4VpRequestOptions(
-                        CredentialPresentationRequestBuilder(
-                            RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
-                        ).toPresentationExchangeRequest(),
-                    )
-                )
+            val sdJwtRequest = CredentialPresentationRequestBuilder(
+                RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
+            ).toDCQLRequest().shouldNotBeNull()
 
-                val preparationStateSdJwt =
-                    it.holderOid4vp.startAuthorizationResponsePreparation(authnRequestSdJwt.serialize())
-                        .getOrThrow()
-                val presentationDefinitionSdJwt = preparationStateSdJwt.credentialPresentationRequest
-                    .shouldBeInstanceOf<PresentationExchangeRequest>()
-                    .presentationDefinition
-
-                it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(
-                    presentationDefinitionSdJwt.inputDescriptors,
-                ).getOrThrow().also {
-                    it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
+            val sdJwtMatches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(sdJwtRequest.dcqlQuery)
+                .getOrThrow().also {
+                    it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
                         it.value.shouldHaveSize(3)
                     }
-                }.inputDescriptorMatches.also {
-                    it.shouldHaveSize(1)
-                    it.entries.first().value.let {
-                        it.shouldHaveSize(1)
-                        it.entries.forEach {
-                            it.key.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
-                        }
-                    }
+                }.credentialQueryMatches.also {
+                    it shouldHaveSize 1
+                    it.values.first().shouldBeSingleton().first()
+                        .credential.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
                 }
-            }
 
-            val authnRequest = it.verifierOid4vp.createPlainAuthnRequest(
-                OpenId4VpRequestOptions(
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(
                     CredentialPresentationRequestBuilder(
                         RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
-                    ).toPresentationExchangeRequest(),
-                )
-            )
+                    ).toDCQLRequest(),
+                ),
+                creationOptions = CreationOptions.Query("https://example.com")
+            ).getOrThrow().url
 
-            val preparationState =
-                it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
-                    .getOrThrow()
-            val presentationExchangeRequest = preparationState.credentialPresentationRequest
-                .shouldBeInstanceOf<PresentationExchangeRequest>()
-            val presentationDefinition = presentationExchangeRequest
-                .presentationDefinition
-            val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
+            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+                .getOrThrow()
+            val dcqlRequest = preparationState.credentialPresentationRequest
+                .shouldBeInstanceOf<DCQLRequest>()
+            val credentialQueryId = dcqlRequest.dcqlQuery.credentials.first().id
 
-            val matches = it.holderAgent.matchInputDescriptorsAgainstCredentialStoreV2(
-                presentationDefinition.inputDescriptors,
-            ).getOrThrow().also {
-                it.queryMatchingResult.inputDescriptorMatchingResults.forEach {
-                    it.value.shouldHaveSize(3)
-                }
-            }.inputDescriptorMatches.also {
-                it shouldHaveSize 1
-            }
+            val matches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(dcqlRequest.dcqlQuery)
+                .getOrThrow().also {
+                    it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
+                        it.value.shouldHaveSize(3)
+                    }
+                }.credentialQueryMatches.also { it shouldHaveSize 1 }
 
-            matches[inputDescriptorId].shouldNotBeNull().shouldHaveSize(2)
-
-            val submission = mapOf(
-                inputDescriptorId to sdJwtMatches.values.first().entries.first().let {
-                    PresentationExchangeCredentialDisclosure(
-                        credential = it.key,
-                        disclosedAttributes = it.value.entries.mapNotNull {
-                            it.value.firstOrNull()?.normalizedJsonPath
-                        }
-                    )
-                }
-            )
+            matches[credentialQueryId].shouldNotBeNull().shouldHaveSize(2)
 
             it.holderOid4vp.finalizeAuthorizationResponse(
                 preparationState = preparationState,
-                credentialPresentation = PresentationExchangePresentation(
-                    presentationRequest = presentationExchangeRequest,
-                    inputDescriptorSubmissions = submission
+                credentialPresentation = DCQLPresentation(
+                    presentationRequest = dcqlRequest,
+                    credentialQuerySubmissions = sdJwtMatches
                 )
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -288,38 +248,5 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
         }
     }
 }
-
-private suspend fun Holder.storeSdJwtCredential(
-    holderKeyMaterial: KeyMaterial,
-    credentialScheme: CredentialScheme,
-) = storeCredential(
-    IssuerAgent(
-        identifier = "https://issuer.example.com/".toUri(),
-        randomSource = RandomSource.Default
-    ).issueCredential(
-        DummyCredentialDataProvider.getCredential(
-            holderKeyMaterial.publicKey,
-            credentialScheme,
-            SD_JWT,
-        ).getOrThrow()
-    ).getOrThrow().toStoreCredentialInput()
-)
-
-private suspend fun Holder.storeIsoCredential(
-    holderKeyMaterial: KeyMaterial,
-    credentialScheme: CredentialScheme,
-) = storeCredential(
-    IssuerAgent(
-        keyMaterial = EphemeralKeyWithSelfSignedCert(),
-        identifier = "https://issuer.example.com/".toUri(),
-        randomSource = RandomSource.Default
-    ).issueCredential(
-        DummyCredentialDataProvider.getCredential(
-            holderKeyMaterial.publicKey,
-            credentialScheme,
-            ISO_MDOC,
-        ).getOrThrow()
-    ).getOrThrow().toStoreCredentialInput()
-)
 
 private fun AuthenticationRequestParameters.serialize(): String = joseCompliantSerializer.encodeToString(this)

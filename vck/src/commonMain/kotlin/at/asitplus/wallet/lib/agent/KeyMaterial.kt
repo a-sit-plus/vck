@@ -4,6 +4,8 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
@@ -127,4 +129,12 @@ abstract class SignerBasedPublishedKeyMaterial(
 ) : PublishedKeyMaterial, Signer by signer {
     override val identifier = customKeyId
     override fun getUnderLyingSigner() = signer
+}
+
+/** The single place turning our key material into a JSON Web Key advertised for response encryption. */
+fun KeyMaterial.toEncryptionJsonWebKey(): JsonWebKey {
+    publicKey.toJsonWebKey(identifier).run {
+        require(this.type == JwkType.EC) { "Only EC keys are supported for encryption" }
+        return copy(algorithm = JweAlgorithm.ECDH_ES, publicKeyUse = "enc")
+    }
 }

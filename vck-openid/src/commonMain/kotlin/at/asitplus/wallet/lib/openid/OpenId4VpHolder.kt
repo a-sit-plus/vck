@@ -2,19 +2,14 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.IdToken
-import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
-import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
@@ -29,6 +24,8 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -36,12 +33,15 @@ import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.*
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
@@ -61,11 +61,11 @@ import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
+import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredentialMatchingResult
 
 /**
  * Combines Verifiable Presentations with OAuth 2.0.
- * Implements [OpenID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) (1.0, 2025-07-09)
- * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (D13, 2023-11-28).
+ * Implements [OpenID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) (1.0, 2025-07-09).
  *
  * The verifier (see [OpenId4VpVerifier]) creates the Authentication Request,
  * we can parse and validate it in [startAuthorizationResponsePreparation],
@@ -77,16 +77,21 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Holds the credentials and creates the verifiable presentation. */
     private val holder: Holder = HolderAgent(keyMaterial),
-    /** Signs the ID token for SIOPv2 responses. */
+    @Deprecated("Support for SIOPv2 has been removed")
     private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-    /** Encrypts the authn response to the holder using [keyMaterial], if requested. */
-    private val encryptJarm: EncryptJweFun = EncryptJwe(keyMaterial),
+    /** Encrypts the authn response to the verifier, if this has been requested. */
+    private val encryptJarm: EncryptJweFun = EncryptJwe(),
     /** Advertised in [metadata] and compared against holder's requirements. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     /** Signs the session transcript for mDoc responses. */
+    @Deprecated(
+        "signDeviceAuthDetached no longer has any effect because ISO Device signature" +
+                "creation has been moved into Holder's credential presentation. " +
+                "Signing function can be overridden in HolderAgent instead."
+    )
     private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
         SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-    /** Clock used for the signed ID token. */
+    @Deprecated("Support for SIOPv2 has been removed")
     private val clock: Clock = Clock.System,
     /** Advertised as `issuer` in [metadata]. */
     private val clientId: String = "https://wallet.a-sit.at/",
@@ -99,11 +104,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    /**
-     * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
-     */
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
+    @Deprecated("No longer invoked. Replace with `relyingPartyTrust` for use in `AuthorizationRequestValidator`")
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
+    /** How to establish trust in the relying party sending an authorization request, or `null` for trusting all. */
+    private val relyingPartyTrust: Set<RelyingPartyTrust>? = null,
     /** Stores our nonce used when fetching authn requests using POST. */
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     /** Source for random bytes, i.e., nonces for encrypted responses. */
@@ -116,7 +120,19 @@ class OpenId4VpHolder @JvmOverloads constructor(
      * is invoked for every request so applications can update their policy at runtime.
      */
     private val allowedDcApiOriginSchemes: suspend () -> Set<String> = { DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES },
+    /** Set to accept encrypted authorization requests fetched with a POST (when RP supports that). */
+    private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+    /** Advertised in `wallet_metadata` to encrypt authorization requests, see [ephemeralEncryptionKeyService]. */
+    private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
+    /** Set to reject a plain request object we have fetched with POST (when RP supports that) */
+    private val requireEncryptedRequests: Boolean = false,
 ) {
+
+    init {
+        require(!requireEncryptedRequests || ephemeralEncryptionKeyService != null) {
+            "requireEncryptedRequests needs an ephemeralEncryptionKeyService to advertise a key with"
+        }
+    }
 
     companion object {
         const val HTTPS_ORIGIN_SCHEME = "https"
@@ -138,28 +154,21 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private val authorizationRequestValidator = AuthorizationRequestValidator(
         walletNonceMapStore = walletNonceMapStore,
         allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
+        relyingPartyTrust = relyingPartyTrust,
     )
     private val authenticationResponseFactory = AuthenticationResponseFactory(
         encryptResponse = encryptJarm,
         randomSource = randomSource
     )
-    private val presentationFactory = PresentationFactory(
-        supportedAlgorithms = supportedAlgorithms,
-        signDeviceAuthDetached = signDeviceAuthDetached,
-        signIdToken = signIdToken
-    )
+
+    private val presentationFactory = PresentationFactory(supportedAlgorithms)
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
             issuer = clientId,
             authorizationEndpoint = authorizationEndpoint,
-            responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN, VP_TOKEN),
-            scopesSupported = setOf(OpenIdConstants.SCOPE_OPENID),
-            idTokenSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
+            responseTypesSupported = setOf(VP_TOKEN),
             requestObjectSigningAlgorithmsSupportedStrings = supportedJwsAlgorithms.toSet(),
-            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
-            idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
-            presentationDefinitionUriSupported = false,
             clientIdPrefixesSupported = listOf(
                 ClientIdScheme.PreRegistered,
                 ClientIdScheme.RedirectUri,
@@ -184,12 +193,29 @@ class OpenId4VpHolder @JvmOverloads constructor(
         )
     }
 
-    private val requestParser: RequestParser =
-        RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
-            RequestObjectParameters(
-                metadata = metadata,
-                nonce = uuid4().toString().also { walletNonceMapStore.put(it, it) })
-        }
+    /**
+     * The [metadata] to send when fetching a request object, carrying one ephemeral encryption key valid for exactly
+     * that request, if [ephemeralEncryptionKeyService] is set. Must be evaluated exactly once per request.
+     */
+    private suspend fun metadataForRequestObject(): OAuth2AuthorizationServerMetadata =
+        ephemeralEncryptionKeyService?.let {
+            metadata.copy(
+                jsonWebKeySet = JsonWebKeySet(listOf(it.createKey().toEncryptionJsonWebKey())),
+                requestObjectEncryptionAlgValuesSupportedStrings = setOf(JweAlgorithm.ECDH_ES.identifier),
+                requestObjectEncryptionEncValuesSupportedStrings = supportedJweEncryptionAlgorithms
+                    .map { enc -> enc.identifier }.toSet(),
+            )
+        } ?: metadata
+
+    private val requestParser = RequestParser(
+        remoteResourceRetriever = remoteResourceRetriever,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        requireEncryptedRequests = requireEncryptedRequests,
+    ) {
+        RequestObjectParameters(
+            metadata = metadataForRequestObject(),
+            nonce = uuid4().toString().also { walletNonceMapStore.put(it, it) })
+    }
 
     /**
      * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
@@ -204,13 +230,12 @@ class OpenId4VpHolder @JvmOverloads constructor(
         createAuthnResponse(parse(input)).getOrThrow()
     }
 
-    @Suppress("UNCHECKED_CAST")
     private suspend fun parse(
         input: String,
     ) = requestParser.parseRequestParameters(input)
-        .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+        .getOrThrow().requireAuthenticationRequest()
 
-    @Deprecated("Use createAuthnErrorResponse with AuthorizationResponsePreparationState parameter",)
+    @Deprecated("Use createAuthnErrorResponse with AuthorizationResponsePreparationState parameter")
     suspend fun createAuthnErrorResponse(
         error: Throwable,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -247,8 +272,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> = catching {
         val preparationState = startAuthorizationResponsePreparation(request).getOrThrow()
-        if (preparationState.requestObjectVerified == false)
-            throw InvalidRequest("Request object verification failed")
         finalizeAuthorizationResponseParameters(
             state = preparationState,
         ).getOrElse {
@@ -302,7 +325,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
             clientMetadata = params.parameters.clientMetadata,
             jsonWebKeys = jsonWebKeys,
-            requestObjectVerified = (params as? RequestParametersFrom.Jws)?.verified,
             verifierInfo = params.parameters.verifierInfo,
             audience = params.extractAudience(jsonWebKeys)
         )
@@ -340,8 +362,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
         credentialPresentation: CredentialPresentation? = null,
     ): KmmResult<AuthenticationResponse> = catching {
         with(state) {
-            val idToken = presentationFactory.createSignedIdToken(clock, keyMaterial.publicKey, request)
-                .getOrNull()
             val presentation = credentialPresentation ?: credentialPresentationRequest?.toCredentialPresentation()
             val resultContainer = presentation?.let {
                 presentationFactory.createPresentation(
@@ -353,9 +373,13 @@ class OpenId4VpHolder @JvmOverloads constructor(
 
             val parameters = AuthenticationResponseParameters(
                 state = request.parameters.state,
-                idToken = idToken?.toString(),
-                vpToken = resultContainer?.vpToken,
-                presentationSubmission = resultContainer?.presentationSubmission,
+                vpToken = when (resultContainer) {
+                    null -> null
+                    is DCQLParameters -> resultContainer.vpToken
+                    is PresentationExchangeParameters -> resultContainer.vpToken
+                    is DeviceRetrievalParameters ->
+                        throw InvalidRequest("ISO Device Retrieval responses are not OpenID4VP presentations")
+                },
             )
             AuthenticationResponse.Success(
                 params = parameters
@@ -369,34 +393,25 @@ class OpenId4VpHolder @JvmOverloads constructor(
                 ?.toJsonWebKey()
         }
 
+    /**
+     * Matches the presentation request from [preparationState] against the holder's available credentials.
+     *
+     * This only returns candidates for wallet UI and consent; it neither selects a submission nor creates or signs a
+     * response. Turn the chosen candidates into a [CredentialPresentation] and pass it to
+     * [finalizeAuthorizationResponse]. The returned subtype mirrors the request language so its selection rules stay
+     * available to the caller.
+     *
+     * Credentials preselected by a DC API request are applied as a store filter.
+     */
     suspend fun getMatchingCredentials(
         preparationState: AuthorizationResponsePreparationState,
-    ): KmmResult<CredentialMatchingResult<SubjectCredentialStore.StoreEntry>> = catching {
-        when (val presentationRequest = preparationState.credentialPresentationRequest) {
-            is CredentialPresentationRequest.DCQLRequest -> holder.matchDCQLQueryAgainstCredentialStoreV2(
-                dcqlQuery = presentationRequest.dcqlQuery,
-                filterByIds = preparationState.request.credentialIds()
-            ).getOrThrow().let {
-                DCQLMatchingResult(
-                    presentationRequest = presentationRequest,
-                    matchingResult = it,
-                )
-            }
-
-            is CredentialPresentationRequest.PresentationExchangeRequest ->
-                holder.matchInputDescriptorsAgainstCredentialStoreV2(
-                    inputDescriptors = presentationRequest.presentationDefinition.inputDescriptors,
-                    fallbackFormatHolder = presentationRequest.fallbackFormatHolder,
-                    filterByIds = preparationState.request.credentialIds()
-                ).getOrThrow().let { matchInputDescriptors ->
-                    PresentationExchangeMatchingResult(
-                        presentationRequest = presentationRequest,
-                        matchingResult = matchInputDescriptors
-                    )
-                }
-
-            null -> TODO()
-        }
+    ): KmmResult<HolderCredentialMatchingResult<SubjectCredentialStore.StoreEntry>> = catching {
+        val presentationRequest = preparationState.credentialPresentationRequest
+            ?: throw InvalidRequest("No credential presentation request is available")
+        holder.matchPresentationRequestAgainstCredentialStore(
+            presentationRequest = presentationRequest,
+            filterByIds = preparationState.request.credentialIds(),
+        ).getOrThrow()
     }
 
     /**
@@ -428,16 +443,22 @@ class OpenId4VpHolder @JvmOverloads constructor(
 
     private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
-            loadPresentationDefinition()?.let { CredentialPresentationRequest.PresentationExchangeRequest(it) }
-                ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
+            dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null
 
-    private suspend fun AuthenticationRequestParameters.loadPresentationDefinition(): PresentationDefinition? =
-        presentationDefinition ?: presentationDefinitionUrl
-            ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
-            ?.let { joseCompliantSerializer.decodeFromString(it) }
-
 }
+
+/**
+ * The type argument of [RequestParametersFrom] is erased, so casting it can never fail on its own: guard the cast with
+ * the runtime type of the parameters, so that a request we can not process in OpenID4VP, e.g. an RQES signature
+ * request, or a JAR request that has not been resolved into an authorization request, is reported as an OAuth 2.0
+ * error instead of failing with a [ClassCastException] somewhere inside request validation.
+ */
+@Suppress("UNCHECKED_CAST")
+private fun RequestParametersFrom<*>.requireAuthenticationRequest(): RequestParametersFrom<AuthenticationRequestParameters> =
+    if (parameters is AuthenticationRequestParameters)
+        this as RequestParametersFrom<AuthenticationRequestParameters>
+    else throw InvalidRequest("not an authorization request: ${parameters::class.simpleName}")
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =
     certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()

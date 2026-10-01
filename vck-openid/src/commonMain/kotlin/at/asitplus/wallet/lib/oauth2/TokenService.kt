@@ -1,8 +1,11 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.openid.OpenIdConstants.TokenTypes
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm.Signature
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
@@ -25,21 +28,52 @@ interface TokenService {
     val supportsRefreshTokens: Boolean
 
     /**
-     * Provides information about the access token from [authorizationHeader], if it has been issued by [generation].
-     * **Access token needs to be validated before (see [TokenVerificationService.validateAccessToken])**
+     * Whether this service can bind a token presented as [TokenRequestParameters.subjectToken] to the client
+     * presenting it, i.e. whether [validateAccessToken] proves possession of the key that token is bound to.
+     *
+     * Implementations that can not (e.g. bearer tokens) must leave this `false`: exchanging such a token would let
+     * anyone who captured it obtain a fresh access token, and repeat that indefinitely.
      */
+    val supportsTokenExchange: Boolean get() = false
+
+    /**
+     * Validates the access token from [authorizationHeader] and returns what it authorizes.
+     * Implementations that issued the token themselves also fill [ValidatedAccessToken.userInfoExtended],
+     * so callers do not need a second lookup with [readUserInfo].
+     */
+    suspend fun validateAccessToken(
+        authorizationHeader: String,
+        httpRequest: RequestInfo?,
+        validatedClientKey: JsonWebKey?,
+    ): KmmResult<ValidatedAccessToken> = verification.validateAccessToken(
+        tokenOrAuthHeader = authorizationHeader,
+        httpRequest = httpRequest,
+        validatedClientKey = validatedClientKey
+    )
+
+    /**
+     * Provides information about the access token from [authorizationHeader], if it has been issued by [generation].
+     *
+     * Does not prove possession of the key the token is bound to, i.e. does not validate the DPoP proof.
+     */
+    @Deprecated(
+        "Superseded by validateAccessToken, which validates the token, including the DPoP proof, " +
+                "and returns the user info along with it",
+        ReplaceWith("validateAccessToken(authorizationHeader, request)")
+    )
     suspend fun readUserInfo(
         authorizationHeader: String,
         request: RequestInfo?,
     ): ValidatedAccessToken
 
-    /**
-     * Validates the subject token (that is a token sent by a third party) for token exchange) is one issued from
-     * [TokenGenerationService]. Callers need to authenticate the client before calling this method.
-     */
+    @Deprecated(
+        "Use validateAccessToken instead, which validates the token, including the DPoP proof",
+        ReplaceWith("validateAccessToken(subjectToken, httpRequest)")
+    )
     suspend fun validateTokenForTokenExchange(
         subjectToken: String,
-    ): ValidatedAccessToken
+        httpRequest: RequestInfo?,
+    ): KmmResult<ValidatedAccessToken>
 
     /**
      * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693):
@@ -50,7 +84,8 @@ interface TokenService {
         request: TokenRequestParameters,
         expectedResource: String,
         httpRequest: RequestInfo?,
-    ): TokenResponseParameters {
+        validatedClientKey: JsonWebKey?,
+    ): KmmResult<TokenResponseParameters> = catching {
         Napier.i("tokenExchange: called")
         Napier.d("tokenExchange: called with $request")
         // Client wants to exchange Wallet's access token (probably DPoP-constrained) with a fresh one for userInfo
@@ -63,20 +98,24 @@ interface TokenService {
         if (request.requestedTokenType != TokenTypes.ACCESS_TOKEN) {
             throw InvalidGrant("requested_token_type is not valid, must be ${TokenTypes.ACCESS_TOKEN}")
         }
-        val validatedClientKey = verification.extractValidatedClientKey(httpRequest).getOrThrow()
-        val validated = validateTokenForTokenExchange(
-            subjectToken = request.subjectToken!!,
-        ).apply {
+        val validated = validateAccessToken(
+            authorizationHeader = request.subjectToken!!,
+            httpRequest = httpRequest,
+            validatedClientKey = validatedClientKey,
+        ).getOrThrow().apply {
             if (userInfoExtended == null)
                 throw InvalidGrant("subject_token is not valid, no stored user")
         }
-        return generation.buildToken(
+        generation.buildToken(
             userInfo = validated.userInfoExtended!!,
             httpRequest = httpRequest,
             authorizationDetails = validated.authorizationDetails,
             scope = validated.scope,
             validatedClientKey = validatedClientKey,
-        ).also { Napier.i("tokenExchange returns"); Napier.d("tokenExchange returns $it") }
+        ).also {
+            Napier.i("tokenExchange returns")
+            Napier.d("tokenExchange returns $it")
+        }
     }
 
     suspend fun dpopNonce() = generation.dpopNonce()
@@ -105,6 +144,7 @@ interface TokenService {
                 refreshTokenNonceService = refreshTokenNonceService,
                 dpopNonceService = dpopNonceService,
                 issuerKey = keyMaterial.jsonWebKey,
+                supportedSignatureAlgorithms = verificationAlgorithms,
             ),
             dpopSigningAlgValuesSupportedStrings = verificationAlgorithms.map { it.identifier }.toSet(),
             supportsRefreshTokens = true,

@@ -37,10 +37,9 @@ import at.asitplus.wallet.lib.ktor.openid.TestUtils.credentialDataProviderFun
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.toRequestInfo
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifyIsoMdocCredential
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
-import at.asitplus.wallet.lib.oauth2.ClientAuthenticationService
+import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
@@ -49,8 +48,9 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.ProofValidator
 import at.asitplus.wallet.lib.oidvci.WalletService
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.RequestParametersSerializer
+import at.asitplus.openid.toFormParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -91,6 +91,7 @@ val OpenId4VciClientTest by matrixSuite {
         val credentialEndpointPath = "/credential"
         val nonceEndpointPath = "/nonce"
         val parEndpointPath = "/par"
+        val challengeEndpointPath = "/challenge"
         val publicContext = "https://issuer.example.com"
         val authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(credentialSchemes),
@@ -98,9 +99,8 @@ val OpenId4VciClientTest by matrixSuite {
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
-            clientAuthenticationService = ClientAuthenticationService(
-                enforceClientAuthentication = true,
-            ),
+            challengeEndpointPath = challengeEndpointPath,
+            clientAuthenticationService = AttestationBasedClientAuthenticationService(),
             tokenService = TokenService.jwt(
                 issueRefreshTokens = true
             ),
@@ -120,7 +120,9 @@ val OpenId4VciClientTest by matrixSuite {
             publicContext = publicContext,
             credentialEndpointPath = credentialEndpointPath,
             nonceEndpointPath = nonceEndpointPath,
-            proofValidator = ProofValidator(verifyAttestationProof = { true }, publicContext = publicContext)
+            proofValidator = ProofValidator(
+                publicContext = publicContext
+            )
         )
         val mockEngine = MockEngine { request ->
             when {
@@ -132,7 +134,8 @@ val OpenId4VciClientTest by matrixSuite {
 
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val authnRequest: RequestParameters = requestBody.decodeFromPostBody()
+                    val authnRequest: RequestParameters =
+                        RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.par(authnRequest, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
@@ -144,8 +147,8 @@ val OpenId4VciClientTest by matrixSuite {
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
                     val authnRequest: RequestParameters =
-                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery()
-                        else requestBody.decodeFromPostBody()
+                        if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
+                        else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
                         onSuccess = { respondRedirect(it.url) },
                         onFailure = { respondOAuth2Error(it) }
@@ -154,7 +157,7 @@ val OpenId4VciClientTest by matrixSuite {
 
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
-                    val params: TokenRequestParameters = requestBody.decodeFromPostBody<TokenRequestParameters>()
+                    val params: TokenRequestParameters = requestBody.decodeFromFormUrlEncoded<TokenRequestParameters>()
                     authorizationService.token(params, request.toRequestInfo()).fold(
                         onSuccess = { respond(it) },
                         onFailure = { respondOAuth2Error(it) }
@@ -163,6 +166,10 @@ val OpenId4VciClientTest by matrixSuite {
 
                 request.url.fullPath.startsWith(nonceEndpointPath) -> {
                     respond(credentialIssuer.nonceWithDpopNonce().getOrThrow())
+                }
+
+                request.url.fullPath.startsWith(challengeEndpointPath) -> {
+                    respond(authorizationService.attestationChallenge().getOrThrow())
                 }
 
                 request.url.fullPath.startsWith(credentialEndpointPath) -> {
@@ -210,7 +217,6 @@ val OpenId4VciClientTest by matrixSuite {
                             BuildClientAttestationJwt(
                                 SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
                                 clientId = clientId,
-                                issuer = "issuer",
                                 clientKey = clientAuthKeyMaterial.jsonWebKey
                             )
                         }

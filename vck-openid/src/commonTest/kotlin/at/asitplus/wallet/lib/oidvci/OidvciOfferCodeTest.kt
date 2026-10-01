@@ -32,6 +32,7 @@ val OidvciOfferCodeTest by matrixSuite {
         object {
             val mapper = DefaultCredentialSchemeMapper()
             val authorizationService = SimpleAuthorizationService(
+                requirePushedAuthorizationRequests = false,
                 strategy = CredentialAuthorizationServiceStrategy(
                     credentialSchemes =  AttributeIndex.schemeSet,
                     mapper = mapper,
@@ -100,6 +101,50 @@ val OidvciOfferCodeTest by matrixSuite {
 
         }
     } - {
+
+        /**
+         * `issuer_state` is public: it is part of the credential offer, e.g. printed as a QR code. It must
+         * therefore live in its own store, so presenting it at the token endpoint can not consume it and
+         * invalidate a pending offer.
+         */
+        test("issuer_state presented as an authorization code does not invalidate the credential offer") {
+            val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)
+            val credentialOffer = it.authorizationService.offerWithAuthorizationCodeForSchemes(
+                credentialIssuer = it.issuer.publicContext,
+                schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
+            )
+            val issuerState = credentialOffer.grants?.authorizationCode?.issuerState.shouldNotBeNull()
+
+            shouldThrow<OAuth2Exception> {
+                it.authorizationService.token(
+                    it.oauth2Client.createTokenRequestParameters(
+                        state = it.state,
+                        authorization = OAuth2Client.AuthorizationForToken.Code(issuerState),
+                    ),
+                    null,
+                ).getOrThrow()
+            }
+
+            // the offer is still usable
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
+                .shouldNotBeNull()
+            it.getToken(credentialOffer, credentialFormat.scope.shouldNotBeNull())
+                .accessToken.shouldNotBeNull()
+        }
+
+        test("a pre-authorized code can not be redeemed as an authorization code") {
+            val preAuthorizedCode = it.authorizationService.providePreAuthorizedCode(DummyUserProvider.user)
+
+            shouldThrow<OAuth2Exception> {
+                it.authorizationService.token(
+                    it.oauth2Client.createTokenRequestParameters(
+                        state = it.state,
+                        authorization = OAuth2Client.AuthorizationForToken.Code(preAuthorizedCode),
+                    ),
+                    null,
+                ).getOrThrow()
+            }
+        }
 
         test("process with code after credential offer, and scope for one credential") {
             val credentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)

@@ -18,6 +18,7 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -37,6 +38,7 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.time.Clock
@@ -143,13 +145,7 @@ val ValidatorVcTest by matrixSuite {
         }
     } - {
         test("credentials are valid for") {
-            val credential = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
+            val credential = issuePlainJwt(it.issuer, it.verifierKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>().apply {
                     // Assert the issuanceOffset in IssuerAgent
                     vc.issuanceDate shouldBeLessThan Clock.System.now().minus(1.minutes)
@@ -162,13 +158,7 @@ val ValidatorVcTest by matrixSuite {
         }
 
         test("revoked credentials are not valid") {
-            val credential = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
+            val credential = issuePlainJwt(it.issuer, it.verifierKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
             val value = it.validator.verifyVcJws(credential.signedVcJws, it.verifierKeyMaterial.publicKey).getOrThrow()
@@ -188,13 +178,7 @@ val ValidatorVcTest by matrixSuite {
         }
 
         test("wrong subject keyId is not be valid") {
-            val credential = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    EphemeralKeyWithoutCert().publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
+            val credential = issuePlainJwt(it.issuer, EphemeralKeyWithoutCert())
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
             shouldThrowAny {
@@ -203,13 +187,7 @@ val ValidatorVcTest by matrixSuite {
         }
 
         test("credential with invalid JWS format is not valid") {
-            val credential = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.verifierKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
+            val credential = issuePlainJwt(it.issuer, it.verifierKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
             shouldThrowAny {
@@ -367,7 +345,7 @@ val ValidatorVcTest by matrixSuite {
                 ConstantIndex.AtomicAttribute2023,
                 PLAIN_JWT
             ).getOrThrow().let {
-                it.let { context.issueCredential(it, expirationDate = Clock.System.now() + 1.hours) }
+                context.issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
                     .let { context.wrapVcInJws(it, expirationDate = Clock.System.now() + 2.hours) }
                     .let { context.signJws(it) }
                     .let {
@@ -384,7 +362,7 @@ val ValidatorVcTest by matrixSuite {
                 ConstantIndex.AtomicAttribute2023,
                 PLAIN_JWT
             ).getOrThrow().let {
-                it.let { context.issueCredential(it) }
+                context.issueCredential(it)
                     .let { context.wrapVcInJws(it, issuanceDate = Clock.System.now() + 2.hours) }
                     .let { context.signJws(it) }
                     .let {

@@ -39,7 +39,6 @@ import at.asitplus.signum.indispensable.asn1.encoding.decode
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -123,21 +122,24 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         require(documents.size == 1) {
             "Expected only one document per credential, but received ${documents.size}: $documents"
         }
-        val document = documents.first()
-        return DCQLIsoMdocCredential(
-            DCQLCredentialClaimStructure.IsoMdocStructure(
-                document.document.issuerSigned.namespaces?.mapValues {
-                    it.value.entries.associate {
-                        it.value.elementIdentifier to it.value.elementValue
-                    }
-                } ?: mapOf()
-            ),
-            documentType = document.document.docType,
-            satisfiesCryptographicHolderBinding = true,
-            authorityKeyIdentifiers = document.document.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
-                X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
-            } ?: listOf(),
-        )
+        with(documents.first()) {
+            return DCQLIsoMdocCredential(
+                DCQLCredentialClaimStructure.IsoMdocStructure(
+                    document.issuerSigned.namespaces?.mapValues {
+                        it.value.entries
+                            .filter { it.value in validItems }
+                            .associate {
+                                it.value.elementIdentifier to it.value.elementValue
+                            }
+                    } ?: mapOf()
+                ),
+                documentType = document.docType,
+                satisfiesCryptographicHolderBinding = document.issuerSigned.issuerAuth.payload?.deviceKeyInfo != null,
+                authorityKeyIdentifiers = document.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
+                    X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
+                } ?: listOf(),
+            )
+        }
     }
 
     private fun VerifyPresentationResult.SuccessSdJwt.toDCQLCredential() = DCQLSdJwtCredential(
@@ -168,7 +170,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         authorityKeyIdentifiers = issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
             X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
         } ?: listOf(),
-        documentType = schemeIdentifier ?: issuerSigned.issuerAuth.payload?.docType ?: resolveScheme().isoDocType!!
+        documentType = schemeIdentifier
     )
 
     private fun SubjectCredentialStore.StoreEntry.SdJwt.toDCQLCredential() = DCQLSdJwtCredential(

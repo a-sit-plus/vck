@@ -30,6 +30,7 @@ kotlin {
             dependencies {
                 api(project(":vck"))
                 api(project(":openid-data-classes"))
+                api("io.github.z4kn4fein:semver:${VcLibVersions.semver}")
                 commonImplementationDependencies()
             }
         }
@@ -53,7 +54,8 @@ if ("true" != disableAppleTargets) exportXCFramework(
     transitiveExports = true,
     static = false,
     project(":vck"),
-    project(":openid-data-classes")
+    project(":openid-data-classes"),
+    "io.github.z4kn4fein:semver:${VcLibVersions.semver}",
 )
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/vck/tree/main/")

@@ -48,6 +48,7 @@ import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.assertions.throwables.shouldThrowExactly
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
@@ -74,6 +75,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 mapper = mapper,
             )
             var authorizationService = SimpleAuthorizationService(
+                requirePushedAuthorizationRequests = false,
                 strategy = strategy,
             )
             var issuer = CredentialIssuer(
@@ -226,6 +228,43 @@ val OidvciCodeFlowTest by matrixSuite {
             }
         }
 
+        test("nonce can only be used for one call to credential endpoint") {
+            val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val scope = credentialFormat.scope.shouldNotBeNull()
+            val token = it.getToken(scope)
+            val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+
+            it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = it.client.createCredential(
+                    tokenResponse = token,
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = clientNonce,
+                ).getOrThrow().shouldBeSingleton().first(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response.credentials.shouldNotBeEmpty()
+                .first().credentialString.shouldNotBeNull()
+
+            val freshToken = it.getToken(scope)
+            shouldThrowExactly<OAuth2Exception.InvalidNonce> {
+                it.issuer.credential(
+                    authorizationHeader = freshToken.toHttpHeaderValue(),
+                    params = it.client.createCredential(
+                        tokenResponse = freshToken,
+                        metadata = it.issuer.metadata,
+                        credentialFormat = credentialFormat,
+                        clientNonce = clientNonce, // same clientNonce as before!
+                    ).getOrThrow().shouldBeSingleton().first(),
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+            }
+        }
+
         test("proof over different keys leads to different credentials") {
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
             val scope = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)?.scope
@@ -265,6 +304,7 @@ val OidvciCodeFlowTest by matrixSuite {
 
         test("authorizationService with defect mapstore leads to an error") {
             it.authorizationService = SimpleAuthorizationService(
+                requirePushedAuthorizationRequests = false,
                 codeToClientAuthRequest = it.defectMapStore(),
                 strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023)),
             )
@@ -488,7 +528,24 @@ val OidvciCodeFlowTest by matrixSuite {
             }
         }
 
-        "request credential with unknown configuration_id" { it ->
+        /**
+         * Only the scopes the authorization server accepted may be granted. It used to keep the client's raw scope
+         * string with the authorization code, so an unsupported value alongside a supported one ended up in the
+         * access token unvalidated.
+         */
+        "reject a token request for a scope that was not accepted in the authorization request" { it ->
+            val credentialFormat = it.client.selectSupportedCredentialFormat(
+                RequestOptions(AtomicAttribute2023, SD_JWT),
+                it.issuer.metadata
+            )
+            val scope = credentialFormat?.scope.shouldNotBeNull()
+
+            shouldThrow<OAuth2Exception> {
+                it.getToken("$scope urn:unknown:scope")
+            }
+        }
+
+        "reject a scope for a configuration_id unknown to the authorization server" { it ->
             // that credential format (from which credential_configuration_id will be derived) is not known to our
             // issuer: a typed SD-JWT scheme that is never registered with AttributeIndex (so not in the issuer's
             // schemeSet), unlike the metadata-backed schemes pre-loaded via the TestConfig registry
@@ -499,6 +556,7 @@ val OidvciCodeFlowTest by matrixSuite {
             val credentialFormat = with(
                 CredentialIssuer(
                     authorizationService = SimpleAuthorizationService(
+                        requirePushedAuthorizationRequests = false,
                         strategy = CredentialAuthorizationServiceStrategy(setOf(scheme)),
                     ),
                     issuer = IssuerAgent(
@@ -512,19 +570,11 @@ val OidvciCodeFlowTest by matrixSuite {
             }
 
             val scope = credentialFormat?.scope.shouldNotBeNull()
-            val token = it.getToken(scope)
 
-            shouldThrow<OAuth2Exception.UnknownCredentialConfiguration> {
-                it.issuer.credential(
-                    authorizationHeader = token.toHttpHeaderValue(),
-                    params = it.client.createCredential(
-                        tokenResponse = token,
-                        metadata = it.issuer.metadata,
-                        credentialFormat = credentialFormat,
-                        clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-                    ).getOrThrow().shouldBeSingleton().first(),
-                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-                ).getOrThrow()
+            // The authorization server must not issue a token for a scope it does not know. It used to strip the
+            // unknown value, leaving an empty scope, and only the wallet then noticed the mismatch.
+            shouldThrow<OAuth2Exception.InvalidScope> {
+                it.getToken(scope)
             }
         }
 
@@ -602,14 +652,10 @@ val OidvciCodeFlowTest by matrixSuite {
                 .first().credentialString.shouldNotBeNull()
 
             val issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(
-                serializedCredential.decodeToByteArray(
-                    Base64()
-                )
+                serializedCredential.decodeToByteArray(Base64())
             )
 
-            val namespaces = issuerSigned.namespaces
-                .shouldNotBeNull()
-
+            val namespaces = issuerSigned.namespaces.shouldNotBeNull()
             namespaces.keys.first() shouldBe "org.iso.18013.5.1"
             val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
             numberOfClaims shouldBeGreaterThan 1

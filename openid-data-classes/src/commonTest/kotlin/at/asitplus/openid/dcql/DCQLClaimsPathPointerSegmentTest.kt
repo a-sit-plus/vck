@@ -7,7 +7,6 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.util.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -16,6 +15,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
@@ -36,8 +36,8 @@ val DCQLClaimsPathPointerSegmentTest by matrixSuite {
             )
             selection shouldHaveSize 3
             selection.forEach {
-                it.normalizedJsonPath.segments shouldHaveSize 1
-                val segment = it.normalizedJsonPath.segments.first()
+                it.normalizedJsonPath shouldHaveSize 1
+                val segment = it.normalizedJsonPath.first()
                     .shouldBeInstanceOf<NormalizedJsonPathSegment.IndexSegment>()
                 segment.index.toInt() shouldBe it.value.jsonPrimitive.long
             }
@@ -59,8 +59,8 @@ val DCQLClaimsPathPointerSegmentTest by matrixSuite {
                     .query(nodeList)
                 selection shouldHaveSize 1
                 selection.first().run {
-                    normalizedJsonPath.segments shouldHaveSize 1
-                    normalizedJsonPath.segments.first()
+                    normalizedJsonPath shouldHaveSize 1
+                    normalizedJsonPath.first()
                         .shouldBeInstanceOf<NormalizedJsonPathSegment.NameSegment>()
                         .memberName shouldBe it
                     value shouldBe JsonNull
@@ -83,8 +83,8 @@ val DCQLClaimsPathPointerSegmentTest by matrixSuite {
                     .query(nodeList)
                 selection shouldHaveSize 1
                 selection.first().run {
-                    normalizedJsonPath.segments shouldHaveSize 1
-                    normalizedJsonPath.segments.first()
+                    normalizedJsonPath shouldHaveSize 1
+                    normalizedJsonPath.first()
                         .shouldBeInstanceOf<NormalizedJsonPathSegment.IndexSegment>()
                         .index shouldBe index
                     value.jsonPrimitive.long shouldBe index.toLong()
@@ -108,12 +108,12 @@ val DCQLClaimsPathPointerSegmentTest by matrixSuite {
         selection shouldHaveSize 3
 
         data(List(1 + Random.nextInt(10)) {
-                when (Random.nextInt(3)) {
-                    0 -> Random.nextBytes(32).encodeBase64()
-                    1 -> Random.nextUInt()
-                    else -> null
-                }
-            }) test {
+            when (Random.nextInt(3)) {
+                0 -> Base64.encode(Random.nextBytes(32))
+                1 -> Random.nextUInt()
+                else -> null
+            }
+        }) test {
             val segment = when (it) {
                 null -> DCQLClaimsPathPointerSegment.NullSegment
                 is String -> DCQLClaimsPathPointerSegment.NameSegment(it)

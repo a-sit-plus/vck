@@ -12,7 +12,6 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBit
 import com.benasher44.uuid.uuid4
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.time.Instant
 
 class InMemoryIssuerCredentialStore(
     val tokenStatusBitSize: TokenStatusBitSize = TokenStatusBitSize.ONE,
@@ -66,33 +65,6 @@ class InMemoryIssuerCredentialStore(
                 statusListIndex = newIndex
             )
         }
-    }
-
-    @Deprecated("Use method from `ReferencedTokenStore` instead")
-    @Suppress("DEPRECATION")
-    override suspend fun createStoredCredentialReference(
-        credential: CredentialToBeIssued,
-        timePeriod: Int
-    ): KmmResult<IssuerCredentialStore.StoredCredentialReference> =
-        storeReferencedToken(credential, timePeriod).map {
-            IssuerCredentialStore.StoredCredentialReference(
-                id = it.id,
-                timePeriod = it.timePeriod,
-                statusListIndex = it.statusListIndex
-            )
-        }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Issuer will call onCredentialStored instead")
-    override suspend fun updateStoredCredential(
-        reference: IssuerCredentialStore.StoredCredentialReference,
-        credential: Issuer.IssuedCredential,
-    ): KmmResult<IssuerCredentialStore.StoredCredentialReference> = catching {
-        val list = referencedTokens.getOrPut(reference.timePeriod) { mutableListOf() }
-        require(list.find { it.vcId == reference.id } != null) {
-            "Updating a credential that we did not create before"
-        }
-        reference
     }
 
     override suspend fun onCredentialIssued(credential: Issuer.IssuedCredential) {
@@ -174,11 +146,3 @@ class InMemoryIssuerCredentialStore(
     }
 }
 
-private val Issuer.IssuedCredential.validUntil: Instant
-    get() = when (this) {
-        is Issuer.IssuedCredential.Iso -> this.issuerSigned.issuerAuth.payload?.validityInfo?.validUntil
-            ?: Instant.DISTANT_PAST
-
-        is Issuer.IssuedCredential.VcJwt -> this.vc.expirationDate ?: Instant.DISTANT_PAST
-        is Issuer.IssuedCredential.VcSdJwt -> this.sdJwtVc.expiration ?: Instant.DISTANT_PAST
-    }

@@ -6,19 +6,34 @@ API or mixing model, protocol, and transport concerns.
 
 ## Repository Shape
 
-VC-K is a Kotlin Multiplatform library split into small published modules. The main dependency direction is:
+VC-K is a Kotlin Multiplatform library split into small published modules. The direct project dependencies are:
 
 ```text
 vck-openid-ktor
     -> vck-openid
-        -> vck
-            -> dif-data-classes
-            -> openid-data-classes
-                 -> dif-data-classes
-                 -> csc-data-classes
+    -> vck
+    -> openid-data-classes
 
-sd-jwt-type-metadata -> rfc3986-uri-syntax
-etsi-data-classes    -> rfc3986-uri-syntax
+vck-openid
+    -> vck
+    -> openid-data-classes
+
+vck-longfellow
+    -> vck
+
+vck
+    -> dif-data-classes
+    -> openid-data-classes
+    -> etsi-data-classes
+    -> sd-jwt-type-metadata
+
+openid-data-classes
+    -> dif-data-classes
+    -> csc-data-classes
+    -> rfc3986-uri-syntax (implementation dependency)
+
+etsi-data-classes     -> rfc3986-uri-syntax
+sd-jwt-type-metadata  -> rfc3986-uri-syntax
 ```
 
 The standalone `*-data-classes` modules are intended to be usable without the higher-level VC-K behavior modules.
@@ -26,9 +41,9 @@ Keep them limited to data models, serializers, parsing helpers, and small value-
 persistence, credential issuance, credential presentation, and protocol state machines belong in `vck` or
 `vck-openid`; transport integration belongs in `vck-openid-ktor`.
 
-`mobile-driving-licence-credential/` is a submodule and `rqes-data-classes/` may be present in the checkout, but they
-are not included by this repository's root `settings.gradle.kts`. Do not treat them as part of the root build unless
-the settings file changes.
+The root build contains the nine modules listed in `settings.gradle.kts`. EU PID, EU PID SD-JWT, and mDL credential
+definitions that used to live in separate credential repositories are now source packages inside `vck`; they are not
+additional Gradle modules or Git submodules.
 
 ## Module Responsibilities
 
@@ -47,10 +62,18 @@ Important areas:
   Format-specific validation for VC-JWS, SD-JWT, ISO mDoc, and common timeliness/status checks.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`
   DCQL matching and submission logic over stored credentials.
+- `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/iso`
+  ISO Device Retrieval matching and submission validation.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/data`
-  Core library data structures used by the agents, including credential presentation request/response abstractions.
-- `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/{cbor,iso,jws}`
-  Format-specific encoding, signing, parsing, and conversion helpers.
+  Core data structures used by the agents, including credential metadata registries and the protocol-neutral
+  presentation request/selection model.
+- `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/etsi`
+  Trust-list filtering and X.509 trust validation over models from `etsi-data-classes`.
+- `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/{cbor,jws}`
+  COSE and JWS signing/verification service abstractions. The ISO mDoc CBOR wire model itself lives in
+  `openid-data-classes` (`at.asitplus.iso`), not in `vck`.
+- `vck/src/commonMain/kotlin/at/asitplus/wallet/{eupid,eupidsdjwt,mdl}`
+  Built-in credential data elements, metadata documents, and ISO serializers for EU PID and mDL.
 
 Refactor here when changing credential semantics, disclosure selection, verification rules, credential stores, or
 format-specific behavior. Avoid adding OpenID transport or HTTP concerns to this module.
@@ -63,8 +86,9 @@ for credential operations and on `openid-data-classes` for protocol wire models.
 Important areas:
 
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/openid`
-  OpenID4VP holder/verifier behavior: `OpenId4VpHolder`, `OpenId4VpVerifier`, request parsing, response creation,
-  verifier attestation handling, DCQL and Presentation Exchange response validation.
+  OpenID4VP and Digital Credentials API behavior: `OpenId4VpHolder`, `OpenId4VpVerifier`, `DcApiHolder`,
+  `DcApiVerifier`, request parsing/factories, response creation/validation, verifier attestation, DCQL, and ISO/IEC
+  18013-7 Annex C integration.
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oidvci`
   OpenID4VCI wallet and issuer behavior: `WalletService`, `CredentialIssuer`, `ProofValidator`, credential scheme
   mapping, credential request creation, proof validation, encryption handling.
@@ -86,10 +110,26 @@ module, not a second implementation of the protocol.
 Important areas:
 
 - `vck-openid-ktor/src/commonMain/kotlin/at/asitplus/wallet/lib/ktor/openid`
-  Ktor-backed OpenID4VCI client and OpenID4VP wallet integration.
+  Ktor-backed OpenID4VCI and OpenID4VP clients, shared HTTP-client configuration and error mapping, plus remote
+  credential-metadata retrieval.
 
-Put Ktor engine selection, request execution, response body handling, and Ktor-specific test doubles here. If the
-same rule must also apply without Ktor, move that rule down into `vck-openid`.
+Put Ktor engine selection, request execution, response body handling, cache policy, and Ktor-specific test doubles
+here. Reuse the shared client setup so non-success responses remain `HttpErrorResponseException` instances carrying
+OAuth errors, RFC 9457 problem details, and the raw body. If a rule must also apply without Ktor, move that rule down
+into `vck-openid`.
+
+### `vck-longfellow`
+`vck-longfellow` provides an ISO mDoc Zero-Knowledge Proof (ZKP) backend for VC-K using the 
+[Multipaz Longfellow](https://github.com/openwallet-foundation/multipaz/tree/main/multipaz-longfellow?utm_source=gemini) 
+library. Once registered with `IsoMdocZkBackendRegistry`, VC-K can seamlessly delegate ISO mDoc ZKP operations to this 
+module.
+
+Important areas:
+- `vck-longfellow/src/commonMain/kotlin/at/asitplus/wallet/lib/zk/iso/LongfellowBackend.kt`
+  Implements `IsoMdocZkBackend`, defining supported `ZkSystemSpec` options and providing parameter serializers. It 
+  handles proof creation and loading via its `generate` and `load` methods to produce verifiable `IsoMdocZkProof` 
+  instances.
+
 
 ### Data-Class Modules
 
@@ -98,7 +138,9 @@ Use data-class modules for published wire models and serializers:
 - `dif-data-classes`
   DIF Presentation Exchange models.
 - `openid-data-classes`
-  OpenID/OAuth2/OIDC, DCQL, DCAPI, ISO OpenID handover, token status list, and related wire models.
+  OpenID/OAuth2/OIDC, DCQL, DCAPI, token status list, and related wire models. Also owns the complete ISO mDoc
+  CBOR/COSE model in `at.asitplus.iso`: device request/response, `MobileSecurityObject`, session transcript and
+  OpenID4VP handover, and the ZKP request types.
 - `csc-data-classes`
   Cloud Signature Consortium REST API v2.* models.
 - `etsi-data-classes`
@@ -117,16 +159,52 @@ For data classes that contain arrays or collections with content-sensitive seman
 
 ### Digital Credentials API Integration
 
-The Digital Credentials API is a transport for multiple presentation protocols. Wallets should use `DcApiHolder` in
-`vck-openid` as the protocol-agnostic entry point; it delegates OpenID4VP requests to `OpenId4VpHolder` and ISO/IEC
-18013-7 Annex C requests to `Iso180137AnnexCHolder`. Keep the returned `DcApiPreparationState` through credential
-selection and finalization instead of duplicating protocol dispatch in application code.
+The Digital Credentials API is a transport for multiple presentation protocols. Wallets use `DcApiHolder`; relying
+parties use `DcApiVerifier`. They dispatch OpenID4VP and ISO/IEC 18013-7 Annex C while sharing the core holder/verifier
+operations. Keep the returned `DcApiPreparationState` through matching, consent, and finalization instead of
+duplicating protocol dispatch or reconstructing state in application code.
+
+OpenID4VP request construction shared by redirect and DC API transports belongs in `OpenId4VpRequestFactory`.
+Transport-specific request-object claims, response codecs, origin checks, encryption, and ISO session-transcript
+calculation remain in `vck-openid`. A direct ISO Device Retrieval response is a `DeviceResponse`, not an OpenID4VP
+`vp_token`; do not merge those response paths merely because both can travel through the DC API.
 
 Platform-neutral request/response models and codecs belong in `openid-data-classes`. Android `Bundle` conversion,
 Apple framework objects, activity/extension lifecycle, and other SDK-specific adaptation stay in wallet applications.
 In particular, do not add Android or Apple framework dependencies to VC-K for DC API integration. The iOS-specific
 pre-request summary is a serializable wire model rather than an Apple framework type, so it remains common code while
 being explicitly named `IosDcApiMdocPreRequestSummary`.
+
+### Credential Schemes and Metadata
+
+Credential identity is representation-specific. Implement `VcJwtCredentialScheme`, `SdJwtCredentialScheme`, or
+`IsoMdocCredentialScheme` so the applicable `vcType`, `sdJwtType` (`vct`), or ISO `docType`/namespace is non-null by
+construction.
+Stored credentials persist the non-null `SubjectCredentialStore.StoreEntry.schemeIdentifier`, then resolve the full
+scheme when needed; applications must migrate older serialized entries at their persistence boundary instead of
+making the core identifier nullable again.
+
+A scheme is either defined in code or derived from an SD-JWT Type Metadata document. Code-defined schemes register
+through `LibraryInitializer.registerExtensionLibrary()`. Metadata-derived schemes come from
+`SdJwtTypeMetadata.toCredentialScheme()`, which picks the representation from the document's `vck` extension
+(`SdJwtTypeMetadataVckExtensions`: `format` plus `vcType`/`isoDocType`/`isoNamespace`, defaulting to SD-JWT) and
+produces an `ExtractedVcJwt`/`ExtractedSdJwt`/`ExtractedIsoMdocCredentialScheme`. Both paths coexist by design; do not
+replace one with the other.
+
+`AttributeIndex` coordinates scheme lookup, resolving from its registered `schemeSet` first, then through the
+registries, then through a fallback scheme. `CredentialMetadataRegistry` is its extension boundary:
+
+- `StaticCredentialMetadataRegistry` in `vck` resolves bundled, optionally integrity-pinned SD-JWT Type Metadata and
+  can preload self-contained documents.
+- `RemoteCredentialMetadataRegistry` in `vck-openid-ktor` resolves configured metadata documents over HTTP using
+  `KtorSdJwtTypeMetadataDocumentRetriever` and the document's cache and integrity rules.
+- Unknown identifiers fall back to representation-specific schemes so parsing does not depend on a globally known
+  credential catalogue.
+
+Register registries and custom ISO serializers through `LibraryInitializer`. Keep HTTP retrieval out of `vck`, and
+keep metadata models and inheritance/integrity logic in `sd-jwt-type-metadata`. Registration updates use atomic
+copy-on-write collections; preserve that property when adding global scheme or serializer registries because tests and
+applications may initialize credential libraries concurrently.
 
 ### Multiplatform Stack
 
@@ -153,21 +231,86 @@ VC-K supports three main credential families:
   Selective disclosure logic centers around `SelectiveDisclosureItem`, `SdJwtSigned`, and presentation factories.
 - ISO mDoc / mDL
   CBOR/COSE-backed structures use types such as `IssuerSignedItem`, `Document`, `DeviceRequest`, and
-  `MobileSecurityObject`.
+  `MobileSecurityObject`. ISO version and digest fields use typed values while serializers preserve the specified
+  CBOR representation.
 
 Feature work often needs tests across at least one core agent flow and one protocol flow. For example, a disclosure
 selection change may touch `vck` DCQL matching and `vck-openid` OpenID4VP response validation.
 
-### DCQL and Presentation Exchange
+### Presentation Pipeline
 
-DCQL has two layers:
+Credential matching and response creation are independent of the transport that asked for them:
 
-- Wire/query models live in `openid-data-classes/src/commonMain/kotlin/at/asitplus/openid/dcql`.
-- Matching and selection behavior lives in `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`.
+```text
+CredentialPresentationRequest (DCQL or ISO Device Retrieval)
+    -> Holder.matchPresentationRequestAgainstCredentialStore()
+    -> CredentialMatchingResult
+    -> user-selected CredentialPresentation
+    -> Holder.createPresentation()
+    -> PresentationResponseParameters
+    -> OpenID4VP vp_token or direct ISO DeviceResponse
+```
 
-OpenID4VP then consumes those results in `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/openid`.
-Presentation Exchange follows a similar split: DIF models are in `dif-data-classes`, while credential matching and
-VP token validation happen in `vck` and `vck-openid`.
+Wire/query models live in `openid-data-classes`; matching, submission validation, and presentation creation live in
+`vck`; OpenID protocol projection and validation live in `vck-openid`. Keep the request and its typed matching result
+together through user selection so repeated ISO document requests and DCQL submission rules are not lost.
+
+OpenID4VP 1.0 uses DCQL. Presentation Exchange support has been removed from the OpenID4VP path, and SIOPv2/id-token
+presentation support has also been removed. Deprecated Presentation Exchange types and `dif-data-classes` remain as
+compatibility surface for non-OpenID callers and migrations; do not use their presence as evidence of current
+OpenID4VP support. New presentation work should use `CredentialPresentationRequest.DCQLRequest` or
+`CredentialPresentationRequest.IsoDeviceRetrieval`, not deprecated format-specific `Holder` methods.
+
+### ISO mDoc Zero-Knowledge Proofs
+
+ZKP support is currently request-side plumbing plus a compatibility gate; there is no proving backend. Keep that
+layering when adding one:
+
+- `ZkRequest` is the native ISO/IEC 18013-5 request shape and used for zkp proof generation and verification. `DCQLIsoMdocZkCredentialQuery` with
+  `DCQLIsoMdocZkSystemType` the OpenID4VP/DCQL one (which is eventually converted to a `ZkRequest`)
+- `ZkSystemParamRegistry` maps a ZK system name and param key to a serializer so `ZkSystemSpec.params` can be
+  deserialized. Each proving system registers its own params, using the same atomic copy-on-write registration as the
+  scheme registries.
+- `vck` carries the requested ZK parameters as `ZkMetadata` through `IsoPresentationParameters`, which rejects
+  metadata that does not fit the selected credential. A proving backend belongs behind `ZkMetadata` and
+  `VerifiablePresentationFactory`.
+- `IsoMdocZkEngine` routes proof generation and loading into a verifiable `IsoMdocZkProof` to registered backends. 
+  During generation, the requested system specifications are alternatives: the selected backend chooses one for 
+  proof generation. During loading, the document's ZkSystemSpec ID must match exactly one zkSystem specification from
+  the request before a backend is selected.
+- For proof generation, backend matching is intentionally partial. `IsoMdocZkBackend.supports(candidate)` requires every
+  parameter explicitly present in the candidate to equal the corresponding backend-supported value. Parameters omitted 
+  by the verifier are unconstrained and may be supplied by the backend's supported specification.
+- `IsoMdocZkBackend.system` identifies the parameter-serializer namespace used by `ZkSystemParamRegistry`, while
+  `ZkSystemSpec.system` identifies the protocol-level proving system. Implementations should keep these identifiers
+  aligned for a single-system backend; backends supporting multiple systems must ensure their advertised specs and
+  serializer namespace remain compatible.
+- The default selection strategy is intentionally simple. Applications that register multiple compatible backends
+  should provide an explicit `SelectionStrategy`.
+- When ZK is optional, presentation creation may fall back to a plain mDoc if proof generation fails. Required ZK
+  requests propagate the generation error. A loaded `IsoMdocZkProof` retains the session transcript and backend-specific
+  verifier state needed by its later `verify()` call.
+- `IsoMdocZkBackendRegistry.Default` and `ZkSystemParamRegistry` are application-wide registries. Custom backend
+  registries do not isolate the global parameter serializers, so applications must avoid incompatible serializers for
+  the same system and parameter key.
+- OpenID4VCI deliberately rejects the `mso_mdoc_zk` credential format in issuer metadata. Do not re-add it to make ZK
+  presentations work; ZKP is a presentation concern.
+
+### Trust and Protocol State
+
+ETSI List of Trusted Entities wire models stay in `etsi-data-classes`; `LoTEFilterService` and certificate trust
+checks live in `vck`. Holder store entries retain the credential issuer certificate needed by trust consumers. Keep
+trust policy out of the serializers and extract certificates per credential format rather than treating a response as
+having one issuer.
+
+Protocol-owned presentation challenges flow through `NonceService` and `NonceChallengeVerifier`; OpenID request state
+is stored and validated against the response before successful nonces are consumed. Reuse these boundaries rather
+than adding protocol-specific nonce maps or validating only values echoed by the caller.
+
+Credential issuance and status-list publication are also separate responsibilities. `IssuerAgent` asks an optional
+`StatusListAgent` for a status reference, while `IssuerCredentialStore` records issued credentials and
+`ReferencedTokenStore` owns status-list indices, identifiers, and revocation state. Keep custom persistence adapters at
+those interfaces instead of coupling status-list generation back to credential signing.
 
 ### Key Material and Crypto
 
@@ -176,8 +319,8 @@ external API requires an adapter. Application-facing signing hooks usually flow 
 specific signing/verification function types.
 
 Use `KmmResult` for public multiplatform APIs that need Swift-friendly result handling. Avoid replacing it with
-Kotlin's inline `Result` in public APIs.  
-Use `catching` as a drop-in replacement for `runCatching` to produce a `KmmResult` instead of a `Result`. Note that `catching` intentionally does not catch exceptions that cannot be handled such as out-of-heap errors. Use `catchingUnwrapped` internally whenever a `Result` is sufficient, because it also allows fatal exceptions to bubble up, but does not incur the instantiation overhead of producing a `KmmResult` instance.
+Kotlin's inline `Result` in public APIs. Use `catching` to produce `KmmResult`, and `catchingUnwrapped` when an internal
+Kotlin `Result` is sufficient. Both let fatal exceptions and cancellation bubble up.
 
 ### Dependency Injection Style
 
@@ -187,6 +330,8 @@ for multiplatform use and testability.
 When adding behavior:
 
 - Prefer adding optional constructor parameters with defaults over breaking existing constructors.
+- Preserve `@JvmOverloads` on public constructors with defaults and public methods with default parameter values,
+  so the same API remains usable from Java.
 - Pass arguments by name in production code and tests when calling constructors with many parameters.
 - Keep new callbacks small and platform-neutral in `commonMain`.
 - Do not make a transport-specific type part of a core or protocol constructor unless the module already depends on
@@ -211,6 +356,13 @@ Common starting points:
   `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent/validation`
 - DCQL matching:
   `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`
+- ISO Device Retrieval matching and response creation:
+  `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/iso` and
+  `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent/PresentationResponseCreator.kt`
+- Credential scheme resolution:
+  `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/data/{AttributeIndex,CredentialMetadataRegistry}.kt`
+- Trust-list evaluation:
+  `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/etsi`
 - OpenID4VP:
   `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/openid`
 - OpenID4VCI:
@@ -229,9 +381,14 @@ right dependencies.
 Preserve public API shape unless the change is explicitly intended to be breaking. Public classes often expose many
 constructor parameters and default values; changes there affect JVM, Android, and Swift callers.
 
+Treat deprecated declarations as migration surface, not architecture to copy. Before extending one, inspect its
+replacement and `CHANGELOG.md`; major-version development may remove APIs deprecated in the preceding release. Add a
+useful `ReplaceWith` and migration note when a compatible replacement exists.
+
 Keep serialization stable. Protocol and credential data classes are wire contracts. If a property rename is needed,
 check `@SerialName`, default values, custom serializers, and existing round-trip tests before changing Kotlin property
-names.
+names. Prefer typed domain values such as Signum digests, typed JOSE/COSE objects, and semantic versions while keeping
+the specification's exact wire representation in the serializer.
 
 Keep platform assumptions out of `commonMain`. JVM-only dependencies belong in `jvmMain` or `jvmTest`; Android and iOS
 specific behavior must stay in the matching source set or behind a common abstraction.
@@ -244,18 +401,41 @@ across OpenID, DCAPI, CSC, RQES, and VC-K core packages.
 Tests use TestBalloon with Kotest assertions. Put credential and serialization tests in `commonTest` when possible so
 they exercise all configured platforms. Use `jvmTest` for fast local feedback and JVM-only dependencies.
 
+Every module's `commonTest/kotlin/TestConfig.kt` runs tests concurrently. Tests therefore must not depend on global
+mutable state being theirs alone: register schemes, metadata registries, and serializers through the atomic
+registration paths, and do not reset global registries from a test.
+
+If tests require serial execution of test cases, use `matrixConfig` to specify execution mode `Sequential`.
+This will execute tests in the order the are defined in code.
+
+This project relies on TestBalloon with [matrix testing](https://github.com/a-sit-plus/testballoon-addons#matrix-testing):
+* Don't `repeat` tests and inject random data in iteration. Instead, use real `property` testing capabilities of
+  `matrixSuite` tests, with proper `Arbs`. This enables reproducible replays to debug failing tests.
+* Don't `collection.forEach { test(…) {…} }`. Use proper data-driven testing, such as `collection.asData test {…}`.
+* Use the `compact` feature of `matrixSuite` to collapse deeply nested test suites with many elements to preserve test
+  fidelity, but reduce load on the test runner / report generator.
+
 Useful focused tests:
 
 - DCQL adapter behavior:
   `vck/src/commonTest/kotlin/at/asitplus/wallet/openid/dcql/DCQLQueryProcedureAdapterTest.kt`
 - Core agent and presentation flows:
   `vck/src/commonTest/kotlin/at/asitplus/wallet/lib/agent/Agent*Test.kt`
+- ISO Device Retrieval and Annex C:
+  `vck/src/commonTest/kotlin/at/asitplus/wallet/lib/agent/AgentIsoMdoc*Test.kt` and
+  `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/openid/{Iso180137AnnexCProtocolTest,IsoMdocDcapiResponseBuilderTest}.kt`
 - OpenID4VP:
   `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/openid/OpenId4Vp*Test.kt`
 - OpenID4VCI:
   `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/oidvci`
 - Ktor OpenID clients and wallet flows:
   `vck-openid-ktor/src/commonTest/kotlin/at/asitplus/wallet/lib/ktor/openid`
+- Credential metadata:
+  `vck/src/commonTest/kotlin/at/asitplus/wallet/lib/data/StaticCredentialMetadataRegistryTest.kt` and
+  `vck-openid-ktor/src/commonTest/kotlin/at/asitplus/wallet/lib/ktor/openid/RemoteCredentialMetadataRegistryTest.kt`
+- ISO mDoc ZKP wire models:
+  `openid-data-classes/src/commonTest/kotlin/at/asitplus/iso/ZkSystemSpecSerializerTest.kt` and
+  `openid-data-classes/src/commonTest/kotlin/at/asitplus/iso/ZkDocumentSerializerTest.kt`
 
 For Gradle commands (module-scoped tasks, `--tests` filtering, the root-`compileKotlin` ambiguity caveat) and the
 rest of the build/test setup, see [DEVELOPMENT.md](DEVELOPMENT.md).

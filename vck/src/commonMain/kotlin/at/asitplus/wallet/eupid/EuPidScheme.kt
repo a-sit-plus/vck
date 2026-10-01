@@ -19,18 +19,6 @@ import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.encodeToJsonElement
 
-@Deprecated(
-    "Replace with type metadata document",
-    level = DeprecationLevel.ERROR
-)
-object EuPidScheme {
-    @Deprecated(
-        "Replace with EuPidDataElements",
-        ReplaceWith("EuPidDataElements")
-    )
-    object Attributes
-}
-
 /** `eu.europa.ec.eudi.pid.1` */
 const val EU_PID_DOCTYPE: String = "eu.europa.ec.eudi.pid.1"
 

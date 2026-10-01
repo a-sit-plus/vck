@@ -4,7 +4,7 @@ package at.asitplus.gradle
 
 import VcLibVersions
 import at.asitplus.gradle.at.asitplus.gradle.addTestExtensions
-import com.android.build.api.dsl.androidLibrary
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import com.android.build.api.variant.KotlinMultiplatformAndroidComponentsExtension
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
@@ -73,11 +73,6 @@ class VcLibConventions : K2Conventions() {
                     .filter { it.name.endsWith("Test") }
                     .forEach { it.dependencies { addTestExtensions() } }
 
-                extensions.getByType<KotlinMultiplatformExtension>().apply {
-                    sourceSets.forEach {
-                        it.languageSettings.enableLanguageFeature("ContextParameters")
-                    }
-                }
                 tasks.withType<Test>().configureEach {
                     maxHeapSize = "8G"
                 }
@@ -92,14 +87,14 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
         return
     }
     val compat = project.androidJvmTarget
-    androidLibrary {
+    targets.withType<KotlinMultiplatformAndroidLibraryTarget>().configureEach {
         compilations.configureEach {
             if (name.contains("test", ignoreCase = true)) {
-                if (project.raiseAndroidTestToJdkTarget) compilerOptions.configure {
-                    jvmTarget.set(JvmTarget.fromTarget(project.jvmTarget))
+                if (project.raiseAndroidTestToJdkTarget) compileTaskProvider.configure {
+                    compilerOptions.jvmTarget.set(JvmTarget.fromTarget(project.jvmTarget))
                 }
-            } else compilerOptions.configure {
-                jvmTarget.set(JvmTarget.fromTarget(compat!!))
+            } else compileTaskProvider.configure {
+                compilerOptions.jvmTarget.set(JvmTarget.fromTarget(compat!!))
             }
         }
 
@@ -140,6 +135,7 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
                 "win32-x86/attach_hotspot_windows.dll",
                 "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
                 "META-INF/licenses/*",
+                "META-INF/LICENSE.*",
                 //noinspection WrongGradleMethod
             ).forEach { resources.excludes.add(it) }
         }

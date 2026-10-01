@@ -14,22 +14,25 @@ import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.ItemsRequest
-import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.CreatePresentationResult
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -39,19 +42,24 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.uuid4
+import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
@@ -72,28 +80,21 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
             DCQLClaimsPathPointer(CLAIM_DATE_OF_BIRTH),
         ),
     )
-    val dcqlRequest = CredentialPresentationRequestBuilder(requestedCredential).toDCQLRequest()!!
+    val deviceRequest = CredentialPresentationRequestBuilder(requestedCredential).toIsoDeviceRetrievalRequest()
 
-    fixture({
-        kotlinx.coroutines.runBlocking {
+    fixture {
+        runBlocking {
             val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val issuer = IssuerAgent(
+                keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default,
+            )
             val holderAgent = HolderAgent(holderKeyMaterial).also { agent ->
-                agent.storeCredential(
-                    IssuerAgent(
-                        keyMaterial = EphemeralKeyWithSelfSignedCert(),
-                        identifier = "https://issuer.example.com/".toUri(),
-                        randomSource = RandomSource.Default,
-                    ).issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            holderKeyMaterial.publicKey,
-                            AtomicAttribute2023,
-                            ISO_MDOC,
-                        ).getOrThrow()
-                    ).getOrThrow().toStoreCredentialInput()
-                ).getOrThrow()
+                issueAndStoreIsoMdoc(agent, holderKeyMaterial, issuer)
             }
             object {
-                val decryptionKeyMaterial = EphemeralKeyWithoutCert()
+                val ephemeralKeyStore = DefaultMapStore<String, String>()
                 val stateToIsoMdocRequestStore = DefaultMapStore<String, IsoMdocRequest>()
                 val verifier = DcApiVerifier(
                     clientIdScheme = ClientIdScheme.PreRegistered(
@@ -101,14 +102,14 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                         redirectUri = "https://example.com/callback",
                     ),
                     stateToIsoMdocRequestStore = stateToIsoMdocRequestStore,
-                    decryptionKeyMaterial = decryptionKeyMaterial,
+                    ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(ephemeralKeyStore),
                 )
 
                 /** Extracts the Annex C request from the browser-facing [CredentialRequestOptions]. */
                 suspend fun createIsoMdocRequest(transactionId: String): IsoMdocRequest = verifier
                     .createAuthnRequest(
                         OpenId4VpRequestOptions(
-                            presentationRequest = dcqlRequest,
+                            presentationRequest = deviceRequest,
                             responseMode = OpenIdConstants.ResponseMode.DcApi,
                             expectedOrigins = listOf(callingOrigin),
                             state = transactionId,
@@ -119,30 +120,45 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                     .shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>()
                     .data
 
+                /** The ephemeral encryption key the verifier created for the request identified by [state]. */
+                suspend fun storedEphemeralKey(state: String): CryptoPrivateKey.EC.WithPublicKey =
+                    CryptoPrivateKey.decodeFromPem(ephemeralKeyStore.get(state).shouldNotBeNull()).getOrThrow()
+                        .shouldBeInstanceOf<CryptoPrivateKey.EC.WithPublicKey>()
+
                 suspend fun walletResponse(
                     isoMdocRequest: IsoMdocRequest,
                     origin: String = callingOrigin,
                 ) = createWalletResponse(holderAgent, holderKeyMaterial, isoMdocRequest, origin, requestedCredential)
             }
         }
-    }) - {
+    } - {
 
         test("createAuthnRequest renders device request and encryption info, and remembers the request") { f ->
             val transactionId = uuid4().toString()
-            val isoMdocRequest = f.createIsoMdocRequest(transactionId)
-
-            val itemsRequest = isoMdocRequest.deviceRequest.docRequests.single().itemsRequest.value
-            itemsRequest.docType shouldBe AtomicAttribute2023.isoDocType
-            itemsRequest.namespaces[AtomicAttribute2023.isoNamespace]!!.entries shouldBe listOf(
-                SingleItemsRequest(CLAIM_GIVEN_NAME, false),
-                SingleItemsRequest(CLAIM_DATE_OF_BIRTH, false),
-            )
-            isoMdocRequest.encryptionInfo.type shouldBe TYPE_DCAPI
-            isoMdocRequest.encryptionInfo.encryptionParameters.nonce.shouldNotBeNull()
-            isoMdocRequest.encryptionInfo.encryptionParameters.recipientPublicKey shouldBe
-                    f.decryptionKeyMaterial.publicKey.toCoseKey().getOrThrow()
+            val isoMdocRequest = f.createIsoMdocRequest(transactionId).apply {
+                deviceRequest.deviceRequest.docRequests.shouldBeSingleton().first().itemsRequest.value.apply {
+                    docType shouldBe AtomicAttribute2023.isoDocType
+                    namespaces[AtomicAttribute2023.isoNamespace]!!.entries shouldBe listOf(
+                        SingleItemsRequest(CLAIM_GIVEN_NAME, false),
+                        SingleItemsRequest(CLAIM_DATE_OF_BIRTH, false),
+                    )
+                }
+                encryptionInfo.type shouldBe TYPE_DCAPI
+                encryptionInfo.encryptionParameters.nonce.shouldNotBeNull()
+                // the recipient key is ephemeral for this request, its private part kept for [validateIsoResponse]
+                encryptionInfo.encryptionParameters.recipientPublicKey.toCryptoPublicKey().getOrThrow() shouldBe
+                        f.storedEphemeralKey(transactionId).publicKey
+            }
 
             f.stateToIsoMdocRequestStore.get(transactionId) shouldBe isoMdocRequest
+        }
+
+        test("createAuthnRequest uses a fresh encryption key for every request") { f ->
+            val first = f.createIsoMdocRequest(uuid4().toString())
+            val second = f.createIsoMdocRequest(uuid4().toString())
+
+            first.encryptionInfo.encryptionParameters.recipientPublicKey shouldNotBe
+                    second.encryptionInfo.encryptionParameters.recipientPublicKey
         }
 
         test("Annex C walk-through: wallet response validates and contains requested claims") { f ->
@@ -162,8 +178,68 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                     .shouldNotBeNull().elementValue shouldBe "Susanne"
                 validItems.firstOrNull { it.elementIdentifier == CLAIM_DATE_OF_BIRTH }
                     .shouldNotBeNull().elementValue shouldBe LocalDate(1990, 1, 1)
-                invalidItems shouldBe emptyList()
             }
+        }
+
+        test("replay: the same wallet response must not be accepted twice") { f ->
+            val transactionId = uuid4().toString()
+            val isoMdocRequest = f.createIsoMdocRequest(transactionId)
+
+            val dcApiResponse = f.walletResponse(isoMdocRequest)
+
+            f.verifier.validateIsoResponse(
+                receivedData = dcApiResponse,
+                externalId = transactionId,
+                expectedOrigin = callingOrigin,
+            ).getOrThrow().documents.shouldBeSingleton()
+
+            // there is no nonce to consume in this flow, so the stored request is what makes it single-use:
+            // resubmitting the very same encrypted device response must not validate again
+            f.verifier.validateIsoResponse(
+                receivedData = dcApiResponse,
+                externalId = transactionId,
+                expectedOrigin = callingOrigin,
+            ).isFailure shouldBe true
+            f.stateToIsoMdocRequestStore.get(transactionId).shouldBeNull()
+        }
+
+        test("replay through the public API must not be accepted twice either") { f ->
+            val transactionId = uuid4().toString()
+            val isoMdocRequest = f.createIsoMdocRequest(transactionId)
+
+            val dcApiResponse = IsoMdocResponse(f.walletResponse(isoMdocRequest))
+
+            f.verifier.validateAuthnResponse(
+                input = dcApiResponse,
+                externalId = transactionId,
+                expectedOrigin = callingOrigin,
+            ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>()
+
+            f.verifier.validateAuthnResponse(
+                input = dcApiResponse,
+                externalId = transactionId,
+                expectedOrigin = callingOrigin,
+            ).isFailure shouldBe true
+        }
+
+        test("a rejected attempt consumes the transaction id, so the genuine response is not accepted later") { f ->
+            val transactionId = uuid4().toString()
+            val isoMdocRequest = f.createIsoMdocRequest(transactionId)
+
+            val dcApiResponse = f.walletResponse(isoMdocRequest)
+
+            // fails on the session transcript, but has consumed the stored request
+            f.verifier.validateIsoResponse(
+                receivedData = dcApiResponse,
+                externalId = transactionId,
+                expectedOrigin = "https://evil.example.com",
+            ).isFailure shouldBe true
+
+            f.verifier.validateIsoResponse(
+                receivedData = dcApiResponse,
+                externalId = transactionId,
+                expectedOrigin = callingOrigin,
+            ).isFailure shouldBe true
         }
 
         test("public API forwards the expected origin for Annex C") { f ->
@@ -234,7 +310,7 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 transactionId,
                 isoMdocRequest.copy(
                     deviceRequest = DeviceRequest(
-                        version = "1.0",
+                        parsedVersion = Version(1, 0),
                         docRequests = arrayOf(
                             DocRequest(ByteStringWrapper(ItemsRequest("org.iso.18013.5.1.mDL", emptyMap())))
                         ),
@@ -271,7 +347,14 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
             val dcApiResponse = f.walletResponse(isoMdocRequest)
             val tampered = dcApiResponse.response.encryptedResponseData.cipherText
                 .also { it[0] = (it[0].toInt() xor 0x01).toByte() }
-                .let { DCAPIResponse(EncryptedResponse(TYPE_DCAPI, EncryptedResponseData(dcApiResponse.response.encryptedResponseData.enc, it))) }
+                .let {
+                    DCAPIResponse(
+                        EncryptedResponse(
+                            TYPE_DCAPI,
+                            EncryptedResponseData(dcApiResponse.response.encryptedResponseData.enc, it)
+                        )
+                    )
+                }
 
             f.verifier.validateIsoResponse(
                 receivedData = tampered,
@@ -279,6 +362,53 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 expectedOrigin = callingOrigin,
             ).isFailure shouldBe true
         }
+
+        test("without a certificate in the key material, document requests carry no readerAuth") { f ->
+            f.createIsoMdocRequest(uuid4().toString()).deviceRequest.docRequests.forEach {
+                it.readerAuth.shouldBeNull()
+            }
+        }
+    }
+
+    test("readerAuth binds the WRPAC and the WRPRC to the calling origin, as verified by the wallet") {
+        val wrpac = EphemeralKeyWithSelfSignedCert()
+        val verifier = DcApiVerifier(
+            clientIdScheme = ClientIdScheme.CertificateHash(
+                chain = listOf(wrpac.getCertificate()!!),
+                redirectUri = "https://example.com/callback",
+            ),
+            keyMaterial = wrpac,
+        )
+        val euWrprc = byteArrayOf(0xD2.toByte(), 0x84.toByte(), 0x40, 0xA0.toByte(), 0xF6.toByte(), 0x40)
+        val requestOptions = verifier.createAuthnRequest(
+            OpenId4VpRequestOptions(
+                presentationRequest = deviceRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+                euWrprc = euWrprc,
+            ),
+            DcApiCreationOptions.Iso180137AnnexC,
+        ).getOrThrow()
+        // the browser hands the request to the wallet as JSON
+        val isoMdocRequest = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
+            joseCompliantSerializer.encodeToString(requestOptions)
+        ).digital.requests.shouldBeSingleton().first()
+            .shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>().data
+        isoMdocRequest.deviceRequest.docRequests.forEach {
+            it.itemsRequest.value.requestInfo.shouldNotBeNull().euWrprc shouldBe euWrprc
+        }
+
+        fun transcriptFor(origin: String) = IsoMdocDcapiResponseBuilder.sessionTranscriptFor(
+            RequestParametersFrom.IsoMdocDcApi(
+                parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(isoMdocRequest),
+                jsonString = "",
+                callingOrigin = origin,
+            )
+        )
+        ReaderAuthenticationVerifier()(isoMdocRequest.deviceRequest, transcriptFor(callingOrigin)).getOrThrow()
+            .first().encodeToDer() shouldBe wrpac.getCertificate()!!.encodeToDer()
+        ReaderAuthenticationVerifier()(isoMdocRequest.deviceRequest, transcriptFor("https://other.example.com"))
+            .isFailure shouldBe true
     }
 }
 
@@ -303,10 +433,12 @@ private suspend fun createWalletResponse(
         )
     )
     val signer = SignCoseDetached<ByteArray>(keyMaterial = holderKeyMaterial)
+    val calcIsoSessionTranscript = { sessionTranscript }
     val deviceResponse = holder.createDefaultPresentation(
         request = PresentationRequestParameters(
             nonce = uuid4().toString(), // not relevant for mdoc device authentication
             audience = origin,
+            calcIsoSessionTranscript = calcIsoSessionTranscript,
             calcIsoDeviceSignaturePlain = { input ->
                 signer(
                     protectedHeader = null,
@@ -315,7 +447,7 @@ private suspend fun createWalletResponse(
                         ByteStringWrapper(
                             DeviceAuthentication(
                                 type = DeviceAuthentication.TYPE,
-                                sessionTranscript = sessionTranscript,
+                                sessionTranscript = calcIsoSessionTranscript(),
                                 docType = input.docType,
                                 namespaces = input.deviceNameSpaceBytes,
                             )

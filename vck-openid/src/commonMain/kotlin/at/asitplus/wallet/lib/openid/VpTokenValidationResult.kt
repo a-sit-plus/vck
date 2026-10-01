@@ -8,6 +8,7 @@ sealed interface VpTokenValidationResult {
     val presentationResults: Collection<KmmResult<VerifyPresentationResult>>
 }
 
+// TODO Rename to DCQL only?
 data class VpTokenValidationResultDCQL(
     val credentialQueryResponseValidations: Map<DCQLCredentialQueryIdentifier, List<KmmResult<VerifyPresentationResult>>>,
     val submissionRequirementsValidationResult: KmmResult<Unit>,
@@ -19,6 +20,7 @@ data class VpTokenValidationResultDCQL(
         }
 }
 
+@Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
 data class VpTokenValidationResultPresentationExchange(
     val inputDescriptorResponseValidations: Map<String, KmmResult<VerifyPresentationResult>>,
 ) : VpTokenValidationResult {

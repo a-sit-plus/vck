@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.ktor.openid
 
+import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
@@ -7,6 +8,7 @@ import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.NonceService
@@ -14,8 +16,10 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
+import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
@@ -58,7 +62,9 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             tokenOrAuthHeader: String,
             httpRequest: RequestInfo?,
             dpopNonceService: NonceService?,
-        ) = catching { }
+            validatedClientKey: JsonWebKey?,
+        ): KmmResult<ValidatedAccessToken> =
+            catching { ValidatedAccessToken(token = tokenOrAuthHeader) }
 
         override suspend fun extractValidatedClientKey(
             httpRequest: RequestInfo?,

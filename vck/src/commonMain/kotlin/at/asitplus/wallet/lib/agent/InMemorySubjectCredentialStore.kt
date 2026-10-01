@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme

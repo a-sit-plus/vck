@@ -3,6 +3,10 @@ package at.asitplus.openid
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * Nonces for
+ * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-nonce-endpoint)
+ */
 @Serializable
 data class ClientNonceResponse(
     /**

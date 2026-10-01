@@ -9,7 +9,6 @@ import kotlinx.serialization.cbor.ValueTags
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
  */
-@OptIn(ExperimentalUnsignedTypes::class)
 @Serializable
 data class DocRequest(
     @SerialName("itemsRequest")

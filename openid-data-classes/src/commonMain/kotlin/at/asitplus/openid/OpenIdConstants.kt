@@ -99,8 +99,14 @@ object OpenIdConstants {
     /** `key-attestation+jwt` */
     const val KEY_ATTESTATION_JWT_TYPE = "key-attestation+jwt"
 
+    /** `openidvci-issuer-metadata+jwt`, see OID4VCI 1.0, Section 12.2.3 */
+    const val ISSUER_METADATA_JWT_TYPE = "openidvci-issuer-metadata+jwt"
+
     /** `attest_jwt_client_auth` */
     const val AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH = "attest_jwt_client_auth"
+
+    /** `attest_jwt_client_auth_dpop` */
+    const val AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH_DPOP = "attest_jwt_client_auth_dpop"
 
     /** `prompt` */
     const val PARAMETER_PROMPT = "prompt"
@@ -122,6 +128,7 @@ object OpenIdConstants {
     object ProofTypes {
         /** `jwt` */
         const val JWT = "jwt"
+
         /** `attestation` */
         const val ATTESTATION = "attestation"
     }
@@ -390,6 +397,86 @@ object OpenIdConstants {
     }
 
     /**
+     * Constants for VerifierInfo
+     */
+    object VerifierInfo {
+        const val REGISTRATION_CERT_FORMAT = "registration_cert"
+    }
+
+
+    /**
+     * See
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-client-attestation-as-an-ad)
+     */
+    @Serializable(with = ClientAttestationPopMethod.Serializer::class)
+    sealed class ClientAttestationPopMethod(
+        val stringRepresentation: String,
+        val clientAuthMethod: String?,
+    ) {
+        /**
+         * The Proof of Possession is a dedicated Client Attestation PoP JWT as defined in
+         * Section 5.1 ("normal mode").
+         */
+        object AttestationPopJwt :
+            ClientAttestationPopMethod(STRING_ATTESTATION_POP_JWT, AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH)
+
+        /**
+         * The Proof of Possession is a DPoP proof serving as the combined Proof of Possession as defined in
+         * Section 5.2 ("DPoP combined mode").
+         */
+        object DpopCombined : ClientAttestationPopMethod(STRING_DPOP_COMBINED, AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH_DPOP)
+
+        /**
+         * No Client Attestation is required. A server includes this value to signal that the Client MAY omit the
+         * Client Attestation.
+         */
+        object None : ClientAttestationPopMethod(STRING_NONE, null)
+
+        /**
+         * Any not natively supported PoP method, so it can still be parsed
+         */
+        class Other(stringRepresentation: String) : ClientAttestationPopMethod(stringRepresentation, null)
+
+        companion object {
+            private const val STRING_ATTESTATION_POP_JWT = "attestation_pop_jwt"
+            private const val STRING_DPOP_COMBINED = "dpop_combined"
+            private const val STRING_NONE = "none"
+
+            val entries by lazy {
+                setOf(
+                    AttestationPopJwt,
+                    DpopCombined,
+                    None
+                )
+            }
+
+            /**
+             * Matches by client auth method from e.g.
+             * [OAuth2AuthorizationServerMetadata.tokenEndPointAuthMethodsSupported]
+             */
+            fun matchByClientAuthMethod(clientAuthMethod: String) =
+                entries.firstOrNull { it.clientAuthMethod == clientAuthMethod }
+        }
+
+        object Serializer : KSerializer<ClientAttestationPopMethod> {
+            override val descriptor: SerialDescriptor =
+                PrimitiveSerialDescriptor("ClientAttestationPopMethod", PrimitiveKind.STRING)
+
+            override fun deserialize(decoder: Decoder): ClientAttestationPopMethod =
+                when (val string = decoder.decodeString()) {
+                    STRING_ATTESTATION_POP_JWT -> AttestationPopJwt
+                    STRING_DPOP_COMBINED -> DpopCombined
+                    STRING_NONE -> None
+                    else -> Other(string)
+                }
+
+            override fun serialize(encoder: Encoder, value: ClientAttestationPopMethod) {
+                encoder.encodeString(value.stringRepresentation)
+            }
+        }
+    }
+
+    /**
      * Error codes for OAuth2 responses
      */
     object Errors {
@@ -405,6 +492,12 @@ object OpenIdConstants {
         /** Use a fresh DPoP nonce (RFC 9449): `use_dpop_nonce`.*/
         const val USE_DPOP_NONCE = "use_dpop_nonce"
 
+        /** Attestation challenge not valid (OA-ABCA Draft 10): `use_attestation_challenge`.*/
+        const val USE_ATTESTATION_CHALLENGE = "use_attestation_challenge"
+
+        /** Use a fresh client attestation JWT (OA-ABCA Draft 10): `use_fresh_attestation`.*/
+        const val USE_FRESH_ATTESTATION = "use_fresh_attestation"
+
         /** Invalid request in general: `invalid_request`. */
         const val INVALID_REQUEST = "invalid_request"
 
@@ -416,6 +509,12 @@ object OpenIdConstants {
 
         /** Invalid grant: `invalid_grant`. */
         const val INVALID_GRANT = "invalid_grant"
+
+        /**
+         * [RFC 6749 5.2](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2): The authorization grant type
+         * is not supported by the authorization server.
+         */
+        const val UNSUPPORTED_GRANT_TYPE = "unsupported_grant_type"
 
         /** OpenID4VP: Wallet did not have requested credentials: `access_denied */
         const val ACCESS_DENIED = "access_denied"

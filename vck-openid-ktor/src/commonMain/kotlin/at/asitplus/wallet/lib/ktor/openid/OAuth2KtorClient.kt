@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.openid.AttestationChallengeResponse
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.IssuerMetadata
@@ -11,6 +12,9 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
+import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH_DPOP
+import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod.AttestationPopJwt
+import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod.DpopCombined
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
@@ -24,21 +28,28 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oauth2.DPoP
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
+import at.asitplus.wallet.lib.oauth2.OAuthClientAttestation
+import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationChallenge
+import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationPop
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -51,6 +62,9 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.util.*
 import io.ktor.utils.io.*
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.update
 import kotlin.time.Duration
 
 /**
@@ -59,11 +73,12 @@ import kotlin.time.Duration
  * Supported features:
  *  * Token requests and responses
  *  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
- *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+ *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  *  * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126)
  *  * [JSON Web Token (JWT) Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701)
  *  * [EUDI TS3 Wallet Unit Attestation 1.5.2](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
  */
+@OptIn(ExperimentalAtomicApi::class)
 class OAuth2KtorClient(
     /** ktor engine to use to make requests to issuing service. */
     engine: HttpClientEngine,
@@ -74,10 +89,12 @@ class OAuth2KtorClient(
     cookiesStorage: CookiesStorage? = null,
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    /** Used to prove possession of the key material for the instance attestation. */
+    /** Used to prove possession of the key material for the instance attestation, see [loadInstanceAttestation]. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /** Used to calculate DPoP, i.e. the key the access token and refresh token gets bound to.**/
-    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
+    /** The key material the access tokens and refresh tokens get bound to, used for calculating DPoP proofs. */
+    private val dpopKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    @Deprecated("Set dpopKeyMaterial instead", ReplaceWith("dpopKeyMaterial"))
+    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
     /**
      * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works
@@ -110,20 +127,48 @@ class OAuth2KtorClient(
         val preferredClientStatusPeriod: Duration?,
     )
 
+    /** Store the latest attestation challenge per origin (if the AS supports challenges) */
+    private val attestationChallengeByOrigin = AtomicReference(mapOf<String, String>())
+
+    /**
+     * Consumes the challenge that the AS provided in a previous response, see
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
+     * 6.2. A challenge is single-use, so reusing it would get the next request rejected with
+     * `use_attestation_challenge`.
+     */
+    private fun takeAttestationChallenge(url: String): String? {
+        val origin = url.origin()
+        var challenge: String? = null
+        attestationChallengeByOrigin.update {
+            challenge = it[origin]
+            it - origin
+        }
+        return challenge
+    }
+
+    private fun updateAttestationChallenge(url: String, challenge: String?) =
+        challenge?.takeIf { it.isNotBlank() }?.let {
+            attestationChallengeByOrigin.update { it + (url.origin() to challenge) }
+            challenge
+        }
+
     /**
      * Stores the latest DPoP nonce per origin. RFC 9449 requires using only the most recent nonce
      * issued by the server that provided it.
      */
-    private val dpopNonceByContext: MutableMap<String, String> = mutableMapOf()
+    private val dpopNonceByOriginRef = AtomicReference(mapOf<String, String>())
 
-    private fun String.dpopContext(): String = Url(this).let { parsed ->
+    private fun String.origin(): String = Url(this).let { parsed ->
         "${parsed.protocol.name}://${parsed.host}:${parsed.port}"
     }
 
-    private fun currentDpopNonce(url: String): String? = dpopNonceByContext[url.dpopContext()]
+    private fun currentDpopNonce(url: String): String? = dpopNonceByOriginRef.load()[url.origin()]
 
     private fun updateDpopNonce(url: String, nonce: String?): String? =
-        nonce?.takeIf { it.isNotBlank() }?.let { dpopNonceByContext[url.dpopContext()] = nonce; nonce }
+        nonce?.takeIf { it.isNotBlank() }?.let { nonce ->
+            dpopNonceByOriginRef.update { it + (url.origin() to nonce) }
+            nonce
+        }
 
     internal val client = buildHttpClient(engine, cookiesStorage, httpClientConfig)
 
@@ -187,8 +232,7 @@ class OAuth2KtorClient(
         Napier.i("requestTokenWithAuthCode")
         Napier.d("requestTokenWithAuthCode: $url")
 
-        val authnResponse = Url(url).parameters.flattenEntries().toMap()
-            .decodeFromUrlQuery<AuthenticationResponseParameters>()
+        val authnResponse = Url(url).decodeFromQuery<AuthenticationResponseParameters>()
         val code = authnResponse.code
             ?: throw Exception("No authn code in $url")
 
@@ -292,20 +336,23 @@ class OAuth2KtorClient(
                 applyAuthnForToken(
                     resourceUrl = url,
                     httpMethod = HttpMethod.Post,
-                    useDpop = true,
                     authorizationServer = popAudience,
                     oauthMetadata = oauthMetadata,
                     issuerMetadata = issuerMetadata,
                 )()
             }
         } catch (error: HttpErrorResponseException) {
-            return@let error.updateDpopNonceAndRetry(url, retryCount) {
+            return@let error.updateDpopNonceOrAttestationChallengeAndRetry(url, retryCount) {
                 postToken(oauthMetadata, request, popAudience, retryCount + 1, issuerMetadata)
             }
         }
-        val dpopNonce = response.dpopNonce
-        updateDpopNonce(url, dpopNonce)
-        TokenResponseWithDpopNonce(response.body(), dpopNonce)
+        updateDpopNonce(url, response.headers[HttpHeaders.DPoPNonce])
+        updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
+        TokenResponseWithDpopNonce(
+            response.body(),
+            response.headers[HttpHeaders.DPoPNonce],
+            response.headers[HttpHeaders.OAuthClientAttestationChallenge]
+        )
     } ?: throw IllegalArgumentException("No tokenEndpoint in $oauthMetadata")
 
     /**
@@ -321,7 +368,6 @@ class OAuth2KtorClient(
      *
      * Clients need to continue the process (after getting back from the browser) with [requestTokenWithAuthCode].
      */
-    @Throws(Exception::class)
     suspend fun startAuthorization(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         authorizationServer: String,
@@ -330,7 +376,7 @@ class OAuth2KtorClient(
         authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
         scope: String? = null,
         issuerMetadata: IssuerMetadata? = null
-    ) = catching {
+    ): KmmResult<OpenUrlForAuthnRequest> = catching {
         val authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
             ?: throw Exception("no authorizationEndpoint in $oauthMetadata")
         val requiresPar = oauthMetadata.requirePushedAuthorizationRequests == true
@@ -407,18 +453,18 @@ class OAuth2KtorClient(
                 applyAuthnForToken(
                     resourceUrl = url,
                     httpMethod = HttpMethod.Post,
-                    useDpop = true,
                     authorizationServer = popAudience,
                     oauthMetadata = oauthMetadata,
                     issuerMetadata = issuerMetadata,
                 )()
             }
         } catch (error: HttpErrorResponseException) {
-            return@let error.updateDpopNonceAndRetry(url, retryCount) {
+            return@let error.updateDpopNonceOrAttestationChallengeAndRetry(url, retryCount) {
                 pushAuthorizationRequest(oauthMetadata, authRequest, state, popAudience, retryCount + 1, issuerMetadata)
             }
         }
-        updateDpopNonce(url, response.dpopNonce)
+        updateDpopNonce(url, response.headers[HttpHeaders.DPoPNonce])
+        updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
         JarRequestParameters(
             clientId = oAuth2Client.clientId,
             requestUri = response.body<PushedAuthenticationResponseParameters>().requestUri
@@ -449,18 +495,18 @@ class OAuth2KtorClient(
                 applyAuthnForToken(
                     resourceUrl = url,
                     httpMethod = HttpMethod.Post,
-                    useDpop = true,
                     authorizationServer = popAudience,
                     oauthMetadata = oauthMetadata,
                     issuerMetadata = issuerMetadata,
                 )()
             }
         } catch (error: HttpErrorResponseException) {
-            return@let error.updateDpopNonceAndRetry(url, retryCount) {
+            return@let error.updateDpopNonceOrAttestationChallengeAndRetry(url, retryCount) {
                 callTokenIntrospection(oauthMetadata, request, token, popAudience, retryCount + 1)
             }
         }
-        updateDpopNonce(url, response.dpopNonce)
+        updateDpopNonce(url, response.headers[HttpHeaders.DPoPNonce])
+        updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
         parseTokenIntrospectionResponse(
             body = response.bodyAsText(),
             verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
@@ -472,16 +518,24 @@ class OAuth2KtorClient(
         }
     } ?: throw InvalidToken("No introspection endpoint found in Authorization Server metadata")
 
-    /** Store the DPoP nonce if it is set, and retry the previous action */
-    private suspend fun <T> HttpErrorResponseException.updateDpopNonceAndRetry(
+    /** Store the DPoP nonce or attestation challenge if it is set (optional by AS!), and retry the previous action */
+    private suspend fun <T> HttpErrorResponseException.updateDpopNonceOrAttestationChallengeAndRetry(
         url: String,
         retryCount: Int,
         action: suspend () -> T
-    ): T = dpopNonce()
-        ?.let { updateDpopNonce(url, it) }
-        ?.takeIf { retryCount == 0 }
-        ?.let { action() }
-        ?: throw this
+    ): T = run {
+        updateDpopNonce(url, response.headers[HttpHeaders.DPoPNonce])
+        updateAttestationChallenge(url, response.headers[HttpHeaders.OAuthClientAttestationChallenge])
+        (dpopNonce()
+            ?.let { updateDpopNonce(url, it) }
+            ?.takeIf { retryCount <= 1 } // may need two retries: one for DPoP, one for Attestation Challenge
+            ?.let { action() })
+            ?: (attestationChallenge()
+                ?.let { updateAttestationChallenge(url, it) }
+                ?.takeIf { retryCount <= 1 } // may need two retries: one for DPoP, one for Attestation Challenge
+                ?.let { action() })
+            ?: throw this
+    }
 
     /**
      * Sets the appropriate headers when accessing [resourceUrl], by reading data from [tokenResponse],
@@ -493,16 +547,16 @@ class OAuth2KtorClient(
         httpMethod: HttpMethod,
         dpopNonce: String? = null,
     ): HttpRequestBuilder.() -> Unit {
-        val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
+        val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true)) {
             BuildDPoPHeader(
-                signDpop = signDpop,
+                signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
                 url = resourceUrl,
                 httpMethod = httpMethod.value,
                 accessToken = tokenResponse.accessToken,
                 nonce = dpopNonce ?: currentDpopNonce(resourceUrl),
                 randomSource = randomSource
             )
-        else null
+        } else null
         return {
             headers {
                 append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
@@ -512,88 +566,113 @@ class OAuth2KtorClient(
     }
 
     /**
-     * Sets the appropriate headers when accessing a token endpoint:
+     * Sets the appropriate headers when accessing a token endpoint (or equivalent, like PAR):
      * - loads client attestation when [loadInstanceAttestation] is set
-     * - sends a DPoP proof when [useDpop] is set
+     * - sends a client attestation PoP for that
+     * - sends a DPoP proof when the authorization server advertises support for it
      */
     internal suspend fun applyAuthnForToken(
         resourceUrl: String,
         httpMethod: HttpMethod,
-        useDpop: Boolean,
         authorizationServer: String,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         issuerMetadata: IssuerMetadata? = null,
     ): HttpRequestBuilder.() -> Unit {
-        val (clientAttJwt, clientAttPop) = if (loadInstanceAttestation != null && oauthMetadata.supportsClientAuth()) {
-            val wia = loadInstanceAttestation.invoke(
+        val supportsClientAuth = oauthMetadata.supportsClientAuth()
+        val clientAuthMethods = oauthMetadata.tokenEndPointAuthMethodsSupported.orEmpty()
+            .mapNotNull { OpenIdConstants.ClientAttestationPopMethod.matchByClientAuthMethod(it) }
+        val normalMode = clientAuthMethods.contains(AttestationPopJwt)
+        val combinedMode = !normalMode && clientAuthMethods.contains(DpopCombined)
+
+        val clientAttJwt = if (loadInstanceAttestation != null && supportsClientAuth) {
+            if (combinedMode) {
+                require(oauthMetadata.supportsDPoP()) {
+                    "Authorization server does not support DPoP, but client attestation PoP is combined"
+                }
+                require(keyMaterial.publicKey == dpopKeyMaterial.publicKey) {
+                    "Key material for DPoP and client attestation PoP are not the same"
+                }
+            }
+            loadInstanceAttestation(
                 LoadInstanceAttestationInput(
                     authorizationServer = authorizationServer,
                     credentialIssuer = issuerMetadata?.credentialIssuer ?: authorizationServer,
                     preferredClientStatusPeriod = issuerMetadata?.preferredClientStatusPeriod,
                 )
-            ).getOrThrow()
-
-            val cnfKey = wia.payload.confirmationClaim?.jsonWebKey
-            require(cnfKey != null) { "Instance attestation has no cnf.jwk — PoP key cannot be verified" }
-            require(cnfKey.jwkThumbprint == keyMaterial.jsonWebKey.jwkThumbprint) {
-                "keyMaterial does not match the cnf key in the instance attestation. " +
-                        "The PoP JWT will not verify on the server. " +
-                        "Expected cnf thumbprint: ${cnfKey.jwkThumbprint}, " +
-                        "got keyMaterial thumbprint: ${keyMaterial.jsonWebKey.jwkThumbprint}"
+            ).getOrThrow().apply {
+                payload.confirmationClaim?.jsonWebKey.let { cnfKey ->
+                    val cryptoPublicKey = cnfKey?.toCryptoPublicKey()?.getOrNull()
+                    require(cryptoPublicKey != null) {
+                        "Instance attestation has no cnf.jwk — PoP key cannot be verified"
+                    }
+                    require(cryptoPublicKey == keyMaterial.publicKey) {
+                        "keyMaterial does not match the cnf key in the instance attestation"
+                    }
+                }
             }
+        } else null
 
-            val pop = catching {
-                BuildClientAttestationPoPJwt.invoke(
-                    signJwt = SignJwt(keyMaterial, JwsHeaderNone()),
-                    clientId = oAuth2Client.clientId,
-                    audience = authorizationServer,
-                    nonce = null // TODO: Add nonce after backend implementation is ready
-                )
-            }.getOrThrow()
-            wia.jws to pop.jws
-        } else null to null
+        val clientAttPop = if (clientAttJwt != null && normalMode) {
+            BuildClientAttestationPoPJwt(
+                signJwt = SignJwt(keyMaterial, JwsHeaderNone()),
+                audience = authorizationServer,
+                // nonce support must not be implemented by the AS, so we keep it optional
+                nonce = takeAttestationChallenge(resourceUrl)
+                    ?: fetchAttestationChallenge(oauthMetadata),
+            )
+        } else null
 
-        val dpopHeader = useDpop.takeIf { it }?.let {
+        val dpopHeader = if (oauthMetadata.supportsDPoP()) {
             BuildDPoPHeader(
-                signDpop = signDpop,
+                signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
                 url = resourceUrl,
                 httpMethod = httpMethod.value,
-                nonce = currentDpopNonce(resourceUrl),
+                nonce = if (combinedMode) {
+                    takeAttestationChallenge(resourceUrl)
+                        ?: currentDpopNonce(resourceUrl)
+                        ?: fetchAttestationChallenge(oauthMetadata)
+                } else {
+                    currentDpopNonce(resourceUrl)
+                },
                 randomSource = randomSource,
             )
-        }
+        } else null
 
         return {
             headers {
-                clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it.toString()) }
-                clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it.toString()) }
+                clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it.jws.toString()) }
+                clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it.jws.toString()) }
                 dpopHeader?.let { append(HttpHeaders.DPoP, it.toString()) }
             }
         }
     }
 
+
+    /** Not cached: the challenge is used for the request being built right now, and is single-use. */
+    private suspend fun fetchAttestationChallenge(
+        oauthMetadata: OAuth2AuthorizationServerMetadata
+    ): String? = oauthMetadata.challengeEndpoint?.let { url ->
+        catchingUnwrapped {
+            client.post(url).body<AttestationChallengeResponse>().attestationChallenge
+        }.getOrNull()
+    }
+
     private fun OAuth2AuthorizationServerMetadata.supportsClientAuth(): Boolean =
-        tokenEndPointAuthMethodsSupported?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
+        tokenEndPointAuthMethodsSupported.orEmpty()
+            .any { it == AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH || it == AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH_DPOP }
+
+    private fun OAuth2AuthorizationServerMetadata.supportsDPoP(): Boolean =
+        dpopSigningAlgValuesSupported?.contains(
+            dpopKeyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
+        ) == true
 }
-
-val HttpHeaders.OAuthClientAttestation: String
-    get() = "OAuth-Client-Attestation"
-
-val HttpHeaders.OAuthClientAttestationPop: String
-    get() = "OAuth-Client-Attestation-PoP"
-
-val HttpHeaders.DPoP: String
-    get() = "DPoP"
-
-val HttpHeaders.DPoPNonce: String
-    get() = "DPoP-Nonce"
-
-private val HttpResponse.dpopNonce: String?
-    get() = headers[HttpHeaders.DPoPNonce]
 
 data class TokenResponseWithDpopNonce(
     val params: TokenResponseParameters,
+    /** Value from header `DPoP-Nonce` */
     val dpopNonce: String?,
+    /** Value from header `OAuth-Client-Attestation-Challenge` */
+    val attestationChallenge: String?,
 )
 
 private suspend fun parseTokenIntrospectionResponse(

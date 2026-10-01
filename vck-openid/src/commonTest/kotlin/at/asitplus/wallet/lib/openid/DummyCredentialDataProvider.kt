@@ -18,11 +18,26 @@ import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupid.EuPidCredential
+import at.asitplus.wallet.eupid.EuPidDataElements
+import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
@@ -30,21 +45,13 @@ import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
-import at.asitplus.wallet.eupid.EuPidDataElements
-import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
-import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
@@ -54,6 +61,115 @@ import kotlin.time.Duration.Companion.minutes
 object DummyCredentialDataProvider {
 
     private val defaultLifetime = 1.minutes
+
+    suspend fun issueAndStoreSdJwt(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        credentialScheme: CredentialScheme = ConstantIndex.AtomicAttribute2023,
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issueSdJwt(
+            IssuerAgent(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ),
+            holderKeyMaterial,
+            credentialScheme
+        ).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issueAndStoreSdJwt(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        issuer: Issuer
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issueSdJwt(issuer, holderKeyMaterial).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issueSdJwt(
+        issuer: Issuer,
+        holderKeyMaterial: KeyMaterial,
+        credentialScheme: CredentialScheme = ConstantIndex.AtomicAttribute2023,
+    ): Issuer.IssuedCredential = issuer.issueCredential(
+        getCredential(
+            holderKeyMaterial.publicKey,
+            credentialScheme,
+            SD_JWT,
+        ).getOrThrow()
+    ).getOrThrow()
+
+    suspend fun issueAndStoreIsoMdoc(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        credentialScheme: CredentialScheme = ConstantIndex.AtomicAttribute2023,
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issueIsoMdoc(
+            IssuerAgent(
+                keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ),
+            holderKeyMaterial,
+            credentialScheme
+        ).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issueAndStoreIsoMdoc(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        issuer: Issuer,
+        credentialScheme: CredentialScheme = ConstantIndex.AtomicAttribute2023,
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issueIsoMdoc(issuer, holderKeyMaterial, credentialScheme).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issueIsoMdoc(
+        issuer: Issuer,
+        holderKeyMaterial: KeyMaterial,
+        credentialScheme: CredentialScheme = ConstantIndex.AtomicAttribute2023,
+    ): Issuer.IssuedCredential = issuer.issueCredential(
+        getCredential(
+            holderKeyMaterial.publicKey,
+            credentialScheme,
+            ISO_MDOC,
+        ).getOrThrow()
+    ).getOrThrow()
+
+    suspend fun issueAndStorePlainJwt(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        credentialScheme: CredentialScheme = ConstantIndex.AtomicAttribute2023,
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issuePlainJwt(
+            IssuerAgent(
+                keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                identifier = "https://issuer.example.com/".toUri(),
+                randomSource = RandomSource.Default
+            ),
+            holderKeyMaterial,
+            credentialScheme
+        ).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issueAndStorePlainJwt(
+        holder: Holder,
+        holderKeyMaterial: KeyMaterial,
+        issuer: Issuer
+    ): SubjectCredentialStore.StoreEntry = holder.storeCredential(
+        issuePlainJwt(issuer, holderKeyMaterial).toStoreCredentialInput()
+    ).getOrThrow()
+
+    suspend fun issuePlainJwt(
+        issuer: Issuer,
+        holderKeyMaterial: KeyMaterial,
+        credentialScheme: CredentialScheme = ConstantIndex.AtomicAttribute2023,
+    ): Issuer.IssuedCredential = issuer.issueCredential(
+        getCredential(
+            holderKeyMaterial.publicKey,
+            credentialScheme,
+            PLAIN_JWT,
+        ).getOrThrow()
+    ).getOrThrow()
 
     fun getCredential(
         subjectPublicKey: CryptoPublicKey,

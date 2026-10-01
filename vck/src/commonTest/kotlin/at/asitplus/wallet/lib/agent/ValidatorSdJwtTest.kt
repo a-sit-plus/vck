@@ -1,19 +1,25 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.getCredential
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueSdJwt
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -21,12 +27,14 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadata
 import at.asitplus.wallet.sdjwt.SdJwtVcType
+import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.comparables.shouldNotBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -48,11 +56,12 @@ val ValidatorSdJwtTest by matrixSuite {
                 randomSource = RandomSource.Default
             )
             val holderKeyMaterial = EphemeralKeyWithoutCert()
-            fun buildCredentialData(): CredentialToBeIssued.VcSd = DummyCredentialDataProvider.getCredential(
+            fun buildCredentialData() = getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 SD_JWT,
-            ).getOrThrow().shouldBeInstanceOf<CredentialToBeIssued.VcSd>()
+            ).getOrThrow()
+                .shouldBeInstanceOf<CredentialToBeIssued.VcSd>()
 
 
             suspend fun issueVcSd(
@@ -114,7 +123,7 @@ val ValidatorSdJwtTest by matrixSuite {
     } - {
 
         test("credentials are valid for holder's key") {
-            val credential = it.issuer.issueCredential(it.buildCredentialData()).getOrThrow()
+            val credential = issueSdJwt(it.issuer, it.holderKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>().apply {
                     // Assert the issuanceOffset in IssuerAgent
                     sdJwtVc.issuedAt.shouldNotBeNull() shouldBeLessThan Clock.System.now().minus(1.minutes)
@@ -129,7 +138,7 @@ val ValidatorSdJwtTest by matrixSuite {
             val validator = ValidatorSdJwt(
                 verifyJwsObject = VerifyJwsObjectFun { KmmResult.failure(exception) }
             )
-            val credential = it.issuer.issueCredential(it.buildCredentialData()).getOrThrow()
+            val credential = issueSdJwt(it.issuer, it.holderKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
             validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey)
@@ -137,7 +146,7 @@ val ValidatorSdJwtTest by matrixSuite {
         }
 
         test("credentials are not valid for some other key") {
-            val credential = it.issuer.issueCredential(it.buildCredentialData()).getOrThrow()
+            val credential = issueSdJwt(it.issuer, it.holderKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
 
             shouldThrowAny {
@@ -155,6 +164,35 @@ val ValidatorSdJwtTest by matrixSuite {
             shouldThrowAny {
                 it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey).getOrThrow()
             }
+        }
+
+        test("presentation of credential without cnf is not valid, even with a key binding JWT naming its own key") {
+            val credential = it.issueVcSd(
+                it.buildCredentialData(),
+                it.holderKeyMaterial,
+                buildCnf = false,
+            ).shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
+            val issued = credential.signedSdJwtVc
+
+            // Without a cnf there is nothing to bind the KB-JWT to, so anyone may mint one with their own key
+            val challenge = uuid4().toString()
+            val audience = "https://verifier.example.com"
+            val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderJwk())
+            val keyBinding = signKeyBinding(
+                JwsContentTypeConstants.KB_JWT,
+                KeyBindingJws(
+                    issuedAt = Clock.System.now(),
+                    audience = audience,
+                    challenge = challenge,
+                    sdHash = Digest.SHA256.digest(issued.hashInput.encodeToByteArray()),
+                ),
+                KeyBindingJws.serializer(),
+            ).getOrThrow()
+            val presented = SdJwtSigned.presented(issued.jws, issued.rawDisclosures.toSet(), keyBinding)
+
+            shouldThrowAny {
+                it.validator.verifyVpSdJwt(presented, challenge, audience, null).getOrThrow()
+            }.message.shouldNotBeNull() shouldContain "cnf"
         }
 
         test("credentials with random subject are valid") {

@@ -6,17 +6,19 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.openid.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.openid.DcApiHolder
 import at.asitplus.wallet.lib.openid.DcApiPreparationState
 import at.asitplus.wallet.lib.openid.Iso180137AnnexCHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.RelyingPartyTrust
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -54,6 +56,12 @@ class OpenId4VpWallet(
     allowedDcApiOriginSchemes: suspend () -> Set<String> = {
         OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES
     },
+    /** How to establish trust in the relying party, to be passed on to [OpenId4VpHolder]. */
+    relyingPartyTrust: Set<RelyingPartyTrust>? = null,
+    /** Set to accept encrypted authorization requests, to be passed on to [OpenId4VpHolder]. */
+    ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+    /** Set to reject plain request objects fetched with POST, to be passed on to [OpenId4VpHolder]. */
+    requireEncryptedRequests: Boolean = false,
 ) {
 
     sealed interface AuthenticationResult
@@ -99,8 +107,10 @@ class OpenId4VpWallet(
             }
         },
         randomSource = randomSource,
-        requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
+        relyingPartyTrust = relyingPartyTrust,
         allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        requireEncryptedRequests = requireEncryptedRequests,
     )
 
     val iso180137AnnexCHolder = Iso180137AnnexCHolder(

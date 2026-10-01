@@ -1,8 +1,12 @@
 package at.asitplus.openid
 
+import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /**
  * Metadata about the credential issuer in
@@ -119,4 +123,63 @@ data class IssuerMetadata(
     @SerialName("preferred_client_status_period")
     @Serializable(with = DurationSecondsIntSerializer::class)
     val preferredClientStatusPeriod: Duration? = null,
-)
+
+    /**
+     * OID4VCI: REQUIRED in signed metadata. String matching the Credential Issuer Identifier, see
+     * [credentialIssuer]. Absent from unsigned metadata.
+     */
+    @SerialName("sub")
+    val subject: String? = null,
+
+    /**
+     * OID4VCI: REQUIRED in signed metadata. Time at which the signed metadata was issued. Absent from unsigned
+     * metadata.
+     */
+    @SerialName("iat")
+    @Serializable(with = InstantLongSerializer::class)
+    val issuedAt: Instant? = null,
+
+    /**
+     * OID4VCI: OPTIONAL in signed metadata. Time at which the signed metadata expires. Absent from unsigned metadata.
+     */
+    @SerialName("exp")
+    @Serializable(with = InstantLongSerializer::class)
+    val expiration: Instant? = null,
+) {
+    @JvmOverloads
+    internal constructor(
+        credentialIssuer: String,
+        credentialEndpointUrl: String,
+        issuer: String? = null,
+        authorizationServers: Set<String>? = null,
+        nonceEndpointUrl: String? = null,
+        deferredCredentialEndpointUrl: String? = null,
+        notificationEndpointUrl: String? = null,
+        credentialResponseEncryption: SupportedAlgorithmsContainer? = null,
+        credentialRequestEncryption: SupportedAlgorithmsContainer? = null,
+        batchCredentialIssuance: BatchCredentialIssuanceMetadata? = null,
+        displayProperties: Set<DisplayProperties>? = null,
+        supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
+        preferredClientStatusPeriodSeconds: Long? = null,
+        subject: String? = null,
+        issuedAtEpochSeconds: Long? = null,
+        expirationEpochSeconds: Long? = null,
+    ) : this(
+        issuer = issuer,
+        credentialIssuer = credentialIssuer,
+        authorizationServers = authorizationServers,
+        credentialEndpointUrl = credentialEndpointUrl,
+        nonceEndpointUrl = nonceEndpointUrl,
+        deferredCredentialEndpointUrl = deferredCredentialEndpointUrl,
+        notificationEndpointUrl = notificationEndpointUrl,
+        credentialResponseEncryption = credentialResponseEncryption,
+        credentialRequestEncryption = credentialRequestEncryption,
+        batchCredentialIssuance = batchCredentialIssuance,
+        displayProperties = displayProperties,
+        supportedCredentialConfigurations = supportedCredentialConfigurations,
+        preferredClientStatusPeriod = preferredClientStatusPeriodSeconds?.seconds,
+        subject = subject,
+        issuedAt = issuedAtEpochSeconds?.let(Instant::fromEpochSeconds),
+        expiration = expirationEpochSeconds?.let(Instant::fromEpochSeconds),
+    )
+}

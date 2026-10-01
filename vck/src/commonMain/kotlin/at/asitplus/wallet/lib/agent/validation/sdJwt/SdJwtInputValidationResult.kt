@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.agent.validation.sdJwt
 
 import at.asitplus.KmmResult
-import at.asitplus.signum.supreme.sign.Verifier as SignumVerifier
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.signum.supreme.sign.Verifier as SignumVerifier
 
 data class SdJwtInputValidationResult(
     val input: SdJwtSigned,
@@ -13,9 +13,6 @@ data class SdJwtInputValidationResult(
     val payloadJsonValidationSummary: KmmResult<SdJwtDecoded>,
     val payload: KmmResult<Verifier.VerifyCredentialResult.SuccessSdJwt>,
 ) {
-    @Deprecated("Use integrityValidationResult.isSuccess instead")
-    val isIntegrityGood: Boolean
-        get() = integrityValidationResult.isSuccess
 
     val isSuccess: Boolean
         get() = listOf(

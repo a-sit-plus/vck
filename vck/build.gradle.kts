@@ -31,6 +31,7 @@ kotlin {
                 api(project(":openid-data-classes"))
                 api(project(":etsi-data-classes"))
                 api(project(":sd-jwt-type-metadata"))
+                api("io.github.z4kn4fein:semver:${VcLibVersions.semver}")
                 commonImplementationAndApiDependencies()
             }
         }
@@ -56,7 +57,8 @@ if ("true" != disableAppleTargets) exportXCFramework(
     static = false,
     project(":dif-data-classes"),
     project(":openid-data-classes"),
-    project(":sd-jwt-type-metadata")
+    project(":sd-jwt-type-metadata"),
+    "io.github.z4kn4fein:semver:${VcLibVersions.semver}"
 )
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/vck/tree/main/")

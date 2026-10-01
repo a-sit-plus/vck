@@ -2,9 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.IdToken
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
@@ -13,25 +11,29 @@ import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.MdocDeviceSignatureVerifier
 import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier
+import at.asitplus.wallet.lib.agent.NonceChallengeVerifier.ChallengeSession
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.jws.DecryptJwe
 import at.asitplus.wallet.lib.jws.DecryptJweFun
+import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.openid.encodeToParameters
+import at.asitplus.wallet.lib.openid.ClientIdScheme.CertificateHash
+import at.asitplus.wallet.lib.openid.ClientIdScheme.CertificateSanDns
+import at.asitplus.wallet.lib.openid.ClientIdScheme.RedirectUri
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
@@ -39,13 +41,10 @@ import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 /**
  * Combines Verifiable Presentations with OAuth 2.0.
- * Implements [OpenID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) (1.0, 2025-07-09)
- * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (D13, 2023-11-28).
+ * Implements [OpenID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html) (1.0, 2025-07-09).
  *
  * This class creates the Authentication Request (see [AuthenticationRequestParameters]),
  * clients need to send it to the holder (see [OpenId4VpHolder]) which will create the Authentication Response,
@@ -58,11 +57,19 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Verifies the holder's response against our identifier from [clientIdScheme]. */
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    /** Advertised in [metadata] so that holders can encrypt responses. */
-    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /** Decrypts encrypted responses from holders. */
-    private val decryptJwe: DecryptJweFun = DecryptJwe(decryptionKeyMaterial),
-    /** Signs authentication requests in [createSignedRequestObject]. */
+    /**
+     * Long-lived key advertised in [metadata] so that holders can encrypt responses, but **only** for client
+     * identifier schemes that do not convey client metadata in the request, i.e. where this key is distributed
+     * out-of-band. This is not conformant to OpenID4VC HAIP, so leave it `null` to have every request carry its own
+     * ephemeral encryption key, see [ephemeralEncryptionKeyService].
+     */
+    private val decryptionKeyMaterial: KeyMaterial? = null,
+    /** Creates one ephemeral encryption key per authentication request, see OpenID4VP 1.0, Section 8.3. */
+    private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
+    @Deprecated("Will be derived from [ephemeralEncryptionKeyService] and [decryptionKeyMaterial]")
+    private val decryptJwe: DecryptJweFun =
+        DecryptJweWithEphemeralKey(ephemeralEncryptionKeyService, decryptionKeyMaterial),
+    /** Signs authentication requests in [OpenId4VpRequestFactory]. */
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
     /** Validates signed responses from holders. */
@@ -71,9 +78,9 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     /** Used to verify session transcripts from mDoc responses. */
     private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
-    /** Leeway for time validity checks. */
-    timeLeewaySeconds: Long = 300L,
-    /** Clock for time validity checks. */
+    @Deprecated("Support for SIOPv2 has been removed")
+    private val timeLeewaySeconds: Long = 300L,
+    @Deprecated("Support for SIOPv2 has been removed")
     private val clock: Clock = Clock.System,
     /** Creates and validates OpenID4VP request nonces. */
     private val nonceService: NonceService = DefaultNonceService(),
@@ -82,7 +89,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     /** Algorithms supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
 ) {
-
     private val nonceAwareVerifier = NonceChallengeVerifier(
         verifierId = clientIdScheme.clientId,
         verifier = verifier,
@@ -90,6 +96,7 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     )
     private val requestFactory = OpenId4VpRequestFactory(
         clientIdScheme = clientIdScheme,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
         decryptionKeyMaterial = decryptionKeyMaterial,
         signAuthnRequest = signAuthnRequest,
         nonceService = nonceService,
@@ -98,49 +105,53 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
     )
     private val vpTokenValidator = VpTokenValidator(
-        nonceAwareVerifier = nonceAwareVerifier,
         mdocDeviceSignatureVerifier = MdocDeviceSignatureVerifier(verifyCoseSignature = verifyCoseSignature),
         createSessionTranscript = UrlSessionTranscriptCalculator(),
         decryptionKeyMaterial = decryptionKeyMaterial
     )
-    private val responseParser = ResponseParser(decryptJwe, verifyJwsObject)
-    private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
 
-    @Deprecated("Moved to upper level", ReplaceWith("CreationOptions", "at.asitplus.wallet.lib.openid.CreationOptions"))
-    typealias CreationOptions = at.asitplus.wallet.lib.openid.CreationOptions
-
-    @Deprecated("Moved to upper level", ReplaceWith("CreatedRequest", "at.asitplus.wallet.lib.openid.CreatedRequest"))
-    typealias CreatedRequest = at.asitplus.wallet.lib.openid.CreatedRequest
+    private val responseParser = ResponseParser(
+        decryptJwe = DecryptJweWithEphemeralKey(ephemeralEncryptionKeyService, decryptionKeyMaterial),
+        verifyJwsObject = verifyJwsObject
+    )
 
     /**
-     * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
+     * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption, i.e. without any key to encrypt
+     * responses to (see [metadataWithEncryption])
      */
     val metadata get() = requestFactory.metadata
 
     /**
      * Creates the [RelyingPartyMetadata], but with parameters set to request encryption of pushed authentication
-     * responses, see [RelyingPartyMetadata.encryptedResponseEncValues].
+     * responses, see [RelyingPartyMetadata.encryptedResponseEncValues], advertising [decryptionKeyMaterial].
+     *
+     * Only useful to publish out-of-band: requests carry a key specific to that request instead.
      */
     val metadataWithEncryption get() = requestFactory.metadataWithEncryption
 
     /**
      * Creates a new authentication request conforming to OpenID4VP.
      */
+    @Suppress("DEPRECATION_ERROR")
     suspend fun createAuthnRequest(
         requestOptions: OpenId4VpRequestOptions,
-        creationOptions: at.asitplus.wallet.lib.openid.CreationOptions,
-    ): KmmResult<at.asitplus.wallet.lib.openid.CreatedRequest> = catching {
+        creationOptions: CreationOptions,
+    ): KmmResult<CreatedRequest> = catching {
         when (creationOptions) {
             is CreationOptions.Query -> {
-                require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
+                require(clientIdScheme !is CertificateHash && clientIdScheme !is CertificateSanDns) {
+                    "Requests using x509_hash or x509_san_dns client schemes must be signed"
+                }
                 URLBuilder(creationOptions.walletUrl).apply {
-                    createPlainAuthnRequest(requestOptions).encodeToParameters()
+                    requestFactory.createPlainAuthnRequest(requestOptions).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
             }
 
             is CreationOptions.RequestByReference -> {
-                require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
+                require(clientIdScheme !is CertificateHash && clientIdScheme !is CertificateSanDns) {
+                    "Requests using x509_hash or x509_san_dns client schemes must be signed"
+                }
                 URLBuilder(creationOptions.walletUrl).apply {
                     JarRequestParameters(
                         clientId = clientIdScheme.clientId,
@@ -150,24 +161,33 @@ class OpenId4VpVerifier @JvmOverloads constructor(
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest {
                     catching {
-                        joseCompliantSerializer.encodeToString(createPlainAuthnRequest(requestOptions, it))
+                        joseCompliantSerializer.encodeToString(
+                            requestFactory.createPlainAuthnRequest(requestOptions, it)
+                        )
                     }
                 }
             }
 
             is CreationOptions.SignedRequestByValue -> {
-                require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
+                require(clientIdScheme !is RedirectUri) {
+                    "Requests using redirect_uri client scheme can't be signed per OpenID4VP 1.0 5.9.3."
+                }
                 URLBuilder(creationOptions.walletUrl).apply {
                     JarRequestParameters(
                         clientId = clientIdScheme.clientId,
-                        request = createSignedRequestObject(requestOptions).getOrThrow().toString(),
+                        request = requestFactory.createSignedRequestObject(
+                            requestOptions,
+                            RequestObjectSigning.Redirect
+                        ).getOrThrow().toString(),
                     ).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
             }
 
             is CreationOptions.SignedRequestByReference -> {
-                require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
+                require(clientIdScheme !is RedirectUri) {
+                    "Requests using redirect_uri client scheme can't be signed per OpenID4VP 1.0 5.9.3."
+                }
                 URLBuilder(creationOptions.walletUrl).apply {
                     JarRequestParameters(
                         clientId = clientIdScheme.clientId,
@@ -177,48 +197,16 @@ class OpenId4VpVerifier @JvmOverloads constructor(
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString()
                     .toCreatedRequest {
-                        catching {
-                            createSignedRequestObject(requestOptions, it).getOrThrow().toString()
-                        }
+                        requestFactory.createRequestObject(requestOptions, RequestObjectSigning.Redirect, it)
                     }
             }
         }
     }
 
-    private fun String.toCreatedRequest() = at.asitplus.wallet.lib.openid.CreatedRequest(this)
+    private fun String.toCreatedRequest() = CreatedRequest(this)
     private fun String.toCreatedRequest(
         loadRequestObject: suspend (RequestObjectParameters?) -> KmmResult<String>,
-    ) = at.asitplus.wallet.lib.openid.CreatedRequest(this, loadRequestObject)
-
-    @Deprecated("Use createAuthnRequest instead with CreationOptions.SignedRequestByReference")
-    suspend fun createAuthnRequestAsSignedRequestObject(
-        requestOptions: OpenId4VpRequestOptions,
-        requestObjectParameters: RequestObjectParameters? = null,
-    ): KmmResult<JwsCompactTyped<AuthenticationRequestParameters>> =
-        createSignedRequestObject(requestOptions, requestObjectParameters)
-
-    internal suspend fun createSignedRequestObject(
-        requestOptions: OpenId4VpRequestOptions,
-        requestObjectParameters: RequestObjectParameters? = null,
-    ): KmmResult<JwsCompactTyped<AuthenticationRequestParameters>> =
-        requestFactory.createSignedRequestObject(requestOptions, RequestObjectSigning.SiopJar, requestObjectParameters)
-
-    @Deprecated("Use createAuthnRequest instead with CreationOptions.SignedRequestByValue")
-    suspend fun createAuthnRequest(
-        requestOptions: OpenId4VpRequestOptions,
-        requestObjectParameters: RequestObjectParameters? = null,
-    ) = createPlainAuthnRequest(requestOptions, requestObjectParameters)
-
-    internal suspend fun createPlainAuthnRequest(
-        requestOptions: OpenId4VpRequestOptions,
-        requestObjectParameters: RequestObjectParameters? = null,
-    ) = requestFactory.createPlainAuthnRequest(requestOptions, requestObjectParameters)
-
-    @Deprecated("Should not be necessary at all, simply call [createAuthnRequest]")
-    suspend fun submitAuthnRequest(
-        authenticationRequestParameters: AuthenticationRequestParameters,
-        externalId: String? = null,
-    ) = requestFactory.storeAuthnRequest(authenticationRequestParameters)
+    ) = CreatedRequest(this, loadRequestObject)
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is either:
@@ -233,26 +221,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         validateAuthnResponse(response).getOrThrow()
     }
 
-    @Suppress("DEPRECATION")
-    @Deprecated("OpenID4VP doesn't support externalId, the state is always available")
-    suspend fun validateAuthnResponse(
-        input: String,
-        externalId: String? = null,
-    ): KmmResult<AuthnResponseResult> = catching {
-        val response = responseParser.parseAuthnResponse(input)
-        validateAuthnResponse(response, externalId).getOrThrow()
-    }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use DCAPI Verifier for that")
-    suspend fun validateAuthnResponse(
-        input: OpenId4VpResponse,
-        externalId: String,
-    ): KmmResult<AuthnResponseResult> = catching {
-        val response = responseParser.parseAuthnResponse(input)
-        validateAuthnResponse(response, externalId).getOrThrow()
-    }
-
     /**
      * Validates an Authentication Response from the Wallet,
      * in case it has been parsed into [ResponseParametersFrom] with [ResponseParser].
@@ -263,92 +231,25 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         Napier.d("validateAuthnResponse: $input")
         val authnRequest = requestFactory.loadAuthnRequest(input)
 
+        // the request has been consumed above, and an authentication response is not retryable,
+        // so end the challenge's lifecycle here, no matter how validating the response turns out
+        val session = nonceAwareVerifier.consumeChallenge(
+            authnRequest.nonce ?: throw IllegalArgumentException("nonce not present in $authnRequest")
+        )
+
         val responseType = authnRequest.responseType?.let { ResponseType(it) }
         require(responseType != null) {
             "No response type was specified in the original authentication request."
         }
-
-        val expectedNonce = authnRequest.nonce
-            ?: throw IllegalArgumentException("nonce not present in $authnRequest")
-        val idTokenValidationResult = if (OpenIdConstants.ID_TOKEN in responseType) {
-            extractValidatedIdToken(input, expectedNonce)
-        } else {
-            null
-        }
-        val vpTokenValidationResult = if (OpenIdConstants.VP_TOKEN in responseType) {
-            validateVpToken(authnRequest, input)
-        } else {
-            null
-        }
-
-        require(listOfNotNull(idTokenValidationResult, vpTokenValidationResult).isNotEmpty()) {
-            "Unsupported response type: $responseType"
+        require(OpenIdConstants.VP_TOKEN in responseType) {
+            "Response type must contain `vp_token`"
         }
 
         AuthnResponseResult(
-            idTokenValidationResult = idTokenValidationResult,
-            vpTokenValidationResult = vpTokenValidationResult,
+            idTokenValidationResult = null,
+            vpTokenValidationResult = validateVpToken(authnRequest, input, session),
             request = authnRequest,
-        ).also {
-            if (it.isFullyValid()) {
-                require(nonceAwareVerifier.verifyAndRemoveNonce(expectedNonce)) {
-                    "nonce not valid: $expectedNonce, not known to us"
-                }
-            }
-        }
-    }
-
-    @Deprecated("OpenID4VP doesn't support externalId, the state is always available")
-    suspend fun validateAuthnResponse(
-        input: ResponseParametersFrom,
-        externalId: String? = null,
-    ): KmmResult<AuthnResponseResult> = validateAuthnResponse(input)
-
-    private fun AuthnResponseResult.isFullyValid(): Boolean =
-        idTokenValidationResult?.isFailure != true &&
-                vpTokenValidationResult?.isFailure != true &&
-                (vpTokenValidationResult?.getOrNull()?.isFullyValid() ?: false)
-
-    private fun VpTokenValidationResult.isFullyValid(): Boolean =
-        presentationResults.all { it.isSuccess } &&
-                (this !is VpTokenValidationResultDCQL || submissionRequirementsValidationResult.isSuccess)
-
-    @Throws(IllegalArgumentException::class, CancellationException::class)
-    private suspend fun extractValidatedIdToken(
-        input: ResponseParametersFrom,
-        expectedNonce: String,
-    ): KmmResult<IdToken> = catching {
-        val idTokenJws = input.parameters.idToken
-            ?: throw IllegalArgumentException("idToken")
-        val jwsSigned = catching { JwsCompactTyped<IdToken>(idTokenJws) }
-            .getOrElse { throw IllegalArgumentException("idToken", it) }
-        verifyJwsObject(jwsSigned.jws).getOrElse {
-            throw IllegalArgumentException("idToken.", it)
-                .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
-        }
-        val idToken = jwsSigned.payload
-        require(idToken.issuer == idToken.subject) {
-            "Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}"
-        }
-        require(idToken.audience == clientIdScheme.clientId) {
-            "audience not valid: ${idToken.audience}"
-        }
-        require(idToken.expiration >= (clock.now() - timeLeeway)) {
-            "expirationDate before now: ${idToken.expiration}"
-        }
-        require(idToken.issuedAt <= (clock.now() + timeLeeway)) {
-            "issuedAt after now: ${idToken.issuedAt}"
-        }
-        require(idToken.nonce == expectedNonce && nonceAwareVerifier.verifyNonce(expectedNonce)) {
-            "nonce not valid: ${idToken.nonce}, expected $expectedNonce"
-        }
-        require(idToken.subjectJwk != null) {
-            "sub_jwk is null"
-        }
-        require(idToken.subject == idToken.subjectJwk!!.jwkThumbprint) {
-            "subject does not equal thumbprint of sub_jwk: ${idToken.subject}"
-        }
-        idToken
+        )
     }
 
     /**
@@ -359,6 +260,7 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private suspend fun validateVpToken(
         authnRequest: AuthenticationRequestParameters,
         responseParameters: ResponseParametersFrom,
+        session: ChallengeSession,
     ): KmmResult<VpTokenValidationResult> = catching {
         require(responseParameters.originalResponseParameters !is ResponseParametersFrom.DcApi) {
             "DCAPI verification is not supported, use DcApiVerifier"
@@ -367,6 +269,7 @@ class OpenId4VpVerifier @JvmOverloads constructor(
             authnRequest = authnRequest,
             responseParameters = responseParameters,
             origin = null,
+            session = session,
         ).getOrThrow()
     }
 }

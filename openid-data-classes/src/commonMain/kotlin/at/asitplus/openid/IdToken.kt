@@ -15,9 +15,6 @@ data class IdToken(
      * OIDC: REQUIRED. Issuer Identifier for the Issuer of the response. The iss value is a case sensitive URL using the
      * https scheme that contains scheme, host, and optionally, port number and path components and no query or fragment
      * components.
-     *
-     * OIDC SIOPv2: REQUIRED. in case of a Self-Issued ID Token, this claim MUST be set to the value of the `sub` claim
-     * in the same ID Token.
      */
     @SerialName("iss")
     val issuer: String,
@@ -54,10 +51,6 @@ data class IdToken(
      * OIDC: REQUIRED. Subject Identifier. A locally unique and never reassigned identifier within the Issuer for the
      * End-User, which is intended to be consumed by the Client, e.g., `24400320`. It MUST NOT exceed 255 ASCII
      * characters in length. The sub value is a case sensitive string.
-     *
-     * OIDC SIOPv2: REQUIRED. Subject identifier value. When Subject Syntax Type is JWK Thumbprint, the value is the
-     * base64url encoded representation of the thumbprint of the key in the `sub_jwk` Claim. When Subject Syntax Type is
-     * Decentralized Identifier, the value is a Decentralized Identifier.
      */
     @SerialName("sub")
     val subject: String,

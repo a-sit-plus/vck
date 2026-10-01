@@ -6,8 +6,8 @@ import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
-import org.bouncycastle.crypto.hpke.HPKE as BcHpke
 import kotlin.random.Random
+import org.bouncycastle.crypto.hpke.HPKE as BcHpke
 
 /**
  * Verifies that signum's HPKE (RFC 9180) implementation is interoperable with Bouncy Castle's,

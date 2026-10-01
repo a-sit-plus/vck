@@ -18,12 +18,6 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.encodeToJsonElement
 
 
-@Deprecated(
-    "Replace with type metadata document",
-    level = DeprecationLevel.ERROR
-)
-object MobileDrivingLicenceScheme
-
 /** `org.iso.18013.5.1.mDL` */
 const val MDL_DOCTYPE: String = "org.iso.18013.5.1.mDL"
 

@@ -1,11 +1,13 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlin.time.Duration
 
 /**
  * This implements [RFC8414](https://datatracker.ietf.org/doc/html/rfc8414)
@@ -34,9 +36,6 @@ data class OAuth2AuthorizationServerMetadata(
      * URL of the authorization server's authorization endpoint
      * `RFC6749`.  This is REQUIRED unless no grant types are supported
      * that use the authorization endpoint.
-     *
-     * OIDC SIOPv2: REQUIRED. URL of the Self-Issued OP used by the RP to perform Authentication of the End-User.
-     * Can be custom URI scheme, or Universal Links/App links.
      */
     @SerialName("authorization_endpoint")
     val authorizationEndpoint: String? = null,
@@ -85,12 +84,17 @@ data class OAuth2AuthorizationServerMetadata(
      * encryption keys are made available, a "use" (public key use)
      * parameter value is REQUIRED for all keys in the referenced JWK Set
      * to indicate each key's intended usage.
-     *
-     * OIDC SIOPv2: MUST NOT be present in Self-Issued OP Metadata. If it is, the RP MUST ignore it and use the `sub`
-     * Claim in the ID Token to obtain signing keys to validate the signatures from the Self-Issued OpenID Provider.
      */
     @SerialName("jwks_uri")
     val jsonWebKeySetUrl: String? = null,
+
+    /**
+     * OpenID4VP: A JSON Web Key Set, as defined in RFC7591, that contains one or more public keys, such as those used
+     * by the Wallet as an input to a key agreement that may be used for encryption of the Authorization Request, see
+     * [OpenID4VP 1.0, 5.10](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-request-uri-method-post).
+     */
+    @SerialName("jwks")
+    val jsonWebKeySet: JsonWebKeySet? = null,
 
     /**
      * OPTIONAL.  URL of the authorization server's OAuth 2.0 Dynamic
@@ -104,9 +108,6 @@ data class OAuth2AuthorizationServerMetadata(
      * `RFC6749` "scope" values that this authorization server supports.
      * Servers MAY choose not to advertise some supported scope values
      * even when this parameter is used.
-     *
-     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported scopes.
-     * MUST support the `openid` scope value.
      */
     @SerialName("scopes_supported")
     val scopesSupported: Set<String>? = null,
@@ -118,7 +119,7 @@ data class OAuth2AuthorizationServerMetadata(
      * "response_types" parameter defined by "OAuth 2.0 Dynamic Client
      * Registration Protocol" `RFC7591`.
      *
-     * OIDC SIOPv2: MUST be `id_token`.
+     * OID4VP: Static configuration value bound to `openid4vp://` is `vp_token`
      */
     @SerialName("response_types_supported")
     val responseTypesSupported: Set<String>? = null,
@@ -186,12 +187,30 @@ data class OAuth2AuthorizationServerMetadata(
     val idTokenSigningAlgorithmsSupportedStrings: Set<String>? = null,
 
     /**
-     * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
-     * OP for Request Objects, which are described in Section 6.1 of OpenID.Core.
-     * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
+     * OIDC Discovery: OPTIONAL. JSON array containing a list of the JWS signing algorithms (alg values) supported by
+     * the OP for Request Objects, which are described in
+     * [Section 6.1 of OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html#RequestObject).
+     * These algorithms are used both when the Request Object is passed by value (using the `request` parameter) and
+     * when it is passed by reference (using the `request_uri` parameter). Servers SHOULD support `none` and `RS256`.
      */
     @SerialName("request_object_signing_alg_values_supported")
     val requestObjectSigningAlgorithmsSupportedStrings: Set<String>? = null,
+
+    /**
+     * OIDC Discovery: OPTIONAL. JSON array containing a list of the JWE encryption algorithms (`alg` values) supported
+     * by the OP for Request Objects. These algorithms are used both when the Request Object is passed by value and
+     * when it is passed by reference.
+     */
+    @SerialName("request_object_encryption_alg_values_supported")
+    val requestObjectEncryptionAlgValuesSupportedStrings: Set<String>? = null,
+
+    /**
+     * OIDC Discovery: OPTIONAL. JSON array containing a list of the JWE encryption algorithms (`enc` values) supported
+     * by the OP for Request Objects. These algorithms are used both when the Request Object is passed by value and
+     * when it is passed by reference.
+     */
+    @SerialName("request_object_encryption_enc_values_supported")
+    val requestObjectEncryptionEncValuesSupportedStrings: Set<String>? = null,
 
     /**
      * RFC 9101: Indicates where authorization request needs to be protected as Request Object and provided through
@@ -202,30 +221,13 @@ data class OAuth2AuthorizationServerMetadata(
     @SerialName("require_signed_request_object")
     val requireSignedRequestObject: Boolean? = null,
 
-    /**
-     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
-     * supported Subject Syntax Types.
-     * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
-     */
     @SerialName("subject_syntax_types_supported")
-    // TODO Verify usage of "jwk", maybe remove did
+    @Deprecated("Support for SIOPv2 has been removed")
     val subjectSyntaxTypesSupported: Set<String>? = null,
 
-    /**
-     * OIDC SIOPv2: OPTIONAL. A JSON array of strings containing the list of ID Token types supported by the OP,
-     * the default value is `attester_signed_id_token` (the id token is issued by the party operating the OP, i.e. this
-     * is the classical id token as defined in OpenID.Core), may also include `subject_signed_id_token` (Self-Issued
-     * ID Token, i.e. the id token is signed with key material under the end-user's control).
-     */
+    @Suppress("DEPRECATION") @Deprecated("Support for SIOPv2 has been removed")
     @SerialName("id_token_types_supported")
     val idTokenTypesSupported: Set<IdTokenType>? = null,
-
-    /**
-     * OID4VP: OPTIONAL. Boolean value specifying whether the Wallet supports the transfer of `presentation_definition`
-     * by reference, with true indicating support. If omitted, the default value is true.
-     */
-    @SerialName("presentation_definition_uri_supported")
-    val presentationDefinitionUriSupported: Boolean = true,
 
     /**
      * OID4VP: REQUIRED. An object containing a list of key value pairs, where the key is a string identifying a
@@ -382,6 +384,14 @@ data class OAuth2AuthorizationServerMetadata(
     val codeChallengeMethodsSupported: Set<String>? = null,
 
     /**
+     * URL of the authorization server's challenge endpoint which is used to obtain a fresh challenge for usage in
+     * client authentication methods such as client attestation. See
+     * [OAuth2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-oauth-authorization-server-)
+     */
+    @SerialName("challenge_endpoint")
+    val challengeEndpoint: String? = null,
+
+    /**
      * The Authorization Server SHOULD communicate supported algorithms for client attestations by using
      * [clientAttestationSigningAlgValuesSupportedStrings] and [clientAttestationPopSigningAlgValuesSupportedStrings]
      * within its published metadata. This enables the client to validate that its client attestation is understood by
@@ -391,7 +401,7 @@ data class OAuth2AuthorizationServerMetadata(
      * [clientAttestationPopSigningAlgValuesSupportedStrings] in its published metadata if the
      * [tokenEndPointAuthMethodsSupported] includes `attest_jwt_client_auth`.
      * See
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#name-authorization-server-metada)
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-authorization-server-and-re)
      */
     @SerialName("client_attestation_pop_signing_alg_values_supported")
     val clientAttestationPopSigningAlgValuesSupportedStrings: Set<String>? = null,
@@ -406,15 +416,24 @@ data class OAuth2AuthorizationServerMetadata(
      * [clientAttestationPopSigningAlgValuesSupportedStrings] in its published metadata if the
      * [tokenEndPointAuthMethodsSupported] includes `attest_jwt_client_auth`.
      * See
-     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#name-authorization-server-metada)
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-authorization-server-and-re)
      */
     @SerialName("client_attestation_signing_alg_values_supported")
     val clientAttestationSigningAlgValuesSupportedStrings: Set<String>? = null,
 
-    @SerialName("preferred_client_status_period")
-    @Serializable(with = DurationSecondsIntSerializer::class)
-    @Deprecated("Has been moved to [IssuerMetadata]")
-    val preferredClientStatusPeriod: Duration? = null,
+    /**
+     * OAuth2.0 Attestation-Based Client Authentication registers the following Proof of Possession methods:
+     * * `attestation_pop_jwt`: The Proof of Possession is a dedicated Client Attestation PoP JWT as defined in
+     * Section 5.1 ("normal mode").
+     * * `dpop_combined`: The Proof of Possession is a DPoP proof serving as the combined Proof of Possession as
+     * defined in Section 5.2 ("DPoP combined mode").
+     * * `none`: No Client Attestation is required. A server includes this value to signal that the Client MAY omit
+     * the Client Attestation.
+     * See
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-client-attestation-as-an-ad)
+     */
+    @SerialName("client_attestation_pop_methods_supported")
+    val clientAttestationPopMethodsSupported: Set<OpenIdConstants.ClientAttestationPopMethod>? = null,
 ) {
 
     /**
@@ -427,13 +446,33 @@ data class OAuth2AuthorizationServerMetadata(
         ?.mapNotNull { it.toJwsAlgorithm() }?.toSet()
 
     /**
-     * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
-     * OP for Request Objects, which are described in Section 6.1 of OpenID.Core.
-     * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
+     * OIDC Discovery: OPTIONAL. JSON array containing a list of the JWS signing algorithms (alg values) supported by
+     * the OP for Request Objects, which are described in
+     * [Section 6.1 of OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html#RequestObject).
+     * These algorithms are used both when the Request Object is passed by value (using the `request` parameter) and
+     * when it is passed by reference (using the `request_uri` parameter). Servers SHOULD support `none` and `RS256`.
      */
     @Transient
     val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm>? = requestObjectSigningAlgorithmsSupportedStrings
         ?.mapNotNull { it.toJwsAlgorithm() }?.toSet()
+
+    /**
+     * OIDC Discovery: OPTIONAL. JSON array containing a list of the JWE encryption algorithms (`alg` values) supported
+     * by the OP for Request Objects.
+     */
+    @Transient
+    val requestObjectEncryptionAlgValuesSupported: Set<JweAlgorithm>? =
+        requestObjectEncryptionAlgValuesSupportedStrings
+            ?.mapNotNull { s -> JweAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
+
+    /**
+     * OIDC Discovery: OPTIONAL. JSON array containing a list of the JWE encryption algorithms (`enc` values) supported
+     * by the OP for Request Objects.
+     */
+    @Transient
+    val requestObjectEncryptionEncValuesSupported: Set<JweEncryption>? =
+        requestObjectEncryptionEncValuesSupportedStrings
+            ?.mapNotNull { s -> JweEncryption.entries.firstOrNull { it.identifier == s } }?.toSet()
 
     /**
      * RFC 9449: A JSON array containing a list of the JWS alg values (from the `IANA.JOSE.ALGS` registry) supported

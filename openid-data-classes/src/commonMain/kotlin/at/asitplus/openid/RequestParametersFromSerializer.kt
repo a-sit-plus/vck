@@ -1,16 +1,17 @@
 package at.asitplus.openid
 
 import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
+import at.asitplus.openid.RequestParametersFrom.SerialNames.DECRYPTED_FROM
 import at.asitplus.openid.RequestParametersFrom.SerialNames.JSON_STRING
 import at.asitplus.openid.RequestParametersFrom.SerialNames.JWS
 import at.asitplus.openid.RequestParametersFrom.SerialNames.PARAMETERS
 import at.asitplus.openid.RequestParametersFrom.SerialNames.PARENT
 import at.asitplus.openid.RequestParametersFrom.SerialNames.URL
-import at.asitplus.openid.RequestParametersFrom.SerialNames.VERIFIED
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import at.asitplus.signum.indispensable.josef.JWS
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsFlattened
+import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import io.ktor.http.*
@@ -30,8 +31,7 @@ import kotlinx.serialization.SerializationException
  * request metadata is represented directly on the surrogate, matching
  * [RequestParametersFrom.DcApiRequest]. Plain JSON, JWS, and URI requests are
  * selected from their respective fields.
- * Missing [RequestParametersFrom.RequestParametersSigned.verified] values
- * default to `false`; [JwsFlattened] is recognized but not implemented.
+ * [JwsFlattened] is recognized but not implemented.
  */
 class RequestParametersFromSerializer<T : RequestParameters>(
     parameterSerializer: KSerializer<T>,
@@ -55,8 +55,6 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
     @Serializable(UrlSerializer::class)
     @SerialName(PARENT)
     val parent: Url? = null,
-    @SerialName(VERIFIED)
-    val verified: Boolean? = null,
     @SerialName(PROTOCOL)
     val protocol: ExchangeProtocolIdentifier? = null,
     @SerialName(CREDENTIAL_IDS)
@@ -65,6 +63,8 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
     val callingPackageName: String? = null,
     @SerialName(CALLING_ORIGIN)
     val callingOrigin: String? = null,
+    @SerialName(DECRYPTED_FROM)
+    val decryptedFrom: JweHeader? = null,
 ) {
     constructor(value: RequestParametersFrom<T>) : this(
         parameters = value.parameters,
@@ -85,7 +85,6 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
             is RequestParametersFrom.Json -> value.parent
             else -> null
         },
-        verified = (value as? RequestParametersFrom.RequestParametersSigned<*>)?.verified,
         protocol = when (value) {
             is RequestParametersFrom.OpenId4VpDcApiMultiSigned -> ExchangeProtocolIdentifier.OpenId4VpV1Multisigned
             is RequestParametersFrom.OpenId4VpDcApiSigned -> ExchangeProtocolIdentifier.OpenId4VpV1Signed
@@ -96,13 +95,13 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
         credentialIds = (value as? RequestParametersFrom.DcApiRequest)?.credentialIds,
         callingPackageName = (value as? RequestParametersFrom.DcApiRequest)?.callingPackageName,
         callingOrigin = (value as? RequestParametersFrom.DcApiRequest)?.callingOrigin,
+        decryptedFrom = value.decryptedFrom,
     )
 
     fun toRequestParametersFrom(): RequestParametersFrom<T> = when {
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Multisigned ->
             RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped(requireJwsGeneral(), requireAuthenticationRequestParameters()),
-                verified = verified ?: false,
                 credentialIds = requireCredentialIds(),
                 callingPackageName = requireCallingPackageName(),
                 callingOrigin = requireCallingOrigin(),
@@ -111,7 +110,6 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Signed ->
             RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = JwsTyped(requireJwsCompact(), requireAuthenticationRequestParameters()),
-                verified = verified ?: false,
                 credentialIds = requireCredentialIds(),
                 callingPackageName = requireCallingPackageName(),
                 callingOrigin = requireCallingOrigin(),
@@ -142,14 +140,15 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
                 jsonString = jsonString,
                 parameters = parameters,
                 parent = parent,
+                decryptedFrom = decryptedFrom,
             )
 
         jws != null ->
             RequestParametersFrom.Jws(
                 jws = jws,
                 parameters = parameters,
-                verified = verified ?: false,
                 parent = parent,
+                decryptedFrom = decryptedFrom,
             )
 
         url != null ->

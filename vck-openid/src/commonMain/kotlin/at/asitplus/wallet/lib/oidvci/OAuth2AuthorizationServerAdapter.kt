@@ -5,6 +5,7 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
@@ -45,7 +46,7 @@ interface OAuth2AuthorizationServerAdapter {
     suspend fun validateAccessToken(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
-    ): KmmResult<Boolean>
+    ): KmmResult<ValidatedAccessToken>
 
     /** If this is an internal AS, provide a fresh DPoP nonce for clients. */
     suspend fun getDpopNonce(): String?
@@ -61,10 +62,4 @@ data class TokenInfo(
     val token: String,
     val authorizationDetails: Set<AuthorizationDetails>? = null,
     val scope: String? = null,
-) {
-    @Transient
-    val validCredentialIdentifiers = authorizationDetails
-        ?.filterIsInstance<OpenIdAuthorizationDetails>()
-        ?.flatMap { it.credentialIdentifiers ?: setOf() }
-        ?: setOf()
-}
+)

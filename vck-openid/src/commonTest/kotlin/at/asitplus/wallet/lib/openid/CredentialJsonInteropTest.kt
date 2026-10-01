@@ -14,6 +14,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
+import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -36,15 +39,7 @@ val CredentialJsonInteropTest by matrixSuite {
         }
     } - {
         test("Plain jwt credential path resolving") {
-            it.holderAgent.storeCredential(
-                it.issuerAgent.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        it.holderKeyMaterial.publicKey,
-                        AtomicAttribute2023,
-                        PLAIN_JWT
-                    ).getOrThrow(),
-                ).getOrThrow().toStoreCredentialInput()
-            )
+            issueAndStorePlainJwt(it.holderAgent, it.holderKeyMaterial, it.issuerAgent)
 
             val credential =
                 CredentialToJsonConverter.toJsonElement(it.subjectCredentialStore.getCredentials().getOrThrow()[0])
@@ -58,15 +53,7 @@ val CredentialJsonInteropTest by matrixSuite {
         }
 
         test("SD jwt credential path resolving") {
-            it.holderAgent.storeCredential(
-                it.issuerAgent.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        it.holderKeyMaterial.publicKey,
-                        AtomicAttribute2023,
-                        SD_JWT,
-                    ).getOrThrow(),
-                ).getOrThrow().toStoreCredentialInput()
-            )
+            issueAndStoreSdJwt(it.holderAgent, it.holderKeyMaterial, it.issuerAgent)
 
             val credential =
                 CredentialToJsonConverter.toJsonElement(it.subjectCredentialStore.getCredentials().getOrThrow()[0])
@@ -76,15 +63,7 @@ val CredentialJsonInteropTest by matrixSuite {
         }
 
         test("ISO credential path resolving") {
-            it.holderAgent.storeCredential(
-                it.issuerAgent.issueCredential(
-                    DummyCredentialDataProvider.getCredential(
-                        it.holderKeyMaterial.publicKey,
-                        AtomicAttribute2023,
-                        ISO_MDOC,
-                    ).getOrThrow()
-                ).getOrThrow().toStoreCredentialInput()
-            )
+            issueAndStoreIsoMdoc(it.holderAgent, it.holderKeyMaterial, it.issuerAgent)
 
             val credential =
                 CredentialToJsonConverter.toJsonElement(it.subjectCredentialStore.getCredentials().getOrThrow()[0])

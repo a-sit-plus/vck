@@ -58,11 +58,13 @@ class CredentialAuthorizationServiceStrategy @JvmOverloads constructor(
     ): Boolean = scope.trim().split(" ")
         .all { supportedCredentialSchemes.filter { it.key in configurationIds }.map { it.value.scope }.contains(it) }
 
-    override fun filterScope(scope: String): String = scope.trim().split(" ")
+    /** Returns `null`, not an empty string, if no requested scope is supported, so callers can reject the request. */
+    override fun filterScope(scope: String): String? = scope.trim().split(" ")
         .mapNotNull { scope ->
             if (supportedCredentialSchemes.values.find { it.scope == scope } != null) scope
             else null
         }.joinToString(" ")
+        .takeIf { it.isNotBlank() }
 
     @Throws(InvalidAuthorizationDetails::class)
     override fun validateAuthorizationDetails(

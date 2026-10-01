@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.AttestationChallengeResponse
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfo
@@ -12,8 +13,6 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
@@ -30,7 +29,8 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
-import at.asitplus.wallet.lib.oauth2.RequestInfo
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
+import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationChallenge
 import at.asitplus.wallet.lib.oauth2.ResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer
@@ -53,29 +53,24 @@ import kotlin.time.Duration.Companion.minutes
 
 object TestUtils {
 
-    fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData = respond(
+    /**
+     * @param dpopNonce supply a fresh DPoP nonce alongside an unrelated error, i.e. for an AS that mandates a nonce
+     * (RFC 9449 8.) on an endpoint that may reject the request for another reason first
+     */
+    fun MockRequestHandleScope.respondOAuth2Error(
+        throwable: Throwable,
+        dpopNonce: String? = null,
+    ): HttpResponseData = respond(
         joseCompliantSerializer.encodeToString(throwable.toOAuth2Error(null)),
         headers = headers {
             append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            (throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce
+            ((throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce ?: dpopNonce)
                 ?.let { append(HttpHeaders.DPoPNonce, it) }
+            (throwable as? OAuth2Exception.UseAttestationChallenge)?.attestationChallenge
+                ?.let { append(HttpHeaders.OAuthClientAttestationChallenge, it) }
         },
         status = HttpStatusCode.BadRequest
     ).also { Napier.w("Server error: ${throwable.message}", throwable) }
-
-    fun HttpRequestData.toRequestInfo(): RequestInfo = RequestInfo(
-        url = url.toString(),
-        method = method,
-        dpop = headers["DPoP"]
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { JwsCompactTyped<JsonWebToken>(it) },
-        clientAttestation = headers["OAuth-Client-Attestation"]
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { JwsCompactTyped<JsonWebToken>(it) },
-        clientAttestationPop = headers["OAuth-Client-Attestation-PoP"]
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { JwsCompactTyped<JsonWebToken>(it) }
-    )
 
     fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
 
@@ -151,6 +146,13 @@ object TestUtils {
 
     fun MockRequestHandleScope.respond(
         result: PushedAuthenticationResponseParameters
+    ): HttpResponseData = respond(
+        joseCompliantSerializer.encodeToString(result),
+        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+    )
+
+    fun MockRequestHandleScope.respond(
+        result: AttestationChallengeResponse?
     ): HttpResponseData = respond(
         joseCompliantSerializer.encodeToString(result),
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())

@@ -19,8 +19,14 @@ data class DCQLIsoMdocClaimsQuery(
     override val path: DCQLClaimsPathPointer,
 
     /**
-     * OID4VP draft 28: OPTIONAL. A boolean that is equivalent to IntentToRetain variable defined in
-     * Section 8.3.2.1.2.1 of ISO 18013-5.
+     * OPTIONAL. A boolean that is equivalent to IntentToRetain variable defined in
+     * Section 8.3.2.1.2.1 of ISO 18013-5:
+     *
+     * For each requested data element, this variable indicates whether the mdoc verifier
+     * intends to retain the received data element. The mdoc verifier shall not retain any data, including
+     * digests and signatures, or derived data received from the mdoc, except for data elements for which the
+     * IntentToRetain flag was set to true in the request. To retain is defined as “to store for a period longer
+     * than necessary to conduct the transaction in realtime”.
      * */
     @SerialName(SerialNames.INTENT_TO_RETAIN)
     val intentToRetain: Boolean? = null,
