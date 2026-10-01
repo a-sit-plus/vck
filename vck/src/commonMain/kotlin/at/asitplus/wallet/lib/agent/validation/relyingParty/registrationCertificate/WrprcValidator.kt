@@ -137,7 +137,13 @@ class WrprcValidator(
         val statusList = certificate.payload.status.statusList.let {
             StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
         }
-        val tokenStatus = statusList.loadTokenStatus(tokenStatusResolver)
+        // The status list is at a location the certificate names, so it is only fetched for a certificate that is
+        // known to be issued by a trusted registrar: anyone could otherwise make the wallet contact any location
+        val tokenStatus = if (validChain && validSignature) {
+            statusList.loadTokenStatus(tokenStatusResolver)
+        } else {
+            KmmResult.failure(IllegalStateException("Status not obtained, as the registration certificate is not trusted"))
+        }
         val validLinkage = validateWrpIdentifierLinkage(identifierResult, certificate.payload)
 
         WrpRegistrationCertificateValidation(
@@ -170,7 +176,13 @@ class WrprcValidator(
         val statusList = jwsTyped.payload.status.statusList.let {
             StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
         }
-        val tokenStatus = statusList.loadTokenStatus(tokenStatusResolver)
+        // The status list is at a location the certificate names, so it is only fetched for a certificate that is
+        // known to be issued by a trusted registrar: anyone could otherwise make the wallet contact any location
+        val tokenStatus = if (validChain && validSignature) {
+            statusList.loadTokenStatus(tokenStatusResolver)
+        } else {
+            KmmResult.failure(IllegalStateException("Status not obtained, as the registration certificate is not trusted"))
+        }
 
         WrpRegistrationCertificateValidation(
             validHeader = validHeader,
