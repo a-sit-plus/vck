@@ -79,10 +79,11 @@ object WrpAuthenticationRequestValidator {
         sessionTranscript: SessionTranscript
     ): KmmResult<WrpRequestData> = catching {
         val deviceRequest = request.parameters.isoMdocRequest.deviceRequest
-        val accessCertificateChain = ReaderAuthenticationVerifier()(deviceRequest, sessionTranscript).getOrThrow()
+        // Checked before reader authentication, so that a missing WRPRC is reported as such regardless of the WRPAC
         if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
             throw MissingRegistrationCertificateException("No DocRequest contains a registration certificate")
         }
+        val accessCertificateChain = ReaderAuthenticationVerifier()(deviceRequest, sessionTranscript).getOrThrow()
         val registrationCertificate: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>> =
             deviceRequest.docRequests.map { docRequest ->
                 val euWrprcBytes = docRequest.itemsRequest.value.requestInfo?.euWrprc

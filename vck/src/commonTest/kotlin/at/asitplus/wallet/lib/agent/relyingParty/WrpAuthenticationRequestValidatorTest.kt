@@ -132,6 +132,20 @@ val WrpAuthenticationRequestValidatorTest by matrixSuite {
             .shouldBeInstanceOf<MissingRegistrationCertificateException>()
     }
 
+    "ISO request without any WRPRC fails as missing, even without reader authentication" {
+        val (isoRequest, transcript) = isoRequest(mdocDocRequest())
+        val unauthenticated = isoRequest.copy(
+            parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(
+                isoRequest.parameters.isoMdocRequest.copy(
+                    deviceRequest = isoRequest.parameters.isoMdocRequest.deviceRequest.copy(readerAuthAll = null)
+                )
+            )
+        )
+
+        WrpAuthenticationRequestValidator(unauthenticated, transcript).exceptionOrNull()
+            .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+    }
+
     "ISO request with an unparseable WRPRC fails with the parsing error as cause" {
         val (isoRequest, transcript) = isoRequest(mdocDocRequest().withEuWrprc(byteArrayOf(1, 2, 3)))
 
