@@ -1,8 +1,10 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
-
-tbd
+- Trusted relying parties:
+    - `WrprcValidator` no longer drops the cause when a registration certificate can not be validated, e.g. for a missing or unparseable certificate chain: `WrprcValidationResult.certificateValidationResults` holds a `KmmResult` for each certificate. Deprecate `WrprcValidationResult.certificateValidation`, which maps such certificates to `null`
+    - `WrprcValidator` validates each credential request on its own, so a request that can not be validated (e.g. a DCQL claims path with a `null` segment) no longer fails the whole validation: `WrprcValidationResult.requestDataValidationResults` holds a `KmmResult` for each request. Deprecate `WrprcValidationResult.requestDataValidation`, which omits such requests, `WrprcValidator.validateRequest()` in favor of `validateCredentialRequests()`, and the `WrprcValidationResult` constructor taking the old types
+    - `WrpAuthenticationRequestValidator` keeps the parsing error of the WRPRC as the cause when a request contains no parseable WRPRC
 
 Release 8.0.0:
 

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
+import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpCredential
@@ -132,6 +133,9 @@ object WrprcRequestValidator {
 
 typealias RequestCredentialAttributesValidity = List<Pair<SingleClaimReference, Boolean>>
 typealias RequestDataValidation = List<Pair<WrpCredentialRequest, RequestDataValidity>>
+
+/** Validity of each credential request, a failure if the request could not be validated against the WRPRC. */
+typealias RequestDataValidationResults = List<Pair<WrpCredentialRequest, KmmResult<RequestDataValidity>>>
 
 @Serializable
 data class RequestDataValidity(

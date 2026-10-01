@@ -28,7 +28,9 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import io.github.z4kn4fein.semver.Version
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
@@ -61,6 +63,41 @@ val WrpAuthenticationRequestValidatorTest by matrixSuite {
             .payload shouldBe wrprcPayload
         requests.single().shouldBeInstanceOf<WrpCredentialRequest.WrpDcqlCredentialQuery>()
             .query shouldBe dcql.credentials.single()
+    }
+
+    "signed request with an unparseable WRPRC fails with the parsing error as cause" {
+        val fixture = buildWrpFixture()
+        val parameters = AuthenticationRequestParameters(
+            clientId = fixture.clientId,
+            verifierInfo = nonEmptyListOf(
+                VerifierInfo("other-format", "ignored"),
+                VerifierInfo(REGISTRATION_CERT_FORMAT, "not-a-jws"),
+            ),
+            dcqlQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery,
+        )
+
+        val failure = WrpAuthenticationRequestValidator(fixture.signedRequest(parameters)).exceptionOrNull()
+
+        failure.shouldNotBeNull().message.shouldContain("0 of 1 could be parsed")
+        failure.cause.shouldNotBeNull()
+    }
+
+    "signed request with one valid and one unparseable WRPRC uses the valid one" {
+        val fixture = buildWrpFixture()
+        val wrprcPayload = buildWrpPayload(fixture.wrpIdentifier)
+        val wrprcJws = signWrprc(fixture.wrprcSigningKeyMaterial, wrprcPayload)
+        val parameters = AuthenticationRequestParameters(
+            clientId = fixture.clientId,
+            verifierInfo = nonEmptyListOf(
+                VerifierInfo(REGISTRATION_CERT_FORMAT, "not-a-jws"),
+                VerifierInfo(REGISTRATION_CERT_FORMAT, wrprcJws),
+            ),
+            dcqlQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery,
+        )
+
+        val data = WrpAuthenticationRequestValidator(fixture.signedRequest(parameters)).getOrThrow()
+
+        data.registrationCertificate.keys.single().payload shouldBe wrprcPayload
     }
 
     "ISO request accepts only a WRPAC that signed its document request" {
@@ -106,3 +143,10 @@ val WrpAuthenticationRequestValidatorTest by matrixSuite {
         WrpAuthenticationRequestValidator(isoRequest).isFailure shouldBe true
     }
 }
+
+private suspend fun WrpFixture.signedRequest(parameters: AuthenticationRequestParameters) =
+    SignJwt<AuthenticationRequestParameters>(wrprcSigningKeyMaterial, JwsHeaderCertOrJwk())(
+        type = "oauth-authz-req+jwt",
+        payload = parameters,
+        serializer = AuthenticationRequestParameters.serializer(),
+    ).getOrThrow().let { RequestParametersFrom.Jws(jws = it.jws, parameters = parameters) }

@@ -55,29 +55,44 @@ class WrprcValidator(
         require(validationData.registrationCertificate.isNotEmpty()) {
             "No registration certificates to verify"
         }
-        val validationResult = validationData.registrationCertificate.mapNotNull { (certificate, _) ->
-            certificate to catchingUnwrapped {
+        val validationResult = validationData.registrationCertificate.mapValues { (certificate, _) ->
+            catching {
                 validateWrpRegistrationCertificate(
                     certificate = certificate,
                     certificateTrustAnchors = certificateTrustAnchors,
                     tokenStatusResolver = tokenStatusResolver,
                     identifierResult = identifierResult
                 )
-            }.getOrNull()
-        }.toMap()
+            }.onFailure { Napier.w("Unable to validate registration certificate", it) }
+        }
 
-        val requestDataValidity = validationData.registrationCertificate.mapNotNull { (certificate, request) ->
-            validateRequest(certificate, request).toList()
-        }.flatten()
+        val requestDataValidity = validationData.registrationCertificate.flatMap { (certificate, request) ->
+            validateCredentialRequests(certificate, request).toList()
+        }
 
-
-        WrprcValidationResult(validationResult, requestDataValidity)
+        WrprcValidationResult(
+            certificateValidationResults = validationResult,
+            requestDataValidationResults = requestDataValidity,
+        )
     }
 
+    @Deprecated(
+        "Use validateCredentialRequests, which does not fail for all requests if one can not be validated",
+        ReplaceWith("validateCredentialRequests(registrationCert, requests)")
+    )
     suspend fun validateRequest(
         registrationCert: WrpRegistrationCertificate, requests: List<WrpCredentialRequest>
-    ) = requests.associate {
-        WrprcRequestValidator(request = it, payload = registrationCert.payload).getOrThrow()
+    ) = validateCredentialRequests(registrationCert, requests).mapValues { it.value.getOrThrow() }
+
+    /**
+     * Validates each of [requests] against [registrationCert], a failure marks that request as invalid.
+     */
+    suspend fun validateCredentialRequests(
+        registrationCert: WrpRegistrationCertificate, requests: List<WrpCredentialRequest>
+    ): Map<WrpCredentialRequest, KmmResult<RequestDataValidity>> = requests.associateWith { request ->
+        WrprcRequestValidator(request = request, payload = registrationCert.payload)
+            .map { (_, validity) -> validity }
+            .onFailure { Napier.w("Unable to validate $request", it) }
     }
 
     private suspend fun validateWrpRegistrationCertificate(

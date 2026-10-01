@@ -35,8 +35,7 @@ object WrpAuthenticationRequestValidator {
                     ?: throw IllegalArgumentException("Unable to cast request as JwsTyped<JwsCompact, AuthenticationRequestParameters>")
                 val clientId = requireNotNull(request.payload.clientId) { "No client_id in request" }
                 val verifierInfo = requireNotNull(request.payload.verifierInfo) { "No verifier_info in request" }
-                val jwsTyped = verifierInfo.mapNotNull { it.parseJws() }.singleOrNull()
-                    ?: throw IllegalArgumentException("Request must contain exactly one WRPRC")
+                val jwsTyped = verifierInfo.parseSingleRegistrationCertificate()
                 val registrationCertificate = WrpJwtRegistrationCertificate(jwsTyped = jwsTyped)
                 val dcqlQuery = requireNotNull(request.payload.dcqlQuery) { "No DCQL query in request" }
                 val wrpCredentialRequest = dcqlQuery.credentials.map { WrpDcqlCredentialQuery(it) }
@@ -53,8 +52,7 @@ object WrpAuthenticationRequestValidator {
                 val dcqlQuery = requireNotNull(request.parameters.dcqlQuery) { "No DCQL query in request" }
                 requireNotNull(request.parameters.clientId) { "No client_id in request" }
                 val verifierInfo = requireNotNull(request.parameters.verifierInfo) { "No verifier_info in request" }
-                val jwsTyped = verifierInfo.mapNotNull { it.parseJws() }.singleOrNull()
-                    ?: throw IllegalArgumentException("Request must contain exactly one WRPRC")
+                val jwsTyped = verifierInfo.parseSingleRegistrationCertificate()
                 val registrationCertificate = WrpJwtRegistrationCertificate(jwsTyped = jwsTyped)
                 val wrpCredentialRequest = dcqlQuery.credentials.map { WrpDcqlCredentialQuery(it) }
                 val accessCertificate = WrpAccessCertificate(request.jwsTyped.jws.jwsHeader.certificateChain)
@@ -96,6 +94,20 @@ object WrpAuthenticationRequestValidator {
             accessCertificate = WrpAccessCertificate(accessCertificateChain),
             registrationCertificate = registrationCertificate
         )
+    }
+
+    /**
+     * Parses the only registration certificate in [this], keeping the cause in the exception if it can not be parsed.
+     */
+    private fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsCompactTyped<WrpPayload> {
+        val results = filter { it.format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true) }
+            .map { catchingUnwrapped { JwsCompactTyped<WrpPayload>(it.data) } }
+        return results.mapNotNull { it.getOrNull() }.singleOrNull()
+            ?: throw IllegalArgumentException(
+                "Request must contain exactly one WRPRC, " +
+                        "${results.count { it.isSuccess }} of ${results.size} could be parsed",
+                results.firstNotNullOfOrNull { it.exceptionOrNull() }
+            )
     }
 
     fun VerifierInfo.parseJws() = catchingUnwrapped {
