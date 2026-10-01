@@ -171,7 +171,7 @@ object PresentationExchangeInputEvaluator {
 
     /** The resolved node addresses a VC `type` member, whose value is conventionally an array of type strings. */
     private fun NodeListEntry.isVcTypeNode(): Boolean =
-        (normalizedJsonPath.segments.lastOrNull() as? NormalizedJsonPathSegment.NameSegment)?.memberName == "type"
+        (normalizedJsonPath.lastOrNull() as? NormalizedJsonPathSegment.NameSegment)?.memberName == "type"
 }
 
 internal fun JsonElement.matchConstraints(

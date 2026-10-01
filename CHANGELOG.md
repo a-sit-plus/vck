@@ -202,9 +202,12 @@ Technical changes and migration notes:
     - Authorize credential requests in `CredentialIssuer` from the `ValidatedAccessToken`
     - In `EncryptJwe` remove `keyMaterial` as it always relies on ephemeral keys embedded in the JWE header
     - Add `SingleClaimReference` (moved from Valera)
-- Dependencies:
-    - Update to [Signum 3.25.0](https://github.com/a-sit-plus/signum/releases/tag/3.25.0) for HPKE support
+    - Additional Java-Safe APIs for `IssuerMetadata`, `ClaimDescrption`, `StatusIssuer`, `ReferencedTokenStore`
+ - Dependencies:
+    - Update to [Signum 3.26.0](https://github.com/a-sit-plus/signum/releases/tag/3.26.0) for HPKE support
     - Add `etsi-data-classes` as api dependency to `openid-data-classes`
+    - Bouncy Castle 1.86 on the JVM
+    - JsonPath4K 4.0.0
 
 Release 7.0.0:
 - Credential definitions:

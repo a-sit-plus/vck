@@ -54,12 +54,13 @@ import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 /**
  * An agent that implements [Issuer], i.e., it issues credentials for other agents.
  */
-class IssuerAgent @JvmOverloads constructor(
+class IssuerAgent constructor(
     /** Key material used to sign credentials in [signIssuedVc], [signIssuedSdJwt], [signMobileSecurityObject]. */
     override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
@@ -82,6 +83,37 @@ class IssuerAgent @JvmOverloads constructor(
         issuerCredentialStore = issuerCredentialStore as? InMemoryIssuerCredentialStore ?: InMemoryIssuerCredentialStore(),
     )
 ) : Issuer {
+
+    @JvmOverloads
+    internal constructor(
+        identifier: String,
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+        issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
+        clock: Clock = Clock.System,
+        issuanceOffsetMilliseconds: Long = (-3).minutes.inWholeMilliseconds,
+        cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
+        signIssuedSdJwt: SignJwtExtFun<JsonObject> = SignJwtExt(keyMaterial, JwsHeaderCertOrJwk()),
+        signIssuedVc: SignJwtFun<VerifiableCredentialJws> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+        signMobileSecurityObject: SignCoseFun<MobileSecurityObject> =
+            SignCose(keyMaterial, CoseHeaderNone(), CoseHeaderCertificate()),
+        randomSource: RandomSource = RandomSource.Secure,
+        statusListAgent: StatusListAgent? = StatusListAgent(
+            issuerCredentialStore = issuerCredentialStore as? InMemoryIssuerCredentialStore
+                ?: InMemoryIssuerCredentialStore(),
+        ),
+    ) : this(
+        keyMaterial = keyMaterial,
+        issuerCredentialStore = issuerCredentialStore,
+        clock = clock,
+        issuanceOffset = issuanceOffsetMilliseconds.milliseconds,
+        cryptoAlgorithms = cryptoAlgorithms,
+        identifier = UniformResourceIdentifier(identifier),
+        signIssuedSdJwt = signIssuedSdJwt,
+        signIssuedVc = signIssuedVc,
+        signMobileSecurityObject = signMobileSecurityObject,
+        randomSource = randomSource,
+        statusListAgent = statusListAgent,
+    )
 
     /**
      * Wraps the credential-to-be-issued in [credential] into a single instance of [CredentialToBeIssued],

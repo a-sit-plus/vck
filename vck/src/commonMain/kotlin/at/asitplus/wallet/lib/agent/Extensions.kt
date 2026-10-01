@@ -125,5 +125,5 @@ fun NormalizedJsonPath.toIsoNamespaceAttribute() = with(firstTwoSegments()) {
     }
 }
 
-private fun NormalizedJsonPath.firstTwoSegments() = segments.take(2)
+private fun NormalizedJsonPath.firstTwoSegments() = take(2)
     .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()

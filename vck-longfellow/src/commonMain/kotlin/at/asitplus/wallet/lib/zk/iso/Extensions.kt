@@ -162,12 +162,11 @@ internal fun ZkSystemSpec.toMultipazZkSystemSpec(): MultipazZkSystemSpec = Multi
 internal fun NormalizedJsonPath.toMdocRequestedClaim(
     docType: String,
 ): MdocRequestedClaim {
-    require(segments.size == 2 && segments.all { it is NormalizedJsonPathSegment.NameSegment }) {
+    require(size == 2 && all { it is NormalizedJsonPathSegment.NameSegment }) {
         "Expected an mdoc claim path with a namespace and data element: $this"
     }
 
-    val (namespaceName, dataElementName) = segments
-        .map { (it as NormalizedJsonPathSegment.NameSegment).memberName }
+    val (namespaceName, dataElementName) = map { (it as NormalizedJsonPathSegment.NameSegment).memberName }
 
     return MdocRequestedClaim(
         docType = docType,

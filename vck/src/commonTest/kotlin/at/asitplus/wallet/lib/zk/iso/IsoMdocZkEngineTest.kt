@@ -174,7 +174,7 @@ private object MockIsoMdocZkBackend: IsoMdocZkBackend {
 
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
             .map { claim ->
-                val names = claim.segments.filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
+                val names = claim.filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
                 require(names.size == 2) { "Expected claim path to have exactly 2 name segments, but got ${names.size} in path: $claim" }
 
                 names[0].memberName to names[1].memberName
