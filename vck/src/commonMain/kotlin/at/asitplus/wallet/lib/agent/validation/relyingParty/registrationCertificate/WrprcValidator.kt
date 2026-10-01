@@ -23,7 +23,6 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator.Constants.WRPRC_JWS_HEADER
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import io.github.aakira.napier.Napier
@@ -138,7 +137,7 @@ class WrprcValidator(
         val statusList = certificate.payload.status.statusList.let {
             StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
         }
-        val validStatusList = validateWrpStatusList(statusList, tokenStatusResolver)
+        val tokenStatus = statusList.loadTokenStatus(tokenStatusResolver)
         val validLinkage = validateWrpIdentifierLinkage(identifierResult, certificate.payload)
 
         WrpRegistrationCertificateValidation(
@@ -147,7 +146,8 @@ class WrprcValidator(
             validChain = validChain,
             validPayload = validPayload,
             validLinkage = validLinkage,
-            validStatusList = validStatusList
+            validStatusList = tokenStatus.getOrNull()?.isValid == true,
+            tokenStatus = tokenStatus,
         )
     }
 
@@ -170,7 +170,7 @@ class WrprcValidator(
         val statusList = jwsTyped.payload.status.statusList.let {
             StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
         }
-        val validStatusList = validateWrpStatusList(statusList, tokenStatusResolver)
+        val tokenStatus = statusList.loadTokenStatus(tokenStatusResolver)
 
         WrpRegistrationCertificateValidation(
             validHeader = validHeader,
@@ -178,7 +178,8 @@ class WrprcValidator(
             validChain = validChain,
             validPayload = validPayload,
             validLinkage = validLinkage,
-            validStatusList = validStatusList
+            validStatusList = tokenStatus.getOrNull()?.isValid == true,
+            tokenStatus = tokenStatus,
         )
     }
 
@@ -261,20 +262,11 @@ class WrprcValidator(
         return true
     }
 
-    private suspend fun validateWrpStatusList(
-        statusList: StatusListInfo,
-        tokenStatusResolver: TokenStatusResolver,
-    ) = if (!statusList.loadTokenStatus(tokenStatusResolver).isValid) {
-        Napier.w("Token status is not valid")
-        false
-    } else true
-
     private suspend fun StatusListInfo.loadTokenStatus(
         tokenStatusResolver: TokenStatusResolver
-    ) = tokenStatusResolver.invoke(this).getOrElse {
-        Napier.w("Unable to obtain token status.", it)
-        TokenStatus.Invalid
-    }
+    ) = tokenStatusResolver.invoke(this)
+        .onFailure { Napier.w("Unable to obtain token status.", it) }
+        .onSuccess { if (!it.isValid) Napier.w("Token status is not valid: $it") }
 
     /**
      * Validates the linkage between access certificate and registration certificate.

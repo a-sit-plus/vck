@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertifi
 
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import kotlin.jvm.JvmOverloads
 
 /**
  * Result of [WrprcValidator].
@@ -20,13 +22,20 @@ data class WrprcValidationResult(
     val certificateValidation: Map<WrpRegistrationCertificate, WrpRegistrationCertificateValidation?>
         get() = certificateValidationResults.mapValues { it.value.getOrNull() }
 
-    /** Omits credential requests that could not be validated. */
+    /**
+     * Maps credential requests that could not be validated to an invalid credential type without attributes, so that
+     * [RequestDataValidity.isValid] is `false` for them. Checking only the attributes of such a request finds none.
+     */
     @Deprecated(
         "Use requestDataValidationResults, which carries the cause of a failed validation",
         ReplaceWith("requestDataValidationResults")
     )
     val requestDataValidation: RequestDataValidation
-        get() = requestDataValidationResults.mapNotNull { (request, result) -> result.getOrNull()?.let { request to it } }
+        get() = requestDataValidationResults.map { (request, result) ->
+            request to result.getOrElse {
+                RequestDataValidity(credentialTypeValidity = false, credentialAttributesValidity = emptyList())
+            }
+        }
 
     companion object {
         @Deprecated(
@@ -49,13 +58,19 @@ data class WrprcValidationResult(
 }
 
 
-data class WrpRegistrationCertificateValidation(
+data class WrpRegistrationCertificateValidation @JvmOverloads constructor(
     val validHeader: Boolean,
     val validSignature: Boolean,
     val validChain: Boolean,
     val validPayload: Boolean,
     val validLinkage: Boolean,
-    val validStatusList: Boolean
+    val validStatusList: Boolean,
+    /**
+     * Status of the registration certificate from its status list, e.g. to tell a revoked or suspended certificate
+     * apart from one whose status could not be obtained, which is a failure.
+     */
+    val tokenStatus: KmmResult<TokenStatus> =
+        KmmResult.success(if (validStatusList) TokenStatus.Valid else TokenStatus.Invalid),
 ) {
     fun isValid() = validHeader && validSignature && validChain && validPayload && validLinkage && validStatusList
 }

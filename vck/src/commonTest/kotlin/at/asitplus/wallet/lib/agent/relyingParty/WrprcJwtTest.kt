@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
+import at.asitplus.KmmResult
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NullSegment
@@ -12,10 +14,7 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
-import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
-import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidationResult
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyWithFixedCert
@@ -23,11 +22,14 @@ import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
+import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidationResult
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.isValid
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -173,6 +175,8 @@ val WrprcJwtTest by matrixSuite {
 
         val result = fixture.validateWrprc(payload = payload, revokedStatusIndex = 0).getOrThrow()
         result.certificateValidationResults.all { it.value.getOrNull()?.validStatusList == false }.shouldBe(true)
+        result.certificateValidationResults.values.single().getOrThrow().tokenStatus.getOrThrow() shouldBe
+                TokenStatus.Invalid
     }
 
     "Requesting more attributes than the WRPRC declares fails request validation (over-asking)" {
@@ -270,8 +274,9 @@ val WrprcJwtTest by matrixSuite {
         requestResults.getValue(nullSegmentQuery.id).exceptionOrNull().shouldNotBeNull()
             .message.shouldContain("NullSegment")
         @Suppress("DEPRECATION")
-        result.requestDataValidation.map { it.first } shouldBe
-                listOf(WrpCredentialRequest.WrpDcqlCredentialQuery(mdocQuery))
+        result.requestDataValidation.associate { (request, validity) ->
+            (request as WrpCredentialRequest.WrpDcqlCredentialQuery).query.id to validity.isValid()
+        } shouldBe mapOf(mdocQuery.id to true, nullSegmentQuery.id to false)
     }
 
     "Deprecated constructor maps a missing certificate validation to a failure" {
@@ -287,5 +292,18 @@ val WrprcJwtTest by matrixSuite {
 
         result.certificateValidationResults.getValue(certificate).isFailure shouldBe true
         result.requestDataValidationResults shouldBe emptyList()
+    }
+
+    "Status list that can not be obtained is invalid and carries the cause" {
+        val fixture = buildWrpFixture()
+
+        val result = fixture.validateWrprc(
+            payload = buildWrpPayload(fixture.wrpIdentifier),
+            tokenStatusResolver = { KmmResult.failure(IllegalStateException("status list unavailable")) },
+        ).getOrThrow()
+
+        val validation = result.certificateValidationResults.values.single().getOrThrow()
+        validation.validStatusList shouldBe false
+        validation.tokenStatus.exceptionOrNull().shouldNotBeNull().message shouldBe "status list unavailable"
     }
 }

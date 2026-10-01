@@ -53,6 +53,7 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator
@@ -317,6 +318,7 @@ suspend fun WrpFixture.validateWrprc(
     jwsType: String = WRPRC_JWS_TYPE,
     revokedStatusIndex: Int = 1,
     accessCertValidation: WrpacValidationResult? = null,
+    tokenStatusResolver: TokenStatusResolver? = null,
 ) = catching {
     val wrprcJws = signWrprc(signingKeyMaterial, payload, type = jwsType)
     val registrationCertificate: WrpRegistrationCertificate =
@@ -332,12 +334,11 @@ suspend fun WrpFixture.validateWrprc(
     val statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
         buildStatusListToken(statusListUrl, revokedIndex = revokedStatusIndex)
     }
-    val tokenStatusResolver = TokenStatusResolverImpl(statusListTokenResolver)
 
     WrprcValidator()(
         identifierResult = resolvedAccessCertValidation.identifierResult,
         validationData = validationData,
-        tokenStatusResolver = tokenStatusResolver,
+        tokenStatusResolver = tokenStatusResolver ?: TokenStatusResolverImpl(statusListTokenResolver),
         certificateTrustAnchors = trustAnchors,
     ).getOrThrow()
 }
