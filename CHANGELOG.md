@@ -1,6 +1,6 @@
 # Changelog
 
-Release 8.0.0-RC1:
+Release 8.0.0:
 
 New features:
 

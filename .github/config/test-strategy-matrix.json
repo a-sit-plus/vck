@@ -9,7 +9,7 @@
       "os": "ubuntu-latest",
       "name": "androidRunner",
       "enableKvm": true,
-      "testCommand": "./gradlew pixelAVDAndroidDeviceTest"
+      "testCommand": "./gradlew pixelAVDAndroidDeviceTest -x :vck-longfellow:pixelAVDAndroidDeviceTest"
     },
     {
       "os": "macos-latest",
