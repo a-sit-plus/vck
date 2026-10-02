@@ -31,8 +31,8 @@ val WrprcCwtTest by matrixSuite {
         val result =
             fixture.validateWrprcCose(payload = buildWrpPayload(fixture.wrpIdentifier)).getOrThrow()
 
-        result.certificateValidation.values.all { it?.isValid() == true } shouldBe true
-        result.requestDataValidation.toMap().values.all { it.isValid() == true } shouldBe true
+        result.certificateValidationResults.values.all { it.getOrNull()?.isValid() == true } shouldBe true
+        result.requestDataValidationResults.toMap().values.all { it.getOrThrow().isValid() } shouldBe true
     }
 
     "CWT registration certificate with x5chain in the protected header also validates" {
@@ -43,7 +43,7 @@ val WrprcCwtTest by matrixSuite {
             certificateChainPlacement = CertificateChainPlacement.PROTECTED,
         ).getOrThrow()
 
-        result.certificateValidation.values.all { it?.isValid() == true } shouldBe true
+        result.certificateValidationResults.values.all { it.getOrNull()?.isValid() == true } shouldBe true
     }
 
     "Wrong CWT header type fails" {
@@ -55,7 +55,7 @@ val WrprcCwtTest by matrixSuite {
             parsePayload = false,
         )
 
-        result.getOrThrow().certificateValidation.values.single().shouldNotBeNull().validHeader shouldBe false
+        result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validHeader shouldBe false
     }
 
     "CWT signed under an untrusted CA fails chain validation" {
@@ -67,7 +67,7 @@ val WrprcCwtTest by matrixSuite {
             signingKeyMaterial = untrustedSigner,
         ).getOrThrow()
 
-        val validation = result.certificateValidation.values.single().shouldNotBeNull()
+        val validation = result.certificateValidationResults.values.single().getOrThrow()
         validation.validChain shouldBe false
         validation.validSignature shouldBe true
     }
@@ -82,7 +82,7 @@ val WrprcCwtTest by matrixSuite {
             signingKeyMaterial = mismatchedSigner,
         )
 
-        result.getOrThrow().certificateValidation.values.single().shouldNotBeNull().validSignature shouldBe false
+        result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validSignature shouldBe false
     }
 
     "sub not matching the WRPAC identifier fails linkage validation" {
@@ -91,7 +91,7 @@ val WrprcCwtTest by matrixSuite {
 
         val result = fixture.validateWrprcCose(payload = payload).getOrThrow()
 
-        result.certificateValidation.values.all { it?.validLinkage == false }.shouldBe(true)
+        result.certificateValidationResults.values.all { it.getOrNull()?.validLinkage == false }.shouldBe(true)
     }
 
     "Revoked status list entry fails status validation" {
@@ -99,7 +99,7 @@ val WrprcCwtTest by matrixSuite {
         val payload = buildWrpPayload(fixture.wrpIdentifier, statusListIdx = 0)
 
         val result = fixture.validateWrprcCose(payload = payload, revokedStatusIndex = 0).getOrThrow()
-        result.certificateValidation.values.all { it?.validStatusList == false }.shouldBe(true)
+        result.certificateValidationResults.values.all { it.getOrNull()?.validStatusList == false }.shouldBe(true)
     }
 
     "Requesting more attributes than the WRPRC declares fails request validation via DocRequest" {
@@ -110,8 +110,8 @@ val WrprcCwtTest by matrixSuite {
             request = mdocDocRequest(claimNames = listOf("given_name", "family_name", "birth_date", "portrait")),
         ).getOrNull().shouldNotBeNull()
 
-        result.certificateValidation.values.all { it?.isValid() == true } shouldBe true
-        result.requestDataValidation.toMap().values.single().isValid() shouldBe false
+        result.certificateValidationResults.values.all { it.getOrNull()?.isValid() == true } shouldBe true
+        result.requestDataValidationResults.toMap().values.single().getOrThrow().isValid() shouldBe false
     }
 
     "CWT WRPRC with unsupported claim values does not authorize a path-only request" {
@@ -125,10 +125,10 @@ val WrprcCwtTest by matrixSuite {
             request = mdocDocRequest(claimNames = listOf("given_name")),
         )
 
-        result.getOrThrow().certificateValidation.values.single().shouldNotBeNull().validPayload shouldBe false
+        result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validPayload shouldBe false
     }
 
-    "CWT without a certificate chain has no certificate validation result" {
+    "CWT without a certificate chain is invalid and carries the cause" {
         val fixture = buildWrpFixture()
 
         val result = fixture.validateWrprcCose(
@@ -136,6 +136,10 @@ val WrprcCwtTest by matrixSuite {
             certificateChainPlacement = CertificateChainPlacement.NONE,
         ).getOrThrow()
 
+        result.certificateValidationResults.values.single().exceptionOrNull().shouldNotBeNull()
+            .message.shouldContain("no certificate chain")
+        result.requestDataValidationResults.toMap().values.single().getOrThrow().isValid() shouldBe true
+        @Suppress("DEPRECATION")
         result.certificateValidation.values.single() shouldBe null
     }
 
