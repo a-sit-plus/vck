@@ -94,9 +94,7 @@ class OpenId4VciClient(
      */
     fun parseCredentialMetadata(issuerMetadata: IssuerMetadata): KmmResult<Collection<CredentialIdentifierInfo>> =
         catching {
-            val supported = issuerMetadata.supportedCredentialConfigurations
-                ?: throw Exception("No supported credential configurations")
-            supported.map {
+            issuerMetadata.supportedCredentialConfigurations.map {
                 CredentialIdentifierInfo(
                     issuerMetadata = issuerMetadata,
                     credentialIdentifier = it.key,
