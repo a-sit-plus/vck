@@ -87,15 +87,25 @@ Release 9.0.0 (unreleased):
       HTTP configuration it silently preferred over its own
 - OpenID for Verifiable Presentations client:
     - Renamed `OpenId4VpWallet` (in `vck-openid`) to `OpenId4VpKtorHolder`
-    - Add `OpenId4VpProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the verifier, with
-      `sendAuthorizationResponse` posting authorization responses and error responses for the response modes
+    - Add `OpenId4VpProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the verifier:
+      `prepareAuthorizationResponse` fetches the request object from `request_uri` when needed,
+      `sendAuthorizationResponse` posts authorization responses and error responses for the response modes
       `direct_post` and `direct_post.jwt`
+    - Deprecate `OpenId4VpHolder.startAuthorizationResponsePreparation` and `OpenId4VpHolder.createAuthnResponse`
+      taking the request as `String`, which fetch the request object with the `remoteResourceRetriever`, replace with
+      `OpenId4VpProtocolClient.prepareAuthorizationResponse`, followed by `OpenId4VpHolder.finalizeAuthorizationResponse`
+      for the latter
+    - BREAKING: `OpenId4VpHolder` no longer fetches the verifier's JWK Set from a `jwks_uri` in `client_metadata`, which
+      OpenID4VP 1.0 does not define (5.1 defines `jwks` only, and requires other metadata parameters to be ignored);
+      the keys come from `jwks`, or else from `lookupJsonWebKeysForClient`
     - Fix (security): The `redirect_uri` in the verifier's answer to a posted authorization response must be an absolute
       `https` URI, else sending the response fails, although the verifier has already processed it. Before, any value,
       e.g. a `javascript:` or `intent:` URI, or a custom app scheme, was returned for the wallet to open
     - The `redirect_uri` is only read from the JSON body of the verifier's answer (OpenID4VP 1.0, 8.2); a `Location`
       header is ignored
-    - `OpenId4VpKtorHolder` sends authorization responses with `OpenId4VpProtocolClient`, keeping its API
+    - `OpenId4VpKtorHolder` fetches request objects and sends authorization responses with `OpenId4VpProtocolClient`,
+      keeping its API; for `request_uri_method=post`, the form is now sent without `charset` in the `Content-Type`, as
+      the authorization response
     - Move `OpenId4VpSuccess` to `vck-openid` (`at.asitplus.wallet.lib.openid`), deprecate the typealias left in
       `vck-openid-ktor`
     - Deprecate `OpenId4VpKtorHolder.FormDataContentPlain`, which is no longer used

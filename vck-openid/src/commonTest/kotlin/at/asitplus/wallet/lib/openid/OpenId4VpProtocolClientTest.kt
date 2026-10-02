@@ -1,9 +1,25 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JarRequestParameters.RequestUriMethod
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
+import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ReceivedHttpResponse
+import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.MediaTypes
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.FakeHttpStack
 import at.asitplus.wallet.lib.oauth2.formParameters
 import at.asitplus.wallet.lib.oauth2.jsonResponse
@@ -12,15 +28,18 @@ import at.asitplus.wallet.lib.oauth2.scripted
 import at.asitplus.wallet.lib.oauth2.toErrorResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
 val OpenId4VpProtocolClientTest by matrixSuite {
 
-    fun client() = OpenId4VpHolder().let {
-        OpenId4VpProtocolClient(openId4VpHolder = it, dcApiHolder = DcApiHolder(openId4VpHolder = it))
-    }
+    fun client(holder: OpenId4VpHolder = OpenId4VpHolder()) = OpenId4VpProtocolClient(openId4VpHolder = holder)
 
     val response = AuthenticationResponseResult.Post(
         url = "https://verifier.example.com/response",
@@ -33,6 +52,144 @@ val OpenId4VpProtocolClientTest by matrixSuite {
     fun redirectUriAnswer(redirectUri: String) = jsonResponse(OpenId4VpSuccess(redirectUri))
 
     // Step sequences, see the KDoc of the methods of OpenId4VpProtocolClient
+
+    val walletUrl = "https://wallet.example.com/"
+    val requestUrl = "https://verifier.example.com/request"
+    val verifierKeyMaterial = EphemeralKeyWithoutCert()
+    val verifier = OpenId4VpVerifier(
+        keyMaterial = verifierKeyMaterial,
+        clientIdScheme = ClientIdScheme.PreRegistered("PRE-REGISTERED-CLIENT", "https://verifier.example.com/cb"),
+    )
+    val requestOptions = OpenId4VpRequestOptions(
+        presentationRequest = CredentialPresentationRequestBuilder(
+            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        ).toDCQLRequest(),
+    )
+
+    suspend fun byReference(method: RequestUriMethod = RequestUriMethod.GET) = verifier.createAuthnRequest(
+        requestOptions,
+        CreationOptions.SignedRequestByReference(walletUrl, requestUrl, method),
+    ).getOrThrow()
+
+    /** Serves the request object of this request as the verifier does, decoding the form of a POST to it. */
+    fun CreatedRequest.serve(
+        alter: (RequestObjectParameters?) -> RequestObjectParameters? = { it },
+    ): suspend (PreparedHttpRequest) -> ReceivedHttpResponse = { request ->
+        val parameters = request.body?.decodeFromFormUrlEncoded<RequestObjectParameters>()
+        plainAnswer(loadRequestObject.shouldNotBeNull().invoke(alter(parameters)).getOrThrow())
+    }
+
+    /** The parameters of the request object of this request, as served for a GET. */
+    suspend fun CreatedRequest.requestObjectParameters(): AuthenticationRequestParameters =
+        JwsCompactTyped<AuthenticationRequestParameters>(
+            loadRequestObject.shouldNotBeNull().invoke(null).getOrThrow()
+        ).payload
+
+    suspend fun AuthenticationRequestParameters.signed(): String =
+        SignJwt<AuthenticationRequestParameters>(verifierKeyMaterial, JwsHeaderNone())(
+            JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+            this,
+            AuthenticationRequestParameters.serializer(),
+        ).getOrThrow().toString()
+
+    test("request passed by value sends no request") {
+        val http = FakeHttpStack(scripted())
+        val inQuery = verifier.createAuthnRequest(requestOptions, CreationOptions.Query(walletUrl)).getOrThrow()
+        val signed = verifier.createAuthnRequest(requestOptions, CreationOptions.SignedRequestByValue(walletUrl))
+            .getOrThrow()
+
+        http.execute(client().prepareAuthorizationResponse(inQuery.url))
+            .request.shouldBeInstanceOf<RequestParametersFrom.Uri<*>>()
+        http.execute(client().prepareAuthorizationResponse(signed.url))
+            .request.shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
+        http.sent.shouldBeEmpty()
+    }
+
+    test("request object passed by reference is fetched with GET") {
+        val request = byReference()
+        val http = FakeHttpStack(request.serve())
+
+        http.execute(client().prepareAuthorizationResponse(request.url))
+            .request.shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
+
+        http.sent.kinds() shouldBe listOf("RequestObject")
+        http.sent.single().http.apply {
+            url shouldBe requestUrl
+            method shouldBe HttpMethod.Get
+            headers.getAll(HttpHeaders.Accept) shouldBe listOf(MediaTypes.Application.AUTHZ_REQ_JWT)
+            body.shouldBeNull()
+        }
+    }
+
+    test("request object passed by reference with request_uri_method=post is fetched with wallet metadata and nonce") {
+        val request = byReference(RequestUriMethod.POST)
+        val http = FakeHttpStack(request.serve())
+
+        val state = http.execute(client().prepareAuthorizationResponse(request.url))
+
+        http.sent.kinds() shouldBe listOf("RequestObject")
+        http.sent.single().http.apply {
+            url shouldBe requestUrl
+            method shouldBe HttpMethod.Post
+            headers.getAll(HttpHeaders.Accept) shouldBe listOf(MediaTypes.Application.AUTHZ_REQ_JWT)
+            headers.getAll(HttpHeaders.ContentType) shouldBe listOf("application/x-www-form-urlencoded")
+            val sent = body.shouldNotBeNull().decodeFromFormUrlEncoded<RequestObjectParameters>()
+            sent.walletMetadata.shouldNotBeNull()
+            state.request.parameters.walletNonce shouldBe sent.walletNonce.shouldNotBeNull()
+        }
+    }
+
+    test("request object without the wallet nonce sent fails") {
+        val request = byReference(RequestUriMethod.POST)
+        val http = FakeHttpStack(request.serve { it?.copy(walletNonce = null) })
+
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            http.execute(client().prepareAuthorizationResponse(request.url))
+        }.message.shouldNotBeNull() shouldContain "wallet_nonce"
+        http.sent.kinds() shouldBe listOf("RequestObject")
+    }
+
+    test("request object encrypted to the key advertised in wallet metadata is decrypted") {
+        val request = byReference(RequestUriMethod.POST)
+        val http = FakeHttpStack(request.serve())
+        val holder = OpenId4VpHolder(ephemeralEncryptionKeyService = EphemeralEncryptionKeyService())
+
+        http.execute(client(holder).prepareAuthorizationResponse(request.url))
+            .request.decryptedFrom.shouldNotBeNull()
+        http.sent.single().http.body.shouldNotBeNull()
+            .decodeFromFormUrlEncoded<RequestObjectParameters>()
+            .walletMetadata?.jsonWebKeySet?.keys.shouldNotBeNull().shouldBeSingleton()
+    }
+
+    test("jwks_uri in the verifier's client metadata is ignored") {
+        val request = byReference()
+        val requestObject = request.requestObjectParameters()
+            .copy(clientMetadata = RelyingPartyMetadata(jsonWebKeySetUrl = "https://verifier.example.com/jwks"))
+            .signed()
+        val http = FakeHttpStack(scripted(plainAnswer(requestObject)))
+
+        http.execute(client().prepareAuthorizationResponse(request.url)).jsonWebKeys.shouldBeNull()
+
+        http.sent.kinds() shouldBe listOf("RequestObject")
+    }
+
+    test("non-success answer for the request object fails, also for a redirect") {
+        val request = byReference()
+        val http = FakeHttpStack(
+            scripted(
+                ReceivedHttpResponse(HttpStatusCode.NotFound, Headers.Empty, ""),
+                ReceivedHttpResponse(HttpStatusCode.Found, headersOf(HttpHeaders.Location, requestUrl), ""),
+            )
+        )
+
+        shouldThrow<HttpErrorResponseException> {
+            http.execute(client().prepareAuthorizationResponse(request.url))
+        }.status shouldBe HttpStatusCode.NotFound
+        shouldThrow<HttpErrorResponseException> {
+            http.execute(client().prepareAuthorizationResponse(request.url))
+        }.status shouldBe HttpStatusCode.Found
+        http.sent.kinds() shouldBe listOf("RequestObject", "RequestObject")
+    }
 
     test("authorization response is posted as form without charset") {
         val http = FakeHttpStack(scripted(plainAnswer("")))
