@@ -24,7 +24,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -35,7 +35,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
  * Builds the request parameters only; [OAuth2ProtocolClient] builds the HTTP requests from them, including DPoP proofs
  * and attestation-based client authentication.
  *
- * Can be used in OID4VCI flows, e.g. [WalletService].
+ * Can be used in OID4VCI flows, e.g. [OpenId4VciClient].
  */
 class OAuth2Client(
     /**

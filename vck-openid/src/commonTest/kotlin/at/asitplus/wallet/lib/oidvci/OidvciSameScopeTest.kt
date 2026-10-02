@@ -37,7 +37,7 @@ import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
-import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient.RequestOptions
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
@@ -65,7 +65,7 @@ val OidvciSameScopeTest by matrixSuite {
                     mapper = mapper,
                 ),
             )
-            val issuer = CredentialIssuer(
+            val issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -76,7 +76,7 @@ val OidvciSameScopeTest by matrixSuite {
             )
 
             /** Behind the same AS, but all its configurations require a scope that is a substring of [scope]. */
-            val substringScopeIssuer = CredentialIssuer(
+            val substringScopeIssuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://other-issuer.example.com".toUri(),
@@ -85,7 +85,7 @@ val OidvciSameScopeTest by matrixSuite {
                 credentialSchemes = AttributeIndex.schemeSet,
                 credentialSchemeMapper = SameScopeCredentialSchemeMapper(scope.dropLast(1)),
             )
-            val client = WalletService()
+            val client = OpenId4VciClient()
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 
@@ -128,7 +128,7 @@ val OidvciSameScopeTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -196,7 +196,7 @@ val OidvciSameScopeTest by matrixSuite {
                     TokenInfo(token = token.accessToken, scope = requiredScope)
                 }
             }
-            val issuer = CredentialIssuer(
+            val issuer = OpenId4VciServer(
                 authorizationService = adapter,
                 issuer = IssuerAgent(
                     identifier = "https://validated-token.example.com".toUri(),
@@ -234,7 +234,7 @@ val OidvciSameScopeTest by matrixSuite {
                 ),
                 tokenService = tokenService,
             )
-            val issuer = CredentialIssuer(
+            val issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://jwt-issuer.example.com".toUri(),
@@ -307,7 +307,7 @@ val OidvciSameScopeTest by matrixSuite {
                         ),
                     ),
                 ).getOrThrow()
-                    .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                    .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                     .response
                     .credentials.shouldNotBeEmpty()
             }
@@ -334,7 +334,7 @@ val OidvciSameScopeTest by matrixSuite {
                     ).getOrThrow().shouldBeSingleton().first(),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
-                    .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                    .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                     .response
                     .credentials.shouldNotBeEmpty()
                     .map { it.credentialString.shouldNotBeNull() }.any {

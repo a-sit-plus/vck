@@ -13,7 +13,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
 import at.asitplus.wallet.lib.oidvci.OpenId4VciProtocolClient
-import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -21,6 +21,9 @@ import io.ktor.client.engine.*
 import io.ktor.client.plugins.cookies.*
 import kotlinx.serialization.Serializable
 
+
+@Deprecated("Renamed", ReplaceWith("OpenId4VciKtorClient"))
+typealias OpenId4VciClient = OpenId4VciKtorClient
 
 /**
  * Implements the client side of
@@ -34,7 +37,7 @@ import kotlinx.serialization.Serializable
  *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  *  * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126)
  */
-class OpenId4VciClient(
+class OpenId4VciKtorClient(
     /** ktor engine to use to make requests to issuing service. */
     engine: HttpClientEngine,
     /**
@@ -48,7 +51,7 @@ class OpenId4VciClient(
      * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works, `cryptoService` provides proof of possession for credential key material.
      */
-    private val oid4vciService: WalletService = WalletService(),
+    private val oid4vciService: OpenId4VciClient = OpenId4VciClient(),
     /** Internal OAuth 2.0 client passed on to [oauth2Client] with the `clientId` from [oid4vciService] */
     private val oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciService.clientId),
     /** OAuth 2.0 client to use during the protocol run. */
@@ -65,7 +68,7 @@ class OpenId4VciClient(
 
     private val oauth2 = oauth2Client.protocolClient
 
-    private val vci = OpenId4VciProtocolClient(oid4vciService = oid4vciService, oauth2Client = oauth2)
+    private val vci = OpenId4VciProtocolClient(vciClient = oid4vciService, oauth2Client = oauth2)
 
     /**
      * Loads the [CredentialOffer] from [input], i.e. the content of a QR code or deep link: a JSON-encoded credential
@@ -394,7 +397,7 @@ sealed interface CredentialIssuanceResult {
 
     /**
      * Open the [url] in a browser (so the user can authenticate at the AS), and store [context] to use in next call
-     * to [OpenId4VciClient.resumeWithAuthCode].
+     * to [OpenId4VciKtorClient.resumeWithAuthCode].
      */
     data class OpenUrlForAuthnRequest(
         val url: String,

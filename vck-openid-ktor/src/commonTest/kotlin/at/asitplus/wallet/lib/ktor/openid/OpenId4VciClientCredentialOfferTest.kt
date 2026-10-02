@@ -18,7 +18,7 @@ val OpenId4VciClientCredentialOfferTest by matrixSuite {
 
     test("credential offer passed by reference is loaded from the credential issuer") {
         val requestedUrls = mutableListOf<String>()
-        val client = OpenId4VciClient(
+        val client = OpenId4VciKtorClient(
             engine = MockEngine { request ->
                 requestedUrls += request.url.toString()
                 when (request.url.toString()) {

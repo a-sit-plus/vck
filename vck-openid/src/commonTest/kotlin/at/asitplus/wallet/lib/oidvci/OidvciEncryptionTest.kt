@@ -21,7 +21,6 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
-import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -61,7 +60,7 @@ val OidvciEncryptionTest by matrixSuite {
                 requirePushedAuthorizationRequests = false,
                 strategy = CredentialAuthorizationServiceStrategy(setOf(ConstantIndex.AtomicAttribute2023)),
             )
-            var issuer = CredentialIssuer(
+            var issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -74,7 +73,7 @@ val OidvciEncryptionTest by matrixSuite {
                 ),
             )
             val state = uuid4().toString()
-            val client = WalletService(
+            val client = OpenId4VciClient(
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = true, // this is important
@@ -105,7 +104,7 @@ val OidvciEncryptionTest by matrixSuite {
         }
     } - {
         test("wallet encrypts credential request and decrypts credential response") {
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
@@ -117,13 +116,13 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().shouldBeSingleton().first()
-                .shouldBeInstanceOf<WalletService.CredentialRequest.Encrypted>()
+                .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Encrypted>()
             it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().apply {
-                this.shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Encrypted>()
+                this.shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>()
                 it.client.parseCredentialResponse(this, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                     .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>().apply {
                         signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
@@ -142,7 +141,7 @@ val OidvciEncryptionTest by matrixSuite {
          * encryption key in a request it is unable to encrypt.
          */
         test("wallet refuses to request response encryption when it can't encrypt the request") {
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
@@ -160,7 +159,7 @@ val OidvciEncryptionTest by matrixSuite {
         }
 
         test("wallet does not encrypt credential request but issuer requires this") {
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -174,7 +173,7 @@ val OidvciEncryptionTest by matrixSuite {
                 ),
             )
 
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat =
                 it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                     .shouldNotBeNull()
@@ -191,7 +190,7 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().shouldBeSingleton().first()
-                .shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+                .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
 
             shouldThrow<OAuth2Exception.InvalidEncryptionParameters> {
                 it.issuer.credential(
@@ -208,7 +207,7 @@ val OidvciEncryptionTest by matrixSuite {
          * response, which alone makes request encryption mandatory.
          */
         test("wallet encrypts the request because it asks for an encrypted response") {
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -217,13 +216,13 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
                 encryptionService = IssuerEncryptionService(), // requires nothing, but supports both
             )
-            val client = WalletService(
+            val client = OpenId4VciClient(
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = false, // this is important
                 )
             )
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
@@ -234,20 +233,20 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().shouldBeSingleton().first()
-                .shouldBeInstanceOf<WalletService.CredentialRequest.Encrypted>()
+                .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Encrypted>()
             it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().apply {
-                shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Encrypted>()
+                shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>()
                 client.parseCredentialResponse(this, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                     .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>()
             }
         }
 
         test("wallet wanting no encryption sends a plain request without response encryption parameters") {
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -256,8 +255,8 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
                 encryptionService = IssuerEncryptionService(), // requires nothing, but supports both
             )
-            val client = WalletService() // wants nothing
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val client = OpenId4VciClient() // wants nothing
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
@@ -270,15 +269,15 @@ val OidvciEncryptionTest by matrixSuite {
                     credentialFormat = credentialFormat,
                     clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
                 ).getOrThrow().shouldBeSingleton().first()
-                    .shouldBeInstanceOf<WalletService.CredentialRequest.Plain>().apply {
+                    .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>().apply {
                         request.credentialResponseEncryption.shouldBeNull()
                     },
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            ).getOrThrow().shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+            ).getOrThrow().shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
         }
 
         test("issuer rejects response encryption parameters sent in a plain request") {
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -287,8 +286,8 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
                 encryptionService = IssuerEncryptionService(), // requires nothing, but supports both
             )
-            val client = WalletService() // wants nothing, so it creates a plain request for us to tamper with
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val client = OpenId4VciClient() // wants nothing, so it creates a plain request for us to tamper with
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
@@ -298,10 +297,10 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().shouldBeSingleton().first()
-                .shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+                .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
 
             // a non-conforming wallet, whose key an attacker could substitute on the way
-            val tampered = WalletService.CredentialRequest.Plain(
+            val tampered = OpenId4VciClient.CredentialRequest.Plain(
                 plainRequest.request.copy(
                     credentialResponseEncryption = CredentialResponseEncryption(
                         jsonWebKey = EphemeralKeyWithoutCert().jsonWebKey,
@@ -331,7 +330,7 @@ val OidvciEncryptionTest by matrixSuite {
         }
 
         test("a response encrypted to a key we never announced is not decryptable") {
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
@@ -346,7 +345,7 @@ val OidvciEncryptionTest by matrixSuite {
                 authorizationHeader = token.toHttpHeaderValue(),
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            ).getOrThrow().shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Encrypted>()
+            ).getOrThrow().shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>()
 
             // the wallet that made the request holds the matching key, identified by the JWE `kid`
             response.response.header.keyId.shouldNotBeNull()
@@ -355,13 +354,13 @@ val OidvciEncryptionTest by matrixSuite {
             it.client.parseCredentialResponse(response, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                 .getOrThrow()
             // another wallet, which never announced that key, must not be able to read the credential
-            WalletService(encryptionService = WalletEncryptionService(requestResponseEncryption = true))
+            OpenId4VciClient(encryptionService = WalletEncryptionService(requestResponseEncryption = true))
                 .parseCredentialResponse(response, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                 .isFailure shouldBe true
         }
 
         test("an encrypted response is bound to its credential request and accepted only once") {
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
@@ -371,11 +370,11 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().shouldBeSingleton().first()
-            suspend fun createResponse(request: WalletService.CredentialRequest) = it.issuer.credential(
+            suspend fun createResponse(request: OpenId4VciClient.CredentialRequest) = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            ).getOrThrow().shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Encrypted>()
+            ).getOrThrow().shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>()
 
             val firstRequest = createRequest()
             val secondRequest = createRequest()
@@ -398,19 +397,19 @@ val OidvciEncryptionTest by matrixSuite {
 
         test("another wallet instance can decrypt through a shared ephemeral key store") {
             val keyStore = DefaultMapStore<String, String>()
-            val requestClient = WalletService(
+            val requestClient = OpenId4VciClient(
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true,
                     ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(keyStore),
                 )
             )
-            val responseClient = WalletService(
+            val responseClient = OpenId4VciClient(
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true,
                     ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(keyStore),
                 )
             )
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = requestClient.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
@@ -471,7 +470,7 @@ val OidvciEncryptionTest by matrixSuite {
         }
 
         test("issuer fails to encrypt response") {
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -485,7 +484,7 @@ val OidvciEncryptionTest by matrixSuite {
                     }
                 ),
             )
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat =
                 it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                     .shouldNotBeNull()
@@ -498,7 +497,7 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().shouldBeSingleton().first()
-                .shouldBeInstanceOf<WalletService.CredentialRequest.Encrypted>()
+                .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Encrypted>()
 
             shouldThrowAny {
                 it.issuer.credential(

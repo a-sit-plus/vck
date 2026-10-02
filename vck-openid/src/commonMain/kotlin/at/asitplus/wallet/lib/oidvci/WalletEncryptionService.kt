@@ -60,14 +60,14 @@ class WalletEncryptionService @JvmOverloads constructor(
     internal suspend fun wrapCredentialRequest(
         input: CredentialRequestParameters,
         metadata: IssuerMetadata
-    ): KmmResult<WalletService.CredentialRequest> = catching {
+    ): KmmResult<OpenId4VciClient.CredentialRequest> = catching {
         if (metadata.shouldEncryptRequest(input)) {
-            WalletService.CredentialRequest.Encrypted(
+            OpenId4VciClient.CredentialRequest.Encrypted(
                 request = encryptRequest(input, metadata).getOrThrow(),
                 credentialResponseEncryptionKeyId = input.credentialResponseEncryption?.jsonWebKey?.keyId,
             )
         } else {
-            WalletService.CredentialRequest.Plain(input)
+            OpenId4VciClient.CredentialRequest.Plain(input)
         }
     }
 

@@ -28,6 +28,7 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.LazyExchange
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.PlainExchange
 import at.asitplus.wallet.lib.oauth2.ValueExchange
 import io.github.aakira.napier.Napier
@@ -42,17 +43,17 @@ import kotlin.jvm.JvmOverloads
  * the caller sends with any HTTP stack. The KDoc of each method lists the [ProtocolRequest]s its exchange sends.
  *
  * The caller runs the exchanges of a flow in order, using [oauth2Client] for the authorization server, and
- * [oid4vciService] for the credential requests:
+ * [vciClient] for the credential requests:
  *
  *  * Credential offer, if any: [loadCredentialOffer], then the pre-authorized code or authorization code flow for it.
  *  * Pre-authorized code: [loadIssuerMetadata], [parseCredentialMetadata], [OAuth2ProtocolClient.loadAuthorizationServerMetadata]
  *    of [selectAuthorizationServer], [OAuth2ProtocolClient.requestTokenWithPreAuthorizedCode], [nonceRequest],
- *    [WalletService.createCredential], and [credentialRequest] for each of those credential requests.
+ *    [OpenId4VciClient.createCredential], and [credentialRequest] for each of those credential requests.
  *  * Authorization code: the same, but with [OAuth2ProtocolClient.startAuthorization], opening its URL in the browser,
  *    and [OAuth2ProtocolClient.requestTokenWithAuthCode] with the redirect back to the wallet, instead of the
  *    pre-authorized token request.
  *  * Refreshing a credential: [OAuth2ProtocolClient.requestTokenWithRefreshToken], [nonceRequest],
- *    [WalletService.createCredential], and [credentialRequest].
+ *    [OpenId4VciClient.createCredential], and [credentialRequest].
  *
  * DPoP proofs and nonces for the credential issuer are handled by [oauth2Client].
  */
@@ -61,9 +62,9 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
      * Implements OID4VCI protocol, i.e. creates credential requests with proofs of possession for the credential key
      * material, and parses the credential responses.
      */
-    val oid4vciService: WalletService = WalletService(),
+    val vciClient: OpenId4VciClient = OpenId4VciClient(),
     /** Implements OAuth 2.0 with the authorization server, and authenticates requests to the credential issuer. */
-    val oauth2Client: OAuth2ProtocolClient,
+    val oauth2Client: OAuth2ProtocolClient = OAuth2ProtocolClient(oAuth2Client = OAuth2Client()),
 ) {
 
     /**
@@ -75,13 +76,13 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
      * Sends no request for a credential offer passed by value, and `CredentialOffer` for one passed by reference.
      */
     fun loadCredentialOffer(input: String): HttpExchange<CredentialOffer> = LazyExchange {
-        when (val parsed = oid4vciService.parseCredentialOfferInput(input)) {
-            is WalletService.CredentialOfferInput.ByValue -> ValueExchange(parsed.offer)
-            is WalletService.CredentialOfferInput.ByReference -> PlainExchange(
+        when (val parsed = vciClient.parseCredentialOfferInput(input)) {
+            is OpenId4VciClient.CredentialOfferInput.ByValue -> ValueExchange(parsed.offer)
+            is OpenId4VciClient.CredentialOfferInput.ByReference -> PlainExchange(
                 candidates = listOf(
                     ProtocolRequest.CredentialOffer(PreparedHttpRequest(url = parsed.uri, method = HttpMethod.Get))
                 ),
-                parse = { with(oid4vciService) { it.body.decodeCredentialOffer() } },
+                parse = { with(vciClient) { it.body.decodeCredentialOffer() } },
             )
         }
     }
@@ -149,7 +150,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
 
     /**
      * Requests a fresh `c_nonce` from [IssuerMetadata.nonceEndpointUrl], to be used in
-     * [WalletService.createCredential], or `null` if the credential issuer has no nonce endpoint.
+     * [OpenId4VciClient.createCredential], or `null` if the credential issuer has no nonce endpoint.
      * The `DPoP-Nonce` of the response, if any, is used by [oauth2Client] for the DPoP proofs of the following
      * [credentialRequest]s.
      *
@@ -167,28 +168,28 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         }
 
     /**
-     * Sends [request], as created by [WalletService.createCredential], to the
+     * Sends [request], as created by [OpenId4VciClient.createCredential], to the
      * [IssuerMetadata.credentialEndpointUrl] with the access token from [tokenResponse], and parses the (possibly
      * encrypted) response into credentials to store.
      *
      * Sends `Credential{1,2}`, i.e. retries once if the credential issuer asks for a DPoP nonce.
      */
     fun credentialRequest(
-        request: WalletService.CredentialRequest,
+        request: OpenId4VciClient.CredentialRequest,
         issuerMetadata: IssuerMetadata,
         tokenResponse: TokenResponseParameters,
         credentialFormat: SupportedCredentialFormat,
         credentialScheme: CredentialScheme,
     ): HttpExchange<Collection<Holder.StoreCredentialInput>> = oauth2Client.accessTokenRequest(
         request = when (request) {
-            is WalletService.CredentialRequest.Encrypted -> PreparedHttpRequest(
+            is OpenId4VciClient.CredentialRequest.Encrypted -> PreparedHttpRequest(
                 url = issuerMetadata.credentialEndpointUrl,
                 method = HttpMethod.Post,
                 headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT),
                 body = request.request.serialize(),
             )
 
-            is WalletService.CredentialRequest.Plain -> PreparedHttpRequest(
+            is OpenId4VciClient.CredentialRequest.Plain -> PreparedHttpRequest(
                 url = issuerMetadata.credentialEndpointUrl,
                 method = HttpMethod.Post,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
@@ -198,7 +199,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         tokenResponse = tokenResponse,
         kind = ProtocolRequest::Credential,
         parse = { response ->
-            oid4vciService.parseCredentialResponse(
+            vciClient.parseCredentialResponse(
                 response = response.body,
                 isEncrypted = response.headers.isJwt(),
                 request = request,

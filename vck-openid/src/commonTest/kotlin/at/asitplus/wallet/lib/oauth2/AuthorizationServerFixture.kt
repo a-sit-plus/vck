@@ -24,9 +24,9 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
@@ -83,7 +83,7 @@ class AuthorizationServerFixture(
         requirePushedAuthorizationRequests = requirePAR,
     )
 
-    val credentialIssuer = CredentialIssuer(
+    val openId4VciServer = OpenId4VciServer(
         issuer = IssuerAgent(
             identifier = "https://issuer.example.com/".toUri(),
             randomSource = RandomSource.Default
@@ -151,25 +151,25 @@ class AuthorizationServerFixture(
     private suspend fun route(request: PreparedHttpRequest): ReceivedHttpResponse = when {
         request.path == "/.well-known/oauth-authorization-server" -> jsonResponse(metadata())
 
-        request.path == "/.well-known/openid-credential-issuer" -> jsonResponse(credentialIssuer.metadata)
+        request.path == "/.well-known/openid-credential-issuer" -> jsonResponse(openId4VciServer.metadata)
 
-        request.path.startsWith("/nonce") -> credentialIssuer.nonceWithDpopNonce().getOrThrow().let { result ->
+        request.path.startsWith("/nonce") -> openId4VciServer.nonceWithDpopNonce().getOrThrow().let { result ->
             jsonResponse(result.response) {
                 append(HttpHeaders.CacheControl, "no-store")
                 result.dpopNonce?.let { append(HttpHeaders.DPoPNonce, it) }
             }
         }
 
-        request.path.startsWith("/credential") -> credentialIssuer.credential(
+        request.path.startsWith("/credential") -> openId4VciServer.credential(
             authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull(),
-            params = WalletService.CredentialRequest.parse(request.body.orEmpty()).getOrThrow(),
+            params = OpenId4VciClient.CredentialRequest.parse(request.body.orEmpty()).getOrThrow(),
             credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             request = request.toRequestInfo(),
         ).fold(
             onSuccess = {
                 when (it) {
-                    is CredentialIssuer.CredentialResponse.Plain -> jsonResponse(it.response)
-                    is CredentialIssuer.CredentialResponse.Encrypted -> ReceivedHttpResponse(
+                    is OpenId4VciServer.CredentialResponse.Plain -> jsonResponse(it.response)
+                    is OpenId4VciServer.CredentialResponse.Encrypted -> ReceivedHttpResponse(
                         status = HttpStatusCode.OK,
                         headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT),
                         body = it.response.serialize(),

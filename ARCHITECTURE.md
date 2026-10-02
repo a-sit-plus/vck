@@ -88,7 +88,7 @@ Important areas:
   `DcApiVerifier`, request parsing/factories, response creation/validation, verifier attestation, DCQL, and ISO/IEC
   18013-7 Annex C integration.
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oidvci`
-  OpenID4VCI wallet and issuer behavior: `WalletService`, `CredentialIssuer`, `ProofValidator`, credential scheme
+  OpenID4VCI wallet and issuer behavior: `OpenId4VciClient`, `OpenId4VciServer`, `ProofValidator`, credential scheme
   mapping, credential request creation, proof validation, encryption handling, and `OpenId4VciProtocolClient` for the
   wallet's requests to the credential issuer (see [Client-Side HTTP Exchanges](#client-side-http-exchanges)).
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oauth2`
@@ -112,7 +112,7 @@ Important areas:
 
 - `vck-openid-ktor/src/commonMain/kotlin/at/asitplus/wallet/lib/ktor/openid`
   Ktor-backed OpenID4VCI and OpenID4VP clients, shared HTTP-client configuration and error mapping, plus remote
-  credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciClient` and `RemoteOAuth2AuthorizationServerAdapter`
+  credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciKtorClient` and `RemoteOAuth2AuthorizationServerAdapter`
   only send the requests of the exchanges of `OAuth2ProtocolClient` and `OpenId4VciProtocolClient` (`execute` in
   `HttpClient.kt`), and run the exchanges of each flow in order; they contain no protocol logic and no DPoP handling.
 
@@ -313,7 +313,7 @@ those interfaces instead of coupling status-list generation back to credential s
 The wallet-side OAuth2 and OpenID4VCI clients in `vck-openid` never send HTTP requests themselves, so they work with
 any HTTP stack. Code is placed by where its output goes:
 
-- Everything inside a request or response body stays in the parameter builders `OAuth2Client` and `WalletService`:
+- Everything inside a request or response body stays in the parameter builders `OAuth2Client` and `OpenId4VciClient`:
   PKCE, JAR, scope and authorization details, credential request proofs, key attestations, encryption.
 - Everything that ends up in an HTTP header or depends on HTTP responses lives in `OAuth2ProtocolClient` and
   `OpenId4VciProtocolClient`: `Authorization`, DPoP proofs and nonces, client attestation and its PoP, attestation

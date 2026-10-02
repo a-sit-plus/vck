@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.BatchCredentialIssuanceMetadata
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
@@ -20,26 +19,22 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
-import at.asitplus.wallet.lib.agent.validation.toTokenStatusResolver
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+
+@Deprecated("Renamed", ReplaceWith("OpenId4VciServer"))
+typealias CredentialIssuer = OpenId4VciServer
 
 /**
  * Server implementation to issue credentials using OID4VCI.
@@ -48,7 +43,7 @@ import kotlin.time.Duration.Companion.days
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
  * 1.0 from 2025-09-16.
  */
-class CredentialIssuer @JvmOverloads constructor(
+class OpenId4VciServer @JvmOverloads constructor(
     /** Used to verify the validity of a unit attestation */
     private val statusListTokenResolver: StatusListTokenResolver? = null,
     /** Used to get the user data, and access tokens. */
@@ -209,7 +204,7 @@ class CredentialIssuer @JvmOverloads constructor(
      */
     suspend fun credential(
         authorizationHeader: String,
-        params: WalletService.CredentialRequest,
+        params: OpenId4VciClient.CredentialRequest,
         credentialDataProvider: CredentialDataProviderFun,
         request: RequestInfo? = null,
     ): KmmResult<CredentialResponse> = catching {
@@ -218,13 +213,13 @@ class CredentialIssuer @JvmOverloads constructor(
             request = params.decryptIfNeeded(),
             credentialDataProvider = credentialDataProvider,
             requestInfo = request,
-            hasBeenEncrypted = params is WalletService.CredentialRequest.Encrypted,
+            hasBeenEncrypted = params is OpenId4VciClient.CredentialRequest.Encrypted,
         ).getOrThrow()
     }
 
-    private suspend fun WalletService.CredentialRequest.decryptIfNeeded() = when (this) {
-        is WalletService.CredentialRequest.Plain -> request
-        is WalletService.CredentialRequest.Encrypted -> encryptionService.decrypt(request).getOrThrow()
+    private suspend fun OpenId4VciClient.CredentialRequest.decryptIfNeeded() = when (this) {
+        is OpenId4VciClient.CredentialRequest.Plain -> request
+        is OpenId4VciClient.CredentialRequest.Encrypted -> encryptionService.decrypt(request).getOrThrow()
     }
 
     private suspend fun credentialInternal(

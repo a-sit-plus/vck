@@ -71,7 +71,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer.CredentialResponse
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer.CredentialResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -84,6 +84,9 @@ import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
 
+@Deprecated("Renamed", ReplaceWith("OpenId4VciClient"))
+typealias WalletService = OpenId4VciClient
+
 /**
  * Client service to retrieve credentials using OID4VCI
  *
@@ -91,7 +94,7 @@ import kotlin.time.Duration
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
  * 1.0 from 2025-09-16.
  */
-class WalletService @JvmOverloads constructor(
+class OpenId4VciClient @JvmOverloads constructor(
     /** Used as the issuer in credential proofs. Must match the `client_id` of the OAuth client. */
     val clientId: String = "https://wallet.a-sit.at/app",
     /** Used to prove possession of the key material for [CredentialRequestProofContainer], i.e., the holder key. */
