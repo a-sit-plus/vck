@@ -47,6 +47,9 @@ Release 9.0.0 (unreleased):
       authentication) apart from those of resource servers (for requests with an access token), even on the same
       origin, as RFC 9449 9. requires; `OAuth2KtorClient.applyToken` falls back to the latest nonce of the resource
       server at that origin
+    - Add `ClientAttestation` in `vck-openid` (`at.asitplus.wallet.lib.oauth2`), holding the instance attestation loader
+      together with the key it attests; `OAuth2ProtocolClient` takes it as one parameter, and signs DPoP proofs with
+      its key by default (EUDI TS3 binds the DPoP key to the Wallet Instance Attestation), else with an ephemeral key
 - OpenID for Verifiable Credential Issuance client:
     - Renamed `WalletService` (in `vck-openid`) to `OpenId4VciClient`
     - Renamed `OpenId4VciClient` (in `vck-openid-ktor`) to `OpenId4VciKtorClient`
