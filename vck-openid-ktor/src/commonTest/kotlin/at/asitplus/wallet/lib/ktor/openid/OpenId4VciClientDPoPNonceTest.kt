@@ -11,16 +11,15 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 
@@ -73,15 +72,7 @@ val OpenId4VciClientDPoPNonceTest by matrixSuite {
                 else -> respondError(HttpStatusCode.NotFound)
             }
         }
-        val client = OpenId4VciKtorClient(
-            engine = mockEngine,
-            oid4vciClient = OpenId4VciClient(),
-            oauth2Client = OAuth2KtorClient(
-                engine = mockEngine,
-                oAuth2Client = OAuth2Client(),
-                randomSource = RandomSource.Default,
-            ),
-        )
+        val client = OpenId4VciKtorClient(httpClient = HttpClient(mockEngine), oauth2Client = OAuth2Client())
 
         client.loadCredentialWithOfferReturningResult(
             credentialOffer = CredentialOffer(

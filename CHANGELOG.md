@@ -40,6 +40,11 @@ Release 9.0.0 (unreleased):
     - Add `ClientAttestation` in `vck-openid` (`at.asitplus.wallet.lib.oauth2`), holding the instance attestation loader
       together with the key it attests; `OAuth2ProtocolClient` takes it as one parameter, and signs DPoP proofs with
       its key by default (EUDI TS3 binds the DPoP key to the Wallet Instance Attestation), else with an ephemeral key
+    - Add constructors to `OAuth2KtorClient` and `RemoteOAuth2AuthorizationServerAdapter` taking the app's ktor
+      `HttpClient`, whose copy without following redirects sends the requests, and a `ClientAttestation`; the DPoP key
+      defaults to the attested key, so that refresh tokens remain usable after the app restarts. Deprecate the
+      constructors taking `engine`, `cookiesStorage` and `httpClientConfig`
+    - Add `OAuth2KtorClient.clientAttestation`, deprecate `OAuth2KtorClient.loadInstanceAttestation`
 - OpenID for Verifiable Credential Issuance client:
     - Renamed `WalletService` (in `vck-openid`) to `OpenId4VciClient`
     - Renamed `OpenId4VciClient` (in `vck-openid-ktor`) to `OpenId4VciKtorClient`
@@ -64,6 +69,10 @@ Release 9.0.0 (unreleased):
       the `client_id` belongs to `OAuth2Client`
     - Fix: Proof JWTs of `OpenId4VciKtorClient` name the `client_id` of the OAuth 2.0 client that requested the token,
       instead of the one of `OpenId4VciClient`, which differed when the OAuth 2.0 client was passed separately
+    - Add a constructor to `OpenId4VciKtorClient` taking the app's ktor `HttpClient`, the `OAuth2Client` (the only
+      source of the client ID), the `OpenId4VciClient` and a `ClientAttestation`, so that each value is passed once.
+      Deprecate the constructor taking `engine`, `cookiesStorage`, `httpClientConfig` and an `OAuth2KtorClient`, whose
+      HTTP configuration it silently preferred over its own
 
 Release 8.0.0:
 

@@ -4,8 +4,11 @@ import at.asitplus.catching
 import at.asitplus.openid.AttestationChallengeResponse
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -24,16 +27,14 @@ import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondIncludingDpopNonce
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
 import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
+import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.openid.decodeFromFormUrlEncoded
-import at.asitplus.openid.RequestParametersSerializer
-import at.asitplus.openid.toFormParameters
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -158,8 +159,9 @@ val OAuth2KtorClientTest by matrixSuite {
             authorizationService = authorizationService,
             openId4VciServer = openId4VciServer,
             client = OAuth2KtorClient(
-                engine = mockEngine,
-                loadInstanceAttestation = {
+                httpClient = HttpClient(mockEngine),
+                oAuth2Client = OAuth2Client(clientId = clientId),
+                clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
                             SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
@@ -168,9 +170,7 @@ val OAuth2KtorClientTest by matrixSuite {
                         )
                     }
                 },
-                keyMaterial = clientAuthKeyMaterial,
                 dpopKeyMaterial = EphemeralKeyWithoutCert(),
-                oAuth2Client = OAuth2Client(clientId = clientId),
                 randomSource = RandomSource.Default,
             ),
         )
@@ -242,6 +242,8 @@ val OAuth2KtorClientTest by matrixSuite {
 
     test("errors of the protocol client are still thrown as the deprecated ktor exception") {
         with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = false)) {
+            // Also covers the deprecated constructor, which builds its own HTTP client
+            @Suppress("DEPRECATION")
             val client = OAuth2KtorClient(
                 engine = MockEngine { respondOAuth2Error(OAuth2Exception.InvalidGrant("nope")) },
                 oAuth2Client = OAuth2Client(),

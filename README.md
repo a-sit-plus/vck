@@ -223,16 +223,20 @@ On the wallet side, three layers build on each other:
 - `OpenId4VciClient` creates credential requests (proofs, encryption) and parses credential responses.
 - `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` add everything HTTP, i.e. DPoP, client attestation, nonces,
   and retries, but never send requests themselves: each call returns an `HttpExchange`.
-- `OpenId4VciKtorClient` sends those exchanges with Ktor and runs the complete flows.
+- `OpenId4VciKtorClient` sends those exchanges with Ktor and runs the complete flows. It uses a copy of your
+  `HttpClient` that doesn't follow redirects. Its plugins must not re-send requests or react to error statuses,
+  because DPoP proofs are single-use.
 
 With Ktor, load the offer (or, without one, the metadata with `loadCredentialMetadata(issuerUrl)` and start with
 `startProvisioningWithAuthRequestReturningResult`):
 
 ```kotlin
 val client = OpenId4VciKtorClient(
-    engine = httpEngine,
-    cookiesStorage = cookiesStorage,
-    oid4vciService = OpenId4VciClient(clientId = walletClientId, keyMaterial = holderKeyMaterial),
+    httpClient = httpClient, // your app's Ktor HttpClient, ideally with a persistent cookie storage
+    oauth2Client = OAuth2Client(clientId = walletClientId, redirectUrl = walletRedirectUrl),
+    vciClient = OpenId4VciClient(keyMaterial = holderKeyMaterial),
+    // Optional: attestation-based client authentication, e.g. with a WIA; its key is also the DPoP key
+    clientAttestation = ClientAttestation(attestedKeyMaterial) { loadWalletInstanceAttestation(it) },
 )
 
 val offer = client.loadCredentialOffer(credentialOfferUrl).getOrThrow()
