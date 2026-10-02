@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
@@ -100,11 +101,10 @@ class OAuth2KtorClient(
      */
     internal val protocolClient = OAuth2ProtocolClient(
         oAuth2Client = oAuth2Client,
-        keyMaterial = keyMaterial,
+        clientAttestation = loadInstanceAttestation?.let { ClientAttestation(keyMaterial, it) },
         dpopKeyMaterial = dpopKeyMaterial,
         randomSource = randomSource,
         verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
-        loadInstanceAttestation = loadInstanceAttestation,
     )
 
     /** Sends all requests of [exchange] with this client, sharing its cookies, and returns its result. */
