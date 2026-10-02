@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -43,10 +44,7 @@ import kotlinx.serialization.SerializationException
 
 val OpenId4VciProtocolClientTest by matrixSuite {
 
-    fun AuthorizationServerFixture.vciClient() = OpenId4VciProtocolClient(
-        vciClient = OpenId4VciClient(clientId = clientId),
-        oauth2Client = client,
-    )
+    fun AuthorizationServerFixture.vciClient() = OpenId4VciProtocolClient(oauth2Client = client)
 
     /** The SD-JWT format of [AtomicAttribute2023], which [at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider] issues. */
     fun OpenId4VciProtocolClient.selectFormat(fixture: AuthorizationServerFixture): SupportedCredentialFormat =
@@ -78,7 +76,7 @@ val OpenId4VciProtocolClientTest by matrixSuite {
         val issuerMetadata = openId4VciServer.metadata
         val clientNonce = vci.nonceRequest(issuerMetadata)?.let { http.execute(it) }
         val scheme = vci.resolveCredentialScheme(format).shouldNotBeNull()
-        return vci.vciClient.createCredential(
+        return vci.createCredential(
             tokenResponse = token.params,
             metadata = issuerMetadata,
             credentialFormat = format,
@@ -207,7 +205,7 @@ val OpenId4VciProtocolClientTest by matrixSuite {
                 tokenType = TOKEN_TYPE_DPOP,
                 scope = format.scope,
             )
-            val request = vci.vciClient.createCredential(
+            val request = vci.createCredential(
                 tokenResponse = token,
                 metadata = openId4VciServer.metadata,
                 credentialFormat = format,
@@ -237,6 +235,30 @@ val OpenId4VciProtocolClientTest by matrixSuite {
 
             scriptedHttp.sent.kinds() shouldBe listOf("Credential(0)", "Credential(1)")
             scriptedHttp.sent[1].toRequestInfo().dpop.shouldNotBeNull().payload.nonce shouldBe "n1"
+        }
+    }
+
+    /** [OID4VCI 1.0 Appendix F.1](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-F.1) */
+    test("proof JWTs name the client_id of the OAuth 2.0 client as the issuer") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            // OpenId4VciClient keeps its default client ID, which differs from the one of the OAuth 2.0 client
+            val vci = OpenId4VciProtocolClient(vciClient = OpenId4VciClient(), oauth2Client = client)
+            val format = vci.selectFormat(this)
+            val token = TokenResponseParameters(
+                accessToken = uuid4().toString(),
+                tokenType = TOKEN_TYPE_DPOP,
+                scope = format.scope,
+            )
+
+            val request = vci.createCredential(
+                tokenResponse = token,
+                metadata = openId4VciServer.metadata,
+                credentialFormat = format,
+                clientNonce = uuid4().toString(),
+            ).getOrThrow().shouldBeSingleton().first().shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
+
+            request.request.proofs.shouldNotBeNull().jwt.shouldNotBeNull().single()
+                .getPayload<JsonWebToken>().getOrThrow().issuer shouldBe clientId
         }
     }
 
@@ -317,7 +339,7 @@ val OpenId4VciProtocolClientTest by matrixSuite {
     test("nonces of the authorization server and the credential issuer are kept apart on the same origin") {
         with(AuthorizationServerFixture(requirePAR = false)) {
             val oauth2Client = OAuth2ProtocolClient(oAuth2Client = OAuth2Client(clientId = clientId))
-            val vci = OpenId4VciProtocolClient(OpenId4VciClient(clientId = clientId), oauth2Client)
+            val vci = OpenId4VciProtocolClient(oauth2Client = oauth2Client)
             val format = vci.selectFormat(this)
             val issuerMetadata = openId4VciServer.metadata
             val origin = Url(issuerMetadata.credentialEndpointUrl).let { "${it.protocol.name}://${it.host}" }
@@ -352,7 +374,7 @@ val OpenId4VciProtocolClientTest by matrixSuite {
                 )
             )
             val clientNonce = scriptedHttp.execute(vci.nonceRequest(issuerMetadata).shouldNotBeNull())
-            val request = vci.vciClient.createCredential(
+            val request = vci.createCredential(
                 token.params, issuerMetadata, format, clientNonce, previouslyRequestedScope = format.scope,
             ).getOrThrow().first()
 
@@ -390,7 +412,7 @@ val OpenId4VciProtocolClientTest by matrixSuite {
             token.dpopNonce.shouldNotBeNull()
             // a nonce endpoint would supply the credential issuer's own DPoP nonce
             val issuerMetadata = openId4VciServer.metadata.copy(nonceEndpointUrl = null)
-            val request = vci.vciClient.createCredential(
+            val request = vci.createCredential(
                 token.params, issuerMetadata, format, previouslyRequestedScope = format.scope,
             ).getOrThrow().first()
 

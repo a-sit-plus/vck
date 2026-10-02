@@ -58,6 +58,12 @@ Release 9.0.0 (unreleased):
       another offer URL or a redirect in its place is rejected
     - Deprecate `WalletService.parseCredentialOffer`, which retrieved offers passed by reference with the
       `remoteResourceRetriever` of `OpenId4VciClient`; that constructor parameter is only used by the deprecated method
+    - Add `OpenId4VciProtocolClient.createCredential`, whose proof JWTs name the `client_id` of its `OAuth2Client` as the
+      issuer (OID4VCI 1.0 Appendix F.1); `OpenId4VciClient.createCredential` takes it as the new parameter `clientId`
+    - Deprecate `OpenId4VciClient.clientId`, which only remains the default for `OpenId4VciClient.createCredential`;
+      the `client_id` belongs to `OAuth2Client`
+    - Fix: Proof JWTs of `OpenId4VciKtorClient` name the `client_id` of the OAuth 2.0 client that requested the token,
+      instead of the one of `OpenId4VciClient`, which differed when the OAuth 2.0 client was passed separately
 
 Release 8.0.0:
 
