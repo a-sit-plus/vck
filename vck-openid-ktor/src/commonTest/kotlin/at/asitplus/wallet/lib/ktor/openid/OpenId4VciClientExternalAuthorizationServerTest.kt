@@ -277,7 +277,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             externalAuthorizationServer = externalAuthorizationServer,
             client = OpenId4VciKtorClient(
                 engine = mockEngine,
-                oid4vciService = OpenId4VciClient(
+                oid4vciClient = OpenId4VciClient(
                     clientId = walletClientId,
                     keyMaterial = credentialKeyMaterial,
                 ),

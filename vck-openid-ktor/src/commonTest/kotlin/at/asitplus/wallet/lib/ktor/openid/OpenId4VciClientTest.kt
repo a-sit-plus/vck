@@ -206,7 +206,7 @@ val OpenId4VciKtorClientTest by matrixSuite {
             statusListIssuer = statusListIssuer,
             client = OpenId4VciKtorClient(
                 engine = mockEngine,
-                oid4vciService = OpenId4VciClient(
+                oid4vciClient = OpenId4VciClient(
                     clientId = clientId,
                     keyMaterial = credentialKeyMaterial,
                 ),

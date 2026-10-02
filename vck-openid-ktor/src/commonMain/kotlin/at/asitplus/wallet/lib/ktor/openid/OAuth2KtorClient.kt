@@ -12,6 +12,7 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -25,6 +26,7 @@ import io.ktor.client.engine.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import kotlinx.serialization.json.JsonObject
 
 @Deprecated(
     "Moved to vck-openid, which does not depend on a ktor client",
@@ -90,9 +92,12 @@ class OAuth2KtorClient(
     )
     typealias OpenUrlForAuthnRequest = OAuth2ProtocolClient.OpenUrlForAuthnRequest
 
-    internal val client = buildHttpClient(engine, cookiesStorage, httpClientConfig)
+    private val client = buildHttpClient(engine, cookiesStorage, httpClientConfig)
 
-    /** Implements the protocol; this class only sends its requests. */
+    /**
+     * Implements the protocol; this class only sends its requests. Internal only to wire protocol clients that need to
+     * share its state, i.e. the DPoP nonces, see [OpenId4VciKtorClient].
+     */
     internal val protocolClient = OAuth2ProtocolClient(
         oAuth2Client = oAuth2Client,
         keyMaterial = keyMaterial,
@@ -101,6 +106,17 @@ class OAuth2KtorClient(
         verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
         loadInstanceAttestation = loadInstanceAttestation,
     )
+
+    /** Sends all requests of [exchange] with this client, sharing its cookies, and returns its result. */
+    internal suspend fun <T> execute(exchange: HttpExchange<T>): T = client.execute(exchange)
+
+    /** Loads the metadata of [authorizationServer], see [OAuth2ProtocolClient.loadAuthorizationServerMetadata]. */
+    internal suspend fun loadAuthorizationServerMetadata(authorizationServer: String): OAuth2AuthorizationServerMetadata =
+        execute(protocolClient.loadAuthorizationServerMetadata(authorizationServer))
+
+    /** Loads the user info with the access token from [tokenResponse], see [OAuth2ProtocolClient.userInfoRequest]. */
+    internal suspend fun requestUserInfo(userInfoEndpoint: String, tokenResponse: TokenResponseParameters): JsonObject =
+        execute(protocolClient.userInfoRequest(userInfoEndpoint, tokenResponse))
 
     /**
      * Uses a pre-authorized code from the authorization server to request an access token.
@@ -114,7 +130,7 @@ class OAuth2KtorClient(
         authorizationDetails: Set<OpenIdAuthorizationDetails>,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        client.execute(
+        execute(
             protocolClient.requestTokenWithPreAuthorizedCode(
                 oauthMetadata = oauthMetadata,
                 authorizationServer = authorizationServer,
@@ -145,7 +161,7 @@ class OAuth2KtorClient(
         authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        client.execute(
+        execute(
             protocolClient.requestTokenWithAuthCode(
                 oauthMetadata = oauthMetadata,
                 url = url,
@@ -173,7 +189,7 @@ class OAuth2KtorClient(
         authorizationDetails: Set<OpenIdAuthorizationDetails>,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        client.execute(
+        execute(
             protocolClient.requestTokenWithRefreshToken(
                 oauthMetadata = oauthMetadata,
                 credentialIssuer = credentialIssuer,
@@ -196,7 +212,7 @@ class OAuth2KtorClient(
         resource: String?,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        client.execute(
+        execute(
             protocolClient.requestTokenWithTokenExchange(
                 oauthMetadata = oauthMetadata,
                 authorizationServer = authorizationServer,
@@ -229,7 +245,7 @@ class OAuth2KtorClient(
         scope: String? = null,
         issuerMetadata: IssuerMetadata? = null
     ): KmmResult<OAuth2ProtocolClient.OpenUrlForAuthnRequest> = catching {
-        client.execute(
+        execute(
             protocolClient.startAuthorization(
                 oauthMetadata = oauthMetadata,
                 authorizationServer = authorizationServer,
@@ -251,7 +267,7 @@ class OAuth2KtorClient(
         request: TokenIntrospectionRequest,
         popAudience: String,
         issuerMetadata: IssuerMetadata? = null,
-    ): TokenIntrospectionResponse = client.execute(
+    ): TokenIntrospectionResponse = execute(
         protocolClient.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
             request = request,
