@@ -2,7 +2,8 @@
 
 Release 9.0.0 (unreleased):
 
-tbd
+- Status lists: Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18),
+  as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
 
 Release 8.0.0:
 
