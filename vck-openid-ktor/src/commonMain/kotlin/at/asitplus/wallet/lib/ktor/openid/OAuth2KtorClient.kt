@@ -12,9 +12,11 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
@@ -25,6 +27,7 @@ import io.ktor.client.engine.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import kotlinx.serialization.json.JsonObject
 
 @Deprecated(
     "Moved to vck-openid, which does not depend on a ktor client",
@@ -44,36 +47,99 @@ typealias TokenResponseWithDpopNonce = at.asitplus.wallet.lib.oauth2.TokenRespon
  *  * [JSON Web Token (JWT) Response for OAuth Token Introspection](https://datatracker.ietf.org/doc/html/rfc9701)
  *  * [EUDI TS3 Wallet Unit Attestation 1.5.2](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
  */
-class OAuth2KtorClient(
-    /** ktor engine to use to make requests to issuing service. */
-    engine: HttpClientEngine,
+class OAuth2KtorClient private constructor(
+    /** Sends the requests, configured not to follow redirects. */
+    private val client: HttpClient,
     /**
-     * Callers are advised to implement a persistent cookie storage,
+     * Implements the protocol; this class only sends its requests. Internal only to wire protocol clients that need to
+     * share its state, i.e. the DPoP nonces, see [OpenId4VciKtorClient].
+     */
+    internal val protocolClient: OAuth2ProtocolClient,
+) {
+
+    /**
+     * @param httpClient the app's ktor client, i.e. with its engine, cookie storage (advised to be persistent, to keep
+     * the session at the authorization server alive after receiving the auth code) and logging. This class sends its
+     * requests with a copy that does not follow redirects (see [HttpClient.config]), setting content type and status
+     * handling per request. Plugins must not re-send requests or react to error statuses, e.g. by caching failures:
+     * retries after a `use_dpop_nonce` error re-send the same request, and DPoP proofs and client attestation PoPs are
+     * single-use.
+     * @param oAuth2Client implements the OAuth 2.0 protocol, `redirectUrl` needs to be registered by the OS for this
+     * application, so redirection back from browser works
+     * @param clientAttestation authenticates the client with
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html),
+     * e.g. with a Wallet Instance Attestation (WIA), or `null` to not use it
+     * @param dpopKeyMaterial the key material the access tokens and refresh tokens get bound to, used for calculating
+     * DPoP proofs; by default the key of [clientAttestation], as
+     * [EUDI TS3](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)
+     * requires, so that refresh tokens remain usable after the app restarts, else an ephemeral key
+     * @param randomSource source for random bytes, i.e., nonces for proof-of-possession of key material for
+     * sender-constrained tokens
+     * @param verifyTokenIntrospectionJwt verifies signed token introspection responses; by default, every syntactically
+     * valid JWS is accepted
+     */
+    constructor(
+        httpClient: HttpClient,
+        oAuth2Client: OAuth2Client,
+        clientAttestation: ClientAttestation? = null,
+        dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
+        randomSource: RandomSource = RandomSource.Secure,
+        verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+    ) : this(
+        client = httpClient.config { followRedirects = false },
+        protocolClient = OAuth2ProtocolClient(
+            oAuth2Client = oAuth2Client,
+            clientAttestation = clientAttestation,
+            dpopKeyMaterial = dpopKeyMaterial,
+            randomSource = randomSource,
+            verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
+        ),
+    )
+
+    /**
+     * @param engine ktor engine to use to make requests to issuing service.
+     * @param cookiesStorage Callers are advised to implement a persistent cookie storage,
      * to keep the session at the issuing service alive after receiving the auth code.
-     */
-    cookiesStorage: CookiesStorage? = null,
-    /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
-    httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    /** Used to prove possession of the key material for the instance attestation, see [loadInstanceAttestation]. */
-    keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /** The key material the access tokens and refresh tokens get bound to, used for calculating DPoP proofs. */
-    dpopKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /**
-     * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
-     * back from browser works
-     */
-    val oAuth2Client: OAuth2Client,
-    /** Source for random bytes, i.e., nonces for proof-of-possession of key material for sender-constrained tokens. */
-    randomSource: RandomSource = RandomSource.Secure,
-    /** Verifies signed token introspection responses. By default, every syntactically valid JWS is accepted. */
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
-    /**
-     * Return a new Wallet Instance Attestation (WIA) to authenticate the Wallet App to the
-     * Authorization Service with OAuth Attestation Based Client Auth.
+     * @param httpClientConfig Additional configuration for building the HTTP client, e.g. callers may enable logging.
+     * @param keyMaterial Used to prove possession of the key material for the instance attestation, see
+     * [loadInstanceAttestation].
+     * @param dpopKeyMaterial The key material the access tokens and refresh tokens get bound to, used for calculating
+     * DPoP proofs.
+     * @param oAuth2Client Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this
+     * application, so redirection back from browser works
+     * @param randomSource Source for random bytes, i.e., nonces for proof-of-possession of key material for
+     * sender-constrained tokens.
+     * @param verifyTokenIntrospectionJwt Verifies signed token introspection responses. By default, every
+     * syntactically valid JWS is accepted.
+     * @param loadInstanceAttestation Return a new Wallet Instance Attestation (WIA) to authenticate the Wallet App to
+     * the Authorization Service with OAuth Attestation Based Client Auth.
      * Returned JWT MUST reference [keyMaterial] in [JsonWebToken.confirmationClaim].
      */
-    val loadInstanceAttestation: (suspend (OAuth2ProtocolClient.LoadInstanceAttestationInput) -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
-) {
+    @Deprecated(
+        "Pass the app's HttpClient instead of engine, cookiesStorage and httpClientConfig, and the instance " +
+                "attestation loader together with its key material as ClientAttestation; " +
+                "the DPoP key then defaults to the attested key"
+    )
+    constructor(
+        engine: HttpClientEngine,
+        cookiesStorage: CookiesStorage? = null,
+        httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+        dpopKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+        oAuth2Client: OAuth2Client,
+        randomSource: RandomSource = RandomSource.Secure,
+        verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+        loadInstanceAttestation: (suspend (OAuth2ProtocolClient.LoadInstanceAttestationInput) -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
+    ) : this(
+        client = buildHttpClient(engine, cookiesStorage, httpClientConfig),
+        protocolClient = OAuth2ProtocolClient(
+            oAuth2Client = oAuth2Client,
+            clientAttestation = loadInstanceAttestation?.let { ClientAttestation(keyMaterial, it) },
+            dpopKeyMaterial = dpopKeyMaterial,
+            randomSource = randomSource,
+            verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
+        ),
+    )
 
     @Deprecated(
         "Moved to vck-openid, which does not depend on a ktor client",
@@ -90,17 +156,32 @@ class OAuth2KtorClient(
     )
     typealias OpenUrlForAuthnRequest = OAuth2ProtocolClient.OpenUrlForAuthnRequest
 
-    internal val client = buildHttpClient(engine, cookiesStorage, httpClientConfig)
+    /**
+     * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
+     * back from browser works
+     */
+    val oAuth2Client: OAuth2Client
+        get() = protocolClient.oAuth2Client
 
-    /** Implements the protocol; this class only sends its requests. */
-    internal val protocolClient = OAuth2ProtocolClient(
-        oAuth2Client = oAuth2Client,
-        keyMaterial = keyMaterial,
-        dpopKeyMaterial = dpopKeyMaterial,
-        randomSource = randomSource,
-        verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
-        loadInstanceAttestation = loadInstanceAttestation,
-    )
+    /** Authenticates the client with OAuth 2.0 Attestation-Based Client Authentication, if not `null`. */
+    val clientAttestation: ClientAttestation?
+        get() = protocolClient.clientAttestation
+
+    /** Returns a new Wallet Instance Attestation (WIA), see [ClientAttestation.loadInstanceAttestation]. */
+    @Deprecated("Use clientAttestation", ReplaceWith("clientAttestation?.loadInstanceAttestation"))
+    val loadInstanceAttestation: (suspend (OAuth2ProtocolClient.LoadInstanceAttestationInput) -> KmmResult<JwsCompactTyped<JsonWebToken>>)?
+        get() = clientAttestation?.loadInstanceAttestation
+
+    /** Sends all requests of [exchange] with this client, sharing its cookies, and returns its result. */
+    internal suspend fun <T> execute(exchange: HttpExchange<T>): T = client.execute(exchange)
+
+    /** Loads the metadata of [authorizationServer], see [OAuth2ProtocolClient.loadAuthorizationServerMetadata]. */
+    internal suspend fun loadAuthorizationServerMetadata(authorizationServer: String): OAuth2AuthorizationServerMetadata =
+        execute(protocolClient.loadAuthorizationServerMetadata(authorizationServer))
+
+    /** Loads the user info with the access token from [tokenResponse], see [OAuth2ProtocolClient.userInfoRequest]. */
+    internal suspend fun requestUserInfo(userInfoEndpoint: String, tokenResponse: TokenResponseParameters): JsonObject =
+        execute(protocolClient.userInfoRequest(userInfoEndpoint, tokenResponse))
 
     /**
      * Uses a pre-authorized code from the authorization server to request an access token.
@@ -114,7 +195,7 @@ class OAuth2KtorClient(
         authorizationDetails: Set<OpenIdAuthorizationDetails>,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        client.execute(
+        execute(
             protocolClient.requestTokenWithPreAuthorizedCode(
                 oauthMetadata = oauthMetadata,
                 authorizationServer = authorizationServer,
@@ -145,7 +226,7 @@ class OAuth2KtorClient(
         authorizationDetails: Set<OpenIdAuthorizationDetails>? = null,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        client.execute(
+        execute(
             protocolClient.requestTokenWithAuthCode(
                 oauthMetadata = oauthMetadata,
                 url = url,
@@ -173,7 +254,7 @@ class OAuth2KtorClient(
         authorizationDetails: Set<OpenIdAuthorizationDetails>,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        client.execute(
+        execute(
             protocolClient.requestTokenWithRefreshToken(
                 oauthMetadata = oauthMetadata,
                 credentialIssuer = credentialIssuer,
@@ -196,7 +277,7 @@ class OAuth2KtorClient(
         resource: String?,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        client.execute(
+        execute(
             protocolClient.requestTokenWithTokenExchange(
                 oauthMetadata = oauthMetadata,
                 authorizationServer = authorizationServer,
@@ -229,7 +310,7 @@ class OAuth2KtorClient(
         scope: String? = null,
         issuerMetadata: IssuerMetadata? = null
     ): KmmResult<OAuth2ProtocolClient.OpenUrlForAuthnRequest> = catching {
-        client.execute(
+        execute(
             protocolClient.startAuthorization(
                 oauthMetadata = oauthMetadata,
                 authorizationServer = authorizationServer,
@@ -251,7 +332,7 @@ class OAuth2KtorClient(
         request: TokenIntrospectionRequest,
         popAudience: String,
         issuerMetadata: IssuerMetadata? = null,
-    ): TokenIntrospectionResponse = client.execute(
+    ): TokenIntrospectionResponse = execute(
         protocolClient.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
             request = request,
