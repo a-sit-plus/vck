@@ -48,12 +48,15 @@ Release 9.0.0 (unreleased):
       origin, as RFC 9449 9. requires; `OAuth2KtorClient.applyToken` falls back to the latest nonce of the resource
       server at that origin
 - OpenID for Verifiable Credential Issuance client:
+    - Renamed `WalletService` (in `vck-openid`) to `OpenId4VciClient`
+    - Renamed `OpenId4VciClient` (in `vck-openid-ktor`) to `OpenId4VciKtorClient`
+    - Renamed `CredentialIssuer` (in `vck-openid`) to `OpenId4VciServer`
     - Add `OpenId4VciProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the credential issuer
       (metadata, nonce, credential), built on `OAuth2ProtocolClient`, which handles DPoP for the credential issuer with
       the credential issuer's own nonces
     - Move `CredentialIdentifierInfo` to `vck-openid` (`at.asitplus.wallet.lib.oidvci`), deprecate the typealias left
       in `vck-openid-ktor`; the serialized form is unchanged
-    - `OpenId4VciClient` sends the requests of `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` in the order of each
+    - `OpenId4VciKtorClient` sends the requests of `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` in the order of each
       flow, keeping its API
     - Fix: Credential requests use only DPoP nonces of the credential issuer, never the one of the authorization server
       from the token response, as nonces are only accepted by the server that issued them (RFC 9449 9.)
@@ -61,7 +64,7 @@ Release 9.0.0 (unreleased):
       offer passed by value or by reference; the resource at `credential_offer_uri` must be the JSON-encoded offer, so
       another offer URL or a redirect in its place is rejected
     - Deprecate `WalletService.parseCredentialOffer`, which retrieved offers passed by reference with the
-      `remoteResourceRetriever` of `WalletService`; that constructor parameter is only used by the deprecated method
+      `remoteResourceRetriever` of `OpenId4VciClient`; that constructor parameter is only used by the deprecated method
 
 Release 8.0.0:
 

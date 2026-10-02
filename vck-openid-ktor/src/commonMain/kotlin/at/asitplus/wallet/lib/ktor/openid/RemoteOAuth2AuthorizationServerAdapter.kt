@@ -24,7 +24,7 @@ import kotlinx.coroutines.IO
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Uses an external OAuth 2.0 Authorization Server with a [at.asitplus.wallet.lib.oidvci.CredentialIssuer],
+ * Uses an external OAuth 2.0 Authorization Server with a [at.asitplus.wallet.lib.oidvci.OpenId4VciServer],
  * i.e., delegate authorization to the external AS, and load user info from there
  * (after performing token exchange with the Wallet's access token to get a fresh one).
  * Make sure to configure [oauth2Client] to use the correct [OAuth2KtorClient.loadInstanceAttestation].

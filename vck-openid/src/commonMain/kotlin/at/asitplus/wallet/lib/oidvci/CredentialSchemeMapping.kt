@@ -21,7 +21,7 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 
 /**
- * Defines mapping of [CredentialScheme] to identifiers used in OID4VCI in [CredentialIssuer]
+ * Defines mapping of [CredentialScheme] to identifiers used in OID4VCI in [OpenId4VciServer]
  * (keys in [at.asitplus.openid.IssuerMetadata.supportedCredentialConfigurations],
  * and [SupportedCredentialFormat.scope])
  * and [CredentialAuthorizationServiceStrategy]
@@ -38,7 +38,7 @@ interface CredentialSchemeMapper {
 
     /**
      * Encodes the [scheme] to a unique identifier,
-     * that may be used in [CredentialIssuer.supportedCredentialConfigurations].
+     * that may be used in [OpenId4VciServer.supportedCredentialConfigurations].
      */
     fun toCredentialIdentifier(scheme: CredentialScheme, rep: CredentialRepresentation): String
 
