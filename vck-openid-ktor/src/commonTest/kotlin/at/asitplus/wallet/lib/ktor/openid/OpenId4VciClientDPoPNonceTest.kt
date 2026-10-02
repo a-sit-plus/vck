@@ -75,7 +75,7 @@ val OpenId4VciClientDPoPNonceTest by matrixSuite {
         }
         val client = OpenId4VciKtorClient(
             engine = mockEngine,
-            oid4vciService = OpenId4VciClient(),
+            oid4vciClient = OpenId4VciClient(),
             oauth2Client = OAuth2KtorClient(
                 engine = mockEngine,
                 oAuth2Client = OAuth2Client(),
