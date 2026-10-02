@@ -35,6 +35,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 
 /**
  * Implements the client side of
@@ -48,12 +49,12 @@ import kotlin.jvm.JvmOverloads
  *  * Credential offer, if any: [loadCredentialOffer], then the pre-authorized code or authorization code flow for it.
  *  * Pre-authorized code: [loadIssuerMetadata], [parseCredentialMetadata], [OAuth2ProtocolClient.loadAuthorizationServerMetadata]
  *    of [selectAuthorizationServer], [OAuth2ProtocolClient.requestTokenWithPreAuthorizedCode], [nonceRequest],
- *    [OpenId4VciClient.createCredential], and [credentialRequest] for each of those credential requests.
+ *    [createCredential], and [credentialRequest] for each of those credential requests.
  *  * Authorization code: the same, but with [OAuth2ProtocolClient.startAuthorization], opening its URL in the browser,
  *    and [OAuth2ProtocolClient.requestTokenWithAuthCode] with the redirect back to the wallet, instead of the
  *    pre-authorized token request.
  *  * Refreshing a credential: [OAuth2ProtocolClient.requestTokenWithRefreshToken], [nonceRequest],
- *    [OpenId4VciClient.createCredential], and [credentialRequest].
+ *    [createCredential], and [credentialRequest].
  *
  * DPoP proofs and nonces for the credential issuer are handled by [oauth2Client].
  */
@@ -157,7 +158,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
 
     /**
      * Requests a fresh `c_nonce` from [IssuerMetadata.nonceEndpointUrl], to be used in
-     * [OpenId4VciClient.createCredential], or `null` if the credential issuer has no nonce endpoint.
+     * [createCredential], or `null` if the credential issuer has no nonce endpoint.
      * The `DPoP-Nonce` of the response, if any, is used by [oauth2Client] for the DPoP proofs of the following
      * [credentialRequest]s.
      *
@@ -176,7 +177,47 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
     }
 
     /**
-     * Sends [request], as created by [OpenId4VciClient.createCredential], to the
+     * Creates the credential requests for [tokenResponse] with [OpenId4VciClient.createCredential], whose proof JWTs
+     * name the `client_id` of [oauth2Client] as the issuer, as
+     * [OID4VCI 1.0 Appendix F.1](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-F.1)
+     * requires. Send each one with [credentialRequest].
+     */
+    suspend fun createCredential(
+        tokenResponse: TokenResponseParameters,
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
+        previouslyRequestedScope: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<OpenId4VciClient.CredentialRequest>> = vciClient.createCredential(
+        tokenResponse = tokenResponse,
+        metadata = metadata,
+        credentialFormat = credentialFormat,
+        clientNonce = clientNonce,
+        previouslyRequestedScope = previouslyRequestedScope,
+        clock = clock,
+        clientId = oauth2Client.oAuth2Client.clientId,
+    )
+
+    /**
+     * Creates the credential request for exactly one credential with [OpenId4VciClient.createCredential], whose proof
+     * JWT names the `client_id` of [oauth2Client] as the issuer. Send it with [credentialRequest].
+     */
+    suspend fun createCredential(
+        metadata: IssuerMetadata,
+        credentialConfigurationId: String,
+        clientNonce: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<OpenId4VciClient.CredentialRequest> = vciClient.createCredential(
+        metadata = metadata,
+        credentialConfigurationId = credentialConfigurationId,
+        clientNonce = clientNonce,
+        clock = clock,
+        clientId = oauth2Client.oAuth2Client.clientId,
+    )
+
+    /**
+     * Sends [request], as created by [createCredential], to the
      * [IssuerMetadata.credentialEndpointUrl] with the access token from [tokenResponse], and parses the (possibly
      * encrypted) response into credentials to store.
      *

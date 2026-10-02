@@ -95,8 +95,11 @@ typealias WalletService = OpenId4VciClient
  * 1.0 from 2025-09-16.
  */
 class OpenId4VciClient @JvmOverloads constructor(
-    /** Used as the issuer in credential proofs. Must match the `client_id` of the OAuth client. */
-    val clientId: String = "https://wallet.a-sit.at/app",
+    /**
+     * Used as the issuer in credential proofs when [createCredential] gets no `clientId`. Deprecated, as the `client_id`
+     * belongs to the OAuth 2.0 client: [OpenId4VciProtocolClient.createCredential] passes the one of its [OAuth2Client].
+     */
+    clientId: String = "https://wallet.a-sit.at/app",
     /** Used to prove possession of the key material for [CredentialRequestProofContainer], i.e., the holder key. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /**
@@ -137,6 +140,15 @@ class OpenId4VciClient @JvmOverloads constructor(
         Pair(key.jsonWebKey, null)
     }
 ) {
+
+    private val defaultClientId = clientId
+
+    @Deprecated(
+        "The client ID belongs to the OAuth 2.0 client: use OAuth2Client.clientId, which " +
+                "OpenId4VciProtocolClient.createCredential passes to createCredential",
+    )
+    val clientId: String
+        get() = defaultClientId
 
     data class KeyAttestationInput(
         val credentialIssuer: String?,
@@ -326,6 +338,7 @@ class OpenId4VciClient @JvmOverloads constructor(
      * the value from there, exactly [ClientNonceResponse.clientNonce]
      * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
      * may not set it in [tokenResponse]
+     * @param clientId the `client_id` of the OAuth 2.0 client, used as the issuer of proof JWTs
      */
     suspend fun createCredential(
         tokenResponse: TokenResponseParameters,
@@ -334,6 +347,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         clientNonce: String? = null,
         previouslyRequestedScope: String? = null,
         clock: Clock = Clock.System,
+        clientId: String = defaultClientId,
     ): KmmResult<Collection<CredentialRequest>> = catching {
         createCredentialRequestInternal(
             tokenResponse = tokenResponse,
@@ -341,7 +355,8 @@ class OpenId4VciClient @JvmOverloads constructor(
             credentialFormat = credentialFormat,
             clientNonce = clientNonce,
             previouslyRequestedScope = previouslyRequestedScope,
-            clock = clock
+            clock = clock,
+            clientId = clientId,
         ).getOrThrow().map {
             encryptionService.wrapCredentialRequest(it, metadata).getOrThrow()
         }
@@ -362,17 +377,19 @@ class OpenId4VciClient @JvmOverloads constructor(
      * [IssuerMetadata.supportedCredentialConfigurations]
      * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
      * the value from there, exactly [ClientNonceResponse.clientNonce]
+     * @param clientId the `client_id` of the OAuth 2.0 client, used as the issuer of proof JWTs
      */
     suspend fun createCredential(
         metadata: IssuerMetadata,
         credentialConfigurationId: String,
         clientNonce: String? = null,
         clock: Clock = Clock.System,
+        clientId: String = defaultClientId,
     ): KmmResult<CredentialRequest> = catching {
         val credentialFormat = metadata.supportedCredentialConfigurations[credentialConfigurationId]
             ?: throw UnknownCredentialConfiguration(credentialConfigurationId)
         CredentialRequestParameters(credentialConfigurationId = credentialConfigurationId)
-            .withProofAndEncryption(metadata, credentialFormat, clientNonce, clock)
+            .withProofAndEncryption(metadata, credentialFormat, clientNonce, clock, clientId)
             .also { Napier.i("createCredentialRequest returns $it") }
             .let { encryptionService.wrapCredentialRequest(it, metadata).getOrThrow() }
     }
@@ -384,9 +401,10 @@ class OpenId4VciClient @JvmOverloads constructor(
         clientNonce: String? = null,
         previouslyRequestedScope: String? = null,
         clock: Clock = Clock.System,
+        clientId: String,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
         tokenResponse.toCredentialRequestParameters(metadata, credentialFormat, previouslyRequestedScope)
-            .map { it.withProofAndEncryption(metadata, credentialFormat, clientNonce, clock) }
+            .map { it.withProofAndEncryption(metadata, credentialFormat, clientNonce, clock, clientId) }
             .also { Napier.i("createCredentialRequest returns $it") }
     }
 
@@ -395,12 +413,14 @@ class OpenId4VciClient @JvmOverloads constructor(
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String?,
         clock: Clock,
+        clientId: String,
     ): CredentialRequestParameters = copy(
         proofs = createCredentialRequestProof(
             credentialIssuer = metadata.credentialIssuer,
             credentialFormat = credentialFormat,
             clientNonce = clientNonce,
-            clock = clock
+            clock = clock,
+            clientId = clientId,
         ).takeIf { it.jwt != null || it.attestation != null }, // do not send empty proofs
         credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
     )
@@ -539,11 +559,13 @@ class OpenId4VciClient @JvmOverloads constructor(
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String?,
         clock: Clock = Clock.System,
+        clientId: String = defaultClientId,
     ): CredentialRequestProofContainer = credentialFormat.supportedProofTypes?.get(ProofTypes.JWT)?.let { type ->
         createCredentialRequestProofJwt(
             clientNonce = clientNonce,
             credentialIssuer = credentialIssuer,
             clock = clock,
+            clientId = clientId,
             keyAttestationRequired = type.keyAttestationRequired,
             supportedAlgorithms = type.supportedSigningAlgorithms,
         )
@@ -562,6 +584,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         clock: Clock = Clock.System,
         keyAttestationRequired: KeyAttestationRequired? = null,
         supportedAlgorithms: Collection<String>? = null,
+        clientId: String = defaultClientId,
     ): CredentialRequestProofContainer {
         if (keyAttestationRequired != null && loadKeyAttestation == null) {
             throw IllegalArgumentException("Key attestation required, none provided")

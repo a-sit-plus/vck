@@ -52,7 +52,11 @@ class OpenId4VciKtorClient(
      * back from browser works, `cryptoService` provides proof of possession for credential key material.
      */
     private val oid4vciClient: OpenId4VciClient = OpenId4VciClient(),
-    /** Internal OAuth 2.0 client passed on to [oauth2Client] with the `clientId` from [oid4vciClient] */
+    /**
+     * Internal OAuth 2.0 client passed on to [oauth2Client], with the (deprecated) `clientId` from [oid4vciClient].
+     * The `client_id` of the OAuth 2.0 client in [oauth2Client] is the issuer of credential proofs.
+     */
+    @Suppress("DEPRECATION")
     private val oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciClient.clientId),
     /** OAuth 2.0 client to use during the protocol run. */
     private val oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
@@ -250,7 +254,7 @@ class OpenId4VciKtorClient(
         val clientNonce = vci.nonceRequest(issuerMetadata)?.let { oauth2Client.execute(it) }
             .also { Napier.i("postCredentialRequestAndStore: uses nonce $it") }
 
-        val requests = oid4vciClient.createCredential(
+        val requests = vci.createCredential(
             tokenResponse = tokenResponse.params,
             metadata = issuerMetadata,
             credentialFormat = credentialFormat,
