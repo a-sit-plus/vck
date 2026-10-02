@@ -85,6 +85,18 @@ Release 9.0.0 (unreleased):
       HTTP configuration it silently preferred over its own
 - OpenID for Verifiable Presentations client:
     - Renamed `OpenId4VpWallet` (in `vck-openid`) to `OpenId4VpKtorHolder`
+    - Add `OpenId4VpProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the verifier, with
+      `sendAuthorizationResponse` posting authorization responses and error responses for the response modes
+      `direct_post` and `direct_post.jwt`
+    - Fix (security): The `redirect_uri` in the verifier's answer to a posted authorization response must be an absolute
+      `https` URI, else sending the response fails, although the verifier has already processed it. Before, any value,
+      e.g. a `javascript:` or `intent:` URI, or a custom app scheme, was returned for the wallet to open
+    - The `redirect_uri` is only read from the JSON body of the verifier's answer (OpenID4VP 1.0, 8.2); a `Location`
+      header is ignored
+    - `OpenId4VpKtorHolder` sends authorization responses with `OpenId4VpProtocolClient`, keeping its API
+    - Move `OpenId4VpSuccess` to `vck-openid` (`at.asitplus.wallet.lib.openid`), deprecate the typealias left in
+      `vck-openid-ktor`
+    - Deprecate `OpenId4VpKtorHolder.FormDataContentPlain`, which is no longer used
 
 Release 8.0.0:
 
