@@ -81,6 +81,7 @@ class OpenId4VpKtorHolder(
     val openId4VpHolder = OpenId4VpHolder(
         holder = holderAgent,
         keyMaterial = keyMaterial,
+        // only used by the deprecated methods of OpenId4VpHolder, this class sends the exchanges of protocolClient
         remoteResourceRetriever = { data ->
             withContext(Dispatchers.IO) {
                 val response = if (data.method == HttpMethod.Post) {
@@ -126,7 +127,7 @@ class OpenId4VpKtorHolder(
         iso180137AnnexCHolder = iso180137AnnexCHolder,
     )
 
-    internal val protocolClient = OpenId4VpProtocolClient(openId4VpHolder, dcApiHolder)
+    internal val protocolClient = OpenId4VpProtocolClient(openId4VpHolder)
 
     /**
      * Sends an error response with the appropriate method.
@@ -153,10 +154,15 @@ class OpenId4VpKtorHolder(
     ): KmmResult<AuthorizationResponsePreparationState> =
         openId4VpHolder.startAuthorizationResponsePreparation(request)
 
+    /**
+     * Parses [input], loads the request object, and validates the request, see
+     * [OpenId4VpProtocolClient.prepareAuthorizationResponse].
+     */
     suspend fun startAuthorizationResponsePreparation(
         input: String,
-    ): KmmResult<AuthorizationResponsePreparationState> =
-        openId4VpHolder.startAuthorizationResponsePreparation(input)
+    ): KmmResult<AuthorizationResponsePreparationState> = catching {
+        client.execute(protocolClient.prepareAuthorizationResponse(input))
+    }
 
     /** Prepares either an OpenID4VP or Annex C request received through the Digital Credentials API. */
     suspend fun prepareDcApiRequest(

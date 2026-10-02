@@ -64,6 +64,7 @@ fun List<ProtocolRequest>.kinds(): List<String> = map {
         is ProtocolRequest.Nonce -> "Nonce"
         is ProtocolRequest.Credential -> "Credential(${it.attempt})"
         is ProtocolRequest.UserInfo -> "UserInfo(${it.attempt})"
+        is ProtocolRequest.RequestObject -> "RequestObject"
         is ProtocolRequest.AuthorizationResponse -> "AuthorizationResponse"
     }
 }

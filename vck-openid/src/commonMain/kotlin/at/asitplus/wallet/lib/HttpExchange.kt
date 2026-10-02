@@ -67,6 +67,12 @@ sealed class ProtocolRequest {
     data class UserInfo(override val http: PreparedHttpRequest, val attempt: Int) : ProtocolRequest()
 
     /**
+     * GET the request object from the `request_uri` of an OpenID4VP authorization request, or POST `wallet_metadata`
+     * and `wallet_nonce` to it as form, for `request_uri_method=post`.
+     */
+    data class RequestObject(override val http: PreparedHttpRequest) : ProtocolRequest()
+
+    /**
      * POST an OpenID4VP authorization response, or authorization error response, as form to the `response_uri` of
      * the verifier, for the response modes `direct_post` and `direct_post.jwt`.
      */
