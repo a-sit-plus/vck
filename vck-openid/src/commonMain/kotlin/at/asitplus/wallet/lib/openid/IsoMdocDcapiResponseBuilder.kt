@@ -14,12 +14,8 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
-import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.SignCoseDetached
-import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.encodeToByteArray
@@ -62,7 +58,6 @@ object IsoMdocDcapiResponseBuilder {
                     ?.encodeToString(Base64UrlStrict) ?: throw IllegalArgumentException("no nonce"),
                 audience = callingOrigin,
                 calcIsoSessionTranscript = { sessionTranscript },
-                returnOneDeviceResponse = true,
             ),
             credentialPresentation = credentialPresentation,
         )
@@ -93,19 +88,4 @@ object IsoMdocDcapiResponseBuilder {
         return EncryptedResponse(TYPE_DCAPI, encryptedResponseData)
     }
 
-    @Deprecated(
-        message = "signDeviceAuthDetached and keyMaterial are no longer needed and have been removed" +
-                " because Iso DeviceSignature computation has been moved into Holder's presentation creation.",
-        replaceWith = ReplaceWith(
-            expression = "buildEncryptedResponse(credentialPresentation, isoMdocWalletRequest, holder)",
-        )
-    )
-    suspend fun buildEncryptedResponse(
-        credentialPresentation: CredentialPresentation.IsoDeviceRetrievalPresentation,
-        isoMdocWalletRequest: RequestParametersFrom.IsoMdocDcApi,
-        keyMaterial: KeyMaterial,
-        holder: Holder,
-        signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
-            SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-    ) = buildEncryptedResponse(credentialPresentation, isoMdocWalletRequest, holder)
 }

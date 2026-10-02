@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.PresentationSubmission
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -25,10 +24,6 @@ data class AuthenticationResponseParameters(
      */
     val code: String? = null,
 
-    @Deprecated("Support for SIOPv2 has been removed")
-    @SerialName("id_token")
-    val idToken: String? = null,
-
     /**
      * OID4VP: REQUIRED. JSON String or JSON object that MUST contain a single Verifiable Presentation or an array of
      * JSON Strings and JSON objects each of them containing a Verifiable Presentations. Each Verifiable Presentation
@@ -41,9 +36,6 @@ data class AuthenticationResponseParameters(
      */
     @SerialName("vp_token")
     val vpToken: JsonElement? = null,
-
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    val presentationSubmission: PresentationSubmission? = null,
 
     /**
      * OAuth2.0: REQUIRED if the `state` parameter was present in the client authorization request. The exact value

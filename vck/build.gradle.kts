@@ -27,7 +27,6 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                api(project(":dif-data-classes"))
                 api(project(":openid-data-classes"))
                 api(project(":etsi-data-classes"))
                 api(project(":sd-jwt-type-metadata"))
@@ -55,7 +54,6 @@ if ("true" != disableAppleTargets) exportXCFramework(
     name = "VckKmm",
     transitiveExports = true,
     static = false,
-    project(":dif-data-classes"),
     project(":openid-data-classes"),
     project(":sd-jwt-type-metadata"),
     "io.github.z4kn4fein:semver:${VcLibVersions.semver}"

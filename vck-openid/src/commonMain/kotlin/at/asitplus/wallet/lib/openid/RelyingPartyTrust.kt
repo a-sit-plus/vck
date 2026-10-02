@@ -60,9 +60,6 @@ sealed interface RelyingPartyTrust {
     /**
      * Consulted for client identifier schemes this library does not evaluate natively, i.e. `entity_id`
      * (OpenID Federation), `did`, and anything unrecognised. Throw to reject the request, stating why.
-     *
-     * In contrast to the deprecated [at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier] this receives the
-     * whole request, so it also covers DC API and multi-signed requests, and it states why it rejected one.
      */
     class Custom(
         val evaluate: suspend (RequestParametersFrom<AuthenticationRequestParameters>) -> Unit,

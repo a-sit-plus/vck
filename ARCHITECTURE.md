@@ -22,13 +22,11 @@ vck-longfellow
     -> vck
 
 vck
-    -> dif-data-classes
     -> openid-data-classes
     -> etsi-data-classes
     -> sd-jwt-type-metadata
 
 openid-data-classes
-    -> dif-data-classes
     -> csc-data-classes
     -> rfc3986-uri-syntax (implementation dependency)
 
@@ -135,8 +133,6 @@ Important areas:
 
 Use data-class modules for published wire models and serializers:
 
-- `dif-data-classes`
-  DIF Presentation Exchange models.
 - `openid-data-classes`
   OpenID/OAuth2/OIDC, DCQL, DCAPI, token status list, and related wire models. Also owns the complete ISO mDoc
   CBOR/COSE model in `at.asitplus.iso`: device request/response, `MobileSecurityObject`, session transcript and
@@ -255,11 +251,6 @@ Wire/query models live in `openid-data-classes`; matching, submission validation
 `vck`; OpenID protocol projection and validation live in `vck-openid`. Keep the request and its typed matching result
 together through user selection so repeated ISO document requests and DCQL submission rules are not lost.
 
-OpenID4VP 1.0 uses DCQL. Presentation Exchange support has been removed from the OpenID4VP path, and SIOPv2/id-token
-presentation support has also been removed. Deprecated Presentation Exchange types and `dif-data-classes` remain as
-compatibility surface for non-OpenID callers and migrations; do not use their presence as evidence of current
-OpenID4VP support. New presentation work should use `CredentialPresentationRequest.DCQLRequest` or
-`CredentialPresentationRequest.IsoDeviceRetrieval`, not deprecated format-specific `Holder` methods.
 
 ### ISO mDoc Zero-Knowledge Proofs
 

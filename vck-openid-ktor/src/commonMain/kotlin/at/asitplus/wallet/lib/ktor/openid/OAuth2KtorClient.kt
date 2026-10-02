@@ -32,11 +32,9 @@ import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.DPoP
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -60,7 +58,6 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.util.*
 import io.ktor.utils.io.*
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -93,8 +90,6 @@ class OAuth2KtorClient(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** The key material the access tokens and refresh tokens get bound to, used for calculating DPoP proofs. */
     private val dpopKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    @Deprecated("Set dpopKeyMaterial instead", ReplaceWith("dpopKeyMaterial"))
-    private val signDpop: SignJwtFun<JsonWebToken> = SignJwt(dpopKeyMaterial, JwsHeaderCertOrJwk()),
     /**
      * Implements OAuth2 protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
      * back from browser works

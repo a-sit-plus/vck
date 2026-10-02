@@ -1,8 +1,8 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
-
-tbd
+ - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
+ - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
 
 Release 8.0.0:
 

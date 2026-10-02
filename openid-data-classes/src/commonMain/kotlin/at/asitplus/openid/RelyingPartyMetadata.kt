@@ -82,10 +82,6 @@ data class RelyingPartyMetadata(
     @SerialName("id_token_encrypted_response_enc")
     val idTokenEncryptedResponseEncodingString: String? = null,
 
-    @Deprecated("Support for SIOPv2 has been removed")
-    @SerialName("subject_syntax_types_supported")
-    val subjectSyntaxTypesSupported: Set<String>? = null,
-
     /**
      * OID4VP 1.0: REQUIRED. An object containing a list of name/value pairs, where the name is a Credential Format
      * Identifier and the value defines format-specific parameters that a Verifier supports. For specific values that

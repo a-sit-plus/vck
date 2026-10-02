@@ -28,8 +28,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 
 
 val CredentialPresentationRequestBuilderTest by matrixSuite {
@@ -44,7 +42,6 @@ val CredentialPresentationRequestBuilderTest by matrixSuite {
 
         CredentialPresentationRequestBuilder(credential).apply {
             toDCQLRequest()
-            toPresentationExchangeRequest()
             shouldThrowAny {
                 toIsoDeviceRetrievalRequest()
             }
@@ -63,7 +60,6 @@ val CredentialPresentationRequestBuilderTest by matrixSuite {
         )
         CredentialPresentationRequestBuilder(credential).apply {
             toDCQLRequest()
-            toPresentationExchangeRequest()
             toIsoDeviceRetrievalRequest()
         }
     }

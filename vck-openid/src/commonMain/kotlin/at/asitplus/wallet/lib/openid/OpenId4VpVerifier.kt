@@ -11,7 +11,6 @@ import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.MdocDeviceSignatureVerifier
 import at.asitplus.wallet.lib.NonceService
@@ -24,7 +23,6 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
-import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -40,7 +38,6 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
-import kotlin.time.Clock
 
 /**
  * Combines Verifiable Presentations with OAuth 2.0.
@@ -66,9 +63,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private val decryptionKeyMaterial: KeyMaterial? = null,
     /** Creates one ephemeral encryption key per authentication request, see OpenID4VP 1.0, Section 8.3. */
     private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
-    @Deprecated("Will be derived from [ephemeralEncryptionKeyService] and [decryptionKeyMaterial]")
-    private val decryptJwe: DecryptJweFun =
-        DecryptJweWithEphemeralKey(ephemeralEncryptionKeyService, decryptionKeyMaterial),
     /** Signs authentication requests in [OpenId4VpRequestFactory]. */
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
@@ -78,10 +72,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
     /** Used to verify session transcripts from mDoc responses. */
     private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
-    @Deprecated("Support for SIOPv2 has been removed")
-    private val timeLeewaySeconds: Long = 300L,
-    @Deprecated("Support for SIOPv2 has been removed")
-    private val clock: Clock = Clock.System,
     /** Creates and validates OpenID4VP request nonces. */
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests to verify the authn response to it */
@@ -146,26 +136,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
                     requestFactory.createPlainAuthnRequest(requestOptions).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString().toCreatedRequest()
-            }
-
-            is CreationOptions.RequestByReference -> {
-                require(clientIdScheme !is CertificateHash && clientIdScheme !is CertificateSanDns) {
-                    "Requests using x509_hash or x509_san_dns client schemes must be signed"
-                }
-                URLBuilder(creationOptions.walletUrl).apply {
-                    JarRequestParameters(
-                        clientId = clientIdScheme.clientId,
-                        requestUri = creationOptions.requestUrl,
-                        requestUriMethod = creationOptions.requestUrlMethod,
-                    ).encodeToParameters()
-                        .forEach { parameters.append(it.key, it.value) }
-                }.buildString().toCreatedRequest {
-                    catching {
-                        joseCompliantSerializer.encodeToString(
-                            requestFactory.createPlainAuthnRequest(requestOptions, it)
-                        )
-                    }
-                }
             }
 
             is CreationOptions.SignedRequestByValue -> {
@@ -246,7 +216,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         }
 
         AuthnResponseResult(
-            idTokenValidationResult = null,
             vpTokenValidationResult = validateVpToken(authnRequest, input, session),
             request = authnRequest,
         )

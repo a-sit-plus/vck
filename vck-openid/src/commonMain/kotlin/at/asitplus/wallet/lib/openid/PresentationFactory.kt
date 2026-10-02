@@ -2,9 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormat
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.IdToken
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -18,28 +16,16 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
-import at.asitplus.wallet.lib.agent.PresentationResponseParameters.*
-import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.DCQLParameters
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.DeviceRetrievalParameters
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 
 internal class PresentationFactory(
     private val supportedAlgorithms: Set<SignatureAlgorithm>,
 ) {
-
-    @Deprecated(
-        message = "signDeviceAuthDetached is no longer used, because Iso Device Signature has been moved into" +
-                " Holder's presentation creation. Support for SIOPv2 has been removed",
-        replaceWith = ReplaceWith( expression = "PresentationFactory(supportedAlgorithms)", ),
-    )
-    constructor(
-        supportedAlgorithms: Set<SignatureAlgorithm>,
-        signDeviceAuthDetached:  SignCoseDetachedFun<ByteArray>,
-        signIdToken: SignJwtFun<IdToken>
-    ) : this(supportedAlgorithms)
 
     private val dcApiSessionTranscript = DcApiSessionTranscriptCalculator()
     private val urlSessionTranscript = UrlSessionTranscriptCalculator()
@@ -95,7 +81,6 @@ internal class PresentationFactory(
     ) {
         when (presentation) {
             is DCQLParameters -> presentation.verifyFormatSupport(this)
-            is PresentationExchangeParameters -> presentation.verifyFormatSupport(this)
             is DeviceRetrievalParameters ->
                 throw InvalidRequest("ISO Device Retrieval responses are not OpenID4VP presentations")
         }
@@ -136,42 +121,24 @@ internal class PresentationFactory(
         }
     }
 
-    @Suppress("DEPRECATION")
-    @Throws(OAuth2Exception::class)
-    private fun PresentationExchangeParameters.verifyFormatSupport(
-        supportedFormats: VpFormatsSupported,
-    ) = presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
-        if (!supportedFormats.supportsAlgorithm(descriptor.format, supportedJwsAlgorithms, supportedCoseAlgorithms)) {
-            throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
-        }
-    }
-
     @Throws(OAuth2Exception::class)
     private fun DCQLParameters.verifyFormatSupport(supportedFormats: VpFormatsSupported) =
-        verifiablePresentations.entries.mapIndexed { _, _ ->
-            val format = this.verifiablePresentations.values.flatten().first().toFormat()
-            if (!supportedFormats.supportsAlgorithm(format, supportedJwsAlgorithms, supportedCoseAlgorithms)) {
+        verifiablePresentations.values.flatten().forEach {
+            if (!supportedFormats.supportsAlgorithm(it, supportedJwsAlgorithms, supportedCoseAlgorithms)) {
                 throw RegistrationValueNotSupported("incompatible algorithms: $supportedFormats")
             }
         }
-
-    private fun CreatePresentationResult.toFormat(): ClaimFormat = when (this) {
-        is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
-        is CreatePresentationResult.SdJwt -> ClaimFormat.SD_JWT
-        is CreatePresentationResult.VcJwsPresentationData -> ClaimFormat.JWT_VP
-    }
-
 }
 
 /**
  * Empty objects are fine, since they are not imposing any restrictions on the supported algorithms
  */
 internal fun VpFormatsSupported.supportsAlgorithm(
-    claimFormat: ClaimFormat,
+    presentation: CreatePresentationResult,
     supportedJwsAlgorithms: Collection<JwsAlgorithm>,
     supportedCoseAlgorithms: Collection<CoseAlgorithm.Signature>
-): Boolean = when (claimFormat) {
-    ClaimFormat.JWT_VP -> vcJwt?.let { vcJwt ->
+): Boolean = when (presentation) {
+    is CreatePresentationResult.VcJwsPresentationData -> vcJwt?.let { vcJwt ->
         var result = true
         vcJwt.algorithms?.let {
             result = result and it.any { supportedJwsAlgorithms.contains(it) }
@@ -179,7 +146,7 @@ internal fun VpFormatsSupported.supportsAlgorithm(
         result
     } ?: false
 
-    ClaimFormat.SD_JWT -> dcSdJwt?.let { dcSdJwt ->
+    is CreatePresentationResult.SdJwt -> dcSdJwt?.let { dcSdJwt ->
         var result = true
         dcSdJwt.sdJwtAlgorithms?.let {
             result = result and it.any { supportedJwsAlgorithms.contains(it) }
@@ -190,7 +157,7 @@ internal fun VpFormatsSupported.supportsAlgorithm(
         result
     } ?: false
 
-    ClaimFormat.MSO_MDOC -> msoMdoc?.let { msoMdoc ->
+    is CreatePresentationResult.DeviceResponse -> msoMdoc?.let { msoMdoc ->
         var result = true // empty object is fine
         msoMdoc.issuerAuthAlgorithms?.let {
             result = result and it.any { it.matchesAny(supportedCoseAlgorithms) }
@@ -201,7 +168,6 @@ internal fun VpFormatsSupported.supportsAlgorithm(
         result
     } ?: false
 
-    else -> false
 }
 
 private fun CoseAlgorithm.matchesAny(algorithms: Collection<CoseAlgorithm.Signature>) =

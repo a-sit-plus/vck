@@ -125,24 +125,6 @@ class OpenId4VpWallet(
         iso180137AnnexCHolder = iso180137AnnexCHolder,
     )
 
-    @Suppress("DEPRECATION")
-    @Deprecated("Use sendAuthnErrorResponse with AuthorizationResponsePreparationState parameter")
-    suspend fun sendAuthnErrorResponse(
-        error: Throwable,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-    ) {
-        catchingUnwrapped {
-            Napier.i("sendAuthnErrorResponse $error, $request")
-            openId4VpHolder.createAuthnErrorResponse(error = error, request = request).getOrThrow().let {
-                when (it) {
-                    is AuthenticationResponseResult.Post -> postResponse(it)
-                    is AuthenticationResponseResult.Redirect -> redirectResponse(it)
-                    else -> Napier.w("Unsupported error response mode: $it")
-                }
-            }
-        }
-    }
-
     /**
      * Sends an error response with the appropriate method.
      * Returns nothing as we don't expect a useful response from the remote verifier.

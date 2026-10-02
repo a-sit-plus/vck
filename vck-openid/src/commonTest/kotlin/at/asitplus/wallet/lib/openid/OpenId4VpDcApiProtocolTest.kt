@@ -438,7 +438,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 .documents.single().apply {
                     validItems.firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
                         .shouldNotBeNull().elementValue shouldBe "Susanne"
-                    invalidItems.shouldBeEmpty()
                 }
         }
 

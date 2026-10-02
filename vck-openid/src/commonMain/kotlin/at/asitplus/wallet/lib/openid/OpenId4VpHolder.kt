@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.IdToken
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
@@ -42,17 +41,10 @@ import at.asitplus.wallet.lib.agent.PresentationResponseParameters.*
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
-import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.SignCoseDetached
-import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
@@ -60,7 +52,6 @@ import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import com.benasher44.uuid.uuid4
 import kotlin.jvm.JvmOverloads
-import kotlin.time.Clock
 import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredentialMatchingResult
 
 /**
@@ -77,22 +68,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Holds the credentials and creates the verifiable presentation. */
     private val holder: Holder = HolderAgent(keyMaterial),
-    @Deprecated("Support for SIOPv2 has been removed")
-    private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
     /** Encrypts the authn response to the verifier, if this has been requested. */
     private val encryptJarm: EncryptJweFun = EncryptJwe(),
     /** Advertised in [metadata] and compared against holder's requirements. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
-    /** Signs the session transcript for mDoc responses. */
-    @Deprecated(
-        "signDeviceAuthDetached no longer has any effect because ISO Device signature" +
-                "creation has been moved into Holder's credential presentation. " +
-                "Signing function can be overridden in HolderAgent instead."
-    )
-    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
-        SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-    @Deprecated("Support for SIOPv2 has been removed")
-    private val clock: Clock = Clock.System,
     /** Advertised as `issuer` in [metadata]. */
     private val clientId: String = "https://wallet.a-sit.at/",
     /** Advertised as `authorization_endpoint` in [metadata]. */
@@ -104,8 +83,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    @Deprecated("No longer invoked. Replace with `relyingPartyTrust` for use in `AuthorizationRequestValidator`")
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
     /** How to establish trust in the relying party sending an authorization request, or `null` for trusting all. */
     private val relyingPartyTrust: Set<RelyingPartyTrust>? = null,
     /** Stores our nonce used when fetching authn requests using POST. */
@@ -235,19 +212,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
     ) = requestParser.parseRequestParameters(input)
         .getOrThrow().requireAuthenticationRequest()
 
-    @Deprecated("Use createAuthnErrorResponse with AuthorizationResponsePreparationState parameter")
-    suspend fun createAuthnErrorResponse(
-        error: Throwable,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<AuthenticationResponseResult> = catching {
-        authenticationResponseFactory.createAuthenticationResponse(
-            state = startAuthorizationResponsePreparation(request).getOrThrow(),
-            response = AuthenticationResponse.Error(
-                error = error.toOAuth2Error(request),
-            )
-        )
-    }
-
     /** Creates an error response for the [error], which can be sent to the verifier / relying party. */
     suspend fun createAuthnErrorResponse(
         error: Throwable,
@@ -376,7 +340,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
                 vpToken = when (resultContainer) {
                     null -> null
                     is DCQLParameters -> resultContainer.vpToken
-                    is PresentationExchangeParameters -> resultContainer.vpToken
                     is DeviceRetrievalParameters ->
                         throw InvalidRequest("ISO Device Retrieval responses are not OpenID4VP presentations")
                 },

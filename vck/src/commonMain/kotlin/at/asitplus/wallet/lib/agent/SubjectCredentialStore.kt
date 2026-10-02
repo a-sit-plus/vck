@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.csc.serializers.Base64X509CertificateSerializer
-import at.asitplus.dif.ClaimFormat
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.sha256
 import at.asitplus.openid.CredentialFormatEnum
@@ -87,8 +86,6 @@ interface SubjectCredentialStore {
     @Serializable
     sealed interface StoreEntry {
         val credentialFormat: CredentialFormatEnum
-        @Deprecated("Use [credentialFormat] instead")
-        val claimFormat: ClaimFormat
         val renewalInfo: CredentialRenewalInfo?
         val issuer: X509Certificate?
         val schemeIdentifier: String
@@ -113,8 +110,6 @@ interface SubjectCredentialStore {
                 AttributeIndex.resolveIdentifier(schemeIdentifier, PLAIN_JWT)
 
             override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.JWT_VC
-            @Deprecated("Use [credentialFormat] instead")
-            override val claimFormat: ClaimFormat = ClaimFormat.JWT_VP
         }
 
         @Serializable
@@ -139,8 +134,6 @@ interface SubjectCredentialStore {
                 AttributeIndex.resolveIdentifier(schemeIdentifier, SD_JWT)
 
             override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.DC_SD_JWT
-            @Deprecated("Use [credentialFormat] instead")
-            override val claimFormat: ClaimFormat = ClaimFormat.SD_JWT
         }
 
         @Serializable
@@ -160,8 +153,6 @@ interface SubjectCredentialStore {
                 AttributeIndex.resolveIdentifier(schemeIdentifier, ISO_MDOC)
 
             override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.MSO_MDOC
-            @Deprecated("Use [credentialFormat] instead")
-            override val claimFormat: ClaimFormat = ClaimFormat.MSO_MDOC
         }
 
         @Throws(IllegalArgumentException::class)

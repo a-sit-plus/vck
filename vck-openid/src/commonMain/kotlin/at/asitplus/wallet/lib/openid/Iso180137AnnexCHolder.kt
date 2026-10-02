@@ -7,11 +7,9 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalMatchingResult
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.SignCoseDetached
-import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import kotlin.jvm.JvmOverloads
@@ -26,17 +24,6 @@ class Iso180137AnnexCHolder @JvmOverloads constructor(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val holder: Holder = HolderAgent(keyMaterial),
 ) {
-    @Deprecated(
-        message = "signDeviceAuthDetached is no longer explicitly used by " +
-                "IsoMdocDcapiResponseBuilder.buildEncryptedResponse and has been removed",
-        replaceWith = ReplaceWith( expression = "Iso180137AnnexCHolder(keyMaterial, holder)", ),
-    )
-    constructor(keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-                holder: Holder = HolderAgent(keyMaterial),
-                signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
-                    keyMaterial, CoseHeaderNone(), CoseHeaderNone()
-                )
-    ) : this(keyMaterial, holder)
 
     /** Adapts the Annex C device request to the presentation model used by VC-K's credential matcher. */
     fun createPresentationRequest(
@@ -51,14 +38,11 @@ class Iso180137AnnexCHolder @JvmOverloads constructor(
     suspend fun getMatchingCredentials(
         request: RequestParametersFrom.IsoMdocDcApi,
     ): KmmResult<IsoDeviceRetrievalMatchingResult<SubjectCredentialStore.StoreEntry>> = catching {
-        val presentationRequest = createPresentationRequest(request).getOrThrow()
-        IsoDeviceRetrievalMatchingResult(
-            presentationRequest = presentationRequest,
-            matchingResult = holder.matchDeviceRetrievalAgainstCredentialStore(
-                deviceRequest = presentationRequest.deviceRequest,
-                filterByIds = request.credentialIds,
-            ).getOrThrow(),
-        )
+        holder.matchPresentationRequestAgainstCredentialStore(
+            presentationRequest = createPresentationRequest(request).getOrThrow(),
+            filterByIds = request.credentialIds,
+        ).getOrThrow() as? IsoDeviceRetrievalMatchingResult<SubjectCredentialStore.StoreEntry>
+            ?: throw IllegalStateException("Holder did not match the device request as ISO device retrieval")
     }
 
     /** Creates and encrypts the selected mdoc device response according to ISO/IEC 18013-7 Annex C. */

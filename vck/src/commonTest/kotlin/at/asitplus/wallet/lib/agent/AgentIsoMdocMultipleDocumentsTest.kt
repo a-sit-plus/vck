@@ -3,10 +3,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.Document
@@ -15,8 +11,6 @@ import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.ClaimDescription
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
@@ -35,8 +29,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
@@ -155,32 +147,6 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
                 }
         }
 
-        @Suppress("DEPRECATION")
-        test("presentation exchange: returnOneDeviceResponse keeps one multi-document response") { scope ->
-            val presentationRequest = PresentationExchangeRequest(
-                PresentationDefinition(
-                    listOf(
-                        inputDescriptor(AtomicAttribute2023, CLAIM_GIVEN_NAME),
-                        inputDescriptor(AtomicAttribute2025, CLAIM_FAMILY_NAME),
-                    )
-                )
-            )
-            scope.holder.matchPresentationRequestAgainstCredentialStore(presentationRequest).getOrThrow()
-                .shouldBeInstanceOf<PresentationExchangeMatchingResult<*>>()
-
-            val result = scope.holder.createPresentation(
-                request = scope.verifier.createPresentationRequest(
-                    calcIsoSessionTranscript = simpleTranscriptCallback,
-                    returnOneDeviceResponse = true,
-                ),
-                credentialPresentation = PresentationExchangePresentation(presentationRequest),
-            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
-
-            result.presentationResults.shouldBeSingleton().single()
-                .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
-                .deviceResponse.documents.shouldNotBeNull().shouldHaveSize(2)
-        }
-
         test("device retrieval: multiple document requests produce one device response") {
             val request = it.verifier.createPresentationRequest(
                 calcIsoSessionTranscript = simpleTranscriptCallback,
@@ -208,26 +174,6 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
         }
     }
 }
-
-@Suppress("DEPRECATION")
-private fun inputDescriptor(
-    scheme: CredentialScheme,
-    claim: String,
-) = DifInputDescriptor(
-    id = scheme.isoDocType!!,
-    constraints = Constraint(
-        fields = setOf(
-            ConstraintField(
-                path = listOf(
-                    NormalizedJsonPath(
-                        NameSegment(scheme.isoNamespace!!),
-                        NameSegment(claim),
-                    ).toString()
-                )
-            )
-        )
-    )
-)
 
 private fun docRequest(scheme: IsoMdocCredentialScheme, claim: String) = DocRequest(
     itemsRequest = ByteStringWrapper(
@@ -274,7 +220,6 @@ object AtomicAttribute2025 : CredentialScheme, IsoMdocCredentialScheme, SdJwtCre
     const val CLAIM_FAMILY_NAME = "family_name"
     const val CLAIM_DATE_OF_BIRTH = "date_of_birth"
     const val CLAIM_PORTRAIT = "portrait"
-    val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2025.json"
     override val vcType: String = "AtomicAttribute2025"
     override val sdJwtType: String = "AtomicAttribute2025"
     override val isoNamespace: String = "at.a-sit.wallet.atomic-attribute-2025"

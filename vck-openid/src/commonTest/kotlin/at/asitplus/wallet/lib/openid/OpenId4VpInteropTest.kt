@@ -234,40 +234,6 @@ val OpenId4VpInteropTest by matrixSuite {
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         }
 
-        "parse JAR sample from document" {
-            val input = """
-            eyJhbGciOiJFUzI1NiIsInR5cCI6IiBvYXV0aC1hdXRoei1yZXErand0ICJ9
-            .eyJpc3MiOiJodHRwczovL2Jkci5kZS9qd2siLCJhdWQiOiIgaHR0cHM6Ly9zZWxmLWlzc3VlZC5tZS92MiIsImNsaWVudF9pZCI6Imh0dHB
-            zOi8vYmRyLmRlIiwicHJlc2VudGF0aW9uX2RlZmluaXRpb24iOnsiaWQiOiIzMmY1NDE2My03MTY2LTQ4ZjEtOTNkOC1mZjIxN2JkYjA2NTU
-            iLCJpbnB1dF9kZXNjcmlwdG9ycyI6W3siaWQiOiIzMmY1NDE2My03MTY2LTQ4ZjEtOTNkOC1mZjIxN2JkYjA2NTYiLCJwdXJwb3NlIjoiUmV
-            xdWVzdCBwcmVzZW50YXRpb24gaG9sZGluZyBQb3dlciBvZiBSZXByZXNlbnRhdGlvbiBhdHRlc3RhdGlvbiIsImNvbnN0cmFpbnRzIjp7ImZ
-            pZWxkcyI6W3sicGF0aCI6WyIkLnZjdCJdLCJmaWx0ZXIiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJ1cm46ZXUuZXVyb3BhLmVjLmV
-            1ZGk6cG9yOjEifX1dfX1dfSwibm9uY2UiOiJuLTBTNl9XekEyTWoiLCJzdGF0ZSI6ImFmMGlmanNsZGtqIiwicmVzcG9uc2VfdHlwZSI6InZ
-            wX3Rva2VuIiwiIHJlc3BvbnNlX21vZGUiOiJkaXJlY3RfcG9zdCIsInJlc3BvbnNlX3VyaSI6Imh0dHBzOi8vbndyLWJlLmRlL3Jlc3BvbnN
-            lIn0
-            .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
-        """.trimIndent()
-
-            val jar = JwsCompactTyped<AuthenticationRequestParameters>(input)
-
-            jar.jws.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
-            jar.jws.jwsHeader.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
-
-
-            jar.payload.issuer shouldBe "https://bdr.de/jwk"
-            jar.payload.audience shouldBe " https://self-issued.me/v2" // that's a typo in the document ...
-            jar.payload.clientId shouldBe "https://bdr.de"
-            jar.payload.nonce shouldBe "n-0S6_WzA2Mj"
-            jar.payload.state shouldBe "af0ifjsldkj"
-            jar.payload.responseUrl shouldBe "https://nwr-be.de/response"
-            val pres = jar.payload.presentationDefinition.shouldNotBeNull()
-            pres.id.shouldNotBeNull()
-            val inputdesc = pres.inputDescriptors.first()
-            inputdesc.purpose shouldBe "Request presentation holding Power of Representation attestation"
-            val field = inputdesc.constraints!!.fields!!.first { it.path == listOf("$.vct") }
-            field.filter!!.pattern shouldBe "urn:eu.europa.ec.eudi:por:1"
-        }
-
         "parse SD-JWT from document" {
             val input = """
             eyJhbGciOiJFUzI1NiIsInR5cCI6IiB2YytzZC1qd3QgIn0

@@ -38,8 +38,7 @@ interface TokenService {
 
     /**
      * Validates the access token from [authorizationHeader] and returns what it authorizes.
-     * Implementations that issued the token themselves also fill [ValidatedAccessToken.userInfoExtended],
-     * so callers do not need a second lookup with [readUserInfo].
+     * Implementations that issued the token themselves also fill [ValidatedAccessToken.userInfoExtended].
      */
     suspend fun validateAccessToken(
         authorizationHeader: String,
@@ -50,30 +49,6 @@ interface TokenService {
         httpRequest = httpRequest,
         validatedClientKey = validatedClientKey
     )
-
-    /**
-     * Provides information about the access token from [authorizationHeader], if it has been issued by [generation].
-     *
-     * Does not prove possession of the key the token is bound to, i.e. does not validate the DPoP proof.
-     */
-    @Deprecated(
-        "Superseded by validateAccessToken, which validates the token, including the DPoP proof, " +
-                "and returns the user info along with it",
-        ReplaceWith("validateAccessToken(authorizationHeader, request)")
-    )
-    suspend fun readUserInfo(
-        authorizationHeader: String,
-        request: RequestInfo?,
-    ): ValidatedAccessToken
-
-    @Deprecated(
-        "Use validateAccessToken instead, which validates the token, including the DPoP proof",
-        ReplaceWith("validateAccessToken(subjectToken, httpRequest)")
-    )
-    suspend fun validateTokenForTokenExchange(
-        subjectToken: String,
-        httpRequest: RequestInfo?,
-    ): KmmResult<ValidatedAccessToken>
 
     /**
      * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693):

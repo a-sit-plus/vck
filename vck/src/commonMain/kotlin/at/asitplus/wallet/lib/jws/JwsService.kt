@@ -25,7 +25,6 @@ import at.asitplus.signum.indispensable.josef.jsonWebKeyBytes
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.signum.indispensable.symmetric.AuthCapability
 import at.asitplus.signum.indispensable.symmetric.KeyType
@@ -516,19 +515,6 @@ fun interface PublicJsonWebKeyLookup {
     ): Set<JsonWebKey>?
 }
 
-/**
- * Assumes that truststore is populated by x509 certificates
- */
-@Deprecated(
-    "Trusted certificates are not selected per signed object, use TrustedCertificates instead",
-    ReplaceWith("at.asitplus.wallet.lib.agent.TrustedCertificates")
-)
-fun interface TrustStoreLookup {
-    suspend operator fun invoke(
-        jwsObject: JwsCompact,
-    ): Set<X509Certificate>?
-}
-
 fun interface VerifyJwsSignatureFun {
     suspend operator fun invoke(
         jwsObject: JwsCompact,
@@ -700,24 +686,9 @@ class VerifyJwsObject @JvmOverloads constructor(
     val jwkSetRetriever: JwkSetRetrieverFunction = JwkSetRetrieverFunction { null },
 ) : VerifyJwsObjectFun {
 
-    /** Set only by the deprecated constructor taking a [PublicJsonWebKeyLookup]. */
-    private var trustedDelegate: VerifyJwsObjectFun? = null
-
-    @Deprecated(
-        "A key lookup used to be ignored whenever the JWS header asserted a key itself, so it could not " +
-                "enforce anything. Use VerifyJwsObjectTrusted to treat the keys as a trust list, or drop the " +
-                "parameter to keep verifying against the key asserted by the JWS.",
-        ReplaceWith("VerifyJwsObjectTrusted(verifyJwsSignature, publicKeyLookup)")
-    )
-    constructor(
-        verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
-        jwkSetRetriever: JwkSetRetrieverFunction = JwkSetRetrieverFunction { null },
-        publicKeyLookup: PublicJsonWebKeyLookup,
-    ) : this(verifyJwsSignature, jwkSetRetriever) {
-        trustedDelegate = VerifyJwsObjectTrusted(verifyJwsSignature, publicKeyLookup)
-    }
-
-    override suspend operator fun invoke(jwsObject: JwsCompact) = trustedDelegate?.invoke(jwsObject) ?: catching {
+    override suspend operator fun invoke(
+        jwsObject: JwsCompact
+    ) = catching {
         require(jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }) {
             "Invalid Signature"
         }
