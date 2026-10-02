@@ -18,10 +18,10 @@ import at.asitplus.wallet.lib.openid.DcApiHolder
 import at.asitplus.wallet.lib.openid.DcApiPreparationState
 import at.asitplus.wallet.lib.openid.Iso180137AnnexCHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient
 import at.asitplus.wallet.lib.openid.RelyingPartyTrust
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
@@ -32,8 +32,6 @@ import io.ktor.utils.io.core.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 
 @Deprecated("Renamed", ReplaceWith("OpenId4VpKtorHolder"))
 typealias OpenId4VpWallet = OpenId4VpKtorHolder
@@ -128,6 +126,8 @@ class OpenId4VpKtorHolder(
         iso180137AnnexCHolder = iso180137AnnexCHolder,
     )
 
+    internal val protocolClient = OpenId4VpProtocolClient(openId4VpHolder, dcApiHolder)
+
     /**
      * Sends an error response with the appropriate method.
      * Returns nothing as we don't expect a useful response from the remote verifier.
@@ -167,7 +167,8 @@ class OpenId4VpKtorHolder(
     /**
      * Calls [openId4VpHolder] to finalize the authentication response.
      * In case the result shall be POSTed to the verifier, we call [client] to do that,
-     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
+     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser),
+     * see [OpenId4VpProtocolClient.sendAuthorizationResponse].
      * In case the result shall be sent as a redirect to the verifier, we return that URL.
      */
     suspend fun startPresentationReturningUrl(
@@ -186,7 +187,8 @@ class OpenId4VpKtorHolder(
     /**
      * Calls [openId4VpHolder] to finalize the authentication response.
      * In case the result shall be POSTed to the verifier, we call [client] to do that,
-     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser).
+     * and return the `redirect_uri` of that POST (which the Wallet may open in a browser),
+     * see [OpenId4VpProtocolClient.sendAuthorizationResponse].
      * In case the result shall be sent as a redirect to the verifier, we return that URL.
      * In case the result shall be returned via the Digital Credentials API, an [AuthenticationForward]
      * will be returned with the result to be forwarded.
@@ -221,15 +223,7 @@ class OpenId4VpKtorHolder(
 
     private suspend fun postResponse(it: AuthenticationResponseResult.Post) = run {
         Napier.i("postResponse: $it")
-        handlePostResponse(
-            client.request {
-                url(it.url)
-                method = HttpMethod.Post
-                setBody(FormDataContentPlain(parameters {
-                    it.params.forEach { append(it.key, it.value) }
-                }))
-            }
-        )
+        AuthenticationSuccess(client.execute(protocolClient.sendAuthorizationResponse(it)))
     }
 
     /**
@@ -263,6 +257,10 @@ class OpenId4VpKtorHolder(
      * Our implementation of ktor's [FormDataContent], but with [contentType] without charset appended,
      * so that some strict mDoc verifiers accept our authn response
      */
+    @Deprecated(
+        "No longer used: authorization responses are sent by OpenId4VpProtocolClient.sendAuthorizationResponse, " +
+                "also without charset in the content type",
+    )
     class FormDataContentPlain(
         formData: Parameters,
     ) : OutgoingContent.ByteArrayContent() {
@@ -273,30 +271,14 @@ class OpenId4VpKtorHolder(
     }
 
 
-    @Throws(Exception::class)
-    private suspend fun handlePostResponse(response: HttpResponse) = run {
-        Napier.i("handlePostResponse: response $response")
-        when (response.status.value) {
-            in 200..399 -> AuthenticationSuccess(response.extractRedirectUri())
-            else -> throw Exception("${response.status}: ${response.readRawBytes().decodeToString()}")
-        }
-    }
-
     private fun redirectResponse(it: AuthenticationResponseResult.Redirect) = run {
         Napier.i("redirectResponse: ${it.url}")
         AuthenticationSuccess(it.url)
     }
 }
 
-@Serializable
-data class OpenId4VpSuccess(
-    @SerialName("redirect_uri")
-    val redirectUri: String,
+@Deprecated(
+    "Moved to vck-openid, which does not depend on a ktor client",
+    ReplaceWith("OpenId4VpSuccess", "at.asitplus.wallet.lib.openid.OpenId4VpSuccess"),
 )
-
-private suspend fun HttpResponse.extractRedirectUri(): String? =
-    headers[HttpHeaders.Location]?.let {
-        it.ifEmpty { null }
-    } ?: catchingUnwrapped { body<OpenId4VpSuccess>() }.getOrNull()?.let {
-        it.redirectUri.ifEmpty { null }
-    }
+typealias OpenId4VpSuccess = at.asitplus.wallet.lib.openid.OpenId4VpSuccess
