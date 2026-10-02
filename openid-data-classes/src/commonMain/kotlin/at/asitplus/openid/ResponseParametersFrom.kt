@@ -1,6 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.dcapi.OpenId4VpResponse
+import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import io.ktor.http.*
 
@@ -10,14 +11,12 @@ import io.ktor.http.*
 sealed class ResponseParametersFrom {
 
     abstract val parameters: AuthenticationResponseParameters
-    open val clientIdRequired: Boolean = true
     abstract val hasBeenEncrypted: Boolean
 
     data class JwsSigned(
         val jwsSigned: JwsCompactTyped<AuthenticationResponseParameters>,
         val parent: ResponseParametersFrom,
         override val parameters: AuthenticationResponseParameters,
-        override val clientIdRequired: Boolean,
     ) : ResponseParametersFrom() {
         override val hasBeenEncrypted: Boolean = false
     }
@@ -26,7 +25,6 @@ sealed class ResponseParametersFrom {
         val jweDecrypted: at.asitplus.signum.indispensable.josef.JweDecrypted<AuthenticationResponseParameters>,
         val parent: ResponseParametersFrom,
         override val parameters: AuthenticationResponseParameters,
-        override val clientIdRequired: Boolean,
     ) : ResponseParametersFrom() {
         override val hasBeenEncrypted: Boolean = true
     }
@@ -48,13 +46,13 @@ sealed class ResponseParametersFrom {
     data class DcApi private constructor(
         override val parameters: AuthenticationResponseParameters,
         override val hasBeenEncrypted: Boolean,
-        override val clientIdRequired: Boolean,
+        val protocol: ExchangeProtocolIdentifier,
     ) : ResponseParametersFrom() {
         companion object {
             fun createFromOpenId4VpResponse(input: OpenId4VpResponse): DcApi = DcApi(
                 parameters = input.data,
                 hasBeenEncrypted = input.data.response?.count { it == '.' } == 4,
-                clientIdRequired = !input.protocol.isUnsignedOpenId4VpRequest
+                protocol = input.protocol,
             )
         }
     }

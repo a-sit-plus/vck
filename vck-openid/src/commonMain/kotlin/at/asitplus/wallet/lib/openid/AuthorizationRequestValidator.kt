@@ -2,18 +2,23 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JWS
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JwsGeneral
+import at.asitplus.signum.indispensable.josef.protectedHeader
+import at.asitplus.signum.indispensable.josef.toJwsFlattened
 import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
@@ -31,6 +36,8 @@ import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import kotlinx.serialization.builtins.ListSerializer
 
 internal class AuthorizationRequestValidator(
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
@@ -40,9 +47,13 @@ internal class AuthorizationRequestValidator(
     private val verifySignature: VerifySignatureFun = VerifySignature(),
     private val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(verifySignature),
 ) {
+    /**
+     * Validates [request]. For a multisigned DC API request, returns the authentication outcome of every signature,
+     * of which at least one was authenticated.
+     */
     suspend fun validateAuthorizationRequest(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
-    ) {
+    ): List<VerifierSignature>? {
         (request as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>)
             ?.jwsTyped?.jws?.requireRequestObjectType()
 
@@ -55,23 +66,14 @@ internal class AuthorizationRequestValidator(
         if (request.parameters.responseMode.isAnyDcApi()) {
             request.validateDcApi()
         }
-        val clientIdScheme = request.parameters.clientIdSchemeExtracted
         if (request.parameters.responseMode.isAnyDirectPost()) {
             request.parameters.verifyResponseModeDirectPost()
         }
-        // A client identifier names exactly one scheme, so these are mutually exclusive
-        when {
-            clientIdScheme.isAnyX509() -> request.verifyClientIdSchemeX509()
-            clientIdScheme is ClientIdScheme.RedirectUri -> request.parameters.verifyRedirectUrl()
-            clientIdScheme is ClientIdScheme.VerifierAttestation -> request.verifyClientIdSchemeVerifierAttestation()
-            clientIdScheme is ClientIdScheme.PreRegistered -> request.verifyClientIdSchemePreRegistered()
-            // No client_id at all, e.g. an unsigned DC API request authenticated by its calling origin
-            clientIdScheme == null -> Unit
-            // `entity_id`, `did` and anything unrecognised, which we cannot evaluate ourselves, so a custom
-            // source is the only way to establish trust and the request is rejected without one
-            else -> relyingPartyTrust?.requireTrustedBy<RelyingPartyTrust.Custom>(
-                configured = "custom trust source for client identifier scheme ${clientIdScheme.stringRepresentation}"
-            ) { it.evaluate(request) }
+        val verifierSignatures = if (request is RequestParametersFrom.OpenId4VpDcApiMultiSigned) {
+            request.validateMultiSignedIdentities()
+        } else {
+            request.validateClientIdentity()
+            null
         }
         if (request.isFromRequestObject()) {
             request.parameters.walletNonce?.let {
@@ -80,6 +82,115 @@ internal class AuthorizationRequestValidator(
                 }
             }
         }
+        return verifierSignatures
+    }
+
+    private suspend fun RequestParametersFrom<AuthenticationRequestParameters>.validateClientIdentity(
+        rejectUnsupportedWithoutTrust: Boolean = false,
+    ) {
+        val clientIdScheme = parameters.clientIdSchemeExtracted
+        // A client identifier names exactly one scheme, so these are mutually exclusive
+        when {
+            clientIdScheme.isAnyX509() -> verifyClientIdSchemeX509()
+            clientIdScheme is ClientIdScheme.RedirectUri -> {
+                if (rejectUnsupportedWithoutTrust) {
+                    throw unsupportedIdentity(
+                        "redirect_uri is not a verifier-authentication scheme for multisigned requests"
+                    )
+                }
+                parameters.verifyRedirectUrl()
+            }
+            clientIdScheme is ClientIdScheme.VerifierAttestation -> verifyClientIdSchemeVerifierAttestation()
+            clientIdScheme is ClientIdScheme.PreRegistered -> {
+                if (relyingPartyTrust == null && rejectUnsupportedWithoutTrust) {
+                    throw unsupportedIdentity(
+                        "pre-registered client identifier cannot be authenticated without configured trust"
+                    )
+                }
+                verifyClientIdSchemePreRegistered()
+            }
+            // No client_id at all, e.g. an unsigned DC API request authenticated by its calling origin
+            clientIdScheme == null -> Unit
+            // `entity_id`, `did` and anything unrecognised, which we cannot evaluate ourselves, so a custom
+            // source is the only way to establish trust and the request is rejected without one
+            else -> {
+                val trust = relyingPartyTrust
+                if (trust == null && rejectUnsupportedWithoutTrust) {
+                    throw unsupportedIdentity(
+                        "unsupported client identifier scheme ${clientIdScheme.stringRepresentation}"
+                    )
+                }
+                trust?.requireTrustedBy<RelyingPartyTrust.Custom>(
+                    configured = "custom trust source for client identifier scheme ${clientIdScheme.stringRepresentation}"
+                ) { it.evaluate(this) }
+            }
+        }
+    }
+
+    /**
+     * Validates the signature-specific verifier identities of an OpenID4VP multisigned DC API request.
+     * The transaction itself is shared, while each protected header supplies one complete client identity.
+     */
+    private suspend fun RequestParametersFrom.OpenId4VpDcApiMultiSigned.validateMultiSignedIdentities():
+            List<VerifierSignature> {
+        if (parameters.clientId != null || parameters.verifierInfo != null || parameters.redirectUrl != null) {
+            throw InvalidRequest(
+                "client_id, verifier_info and redirect_uri must be absent from a multisigned request payload"
+            )
+        }
+        val signatures = jwsTyped.jws.toJwsFlattened()
+        if (signatures.size < 2) {
+            throw InvalidRequest("multisigned DC API request requires at least two signatures")
+        }
+
+        val identities = signatures.mapIndexed { index, signature ->
+            val protected = signature.protectedHeader
+                ?: throw InvalidRequest("signature $index has no protected header")
+            val unprotected = signature.unprotectedHeader
+            if (unprotected != null) {
+                throw InvalidRequest("signature $index contains an unprotected JOSE header")
+            }
+            val clientId = protected.clientId
+                ?: throw InvalidRequest("signature $index has no protected client_id")
+            val verifierInfo = protected.verifierInfo?.let { element ->
+                catching {
+                    joseCompliantSerializer.decodeFromJsonElement(
+                        ListSerializer(VerifierInfo.serializer()), element
+                    ).toNonEmptyList()
+                }.getOrElse { throw InvalidRequest("signature $index has invalid verifier_info", it) }
+            }
+            clientId to RequestParametersFrom.Jws(
+                jws = signature,
+                parameters = parameters.copy(clientId = clientId, verifierInfo = verifierInfo),
+            )
+        }
+        if (identities.map { (clientId, _) -> clientId }.distinct().size != identities.size) {
+            throw InvalidRequest("multisigned DC API request requires distinct client_id values")
+        }
+
+        // Every signature is checked, not just the first valid one: wallets must know which of the named verifiers
+        // actually signed, since the protected header of an unauthenticated signature may have been copied
+        val verifierSignatures = identities.mapIndexed { index, (clientId, identity) ->
+            val failure = catchingUnwrapped {
+                identity.validateClientIdentity(rejectUnsupportedWithoutTrust = true)
+            }.exceptionOrNull()
+            VerifierSignature(
+                signatureIndex = index,
+                clientId = clientId,
+                verifierInfo = identity.parameters.verifierInfo,
+                status = failure.toVerifierSignatureStatus(),
+                failureReason = failure?.let { it.message ?: it::class.simpleName },
+            )
+        }
+        if (verifierSignatures.none { it.authenticated }) {
+            throw InvalidRequest(
+                "none of the multisigned verifier identities was accepted: " +
+                        verifierSignatures.joinToString("; ") {
+                            "signature ${it.signatureIndex} (${it.clientId}) ${it.status}: ${it.failureReason}"
+                        }
+            )
+        }
+        return verifierSignatures
     }
 
     /**
@@ -94,6 +205,10 @@ internal class AuthorizationRequestValidator(
     ) {
         val verified = when (val jws = jwsTyped.jws) {
             is JwsCompact -> verifyJwsSignature(jws, publicKey).isSuccess
+
+            is JwsFlattened -> (jws.jwsHeader.algorithm as? JwsAlgorithm.Signature)?.let { algorithm ->
+                verifySignature(jws.signatureInput, jws.signature, algorithm.algorithm, publicKey).isSuccess
+            } == true
 
             is JwsGeneral -> jws.jwsHeaders.indices.any { index ->
                 (jws.jwsHeaders[index].algorithm as? JwsAlgorithm.Signature)?.let { algorithm ->
@@ -118,7 +233,11 @@ internal class AuthorizationRequestValidator(
     private suspend fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeVerifierAttestation() {
         val signedRequest = this as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
             ?: throw InvalidRequest("verifier_attestation client_id_scheme requires a signed request object")
-        val attestation = (signedRequest.jwsTyped.jws as? JwsCompact)?.jwsHeader?.attestationJwt
+        val attestation = when (val jws = signedRequest.jwsTyped.jws) {
+            is JwsCompact -> jws.jwsHeader.attestationJwt
+            is JwsFlattened -> jws.jwsHeader.attestationJwt
+            else -> null
+        }
             ?: throw InvalidRequest("verifier_attestation client_id_scheme requires a jwt in the JOSE header")
 
         val attesterNotTrusted = "verifier attestation not issued by a trusted party"
@@ -191,20 +310,21 @@ internal class AuthorizationRequestValidator(
             throw InvalidRequest("calling origin uses a disallowed scheme")
         }
         when (this) {
-            is RequestParametersFrom.OpenId4VpDcApiSigned,
-            is RequestParametersFrom.OpenId4VpDcApiMultiSigned,
-                -> {
+            is RequestParametersFrom.OpenId4VpDcApiSigned -> {
                 if (this.parameters.clientId == null)
                     throw InvalidRequest("client_id must be set for signed DC API request")
-                val expectedOrigins = this.parameters.expectedOrigins
-                if (expectedOrigins.isNullOrEmpty())
-                    throw InvalidRequest("expected_origins must be set and non-empty for signed DC API request")
-                if (expectedOrigins.any { !it.usesAllowedOriginScheme(allowedSchemes) })
-                    throw InvalidRequest("expected_origins contains an origin with a disallowed scheme")
-                if (!this.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin))
+                validateSignedDcApiExpectedOrigins(dcApiRequest, allowedSchemes)
+            }
+
+            is RequestParametersFrom.OpenId4VpDcApiMultiSigned -> {
+                if (this.parameters.clientId != null || this.parameters.verifierInfo != null ||
+                    this.parameters.redirectUrl != null
+                ) {
                     throw InvalidRequest(
-                        "calling origin '${dcApiRequest.callingOrigin}' does not match expected_origins"
+                        "client_id, verifier_info and redirect_uri must be absent from a multisigned request payload"
                     )
+                }
+                validateSignedDcApiExpectedOrigins(dcApiRequest, allowedSchemes)
             }
 
             is RequestParametersFrom.OpenId4VpDcApiUnsigned -> {
@@ -214,6 +334,21 @@ internal class AuthorizationRequestValidator(
 
             else -> throw InvalidRequest("DC API request not set even though response mode is ${parameters.responseMode}")
         }
+    }
+
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.validateSignedDcApiExpectedOrigins(
+        dcApiRequest: RequestParametersFrom.DcApiRequest,
+        allowedSchemes: Set<String>,
+    ) {
+        val expectedOrigins = this.parameters.expectedOrigins
+        if (expectedOrigins.isNullOrEmpty())
+            throw InvalidRequest("expected_origins must be set and non-empty for signed DC API request")
+        if (expectedOrigins.any { !it.usesAllowedOriginScheme(allowedSchemes) })
+            throw InvalidRequest("expected_origins contains an origin with a disallowed scheme")
+        if (!this.parameters.verifyExpectedOrigin(dcApiRequest.callingOrigin))
+            throw InvalidRequest(
+                "calling origin '${dcApiRequest.callingOrigin}' does not match expected_origins"
+            )
     }
 
     /**
@@ -245,6 +380,7 @@ internal class AuthorizationRequestValidator(
 
         val certChain = when (val jws = signedRequest.jwsTyped.jws) {
             is JwsCompact -> jws.jwsHeader.certificateChain
+            is JwsFlattened -> jws.jwsHeader.certificateChain
             is JwsGeneral -> jws.signatureElements.firstOrNull()?.jwsHeader?.certificateChain
             else -> null
         }
@@ -344,12 +480,39 @@ private inline fun <reified T : RelyingPartyTrust> Set<RelyingPartyTrust>.requir
     rejected: String = "not trusted by any configured $configured",
     check: (T) -> Unit,
 ) {
-    val sources = filterIsInstance<T>().ifEmpty { throw InvalidRequest("no $configured configured") }
+    val sources = filterIsInstance<T>().ifEmpty { throw unsupportedIdentity("no $configured configured") }
     val failures = mutableListOf<Throwable>()
     for (source in sources) {
         failures += catchingUnwrapped { check(source) }.exceptionOrNull() ?: return
     }
-    throw InvalidRequest("$rejected: ${failures.joinToString { it.message ?: it::class.simpleName ?: "" }}")
+    throw InvalidRequest(
+        "$rejected: ${failures.joinToString { it.message ?: it::class.simpleName ?: "" }}",
+        UntrustedIdentity(),
+    )
+}
+
+/*
+ * Causes classifying a rejection, see [VerifierSignature.Status]. Wallets may display the cause of an error, so
+ * [toString] describes it rather than naming the class.
+ */
+
+/** Marks a rejection because the wallet cannot evaluate a client identifier, as opposed to it being invalid. */
+private class UnsupportedIdentity : Exception() {
+    override fun toString() = "client identifier cannot be evaluated by this wallet"
+}
+
+/** Marks a rejection by the configured [RelyingPartyTrust], as opposed to an invalid signature or binding. */
+private class UntrustedIdentity : Exception() {
+    override fun toString() = "client identifier not trusted"
+}
+
+private fun unsupportedIdentity(description: String) = InvalidRequest(description, UnsupportedIdentity())
+
+private fun Throwable?.toVerifierSignatureStatus(): VerifierSignature.Status = when {
+    this == null -> VerifierSignature.Status.AUTHENTICATED
+    cause is UnsupportedIdentity -> VerifierSignature.Status.UNSUPPORTED
+    cause is UntrustedIdentity -> VerifierSignature.Status.UNTRUSTED
+    else -> VerifierSignature.Status.INVALID
 }
 
 /**
@@ -361,6 +524,7 @@ private inline fun <reified T : RelyingPartyTrust> Set<RelyingPartyTrust>.requir
 @Throws(OAuth2Exception::class)
 internal fun JWS.requireRequestObjectType() = when (this) {
     is JwsCompact -> listOf(jwsHeader)
+    is JwsFlattened -> listOf(jwsHeader)
     is JwsGeneral -> jwsHeaders
     else -> throw InvalidRequest("Unsupported request object signature: $this")
 }.forEach {

@@ -22,9 +22,16 @@ data class AuthorizationResponsePreparationState(
     val clientMetadata: RelyingPartyMetadata?,
     /** Extracted from [request], probably fetched remotely. */
     val jsonWebKeys: Collection<JsonWebKey>?,
+    /** From the request payload, so always absent for multisigned DC API requests, see [verifierSignatures]. */
     val verifierInfo: NonEmptyList<VerifierInfo>?,
     /** Audience of the presentation to create */
     val audience: String,
+    /**
+     * For a multisigned DC API request, the authentication outcome of every signature, carrying its `client_id` and
+     * `verifier_info`. Only display or evaluate trust in the identities of [VerifierSignature.authenticated]
+     * signatures. The response is bound to the calling origin, so it does not depend on any of these identities.
+     */
+    val verifierSignatures: List<VerifierSignature>? = null,
 ) {
     val dcApiCallingOrigin: String?
         get() = (request as? RequestParametersFrom.DcApiRequest)?.callingOrigin

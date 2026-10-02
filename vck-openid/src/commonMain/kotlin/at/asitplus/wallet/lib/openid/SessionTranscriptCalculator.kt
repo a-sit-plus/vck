@@ -17,7 +17,6 @@ internal fun interface SessionTranscriptCalculator {
         clientId: String?,
         nonce: String,
         responseUrl: String?,
-        clientIdRequired: Boolean,
         origin: String?,
         recipientKey: JsonWebKey?,
     ): SessionTranscript
@@ -29,11 +28,9 @@ internal class UrlSessionTranscriptCalculator : SessionTranscriptCalculator {
         clientId: String?,
         nonce: String,
         responseUrl: String?,
-        clientIdRequired: Boolean,
         origin: String?,
         recipientKey: JsonWebKey?,
     ): SessionTranscript {
-        require(clientIdRequired) { "clientId for OpenID4VP is always required" }
         require(clientId != null) { "Missing required parameter: clientId" }
         require(responseUrl != null) { "Missing required parameter: responseUrl" }
         return SessionTranscript.forOpenId(
@@ -58,11 +55,9 @@ internal class DcApiSessionTranscriptCalculator : SessionTranscriptCalculator {
         clientId: String?,
         nonce: String,
         responseUrl: String?,
-        clientIdRequired: Boolean,
         origin: String?,
         recipientKey: JsonWebKey?,
     ): SessionTranscript {
-        require((!clientIdRequired || clientId != null)) { "Missing required parameter: clientId" }
         require(origin != null) { "Missing required parameter: origin" }
         val serializedOrigin = requireNotNull(origin.serializeOrigin()) {
             "ISO mdoc presentations require an authority-based origin: $origin"

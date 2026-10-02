@@ -14,6 +14,8 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VerifierInfo
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -178,6 +180,63 @@ val WrpAuthenticationRequestValidatorTest by matrixSuite {
         result.accessCertificate.certificateChain!!.first().encodeToDer() shouldBe wrpacSigner.getCertificate()!!
             .encodeToDer()
         WrpAuthenticationRequestValidator(isoRequest).isFailure shouldBe true
+    }
+
+    "registration certificate only covers the credential queries named in its credential_ids" {
+        val fixture = buildWrpFixture()
+        val wrprcJws = signWrprc(fixture.wrprcSigningKeyMaterial, buildWrpPayload(fixture.wrpIdentifier))
+        val mdoc = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery.credentials.single()
+        val sdJwt = (sdJwtDcqlRequest(vctValue = "urn:eudi:pid:1") as CredentialPresentationRequest.DCQLRequest)
+            .dcqlQuery.credentials.single()
+        val dcql = DCQLQuery(credentials = DCQLCredentialQueryList(nonEmptyListOf(mdoc, sdJwt)))
+
+        val data = WrpAuthenticationRequestValidator(
+            clientId = fixture.clientId,
+            certificateChain = fixture.wrpacChain,
+            verifierInfo = listOf(VerifierInfo(REGISTRATION_CERT_FORMAT, wrprcJws, credentialIds = setOf(mdoc.id.string))),
+            dcqlQuery = dcql,
+        ).getOrThrow()
+
+        data.registrationCertificate.values.single().map {
+            it.shouldBeInstanceOf<WrpCredentialRequest.WrpDcqlCredentialQuery>().query
+        } shouldBe listOf(mdoc)
+    }
+
+    "registration certificate naming an unknown credential query is rejected" {
+        val fixture = buildWrpFixture()
+        val wrprcJws = signWrprc(fixture.wrprcSigningKeyMaterial, buildWrpPayload(fixture.wrpIdentifier))
+
+        val failure = WrpAuthenticationRequestValidator(
+            clientId = fixture.clientId,
+            certificateChain = fixture.wrpacChain,
+            verifierInfo = listOf(VerifierInfo(REGISTRATION_CERT_FORMAT, wrprcJws, credentialIds = setOf("unknown"))),
+            dcqlQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery,
+        ).exceptionOrNull()
+
+        failure.shouldNotBeNull().message.shouldContain("unknown credential queries")
+    }
+
+    "signer without registration certificate yields only its access certificate, if allowed" {
+        val fixture = buildWrpFixture()
+        val dcql = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery
+
+        val data = WrpAuthenticationRequestValidator(
+            clientId = fixture.clientId,
+            certificateChain = fixture.wrpacChain,
+            verifierInfo = null,
+            dcqlQuery = dcql,
+            registrationCertificateRequired = false,
+        ).getOrThrow()
+        val required = WrpAuthenticationRequestValidator(
+            clientId = fixture.clientId,
+            certificateChain = fixture.wrpacChain,
+            verifierInfo = null,
+            dcqlQuery = dcql,
+        )
+
+        data.accessCertificate.certificateChain shouldBe fixture.wrpacChain
+        data.registrationCertificate shouldBe emptyMap()
+        required.isFailure shouldBe true
     }
 }
 

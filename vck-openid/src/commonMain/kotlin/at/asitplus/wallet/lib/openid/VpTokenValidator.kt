@@ -71,7 +71,6 @@ internal class VpTokenValidator(
         // We do not support mapping "scope" in request to DCQL queries
         val query = authnRequest.dcqlQuery
             ?: throw IllegalArgumentException("DCQL Query not present in $authnRequest")
-        val clientIdRequired = responseParameters.clientIdRequired
         val recipientKey = if (responseParameters.hasBeenEncrypted) {
             authnRequest.clientMetadata?.jsonWebKeySet?.keys?.getEncryptionTargetKey()
                 ?: decryptionKeyMaterial?.jsonWebKey
@@ -91,7 +90,6 @@ internal class VpTokenValidator(
                     clientId = authnRequest.clientId,
                     responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted,
                     transactionData = authnRequest.transactionData,
-                    clientIdRequired = clientIdRequired,
                     origin = origin,
                     requireCryptographicHolderBinding = query.credentialQuery(credentialQueryId)?.requireCryptographicHolderBinding,
                     recipientKey = recipientKey,
@@ -136,7 +134,6 @@ internal class VpTokenValidator(
         clientId: String?,
         responseUrl: String?,
         transactionData: List<TransactionDataBase64Url>?,
-        clientIdRequired: Boolean,
         origin: String?,
         requireCryptographicHolderBinding: Boolean? = null,
         recipientKey: JsonWebKey?,
@@ -178,7 +175,6 @@ internal class VpTokenValidator(
                         clientId = clientId,
                         nonce = challenge,
                         responseUrl = responseUrl,
-                        clientIdRequired = clientIdRequired,
                         origin = origin,
                         recipientKey = recipientKey,
                     )
@@ -197,4 +193,3 @@ internal class VpTokenValidator(
         JsonNull -> throw IllegalArgumentException("Can't extract string from JsonNull")
     }
 }
-

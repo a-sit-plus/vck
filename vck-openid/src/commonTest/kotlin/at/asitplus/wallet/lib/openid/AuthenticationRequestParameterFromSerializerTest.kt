@@ -1,20 +1,24 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.toJwsFlattened
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -147,16 +151,29 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
         }
 
         "DcApiMultiSigned test $representation" {
-            val authnRequestUrl = verifierOid4vp.createAuthnRequest(
-                reqOptions, CreationOptions.SignedRequestByValue(walletUrl)
-            ).getOrThrow().url
-
-            val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
-            jarRequest.clientId shouldBe clientId
-            val serializedRequest = jarRequest.request.shouldNotBeNull()
-            val compactTyped = JwsTyped<AuthenticationRequestParameters>(serializedRequest)
+            val keys = listOf(EphemeralKeyWithSelfSignedCert(), EphemeralKeyWithSelfSignedCert())
+            val signers = keys.map { key ->
+                DcApiRequestSigner(
+                    clientIdScheme = ClientIdScheme.CertificateHash(
+                        chain = listOf(key.getCertificate()!!),
+                        redirectUri = redirectUrl,
+                    ),
+                    keyMaterial = key,
+                )
+            }
+            val signedRequest = DcApiVerifier(
+                clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),
+            ).createAuthnRequest(
+                reqOptions.copy(
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf("https://example.com"),
+                ),
+                DcApiCreationOptions.OpenId4VpMultiSigned(signers),
+            ).getOrThrow().digital.requests.single()
+                .shouldBeInstanceOf<DigitalCredentialGetRequest.OpenId4VpMultiSigned>()
+                .data.request.typed<AuthenticationRequestParameters, JwsGeneral>()
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(compactTyped.jws.toJwsFlattened())),
+                jwsTyped = signedRequest,
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"

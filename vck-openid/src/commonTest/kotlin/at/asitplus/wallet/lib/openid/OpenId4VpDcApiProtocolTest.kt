@@ -6,13 +6,18 @@ import at.asitplus.dcapi.OpenId4VpResponseSigned
 import at.asitplus.dcapi.OpenId4VpResponseUnsigned
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.VerifierInfo
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsFlattened
+import at.asitplus.signum.indispensable.josef.JwsGeneral
+import at.asitplus.signum.indispensable.josef.JwsGeneralTyped
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsFlattened
@@ -22,6 +27,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalMatchingResult
@@ -40,6 +46,7 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
+import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -50,6 +57,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 val OpenId4VpDcApiProtocolTest by matrixSuite {
 
@@ -84,6 +93,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             }
             val storedCredentialIds = holderAgent.getCredentials()!!.map { it.getDcApiId() }
             object {
+                val dcApiCredentialIds = storedCredentialIds
                 val allowedOriginSchemes = OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES.toMutableSet()
                 val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
                     keyMaterial = holderKeyMaterial,
@@ -96,12 +106,14 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     holder = holderAgent,
                     openId4VpHolder = holderOid4vp,
                 )
+                val stateToAuthnRequestStore = DefaultMapStore<String, AuthenticationRequestParameters>()
                 val dcApiVerifier = DcApiVerifier(
                     keyMaterial = EphemeralKeyWithoutCert(),
                     clientIdScheme = ClientIdScheme.PreRegistered(
                         clientId = "dc-api-rp-${uuid4()}",
                         redirectUri = "https://example.com/callback",
                     ),
+                    stateToAuthnRequestStore = stateToAuthnRequestStore,
                 )
 
                 /**
@@ -140,6 +152,29 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     .singleRequest<DigitalCredentialGetRequest.OpenId4VpSigned>()
                     .data.request
                     .typed<AuthenticationRequestParameters, JwsCompact>()
+
+                suspend fun createMultiSignedAuthnRequest(
+                    reqOptions: OpenId4VpRequestOptions,
+                ): JwsGeneralTyped<AuthenticationRequestParameters> {
+                    val keys = listOf(EphemeralKeyWithSelfSignedCert(), EphemeralKeyWithSelfSignedCert())
+                    val signers = keys.mapIndexed { index, key ->
+                        DcApiRequestSigner(
+                            clientIdScheme = ClientIdScheme.CertificateHash(
+                                chain = listOf(key.getCertificate()!!),
+                                redirectUri = "https://example.com/callback",
+                            ),
+                            keyMaterial = key,
+                            verifierInfo = if (index == 1) listOf(
+                                VerifierInfo(format = "test-format", data = "test-attestation")
+                            ).toNonEmptyList() else null,
+                        )
+                    }
+                    return dcApiVerifier.createAuthnRequest(
+                        reqOptions, DcApiCreationOptions.OpenId4VpMultiSigned(signers)
+                    ).getOrThrow()
+                        .singleRequest<DigitalCredentialGetRequest.OpenId4VpMultiSigned>()
+                        .data.request.typed<AuthenticationRequestParameters, JwsGeneral>()
+                }
 
                 suspend fun preparationStateFor(
                     presentationRequest: CredentialPresentationRequest?,
@@ -590,16 +625,52 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 .credentialQueryResponseValidations.values.single().single().getOrThrow()
         }
 
+        test("DC API signed: verifier rejects a stored request without client_id") { f ->
+            val transactionId = uuid4().toString()
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+                state = transactionId,
+            )
+            val signedRequest = f.createSignedAuthnRequest(reqOptions)
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
+                jwsTyped = signedRequest,
+                credentialIds = listOf(credentialId),
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+            val response = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
+                .let { f.holderOid4vp.finalizeAuthorizationResponse(it).getOrThrow() }
+                .shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+                .params.shouldBeInstanceOf<OpenId4VpResponseSigned>()
+
+            f.stateToAuthnRequestStore.put(transactionId, signedRequest.payload.copy(clientId = null))
+
+            f.dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult>()
+                .vpTokenValidationResult.shouldNotBeNull().apply {
+                isFailure shouldBe true
+                exceptionOrNull()!!.message!! shouldContain "Missing required parameter: clientId"
+            }
+        }
+
         test("DC API multisigned: parsed as DcApiMultiSigned, validates and responds with OpenId4VpResponseMultiSigned") { f ->
             val reqOptions = OpenId4VpRequestOptions(
                 presentationRequest = dcqlRequest,
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
-            val signedRequest = f.createSignedAuthnRequest(reqOptions)
+            val signedRequest = f.createMultiSignedAuthnRequest(reqOptions)
+            signedRequest.payload.clientId.shouldBeNull()
+            signedRequest.payload.verifierInfo.shouldBeNull()
+            signedRequest.payload.redirectUrl.shouldBeNull()
+            signedRequest.jws.jwsHeaders.shouldHaveSize(2)
+                .map { it.clientId }.distinct().shouldHaveSize(2)
+            signedRequest.jws.jwsHeaders[1].verifierInfo.shouldNotBeNull()
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(signedRequest.jws.toJwsFlattened())),
+                jwsTyped = signedRequest,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
@@ -610,10 +681,227 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     request.shouldBeInstanceOf<RequestParametersFrom.OpenId4VpDcApiMultiSigned>()
                         .callingOrigin shouldBe callingOrigin
                 }
+            // the payload carries no identity, so every signature's is reported separately
+            preparationState.verifierInfo.shouldBeNull()
+            preparationState.verifierSignatures.shouldNotBeNull().apply {
+                map { it.clientId } shouldBe signedRequest.jws.jwsHeaders.map { it.clientId }
+                map { it.authenticated } shouldBe listOf(true, true)
+            }
 
             f.holderOid4vp.finalizeAuthorizationResponse(preparationState).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
                 .params.shouldBeInstanceOf<OpenId4VpResponseMultiSigned>()
+        }
+
+        test("DC API multisigned: reports a forged signature as invalid, and the verifier_info of each signature") { f ->
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+            )
+            val signedRequest = f.createMultiSignedAuthnRequest(reqOptions)
+            val (first, second) = signedRequest.jws.toJwsFlattened()
+            // the first identity cannot be authenticated, as its signature was made with the other key
+            val forgedFirst = joseCompliantSerializer.decodeFromJsonElement(
+                JwsFlattened.serializer(),
+                JsonObject(
+                    joseCompliantSerializer.encodeToJsonElement(JwsFlattened.serializer(), first).jsonObject +
+                            ("signature" to joseCompliantSerializer.encodeToJsonElement(
+                                JwsFlattened.serializer(), second
+                            ).jsonObject.getValue("signature"))
+                ),
+            )
+
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(forgedFirst, second)),
+                credentialIds = listOf(credentialId),
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+
+            // the forged signature still names its verifier, which must not be mistaken for a participant
+            f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
+                .verifierSignatures.shouldNotBeNull().shouldHaveSize(2).apply {
+                    this[0].clientId shouldBe signedRequest.jws.jwsHeaders[0].clientId
+                    this[0].status shouldBe VerifierSignature.Status.INVALID
+                    this[0].failureReason.shouldNotBeNull() shouldContain "signature"
+                    this[1].status shouldBe VerifierSignature.Status.AUTHENTICATED
+                    this[1].verifierInfo.shouldNotBeNull().single().apply {
+                        format shouldBe "test-format"
+                        data shouldBe "test-attestation"
+                    }
+                }
+        }
+
+        test("DC API signed by a given signer: carries its verifier_info in the payload") { f ->
+            val key = EphemeralKeyWithSelfSignedCert()
+            val verifierInfo = listOf(VerifierInfo(format = "test-format", data = "test-attestation")).toNonEmptyList()
+            val signer = DcApiRequestSigner(
+                clientIdScheme = ClientIdScheme.CertificateHash(
+                    chain = listOf(key.getCertificate()!!),
+                    redirectUri = "https://example.com/callback",
+                ),
+                keyMaterial = key,
+                verifierInfo = verifierInfo,
+            )
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+            )
+
+            val signedRequest = f.dcApiVerifier.createAuthnRequest(
+                reqOptions, DcApiCreationOptions.OpenId4VpSignedBy(signer)
+            ).getOrThrow()
+                .singleRequest<DigitalCredentialGetRequest.OpenId4VpSigned>()
+                .data.request.typed<AuthenticationRequestParameters, JwsCompact>()
+
+            signedRequest.payload.clientId shouldBe signer.clientIdScheme.clientId
+            signedRequest.payload.verifierInfo shouldBe verifierInfo
+            f.dcApiVerifier.createAuthnRequest(
+                reqOptions.copy(verifierInfo = verifierInfo), DcApiCreationOptions.OpenId4VpSignedBy(signer)
+            ).isFailure shouldBe true
+        }
+
+        test("DC API multisigned: an identifier the wallet cannot evaluate is unsupported, not invalid") { f ->
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+            )
+            val preRegisteredKey = EphemeralKeyWithoutCert()
+            val certificateKey = EphemeralKeyWithSelfSignedCert()
+            val signers = listOf(
+                // a validly signed identity from a trust framework this wallet has no configuration for
+                DcApiRequestSigner(
+                    clientIdScheme = ClientIdScheme.PreRegistered("other-framework-verifier", "https://example.com"),
+                    keyMaterial = preRegisteredKey,
+                ),
+                DcApiRequestSigner(
+                    clientIdScheme = ClientIdScheme.CertificateHash(
+                        chain = listOf(certificateKey.getCertificate()!!),
+                        redirectUri = "https://example.com/callback",
+                    ),
+                    keyMaterial = certificateKey,
+                ),
+            )
+            val signedRequest = f.dcApiVerifier.createAuthnRequest(
+                reqOptions, DcApiCreationOptions.OpenId4VpMultiSigned(signers)
+            ).getOrThrow()
+                .singleRequest<DigitalCredentialGetRequest.OpenId4VpMultiSigned>()
+                .data.request.typed<AuthenticationRequestParameters, JwsGeneral>()
+
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = signedRequest,
+                credentialIds = listOf(credentialId),
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+
+            f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
+                .verifierSignatures.shouldNotBeNull().map { it.status } shouldBe listOf(
+                    VerifierSignature.Status.UNSUPPORTED,
+                    VerifierSignature.Status.AUTHENTICATED,
+                )
+        }
+
+        test("DC API multisigned: invalid_request names every signature when none is authenticated") { f ->
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+            )
+            val signedRequest = f.createMultiSignedAuthnRequest(reqOptions)
+            val (first, second) = signedRequest.jws.toJwsFlattened()
+            // each signature was made with the other one's key
+            fun JwsFlattened.withSignatureOf(other: JwsFlattened) = joseCompliantSerializer.decodeFromJsonElement(
+                JwsFlattened.serializer(),
+                JsonObject(
+                    joseCompliantSerializer.encodeToJsonElement(JwsFlattened.serializer(), this).jsonObject +
+                            ("signature" to joseCompliantSerializer.encodeToJsonElement(
+                                JwsFlattened.serializer(), other
+                            ).jsonObject.getValue("signature"))
+                ),
+            )
+
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = JwsTyped<AuthenticationRequestParameters>(
+                    listOf(first.withSignatureOf(second), second.withSignatureOf(first))
+                ),
+                credentialIds = listOf(credentialId),
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+
+            f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).apply {
+                isFailure shouldBe true
+                exceptionOrNull().shouldBeInstanceOf<OAuth2Exception.InvalidRequest>().message.shouldNotBeNull().apply {
+                    shouldContain("invalid_request")
+                    shouldContain("signature 0 (${signedRequest.jws.jwsHeaders[0].clientId}) INVALID")
+                    shouldContain("signature 1 (${signedRequest.jws.jwsHeaders[1].clientId}) INVALID")
+                }
+            }
+        }
+
+        test("DC API multisigned: mdoc response validates without a payload client_id") { f ->
+            val transactionId = uuid4().toString()
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = isoMdocDcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+                state = transactionId,
+            )
+            val signedRequest = f.createMultiSignedAuthnRequest(reqOptions)
+            signedRequest.payload.clientId.shouldBeNull()
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = signedRequest,
+                credentialIds = f.dcApiCredentialIds,
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+            val response = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
+                .let { f.holderOid4vp.finalizeAuthorizationResponse(it).getOrThrow() }
+                .shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+                .params.shouldBeInstanceOf<OpenId4VpResponseMultiSigned>()
+
+            f.dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult>()
+                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+                .credentialQueryResponseValidations.values.single().single().getOrThrow()
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
+        }
+
+        test("DC API multisigned: verifier rejects an unexpected origin") { f ->
+            val transactionId = uuid4().toString()
+            val reqOptions = OpenId4VpRequestOptions(
+                presentationRequest = dcqlRequest,
+                responseMode = OpenIdConstants.ResponseMode.DcApi,
+                expectedOrigins = listOf(callingOrigin),
+                state = transactionId,
+            )
+            val signedRequest = f.createMultiSignedAuthnRequest(reqOptions)
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
+                jwsTyped = signedRequest,
+                credentialIds = listOf(credentialId),
+                callingPackageName = callingPackageName,
+                callingOrigin = callingOrigin,
+            )
+            val response = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
+                .let { f.holderOid4vp.finalizeAuthorizationResponse(it).getOrThrow() }
+                .shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+                .params.shouldBeInstanceOf<OpenId4VpResponseMultiSigned>()
+
+            f.dcApiVerifier.validateAuthnResponse(
+                response,
+                transactionId,
+                "https://evil.example.com",
+            ).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult>()
+                .vpTokenValidationResult.shouldNotBeNull().apply {
+                isFailure shouldBe true
+                exceptionOrNull()!!.message!! shouldContain "does not match expected_origins"
+            }
         }
 
         test("DC API signed: wrong typ is rejected") { f ->
@@ -650,14 +938,14 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
-            val signedRequest = f.createSignedAuthnRequest(reqOptions)
+            val signedRequest = f.createMultiSignedAuthnRequest(reqOptions)
             val untyped = SignJwt<AuthenticationRequestParameters>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
                 JwsContentTypeConstants.JWT, signedRequest.payload, AuthenticationRequestParameters.serializer()
             ).getOrThrow()
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
                 jwsTyped = JwsTyped<AuthenticationRequestParameters>(
-                    listOf(signedRequest.jws.toJwsFlattened(), untyped.jws.toJwsFlattened())
+                    listOf(signedRequest.jws.toJwsFlattened().first(), untyped.jws.toJwsFlattened())
                 ),
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
@@ -676,10 +964,10 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
-            val signedRequest = f.createSignedAuthnRequest(reqOptions)
+            val signedRequest = f.createMultiSignedAuthnRequest(reqOptions)
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(signedRequest.jws.toJwsFlattened())),
+                jwsTyped = signedRequest,
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = "https://evil.example.com",  // does not match expectedOrigins

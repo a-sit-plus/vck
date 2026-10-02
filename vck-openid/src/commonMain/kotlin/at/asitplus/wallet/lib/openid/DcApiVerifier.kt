@@ -10,6 +10,7 @@ import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.dcapi.SessionTranscriptContentHashable
+import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
@@ -25,6 +26,7 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.VerifierInfo
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.ResponseParametersFrom
@@ -36,6 +38,9 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.toJwsFlattened
+import at.asitplus.signum.indispensable.josef.toJwsGeneral
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.signum.supreme.sign.Signer
@@ -58,6 +63,9 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.IsoDeviceRetrie
 import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.SignJwtExt
+import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -68,6 +76,8 @@ import io.ktor.utils.io.core.*
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 
@@ -213,6 +223,44 @@ class DcApiVerifier @JvmOverloads constructor(
             )
         )
 
+        is DcApiCreationOptions.OpenId4VpSignedBy -> {
+            require(requestOptions.verifierInfo == null || signer.verifierInfo == null) {
+                "verifier_info must be set either in the request options or on the signer, not both"
+            }
+            OpenId4VpSigned(
+                SignedDataElement(
+                    requestFactory(this.signer).createSignedRequestObject(
+                        // A compact request has a single identity, whose verifier_info belongs in the payload
+                        requestOptions.copy(verifierInfo = requestOptions.verifierInfo ?: signer.verifierInfo),
+                        RequestObjectSigning.DcApi,
+                    ).getOrThrow().jws
+                )
+            )
+        }
+
+        is DcApiCreationOptions.OpenId4VpMultiSigned -> {
+            require(requestOptions.verifierInfo == null) {
+                "Multisigned requests carry verifier_info per signer, not in the shared request options"
+            }
+            val payload = requestFactory.createPlainAuthnRequest(
+                requestOptions.copy(populateClientId = false, verifierInfo = null)
+            )
+            val flattened = signers.map { signer ->
+                SignJwtExt<AuthenticationRequestParameters>(
+                    signer.keyMaterial,
+                    JwsHeaderClientIdScheme(signer.clientIdScheme),
+                )(
+                    JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
+                    payload,
+                    AuthenticationRequestParameters.serializer(),
+                    JwsHeaderModifierFun { header -> signer.protectedHeader(header) },
+                ).getOrThrow().jws.toJwsFlattened()
+            }
+            OpenId4VpMultiSigned(
+                OpenId4Vp.MultiSignedDataElement(flattened.toJwsGeneral())
+            )
+        }
+
         DcApiCreationOptions.Iso180137AnnexC -> {
             // the recipient key is ephemeral for this request, and recovered in [validateIsoResponse]
             val encryptionInfo = EncryptionInfo(
@@ -276,6 +324,27 @@ class DcApiVerifier @JvmOverloads constructor(
             }.toTypedArray()
         )
     }
+
+    private fun requestFactory(
+        signer: DcApiRequestSigner,
+    ) = OpenId4VpRequestFactory(
+        clientIdScheme = signer.clientIdScheme,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        decryptionKeyMaterial = decryptionKeyMaterial,
+        signAuthnRequest = SignJwt(signer.keyMaterial, JwsHeaderClientIdScheme(signer.clientIdScheme)),
+        nonceService = nonceService,
+        supportedAlgorithms = supportedAlgorithms,
+        stateToAuthnRequestStore = stateToAuthnRequestStore,
+        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
+    )
+
+    private fun DcApiRequestSigner.protectedHeader(header: JwsHeader): JwsHeader = header.copy(
+        clientId = clientIdScheme.clientId,
+        verifierInfo = verifierInfo?.let {
+            joseCompliantSerializer.encodeToJsonElement(ListSerializer(VerifierInfo.serializer()), it.toList())
+                .jsonArray
+        },
+    )
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.
@@ -421,8 +490,21 @@ class DcApiVerifier @JvmOverloads constructor(
         require(originalResponseParameters is ResponseParametersFrom.DcApi) {
             "Unsupported response parameters: $originalResponseParameters"
         }
-        if (originalResponseParameters.clientIdRequired) {
-            // is signed request
+        when (originalResponseParameters.protocol) {
+            ExchangeProtocolIdentifier.OpenId4VpV1Signed -> require(authnRequest.clientId != null) {
+                "Missing required parameter: clientId"
+            }
+
+            ExchangeProtocolIdentifier.OpenId4VpV1Multisigned -> require(authnRequest.clientId == null) {
+                "client_id must be absent from a multisigned request payload"
+            }
+
+            ExchangeProtocolIdentifier.OpenId4VpV1Unsigned -> Unit
+            else -> throw IllegalArgumentException(
+                "Unsupported OpenID4VP DC API protocol: ${originalResponseParameters.protocol}"
+            )
+        }
+        if (originalResponseParameters.protocol.isSignedOpenId4VpRequest) {
             require(authnRequest.verifyExpectedOrigin(expectedOrigin)) {
                 "expected origin '$expectedOrigin' does not match expected_origins"
             }

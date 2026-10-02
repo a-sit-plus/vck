@@ -19,6 +19,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyWithFixedCert
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpChainValidator
@@ -103,6 +104,44 @@ val WrprcJwtTest by matrixSuite {
         val validation = result.certificateValidationResults.values.single().getOrThrow()
         validation.validChain shouldBe false
         validation.validSignature shouldBe true
+    }
+
+    "Status list of a WRPRC from an untrusted registrar is not fetched" {
+        val fixture = buildWrpFixture()
+        val untrustedSigner = TestCertificateAuthority(name = "Untrusted CA").issue(subjectName = WRPRC_PROVIDER_NAME)
+        val fetched = mutableListOf<Any>()
+
+        val result = fixture.validateWrprc(
+            payload = buildWrpPayload(fixture.wrpIdentifier),
+            signingKeyMaterial = untrustedSigner,
+            tokenStatusResolver = TokenStatusResolverImpl(StatusListTokenResolver { statusListUrl ->
+                fetched += statusListUrl
+                buildStatusListToken(statusListUrl, revokedIndex = 1)
+            }),
+        ).getOrThrow()
+
+        result.certificateValidationResults.values.single().getOrThrow().apply {
+            validStatusList shouldBe false
+            tokenStatus.exceptionOrNull().shouldNotBeNull().message.shouldContain("not trusted")
+        }
+        fetched shouldBe emptyList()
+    }
+
+    "Status list of a WRPRC with a signature from a non-matching key is not fetched" {
+        val fixture = buildWrpFixture()
+        val realCertificate = fixture.wrprcSigningKeyMaterial.getCertificate().shouldNotBeNull()
+        val fetched = mutableListOf<Any>()
+
+        fixture.validateWrprc(
+            payload = buildWrpPayload(fixture.wrpIdentifier),
+            signingKeyMaterial = KeyWithFixedCert(EphemeralKeyWithoutCert(), realCertificate),
+            tokenStatusResolver = TokenStatusResolverImpl(StatusListTokenResolver { statusListUrl ->
+                fetched += statusListUrl
+                buildStatusListToken(statusListUrl, revokedIndex = 1)
+            }),
+        ).getOrThrow()
+
+        fetched shouldBe emptyList()
     }
 
     "Signature from a non-matching key fails" {
