@@ -57,7 +57,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
 ) : OAuth2AuthorizationServerAdapter {
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
-        oauth2Client.client.execute(oauth2Client.protocolClient.loadAuthorizationServerMetadata(publicContext))
+        oauth2Client.loadAuthorizationServerMetadata(publicContext)
     }
 
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata.await()
@@ -96,9 +96,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
             subjectToken = authorizationHeader.split(" ").last(),
             resource = userInfoEndpoint,
         ).getOrThrow()
-        oauth2Client.client.execute(
-            oauth2Client.protocolClient.userInfoRequest(userInfoEndpoint, tokenResponse.params)
-        )
+        oauth2Client.requestUserInfo(userInfoEndpoint, tokenResponse.params)
     }
 
     override suspend fun validateAccessToken(

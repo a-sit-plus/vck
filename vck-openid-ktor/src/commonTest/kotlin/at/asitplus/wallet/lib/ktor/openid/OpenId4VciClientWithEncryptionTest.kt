@@ -198,7 +198,7 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
             authorizationService = authorizationService,
             client = OpenId4VciKtorClient(
                 engine = mockEngine,
-                oid4vciService = OpenId4VciClient(
+                oid4vciClient = OpenId4VciClient(
                     clientId = clientId,
                     keyMaterial = credentialKeyMaterial,
                 ),
