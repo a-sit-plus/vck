@@ -49,7 +49,12 @@ data class DCQLIsoMdocClaimsQuery(
     fun executeClaimsQueryAgainstCredential(
         credentialStructure: DCQLCredentialClaimStructure.IsoMdocStructure,
     ): KmmResult<DCQLClaimsQueryResult.IsoMdocResult> = catching {
-        val value = credentialStructure.namespaceClaimValueMap[namespace]!![claimName]!!
+//        val value = credentialStructure.namespaceClaimValueMap[namespace]!![claimName]!!
+        val availableValues = credentialStructure.namespaceClaimValueMap[namespace]
+            ?: throw IllegalArgumentException("Credential does not contain namespace $namespace")
+        val resolvedClaimName = AgeAttestation.resolve(claimName, availableValues)
+            ?: throw IllegalArgumentException("Credential cannot answer $['$namespace']['$claimName']")
+        val value = availableValues.getValue(resolvedClaimName)
         values?.any {
             when (it) {
                 is DCQLExpectedClaimValue.IntegerValue -> when (value) {

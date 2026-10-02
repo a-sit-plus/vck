@@ -190,7 +190,7 @@ class VerifiablePresentationFactory(
         isoPresentationParameters: Collection<IsoPresentationParameters>,
     ): CreatePresentationResult.DeviceResponse {
         suspend fun disclosePlainDocument(param: IsoPresentationParameters) = param.credential
-            .discloseRequestedClaims(param.claims, request)
+            .discloseRequestedClaims(param.claims, request, param.errors)
             .getOrThrow()
 
         val plainDocuments = mutableListOf<Document>()
@@ -226,6 +226,7 @@ class VerifiablePresentationFactory(
     private suspend fun StoreEntry.Iso.discloseRequestedClaims(
         requestedClaims: Collection<NormalizedJsonPath>,
         request: PresentationRequestParameters,
+        errors: Map<String, Map<String, Int>> = emptyMap(),
     ): KmmResult<Document> = catching {
         // grouping by namespace and all requested claims for that namespace
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
@@ -267,7 +268,8 @@ class VerifiablePresentationFactory(
                 deviceAuth = DeviceAuth(
                     deviceSignature = deviceSignature
                 )
-            )
+            ),
+            errors = errors.takeIf { it.isNotEmpty() },
         )
     }
 
