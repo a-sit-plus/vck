@@ -7,10 +7,13 @@ import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -42,17 +45,15 @@ import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifyIsoMdocCredential
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
 import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
+import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
-import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
-import at.asitplus.openid.decodeFromFormUrlEncoded
-import at.asitplus.openid.RequestParametersSerializer
-import at.asitplus.openid.toFormParameters
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -243,23 +244,18 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
         openId4VciServer = OpenId4VciServer(
             authorizationService = RemoteOAuth2AuthorizationServerAdapter(
                 publicContext = authServerPublicContext,
-                engine = mockEngine,
-                oauth2Client = OAuth2KtorClient(
-                    engine = mockEngine,
-                    loadInstanceAttestation = { _ ->
-                        catching {
-                            BuildClientAttestationJwt(
-                                SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
-                                clientId = issuerPublicContext,
-                                clientKey = issuerClientAuthKeyMaterial.jsonWebKey
-                            )
-                        }
-                    },
-                    keyMaterial = issuerClientAuthKeyMaterial,
-                    oAuth2Client = OAuth2Client(clientId = issuerPublicContext),
-                    randomSource = RandomSource.Default,
-                ),
+                httpClient = HttpClient(mockEngine),
                 internalTokenVerificationService = tokenService.verification,
+                oauth2Client = OAuth2Client(clientId = issuerPublicContext),
+                clientAttestation = ClientAttestation(issuerClientAuthKeyMaterial) {
+                    catching {
+                        BuildClientAttestationJwt(
+                            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                            clientId = issuerPublicContext,
+                            clientKey = issuerClientAuthKeyMaterial.jsonWebKey
+                        )
+                    }
+                },
             ),
             issuer = issuer,
             credentialSchemes = AttributeIndex.schemeSet,
@@ -276,26 +272,18 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             openId4VciServer = openId4VciServer,
             externalAuthorizationServer = externalAuthorizationServer,
             client = OpenId4VciKtorClient(
-                engine = mockEngine,
-                oid4vciClient = OpenId4VciClient(
-                    clientId = walletClientId,
-                    keyMaterial = credentialKeyMaterial,
-                ),
-                oauth2Client = OAuth2KtorClient(
-                    engine = mockEngine,
-                    loadInstanceAttestation = { _ ->
-                        catching {
-                            BuildClientAttestationJwt(
-                                SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
-                                clientId = walletClientId,
-                                clientKey = walletClientAuthKeyMaterial.jsonWebKey
-                            )
-                        }
-                    },
-                    keyMaterial = walletClientAuthKeyMaterial,
-                    oAuth2Client = OAuth2Client(clientId = walletClientId),
-                    randomSource = RandomSource.Default,
-                )
+                httpClient = HttpClient(mockEngine),
+                oauth2Client = OAuth2Client(clientId = walletClientId),
+                vciClient = OpenId4VciClient(keyMaterial = credentialKeyMaterial),
+                clientAttestation = ClientAttestation(walletClientAuthKeyMaterial) {
+                    catching {
+                        BuildClientAttestationJwt(
+                            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                            clientId = walletClientId,
+                            clientKey = walletClientAuthKeyMaterial.jsonWebKey
+                        )
+                    }
+                },
             )
         )
     }
