@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.KmmResult
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
@@ -80,23 +79,25 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
      * back from browser works
      */
     val oAuth2Client: OAuth2Client,
-    /** Used to prove possession of the key material for the instance attestation, see [loadInstanceAttestation]. */
-    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /** The key material the access tokens and refresh tokens get bound to, used for calculating DPoP proofs. */
-    private val dpopKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    /**
+     * Authenticates the client with an instance attestation, when the authorization server supports
+     * attestation-based client authentication; `null` for no client attestation.
+     */
+    val clientAttestation: ClientAttestation? = null,
+    /**
+     * The key material the access tokens and refresh tokens get bound to, used for calculating DPoP proofs.
+     * Defaults to the key of [clientAttestation], as DPoP needs the same key as the instance attestation
+     * ([EUDI TS3 Wallet Unit Attestation](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md)),
+     * which also keeps refresh tokens usable with that persistent key; without client attestation, to an ephemeral key.
+     */
+    private val dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
     /** Source for random bytes, i.e., nonces for proof-of-possession of key material for sender-constrained tokens. */
     private val randomSource: RandomSource = RandomSource.Secure,
     /** Verifies signed token introspection responses. By default, every syntactically valid JWS is accepted. */
     private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
-    /**
-     * Return a new Wallet Instance Attestation (WIA) to authenticate the Wallet App to the
-     * Authorization Service with OAuth Attestation Based Client Auth.
-     * Returned JWT MUST reference [keyMaterial] in [JsonWebToken.confirmationClaim].
-     */
-    val loadInstanceAttestation: (suspend (LoadInstanceAttestationInput) -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
 ) {
 
-    /** Used in [OAuth2ProtocolClient.loadInstanceAttestation] to provide information about the authorization server. */
+    /** Used in [ClientAttestation.loadInstanceAttestation] to provide information about the authorization server. */
     data class LoadInstanceAttestationInput(
         /** Value from [OAuth2AuthorizationServerMetadata.issuer] */
         val authorizationServer: String,
@@ -565,25 +566,25 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
     }
 
     /**
-     * Loads the client attestation when [loadInstanceAttestation] is set and the authorization server supports
-     * attestation-based client authentication, and checks that it attests [keyMaterial].
+     * Loads the instance attestation when [clientAttestation] is set and the authorization server supports
+     * attestation-based client authentication, and checks that it attests [ClientAttestation.keyMaterial].
      * Called before any request of an attempt is sent, so that a request that cannot authenticate is never sent.
      */
-    internal suspend fun loadClientAttestation(
+    internal suspend fun loadInstanceAttestation(
         authentication: Authentication.Client,
     ): JwsCompactTyped<JsonWebToken>? {
-        val loadInstanceAttestation = loadInstanceAttestation ?: return null
+        val clientAttestation = clientAttestation ?: return null
         val oauthMetadata = authentication.oauthMetadata
         if (!oauthMetadata.supportsClientAuth()) return null
         if (oauthMetadata.clientAttestationModes().combined) {
             require(oauthMetadata.supportsDPoP()) {
                 "Authorization server does not support DPoP, but client attestation PoP is combined"
             }
-            require(keyMaterial.publicKey == dpopKeyMaterial.publicKey) {
+            require(clientAttestation.keyMaterial.publicKey == dpopKeyMaterial.publicKey) {
                 "Key material for DPoP and client attestation PoP are not the same"
             }
         }
-        return loadInstanceAttestation(
+        return clientAttestation.loadInstanceAttestation(
             LoadInstanceAttestationInput(
                 authorizationServer = authentication.authorizationServer,
                 credentialIssuer = authentication.issuerMetadata?.credentialIssuer
@@ -596,7 +597,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 require(cryptoPublicKey != null) {
                     "Instance attestation has no cnf.jwk — PoP key cannot be verified"
                 }
-                require(cryptoPublicKey == keyMaterial.publicKey) {
+                require(cryptoPublicKey == clientAttestation.keyMaterial.publicKey) {
                     "keyMaterial does not match the cnf key in the instance attestation"
                 }
             }
@@ -612,20 +613,20 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
     internal fun attestationChallengeRequest(
         authentication: Authentication.Client,
         resourceUrl: String,
-        clientAttestation: JwsCompactTyped<JsonWebToken>?,
+        instanceAttestation: JwsCompactTyped<JsonWebToken>?,
     ): PreparedHttpRequest? {
         val oauthMetadata = authentication.oauthMetadata
         val challengeEndpoint = oauthMetadata.challengeEndpoint ?: return null
         if (hasAttestationChallenge(resourceUrl)) return null
         val modes = oauthMetadata.clientAttestationModes()
-        val needsChallenge = (clientAttestation != null && modes.normal) ||
+        val needsChallenge = (instanceAttestation != null && modes.normal) ||
                 (modes.combined && oauthMetadata.supportsDPoP() && authorizationServerDpopNonces.current(resourceUrl) == null)
         return if (needsChallenge) PreparedHttpRequest(challengeEndpoint, HttpMethod.Post) else null
     }
 
     /**
      * Headers when accessing a token endpoint (or equivalent, like PAR):
-     * - the client attestation, if [clientAttestation] is set
+     * - the instance attestation, if [instanceAttestation] is set
      * - a client attestation PoP for that (normal mode)
      * - a DPoP proof when the authorization server advertises support for it, which also serves as the client
      *   attestation PoP in combined mode
@@ -636,15 +637,16 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         authentication: Authentication.Client,
         resourceUrl: String,
         httpMethod: HttpMethod,
-        clientAttestation: JwsCompactTyped<JsonWebToken>?,
+        instanceAttestation: JwsCompactTyped<JsonWebToken>?,
         fetchedChallenge: String?,
     ): Headers {
         val oauthMetadata = authentication.oauthMetadata
         val modes = oauthMetadata.clientAttestationModes()
 
-        val clientAttPop = if (clientAttestation != null && modes.normal) {
+        val attestationKey = clientAttestation?.keyMaterial
+        val clientAttPop = if (instanceAttestation != null && attestationKey != null && modes.normal) {
             BuildClientAttestationPoPJwt(
-                signJwt = SignJwt(keyMaterial, JwsHeaderNone()),
+                signJwt = SignJwt(attestationKey, JwsHeaderNone()),
                 audience = authentication.authorizationServer,
                 // nonce support must not be implemented by the AS, so we keep it optional
                 nonce = takeAttestationChallenge(resourceUrl) ?: fetchedChallenge,
@@ -668,7 +670,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         } else null
 
         return Headers.build {
-            clientAttestation?.let { append(HttpHeaders.OAuthClientAttestation, it.jws.toString()) }
+            instanceAttestation?.let { append(HttpHeaders.OAuthClientAttestation, it.jws.toString()) }
             clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it.jws.toString()) }
             dpopHeader?.let { append(HttpHeaders.DPoP, it.toString()) }
         }
