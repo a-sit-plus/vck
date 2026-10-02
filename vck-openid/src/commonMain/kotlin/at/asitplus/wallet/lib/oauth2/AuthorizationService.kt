@@ -16,7 +16,7 @@ import kotlinx.serialization.json.JsonObject
 /**
  * Provides interface for implementing an OAuth 2.0 Authorization Server, which may be used with an
  * [at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter] for a
- * [at.asitplus.wallet.lib.oidvci.CredentialIssuer].
+ * [at.asitplus.wallet.lib.oidvci.OpenId4VciServer].
  */
 interface AuthorizationService {
 

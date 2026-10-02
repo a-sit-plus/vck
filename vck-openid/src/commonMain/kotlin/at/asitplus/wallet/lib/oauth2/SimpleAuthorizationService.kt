@@ -41,7 +41,7 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.CodeService
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -65,7 +65,7 @@ import kotlin.time.Duration.Companion.minutes
 
 
 /**
- * Simple authorization server implementation, to be used for [CredentialIssuer],
+ * Simple authorization server implementation, to be used for [OpenId4VciServer],
  * with the actual authentication and authorization logic for credential schemes implemented in [strategy].
  *
  * Implemented from
@@ -241,7 +241,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
      * i.e. by displaying a QR Code that can be scanned with wallet apps.
      *
-     * @param credentialIssuer the public context of an [CredentialIssuer]
+     * @param credentialIssuer the public context of an [OpenId4VciServer]
      * @param schemes which credential configuration IDs to use in the offer.
      * Pass an empty set to offer all known schemes.
      */
@@ -278,7 +278,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * i.e. by displaying a QR Code that can be scanned with wallet apps.
      *
      * @param user used to create the credential when the wallet app requests the credential
-     * @param credentialIssuer the public context of an [CredentialIssuer]
+     * @param credentialIssuer the public context of an [OpenId4VciServer]
      * @param schemes which credential configuration IDs to use in the offer.
      * Pass an empty set to offer all known schemes.
      * @param transactionCode OID4VCI transaction code the user has to enter in the wallet app, to be transmitted to

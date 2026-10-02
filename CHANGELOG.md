@@ -7,6 +7,54 @@ Release 9.0.0 (unreleased):
       `credential_configurations_supported` is REQUIRED in OID4VCI; issuer metadata without it now fails to deserialize
     - Add `WalletService.createCredential(metadata, credentialConfigurationId, ...)` to request exactly one credential
       by its `credential_configuration_id`
+- HTTP error handling:
+    - Add `HttpErrorResponseException` and `ProblemDetails` in `vck-openid` (package `at.asitplus.wallet.lib`), so
+      OAuth 2.0 errors and RFC 9457 problem details of non-success responses are available without a ktor client.
+      The exception carries `status` and `headers` instead of a ktor `HttpResponse`
+    - Add `OAuth2Error?.dpopNonce(Headers)` and `OAuth2Error?.attestationChallenge(Headers)` in `vck-openid`
+    - BREAKING: `HttpErrorResponseException` in `vck-openid-ktor` now extends the new class instead of ktor's
+      `ResponseException`; it keeps its constructor and `response`, and is still an `IllegalStateException`
+    - Deprecate `HttpErrorResponseException` and the typealias `ProblemDetails` in `vck-openid-ktor`, replace with the
+      classes from `vck-openid`
+    - Deprecate `HttpErrorResponseException.dpopNonce()` and `HttpErrorResponseException.attestationChallenge()` in
+      `vck-openid-ktor`, replace with `oauth2Error.dpopNonce(headers)` and `oauth2Error.attestationChallenge(headers)`
+- OAuth 2.0 client:
+    - Add `OAuth2ProtocolClient` in `vck-openid`, implementing the client side of OAuth 2.0 (PAR, JAR, token requests,
+      token introspection, userinfo) including DPoP and attestation-based client authentication, without sending
+      requests itself: each call returns an `HttpExchange`, whose requests (`ProtocolRequest`) callers send with any
+      HTTP stack
+    - `OAuth2KtorClient` sends the requests of `OAuth2ProtocolClient`, keeping its API
+    - Move `TokenResponseWithDpopNonce`, `LoadInstanceAttestationInput` and `OpenUrlForAuthnRequest` to `vck-openid`
+      (`at.asitplus.wallet.lib.oauth2`, the latter two nested in `OAuth2ProtocolClient`), deprecate the typealiases
+      left in `vck-openid-ktor`
+    - Deprecate `OAuth2KtorClient.callTokenIntrospection` with the parameters `token` (never used) and `retryCount`
+      (now ignored), replace with the overload without them
+    - Fix: A retried token introspection request passes `issuerMetadata` to `loadInstanceAttestation`
+    - `RemoteOAuth2AuthorizationServerAdapter` loads the authorization server metadata and the user info through
+      `OAuth2ProtocolClient`; the DPoP proof for the userinfo endpoint uses the nonce the userinfo endpoint provided,
+      instead of the nonce of the token response
+    - `OAuth2ProtocolClient` keeps DPoP nonces from responses of the authorization server (for requests with client
+      authentication) apart from those of resource servers (for requests with an access token), even on the same
+      origin, as RFC 9449 9. requires; `OAuth2KtorClient.applyToken` falls back to the latest nonce of the resource
+      server at that origin
+- OpenID for Verifiable Credential Issuance client:
+    - Renamed `WalletService` (in `vck-openid`) to `OpenId4VciClient`
+    - Renamed `OpenId4VciClient` (in `vck-openid-ktor`) to `OpenId4VciKtorClient`
+    - Renamed `CredentialIssuer` (in `vck-openid`) to `OpenId4VciServer`
+    - Add `OpenId4VciProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the credential issuer
+      (metadata, nonce, credential), built on `OAuth2ProtocolClient`, which handles DPoP for the credential issuer with
+      the credential issuer's own nonces
+    - Move `CredentialIdentifierInfo` to `vck-openid` (`at.asitplus.wallet.lib.oidvci`), deprecate the typealias left
+      in `vck-openid-ktor`; the serialized form is unchanged
+    - `OpenId4VciKtorClient` sends the requests of `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` in the order of each
+      flow, keeping its API
+    - Fix: Credential requests use only DPoP nonces of the credential issuer, never the one of the authorization server
+      from the token response, as nonces are only accepted by the server that issued them (RFC 9449 9.)
+    - Add `OpenId4VciProtocolClient.loadCredentialOffer` and `OpenId4VciClient.loadCredentialOffer` to load a credential
+      offer passed by value or by reference; the resource at `credential_offer_uri` must be the JSON-encoded offer, so
+      another offer URL or a redirect in its place is rejected
+    - Deprecate `WalletService.parseCredentialOffer`, which retrieved offers passed by reference with the
+      `remoteResourceRetriever` of `OpenId4VciClient`; that constructor parameter is only used by the deprecated method
 
 Release 8.0.0:
 
