@@ -7,8 +7,11 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
@@ -37,35 +40,77 @@ typealias OpenId4VciClient = OpenId4VciKtorClient
  *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  *  * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126)
  */
-class OpenId4VciKtorClient(
-    /** ktor engine to use to make requests to issuing service. */
-    engine: HttpClientEngine,
+class OpenId4VciKtorClient private constructor(
     /**
-     * Callers are advised to implement a persistent cookie storage,
-     * to keep the session at the issuing service alive after receiving the auth code.
+     * Implements OID4VCI protocol, i.e. creates credential requests with proofs of possession for the credential key
+     * material, and parses the credential responses.
      */
-    cookiesStorage: CookiesStorage? = null,
-    /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
-    httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    /**
-     * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
-     * back from browser works, `cryptoService` provides proof of possession for credential key material.
-     */
-    private val oid4vciClient: OpenId4VciClient = OpenId4VciClient(),
-    /**
-     * Internal OAuth 2.0 client passed on to [oauth2Client], with the (deprecated) `clientId` from [oid4vciClient].
-     * The `client_id` of the OAuth 2.0 client in [oauth2Client] is the issuer of credential proofs.
-     */
-    @Suppress("DEPRECATION")
-    private val oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciClient.clientId),
-    /** OAuth 2.0 client to use during the protocol run. */
-    private val oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
-        engine = engine,
-        cookiesStorage = cookiesStorage,
-        httpClientConfig = httpClientConfig,
-        oAuth2Client = oauth2InternalClient,
-    ),
+    private val oid4vciClient: OpenId4VciClient,
+    /** OAuth 2.0 client to use during the protocol run, which sends all requests. */
+    private val oauth2Client: OAuth2KtorClient,
 ) {
+
+    /**
+     * @param httpClient the app's ktor client, i.e. with its engine, cookie storage (advised to be persistent, to keep
+     * the session at the issuing service alive after receiving the auth code) and logging. The requests are sent with a
+     * copy that does not follow redirects, see [OAuth2KtorClient] for the plugins it must not have.
+     * @param oauth2Client implements OAuth 2.0, holding the `client_id` (also the issuer of credential proofs), the
+     * `redirectUrl`, which needs to be registered by the OS for this application, so redirection back from browser
+     * works, and the state of authorization requests
+     * @param vciClient implements OID4VCI protocol, i.e. creates credential requests with proofs of possession for the
+     * credential key material, and parses the credential responses
+     * @param clientAttestation authenticates the client with
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html),
+     * e.g. with a Wallet Instance Attestation (WIA), or `null` to not use it
+     * @param dpopKeyMaterial the key material the access tokens and refresh tokens get bound to, by default the key of
+     * [clientAttestation], else an ephemeral key, see [OAuth2KtorClient]
+     */
+    constructor(
+        httpClient: HttpClient,
+        oauth2Client: OAuth2Client,
+        vciClient: OpenId4VciClient = OpenId4VciClient(),
+        clientAttestation: ClientAttestation? = null,
+        dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
+    ) : this(
+        oid4vciClient = vciClient,
+        oauth2Client = OAuth2KtorClient(
+            httpClient = httpClient,
+            oAuth2Client = oauth2Client,
+            clientAttestation = clientAttestation,
+            dpopKeyMaterial = dpopKeyMaterial,
+        ),
+    )
+
+    /**
+     * @param engine ktor engine to use to make requests to issuing service.
+     * @param cookiesStorage Callers are advised to implement a persistent cookie storage,
+     * to keep the session at the issuing service alive after receiving the auth code.
+     * @param httpClientConfig Additional configuration for building the HTTP client, e.g. callers may enable logging.
+     * @param oid4vciClient Implements OID4VCI protocol, `cryptoService` provides proof of possession for credential
+     * key material.
+     * @param oauth2InternalClient Internal OAuth 2.0 client passed on to [oauth2Client], with the (deprecated)
+     * `clientId` from [oid4vciClient]. The `client_id` of the OAuth 2.0 client in [oauth2Client] is the issuer of
+     * credential proofs.
+     * @param oauth2Client OAuth 2.0 client to use during the protocol run.
+     */
+    @Deprecated(
+        "Pass the app's HttpClient instead of engine, cookiesStorage and httpClientConfig, the OAuth2Client, which " +
+                "holds the client ID for credential proofs too, and the client attestation as ClientAttestation"
+    )
+    @Suppress("DEPRECATION") // in the default values
+    constructor(
+        engine: HttpClientEngine,
+        cookiesStorage: CookiesStorage? = null,
+        httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+        oid4vciClient: OpenId4VciClient = OpenId4VciClient(),
+        oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciClient.clientId),
+        oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
+            engine = engine,
+            cookiesStorage = cookiesStorage,
+            httpClientConfig = httpClientConfig,
+            oAuth2Client = oauth2InternalClient,
+        ),
+    ) : this(oid4vciClient = oid4vciClient, oauth2Client = oauth2Client)
 
     /** Shares the DPoP nonces of [oauth2Client], which sends all requests. */
     private val vci = OpenId4VciProtocolClient(vciClient = oid4vciClient, oauth2Client = oauth2Client.protocolClient)
