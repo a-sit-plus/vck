@@ -114,7 +114,7 @@ class IssuerEncryptionService @JvmOverloads constructor(
     internal suspend fun encryptResponse(
         response: CredentialResponseParameters,
         request: CredentialRequestParameters,
-    ): CredentialIssuer.CredentialResponse =
+    ): OpenId4VciServer.CredentialResponse =
         request.credentialResponseEncryption?.let {
             val recipientKey = it.jsonWebKey
             val jweAlg = (recipientKey.algorithm as? JweAlgorithm)
@@ -126,7 +126,7 @@ class IssuerEncryptionService @JvmOverloads constructor(
             if (jweEnc !in supportedJweEncryptionAlgorithms)
                 throw InvalidEncryptionParameters("Unsupported enc: ${jweEnc.identifier}")
             Napier.d("encrypting response for $recipientKey")
-            CredentialIssuer.CredentialResponse.Encrypted(
+            OpenId4VciServer.CredentialResponse.Encrypted(
                 encryptCredentialResponse(
                     header = JweHeader(
                         algorithm = jweAlg,
@@ -140,6 +140,6 @@ class IssuerEncryptionService @JvmOverloads constructor(
         } ?: run {
             if (requireResponseEncryption)
                 throw InvalidEncryptionParameters("Response encryption required, no params sent")
-            CredentialIssuer.CredentialResponse.Plain(response)
+            OpenId4VciServer.CredentialResponse.Plain(response)
         }
 }

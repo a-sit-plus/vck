@@ -38,7 +38,7 @@ val OidvciOfferCodeTest by matrixSuite {
                     mapper = mapper,
                 ),
             )
-            val issuer = CredentialIssuer(
+            val issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -47,7 +47,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 credentialSchemes =  AttributeIndex.schemeSet,
                 credentialSchemeMapper = mapper,
             )
-            val client = WalletService()
+            val client = OpenId4VciClient()
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 
@@ -169,7 +169,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -198,7 +198,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -278,7 +278,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()

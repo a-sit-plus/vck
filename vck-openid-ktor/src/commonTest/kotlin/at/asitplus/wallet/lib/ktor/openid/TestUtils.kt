@@ -33,7 +33,7 @@ import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationChallenge
 import at.asitplus.wallet.lib.oauth2.ResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.openid.toOAuth2Error
 import io.github.aakira.napier.Napier
@@ -158,20 +158,20 @@ object TestUtils {
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
     )
 
-    fun MockRequestHandleScope.respond(result: CredentialIssuer.CredentialResponse): HttpResponseData =
+    fun MockRequestHandleScope.respond(result: OpenId4VciServer.CredentialResponse): HttpResponseData =
         when (result) {
-            is CredentialIssuer.CredentialResponse.Encrypted -> respond(
+            is OpenId4VciServer.CredentialResponse.Encrypted -> respond(
                 result.response.serialize(),
                 headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT)
             )
 
-            is CredentialIssuer.CredentialResponse.Plain -> respond(
+            is OpenId4VciServer.CredentialResponse.Plain -> respond(
                 joseCompliantSerializer.encodeToString(result.response),
                 headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JSON)
             )
         }
 
-    fun MockRequestHandleScope.respond(result: CredentialIssuer.Nonce): HttpResponseData =
+    fun MockRequestHandleScope.respond(result: OpenId4VciServer.Nonce): HttpResponseData =
         respondIncludingDpopNonce(ResponseWithDpopNonce(result.response, result.dpopNonce))
 
     inline fun <reified T> MockRequestHandleScope.respondIncludingDpopNonce(

@@ -17,7 +17,7 @@ import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -73,9 +73,9 @@ val OpenId4VciClientDPoPNonceTest by matrixSuite {
                 else -> respondError(HttpStatusCode.NotFound)
             }
         }
-        val client = OpenId4VciClient(
+        val client = OpenId4VciKtorClient(
             engine = mockEngine,
-            oid4vciService = WalletService(),
+            oid4vciService = OpenId4VciClient(),
             oauth2Client = OAuth2KtorClient(
                 engine = mockEngine,
                 oAuth2Client = OAuth2Client(),

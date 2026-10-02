@@ -67,8 +67,8 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
-import at.asitplus.wallet.lib.oidvci.WalletService.KeyAttestationInput
-import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient.KeyAttestationInput
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient.RequestOptions
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import com.benasher44.uuid.uuid4
@@ -97,7 +97,7 @@ val OidvciAttestationTest by matrixSuite {
                 strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet),
             )
             val oauth2Client = OAuth2Client()
-            var issuer = CredentialIssuer(
+            var issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -136,7 +136,7 @@ val OidvciAttestationTest by matrixSuite {
 
             val clientKeyMaterial = EphemeralKeyWithoutCert()
 
-            var client = WalletService(
+            var client = OpenId4VciClient(
                 loadKeyAttestation = { input ->
                     catching {
                         SignJwt<KeyAttestationJwt>(walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
@@ -183,13 +183,13 @@ val OidvciAttestationTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce
             ).getOrThrow().forEach { request ->
-                request.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+                request.shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
                 val credential = it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
                     params = request,
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
-                    .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                    .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                     .response
 
                 JwsCompactTyped<VerifiableCredentialJws>(
@@ -203,7 +203,7 @@ val OidvciAttestationTest by matrixSuite {
         }
 
         test("reject key attestation in JWT proof, signed by an untrusted key") {
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -231,7 +231,7 @@ val OidvciAttestationTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce
             ).getOrThrow().forEach { request ->
-                request.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+                request.shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
                 shouldThrow<OAuth2Exception> {
                     it.issuer.credential(
                         authorizationHeader = token.toHttpHeaderValue(),
@@ -375,7 +375,7 @@ val OidvciAttestationTest by matrixSuite {
         }
 
         test("require key attestation for proof, but do not provide one") {
-            it.client = WalletService(loadKeyAttestation = null)
+            it.client = OpenId4VciClient(loadKeyAttestation = null)
 
             val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat =
@@ -396,7 +396,7 @@ val OidvciAttestationTest by matrixSuite {
         }
 
         test("reject key attestation if jwt proof signing key is not attested at index zero") {
-            it.client = WalletService(
+            it.client = OpenId4VciClient(
                 loadKeyAttestation = it.client::loadTestKeyAttestation,
                 keyMaterial = EphemeralKeyWithoutCert(),
             )
@@ -424,7 +424,7 @@ val OidvciAttestationTest by matrixSuite {
         test("key attestation callback receives issuer preference context") {
             var capturedInput: KeyAttestationInput? = null
 
-            it.client = WalletService(
+            it.client = OpenId4VciClient(
                 loadKeyAttestation = { input ->
                     capturedInput = input
                     catching {
@@ -472,7 +472,7 @@ val OidvciAttestationTest by matrixSuite {
         }
 
         test("do not require key attestation for proof, so local error shouldn't matter") {
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -484,7 +484,7 @@ val OidvciAttestationTest by matrixSuite {
                     verifyKeyAttestationSignature = verifyKeyAttestationWith(EphemeralKeyWithoutCert()) // not matching our walletProviderKeyMaterial
                 )
             )
-            it.client = WalletService(loadKeyAttestation = { catchingUnwrapped { TODO() }.wrap() })
+            it.client = OpenId4VciClient(loadKeyAttestation = { catchingUnwrapped { TODO() }.wrap() })
 
             val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
@@ -499,13 +499,13 @@ val OidvciAttestationTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce
             ).getOrThrow().forEach { request ->
-                request.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+                request.shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
                 val credential = it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
                     params = request,
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
-                    .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                    .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                     .response
 
                 JwsCompactTyped<VerifiableCredentialJws>(
@@ -559,7 +559,7 @@ val OidvciAttestationTest by matrixSuite {
         }
 
         test("reject jwt proof with unsupported algorithm") {
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -581,7 +581,7 @@ val OidvciAttestationTest by matrixSuite {
                 metadata = it.issuer.metadata,
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce
-            ).getOrThrow().single().shouldBeInstanceOf<WalletService.CredentialRequest.Plain>()
+            ).getOrThrow().single().shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
 
             val tamperedProof = request.request.proofs.shouldNotBeNull().jwt.shouldNotBeNull().single()
                 .withHeaderAlg(JwsAlgorithm.Signature.RS256)
@@ -592,7 +592,7 @@ val OidvciAttestationTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 it.issuer.credential(
                     authorizationHeader = token.toHttpHeaderValue(),
-                    params = WalletService.CredentialRequest.Plain(tamperedRequest),
+                    params = OpenId4VciClient.CredentialRequest.Plain(tamperedRequest),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
             }
@@ -602,7 +602,7 @@ val OidvciAttestationTest by matrixSuite {
         // selectProofJwtKeyBinding: both jwk and kid set → IllegalArgumentException
         // -----------------------------------------------------------------------------------------
         test("throw when both jwk and kid are set in selectProofJwtKeyBinding") {
-            val conflictingClient = WalletService(
+            val conflictingClient = OpenId4VciClient(
                 keyMaterial = it.clientKeyMaterial,
                 loadKeyAttestation = null,
                 selectProofJwtKeyBinding = { key ->
@@ -622,7 +622,7 @@ val OidvciAttestationTest by matrixSuite {
         // selectProofJwtKeyBinding: neither jwk nor kid set → IllegalArgumentException
         // -----------------------------------------------------------------------------------------
         test("throw when neither jwk nor kid is set in selectProofJwtKeyBinding") {
-            val emptyBindingClient = WalletService(
+            val emptyBindingClient = OpenId4VciClient(
                 keyMaterial = it.clientKeyMaterial,
                 loadKeyAttestation = null,
                 selectProofJwtKeyBinding = { _ ->
@@ -645,7 +645,7 @@ val OidvciAttestationTest by matrixSuite {
             val didKeyMaterial = it.clientKeyMaterial
             val didUrl = "did:example:holder#key-1"
 
-            val kidOnlyClient = WalletService(
+            val kidOnlyClient = OpenId4VciClient(
                 keyMaterial = didKeyMaterial,
                 loadKeyAttestation = null,
                 selectProofJwtKeyBinding = { _ ->
@@ -654,7 +654,7 @@ val OidvciAttestationTest by matrixSuite {
             )
 
             // No key attestation required on the issuer side for this sub-test
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -677,7 +677,7 @@ val OidvciAttestationTest by matrixSuite {
     }
 }
 
-private suspend fun WalletService.loadTestKeyAttestation(
+private suspend fun OpenId4VciClient.loadTestKeyAttestation(
     input: KeyAttestationInput,
 ) = catching {
     val walletProviderKeyMaterial = EphemeralKeyWithoutCert()
