@@ -83,6 +83,8 @@ Release 9.0.0 (unreleased):
       source of the client ID), the `OpenId4VciClient` and a `ClientAttestation`, so that each value is passed once.
       Deprecate the constructor taking `engine`, `cookiesStorage`, `httpClientConfig` and an `OAuth2KtorClient`, whose
       HTTP configuration it silently preferred over its own
+- OpenID for Verifiable Presentations client:
+    - Renamed `OpenId4VpWallet` (in `vck-openid`) to `OpenId4VpKtorHolder`
 
 Release 8.0.0:
 

@@ -158,7 +158,7 @@ val response = verifier.validateAuthnResponse(walletRedirectUrlOrDirectPostBody)
 val vpValidation = response.vpTokenValidationResult?.getOrThrow()
 ```
 
-On the wallet side, use the two-step API when the user must review and choose credentials. `OpenId4VpWallet` from
+On the wallet side, use the two-step API when the user must review and choose credentials. `OpenId4VpKtorHolder` from
 `vck-openid-ktor` wraps the same holder flow and also performs the HTTP POST/redirect response handling. To establish
 trust in the relying party sending a request, pass a `relyingPartyTrust`: it verifies the request object per client
 identifier scheme, with trust anchors for `x509_san_dns` and `x509_hash`, trusted attesters for

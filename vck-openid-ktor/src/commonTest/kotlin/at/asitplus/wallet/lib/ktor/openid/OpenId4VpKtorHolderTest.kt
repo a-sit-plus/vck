@@ -6,10 +6,10 @@ import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.ResponseMode
-import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
@@ -24,6 +24,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
@@ -36,9 +37,9 @@ import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.DCQLMatchingResult
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -60,7 +61,6 @@ import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
-import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
@@ -96,15 +96,14 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
 
-@Suppress("unused")
-val OpenId4VpWalletTest by matrixSuite {
+val OpenId4VpKtorHolderTest by matrixSuite {
 
     fixture {
         object {
             val countdownLatch = Mutex(true)
             val keyMaterial = EphemeralKeyWithoutCert()
             val holderAgent = HolderAgent(keyMaterial)
-            lateinit var wallet: OpenId4VpWallet
+            lateinit var wallet: OpenId4VpKtorHolder
             lateinit var url: String
             lateinit var mockEngine: HttpClientEngine
 
@@ -143,7 +142,7 @@ val OpenId4VpWalletTest by matrixSuite {
             fun setupWallet(
                 engine: HttpClientEngine,
                 ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
-            ) = OpenId4VpWallet(
+            ) = OpenId4VpKtorHolder(
                 engine = engine,
                 keyMaterial = keyMaterial,
                 holderAgent = holderAgent,
@@ -281,7 +280,7 @@ val OpenId4VpWalletTest by matrixSuite {
             val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
             it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
                 .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
 
             assertPresentation(it.countdownLatch)
@@ -303,7 +302,7 @@ val OpenId4VpWalletTest by matrixSuite {
 
             val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
                 .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
 
             assertPresentation(it.countdownLatch)
@@ -324,7 +323,7 @@ val OpenId4VpWalletTest by matrixSuite {
             val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
             it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
                 .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
 
             assertPresentation(it.countdownLatch)
@@ -478,7 +477,7 @@ val OpenId4VpWalletTest by matrixSuite {
             val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
             it.wallet.finalizeAuthorizationResponse(preparationState, presentation)
                 .getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationForward>()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationForward>()
                 .authenticationResponseResult.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>().apply {
                     val responseJson = joseCompliantSerializer.encodeToString(
                         AuthenticationResponseParameters.serializer(),
@@ -518,22 +517,24 @@ val OpenId4VpWalletTest by matrixSuite {
 }
 
 // TODO: ClaimToBeIssued with DCQLClaimsPathPointer!
-private fun Map.Entry<DCQLClaimsPathPointer, Any>.toClaimToBeIssued(): ClaimToBeIssued = ClaimToBeIssued(key.getFirstName(), value)
+private fun Map.Entry<DCQLClaimsPathPointer, Any>.toClaimToBeIssued(): ClaimToBeIssued =
+    ClaimToBeIssued(key.getFirstName(), value)
 
 private fun Map.Entry<DCQLClaimsPathPointer, Any>.toIssuerSignedItem(): IssuerSignedItem =
     IssuerSignedItem(0U, Random.nextBytes(16), key.getFirstName(), value)
 
 
-private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean = catching {
-    when (val vpTokenValidationResult = this.vpTokenValidationResult.shouldNotBeNull().getOrThrow()) {
-        is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
-            .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
-            .containsAllAttributes(expectedAttributes)
+private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean =
+    catching {
+        when (val vpTokenValidationResult = this.vpTokenValidationResult.shouldNotBeNull().getOrThrow()) {
+            is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
+                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .containsAllAttributes(expectedAttributes)
 
+        }
+    }.getOrElse {
+        false
     }
-}.getOrElse {
-    false
-}
 
 private fun Verifier.VerifyPresentationResult.containsAllAttributes(
     attributes: Map<DCQLClaimsPathPointer, String>

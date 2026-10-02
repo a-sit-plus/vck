@@ -35,13 +35,16 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Deprecated("Renamed", ReplaceWith("OpenId4VpKtorHolder"))
+typealias OpenId4VpWallet = OpenId4VpKtorHolder
+
 /**
  * Implements the wallet side of
  * [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html)
  * and
  * [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)
  */
-class OpenId4VpWallet(
+class OpenId4VpKtorHolder(
     /** ktor engine to make requests to the Relying Party. */
     engine: HttpClientEngine,
     /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
