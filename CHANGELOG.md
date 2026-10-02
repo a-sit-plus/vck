@@ -55,6 +55,8 @@ Release 9.0.0 (unreleased):
       defaults to the attested key, so that refresh tokens remain usable after the app restarts. Deprecate the
       constructors taking `engine`, `cookiesStorage` and `httpClientConfig`
     - Add `OAuth2KtorClient.clientAttestation`, deprecate `OAuth2KtorClient.loadInstanceAttestation`
+    - Form-encoded requests (PAR, token, token introspection) are sent as `application/x-www-form-urlencoded` without
+      `charset` in the `Content-Type`, as the media type defines no such parameter
 - OpenID for Verifiable Credential Issuance client:
     - Renamed `WalletService` (in `vck-openid`) to `OpenId4VciClient`
     - Renamed `OpenId4VciClient` (in `vck-openid-ktor`) to `OpenId4VciKtorClient`
