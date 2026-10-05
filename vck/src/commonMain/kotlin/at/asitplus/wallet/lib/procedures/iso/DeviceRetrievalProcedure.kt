@@ -106,8 +106,7 @@ internal object DeviceRetrievalProcedure {
      * credential does not carry is answered by the nearest attestation that implies it. When no attestation can
      * answer it, 7.2.5 step 3 requires that no `age_over_nn` element be returned — that is a valid response, not
      * a failure, so the element is reported in [ItemsRequestEvaluation.unansweredClaims] and the rest of the
-     * request is still satisfied. See also 7.2.5 NOTE 3: a reader that receives no age attestation may re-request
-     * with `age_in_years` or `birth_date`.
+     * request is still satisfied.
      *
      * `intentToRetain` controls verifier retention and does not make an element optional.
      */
