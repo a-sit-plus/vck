@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
-import at.asitplus.openid.AttestationChallengeResponse
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersSerializer
@@ -10,7 +9,6 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -24,13 +22,13 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondIncludingDpopNonce
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
 import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
 import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
+import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -96,14 +94,8 @@ val OAuth2KtorClientTest by matrixSuite {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.fullPath.startsWith(challengeEndpointPath) -> {
-                    val response = authorizationService.attestationChallenge().getOrThrow().shouldNotBeNull()
-                    respond(
-                        joseCompliantSerializer.encodeToString(AttestationChallengeResponse.serializer(), response),
-                        headers = headers {
-                            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                            append(HttpHeaders.CacheControl, "no-store")
-                        },
-                    )
+                    authorizationService.attestationChallenge().getOrThrow().shouldNotBeNull()
+                        .let { respond(it.toHttpResponse()) }
                 }
 
                 request.url.fullPath.startsWith(parEndpointPath) -> {
@@ -111,7 +103,7 @@ val OAuth2KtorClientTest by matrixSuite {
                     val authnRequest: RequestParameters =
                         RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
-                        onSuccess = { respondIncludingDpopNonce(it) },
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -124,7 +116,7 @@ val OAuth2KtorClientTest by matrixSuite {
                         if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
                         else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
-                        onSuccess = { respondRedirect(it.url) },
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -133,7 +125,7 @@ val OAuth2KtorClientTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromFormUrlEncoded<TokenRequestParameters>()
                     authorizationService.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
-                        onSuccess = { respondIncludingDpopNonce(it) },
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) },
                     )
                 }
@@ -143,7 +135,7 @@ val OAuth2KtorClientTest by matrixSuite {
                     val params: TokenIntrospectionRequest =
                         requestBody.decodeFromFormUrlEncoded<TokenIntrospectionRequest>()
                     authorizationService.tokenIntrospection(params, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) },
                     )
                 }

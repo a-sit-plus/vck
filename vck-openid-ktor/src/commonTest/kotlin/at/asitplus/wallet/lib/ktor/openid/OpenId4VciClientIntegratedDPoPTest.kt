@@ -24,7 +24,6 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondIncludingDpopNonce
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
 import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
@@ -32,10 +31,12 @@ import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
+import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
+import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.fail
@@ -108,17 +109,17 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
             val mockEngine = MockEngine { request ->
                 when {
                     request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.CredentialIssuer ->
-                        respond(openId4VciServer.metadata)
+                        respond(openId4VciServer.metadataHttpResponse(request.headers[HttpHeaders.Accept]).getOrThrow())
 
                     request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.OauthAuthorizationServer ->
-                        respond(authorizationService.metadata())
+                        respond(authorizationService.metadata().toHttpResponse())
 
                     request.url.fullPath.startsWith(parEndpointPath) -> {
                         val requestBody = request.body.toByteArray().decodeToString()
                         val authnRequest: RequestParameters =
                             RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                         authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
-                            onSuccess = { respondIncludingDpopNonce(it) },
+                            onSuccess = { respond(it.toHttpResponse()) },
                             onFailure = { respondOAuth2Error(it) }
                         )
                     }
@@ -131,7 +132,7 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
                             if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
                             else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                         authorizationService.authorize(authnRequest) { this.catching { TestUtils.dummyUser() } }.fold(
-                            onSuccess = { respondRedirect(it.url) },
+                            onSuccess = { respond(it.toHttpResponse()) },
                             onFailure = { fail("$authorizationEndpointPath should not return an error") }
                         )
                     }
@@ -140,17 +141,18 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
                         val requestBody = request.body.toByteArray().decodeToString()
                         val params: TokenRequestParameters = requestBody.decodeFromFormUrlEncoded<TokenRequestParameters>()
                         authorizationService.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
-                            onSuccess = { respondIncludingDpopNonce(it) },
+                            onSuccess = { respond(it.toHttpResponse()) },
                             onFailure = { fail("$tokenEndpointPath should not return an error") }
                         )
                     }
 
                     request.url.fullPath.startsWith(nonceEndpointPath) -> {
-                        respond(openId4VciServer.nonceWithDpopNonce().getOrThrow())
+                        respond(openId4VciServer.nonceWithDpopNonce().getOrThrow().toHttpResponse())
                     }
 
                     request.url.fullPath.startsWith(challengeEndpointPath) -> {
-                        respond(authorizationService.attestationChallenge().getOrThrow())
+                        authorizationService.attestationChallenge().getOrThrow().shouldNotBeNull()
+                            .let { respond(it.toHttpResponse()) }
                     }
 
                     request.url.fullPath.startsWith(credentialEndpointPath) -> {
@@ -166,7 +168,7 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
                             ),
                             request = request.toRequestInfo(),
                         ).fold(
-                            onSuccess = { respond(it) },
+                            onSuccess = { respond(it.toHttpResponse()) },
                             onFailure = { fail("$credentialEndpointPath should not return an error") }
                         )
                     }

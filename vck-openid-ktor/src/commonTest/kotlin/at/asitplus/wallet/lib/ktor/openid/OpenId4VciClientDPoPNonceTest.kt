@@ -11,7 +11,7 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondResourceServerError
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
@@ -66,7 +66,10 @@ val OpenId4VciClientDPoPNonceTest by matrixSuite {
                 "$credentialIssuer/credential" -> {
                     credentialRequestNonces += request.toRequestInfo().dpop.shouldNotBeNull().payload.nonce
                     // The response does not matter here, only what the client sent
-                    respondOAuth2Error(OAuth2Exception.InvalidRequest("stop"))
+                    respondResourceServerError(
+                        OAuth2Exception.InvalidRequest("stop"),
+                        request.headers[HttpHeaders.Authorization],
+                    )
                 }
 
                 else -> respondError(HttpStatusCode.NotFound)
