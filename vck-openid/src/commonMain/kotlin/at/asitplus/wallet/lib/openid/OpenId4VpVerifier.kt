@@ -4,11 +4,9 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.ResponseParametersFrom
-import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.wallet.lib.DefaultNonceService
@@ -36,7 +34,6 @@ import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 
 /**
@@ -94,6 +91,7 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         stateToAuthnRequestStore = stateToAuthnRequestStore,
         supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
     )
+    private val responseProcessor = AuthnResponseProcessor(requestFactory, nonceAwareVerifier)
     private val vpTokenValidator = VpTokenValidator(
         mdocDeviceSignatureVerifier = MdocDeviceSignatureVerifier(verifyCoseSignature = verifyCoseSignature),
         createSessionTranscript = UrlSessionTranscriptCalculator(),
@@ -202,41 +200,29 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         input: ResponseParametersFrom,
     ) = catching {
         Napier.d("validateAuthnResponse: $input")
-        val authnRequest = requestFactory.loadAuthnRequest(input)
-
-        // the request has been consumed above, and an authentication response is not retryable,
-        // so end the challenge's lifecycle here, no matter how validating the response turns out
-        val session = nonceAwareVerifier.consumeChallenge(
-            authnRequest.nonce ?: throw IllegalArgumentException("nonce not present in $authnRequest")
-        )
-
-        val responseType = authnRequest.responseType?.let { ResponseType(it) }
-        require(responseType != null) {
-            "No response type was specified in the original authentication request."
-        }
-        require(OpenIdConstants.VP_TOKEN in responseType) {
-            "Response type must contain `vp_token`"
-        }
-
+        val (request, session) = responseProcessor.consume(input, externalId = null)
+        // the request has been consumed, so a response over the wrong transport ends it, too
+        validateTransport(input)
         AuthnResponseResult(
-            vpTokenValidationResult = validateVpToken(authnRequest, input, session),
-            request = authnRequest,
+            vpTokenValidationResult = validateVpToken(request, input, session),
+            request = request,
         )
     }
 
-    /**
-     * Validates the `vp_token` of the response with the shared [VpTokenValidator],
-     * enforcing this verifier's transport: URL/QR, i.e. anything but the Digital Credentials API.
-     */
-    @Throws(IllegalArgumentException::class, CancellationException::class)
+    /** Enforces this verifier's transport: URL/QR, i.e. anything but the Digital Credentials API. */
+    @Throws(IllegalArgumentException::class)
+    private fun validateTransport(responseParameters: ResponseParametersFrom) {
+        require(responseParameters.originalResponseParameters !is ResponseParametersFrom.DcApi) {
+            "DCAPI verification is not supported, use DcApiVerifier"
+        }
+    }
+
+    /** Validates the `vp_token` of the response with the shared [VpTokenValidator]. */
     private suspend fun validateVpToken(
         authnRequest: AuthenticationRequestParameters,
         responseParameters: ResponseParametersFrom,
         session: ChallengeSession,
     ): KmmResult<VpTokenValidationResult> = catching {
-        require(responseParameters.originalResponseParameters !is ResponseParametersFrom.DcApi) {
-            "DCAPI verification is not supported, use DcApiVerifier"
-        }
         vpTokenValidator.validateVpToken(
             authnRequest = authnRequest,
             responseParameters = responseParameters,

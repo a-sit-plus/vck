@@ -120,6 +120,19 @@ Release 9.0.0 (unreleased):
       response (8.3.1), or the `data` of a Digital Credentials API response (A.4)
     - BREAKING (binary): The constructor and `copy` of `AuthenticationResponseParameters` gain these trailing
       parameters; calls with named or leading positional arguments still compile
+    - Fix: A response violating the encryption its request requires (`direct_post.jwt`, `dc_api.jwt`) consumes the
+      request's nonce and ephemeral encryption key along with the request; before, the nonce stayed valid and the key
+      stayed stored until evicted
+    - `OpenId4VpVerifier` and `DcApiVerifier` share one lifecycle for responses: request, nonce and ephemeral
+      encryption key are consumed before any validation that can fail, and the key is removed also for responses that
+      were not encrypted
+    - A Digital Credentials API response to `OpenId4VpVerifier`, or a response to a signed DC API request from an
+      origin not in its `expected_origins`, now fails `validateAuthnResponse` instead of only its
+      `vpTokenValidationResult`; the request is consumed either way
+    - Add `EphemeralEncryptionKeyService.discardKey(identifier)`, removing a key without decoding it
+    - `MapStore.remove` is documented to be atomic: of concurrent calls for one key, at most one returns the value, as
+      `DefaultMapStore` does; custom stores passed to the verifiers need to guarantee this, so that a request is
+      answered at most once
 - Server-side HTTP responses:
     - Add `PreparedHttpResponse` in `vck-openid` (package `at.asitplus.wallet.lib`), a response with status, headers and
       encoded body, to be written out unchanged with any HTTP server stack

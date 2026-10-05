@@ -222,37 +222,63 @@ internal class OpenId4VpRequestFactory(
         value = authenticationRequestParameters,
     )
 
+    /**
+     * Correlates [input] with its stored request and removes that request, so that it is answered at most once:
+     * by [externalId] (DC API), else by the `state` of the effective parameters of [input] (URL/QR), i.e. after
+     * decryption. An unknown key removes nothing.
+     */
     @Throws(IllegalArgumentException::class, CancellationException::class)
-    suspend fun loadAuthnRequest(
+    suspend fun consumeAuthnRequest(
         input: ResponseParametersFrom,
         externalId: String? = null,
     ): AuthenticationRequestParameters {
         val storedId = externalId
             ?: input.parameters.state
             ?: throw IllegalArgumentException("Neither externalId nor state given")
-        val authnRequest = stateToAuthnRequestStore.remove(storedId)
+        return stateToAuthnRequestStore.remove(storedId)
             ?: throw IllegalArgumentException("No authn request found for $storedId")
-        val ephemeralKey = authnRequest.clientMetadata?.jsonWebKeySet?.keys?.getEncryptionTargetKey()
-        val ephemeralKeyId = ephemeralKey?.keyId
-        if (authnRequest.responseMode?.requiresEncryption == true) {
-            require(input is ResponseParametersFrom.JweDecrypted) {
-                "response_mode requires encryption, but no encrypted response was given"
+    }
+
+    /**
+     * Validates that [input] is protected as [authnRequest] requested: for response modes requiring encryption, it
+     * must have been encrypted to the key of that request, or to [decryptionKeyMaterial] for requests without one.
+     */
+    @Throws(IllegalArgumentException::class)
+    fun validateResponseProtection(
+        authnRequest: AuthenticationRequestParameters,
+        input: ResponseParametersFrom,
+    ) {
+        if (authnRequest.responseMode?.requiresEncryption != true) return
+        require(input is ResponseParametersFrom.JweDecrypted) {
+            "response_mode requires encryption, but no encrypted response was given"
+        }
+        val responseKeyId = input.jweDecrypted.header.keyId
+        val ephemeralKey = authnRequest.ephemeralResponseKey
+        if (ephemeralKey != null) {
+            val ephemeralKeyId = requireNotNull(ephemeralKey.keyId) { "Authentication request encryption key has no kid" }
+            require(responseKeyId == ephemeralKeyId) {
+                "Encrypted response key does not match the authentication request"
             }
-            val responseKeyId = input.jweDecrypted.header.keyId
-            if (ephemeralKey != null) {
-                requireNotNull(ephemeralKeyId) { "Authentication request encryption key has no kid" }
-                require(responseKeyId == ephemeralKeyId) {
-                    "Encrypted response key does not match the authentication request"
-                }
-            } else {
-                requireNotNull(decryptionKeyMaterial) { "No decryption key configured" }
-                require(responseKeyId == null || responseKeyId == decryptionKeyMaterial.identifier) {
-                    "Encrypted response key does not match the configured decryption key"
-                }
+        } else {
+            requireNotNull(decryptionKeyMaterial) { "No decryption key configured" }
+            require(responseKeyId == null || responseKeyId == decryptionKeyMaterial.identifier) {
+                "Encrypted response key does not match the configured decryption key"
             }
         }
-        return authnRequest
     }
+
+    /**
+     * Removes the ephemeral key that [authnRequest] advertised for encrypting its response, once that response has
+     * been processed. Decrypting a response consumes the key already, so this removes the keys of requests answered
+     * without encryption, or not decrypted at all. Never touches [decryptionKeyMaterial], which is not in that store.
+     */
+    suspend fun discardEphemeralResponseKey(authnRequest: AuthenticationRequestParameters) {
+        authnRequest.ephemeralResponseKey?.keyId?.let { ephemeralEncryptionKeyService.discardKey(it) }
+    }
+
+    /** The key in the client metadata of a request, which is specific to that request, see [toAuthnRequest]. */
+    private val AuthenticationRequestParameters.ephemeralResponseKey: JsonWebKey?
+        get() = clientMetadata?.jsonWebKeySet?.keys?.getEncryptionTargetKey()
 
     private suspend fun OpenId4VpRequestOptions.toAuthnRequest(
         requestObjectParameters: RequestObjectParameters?,
