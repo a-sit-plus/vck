@@ -15,6 +15,13 @@ Release 9.0.0 (unreleased):
     - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
 - Status lists:
     - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
+- ISO mDoc presentation:
+    - Resolve `age_over_NN` requests according to ISO/IEC 18013-5 7.2.5, answering with the nearest attestation that
+      implies the requested threshold, on both the ISO device retrieval and the DCQL path
+    - Report an age attestation that no attestation in the credential can answer in the mdoc response `errors`
+      structure instead of failing the whole document request
+    - Add `IsoDeviceRetrievalClaimMatch.requestedClaimName`, non-null when 7.2.5 resolved the request to a different
+      data element
 
 Release 8.0.0:
 
