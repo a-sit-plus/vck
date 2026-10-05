@@ -109,6 +109,11 @@ Release 9.0.0 (unreleased):
     - Move `OpenId4VpSuccess` to `vck-openid` (`at.asitplus.wallet.lib.openid`), deprecate the typealias left in
       `vck-openid-ktor`
     - Deprecate `OpenId4VpKtorHolder.FormDataContentPlain`, which is no longer used
+    - Add a constructor to `OpenId4VpKtorHolder` taking the app's ktor `HttpClient`, whose copy without following
+      redirects sends the requests, and every parameter of `OpenId4VpHolder`, with the holder as `holder: Holder`
+      instead of `holderAgent: HolderAgent`. Deprecate the constructor taking `engine` and `httpClientConfig`
+    - The deprecated `OpenId4VpHolder` methods of `OpenId4VpKtorHolder.openId4VpHolder` fetch request objects as
+      `OpenId4VpProtocolClient` does, i.e. the form posted to `request_uri` has no `charset` either
 
 Release 8.0.0:
 

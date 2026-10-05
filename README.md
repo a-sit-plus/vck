@@ -164,13 +164,15 @@ scheme, with trust anchors for `x509_san_dns` and `x509_hash`, trusted attesters
 registry of known clients for `pre-registered`.
 
 `OpenId4VpKtorHolder` from `vck-openid-ktor` sends the requests to the verifier with Ktor, i.e. it fetches a request
-object passed by reference and posts the response:
+object passed by reference and posts the response. It uses a copy of your `HttpClient` that doesn't follow redirects.
+Its plugins must not re-send requests or react to error statuses, because a re-sent response submits the presentation
+twice. All other parameters are those of `OpenId4VpHolder`:
 
 ```kotlin
 val wallet = OpenId4VpKtorHolder(
-    engine = httpClientEngine,
+    httpClient = httpClient, // your app's Ktor HttpClient
     keyMaterial = holderKeyMaterial,
-    holderAgent = holderAgent,
+    holder = holderAgent,
 )
 
 val preparation = wallet.startAuthorizationResponsePreparation(requestUrlFromQrOrDeepLink).getOrThrow()
