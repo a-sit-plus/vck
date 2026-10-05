@@ -16,7 +16,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -25,6 +24,7 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
+import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -149,33 +149,24 @@ class AuthorizationServerFixture(
     private suspend fun route(request: PreparedHttpRequest): ReceivedHttpResponse = when {
         request.path == "/.well-known/oauth-authorization-server" -> metadata().toHttpResponse().received()
 
-        request.path == "/.well-known/openid-credential-issuer" -> jsonResponse(openId4VciServer.metadata)
+        request.path == "/.well-known/openid-credential-issuer" ->
+            openId4VciServer.metadataHttpResponse(request.headers[HttpHeaders.Accept]).getOrThrow().received()
 
-        request.path.startsWith("/nonce") -> openId4VciServer.nonceWithDpopNonce().getOrThrow().let { result ->
-            jsonResponse(result.response) {
-                append(HttpHeaders.CacheControl, "no-store")
-                result.dpopNonce?.let { append(HttpHeaders.DPoPNonce, it) }
-            }
+        request.path.startsWith("/nonce") ->
+            openId4VciServer.nonceWithDpopNonce().getOrThrow().toHttpResponse().received()
+
+        request.path.startsWith("/credential") -> {
+            val authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
+            openId4VciServer.credential(
+                authorizationHeader = authorizationHeader,
+                params = OpenId4VciClient.CredentialRequest.parse(request.body.orEmpty()).getOrThrow(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                request = request.toRequestInfo(),
+            ).fold(
+                onSuccess = { it.toHttpResponse().received() },
+                onFailure = { it.toResourceServerResponse(authorizationHeader) },
+            )
         }
-
-        request.path.startsWith("/credential") -> openId4VciServer.credential(
-            authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull(),
-            params = OpenId4VciClient.CredentialRequest.parse(request.body.orEmpty()).getOrThrow(),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            request = request.toRequestInfo(),
-        ).fold(
-            onSuccess = {
-                when (it) {
-                    is OpenId4VciServer.CredentialResponse.Plain -> jsonResponse(it.response)
-                    is OpenId4VciServer.CredentialResponse.Encrypted -> ReceivedHttpResponse(
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT),
-                        body = it.response.serialize(),
-                    )
-                }
-            },
-            onFailure = { it.toErrorResponse() },
-        )
 
         request.path.startsWith("/challenge") && serveChallengeEndpoint -> {
             val response = authorizationService.attestationChallenge().getOrThrow().shouldNotBeNull()

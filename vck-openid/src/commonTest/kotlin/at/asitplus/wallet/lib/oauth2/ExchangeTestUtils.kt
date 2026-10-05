@@ -22,11 +22,15 @@ class FakeHttpStack(
 ) {
     val sent = mutableListOf<ProtocolRequest>()
 
+    /** The responses to the requests in [sent], in the same order. */
+    val received = mutableListOf<ReceivedHttpResponse>()
+
     suspend fun <T> execute(exchange: HttpExchange<T>): T {
         var step = exchange.next().getOrThrow()
         while (step is HttpStep.Send) {
             sent += step.request
-            step = exchange.next(handle(step.request.http)).getOrThrow()
+            val response = handle(step.request.http).also { received += it }
+            step = exchange.next(response).getOrThrow()
         }
         return (step as HttpStep.Done).value
     }
@@ -37,7 +41,8 @@ class FakeHttpStack(
         while (step is HttpStep.Send) {
             (step.request as? R)?.let { return it }
             sent += step.request
-            step = exchange.next(handle(step.request.http)).getOrThrow()
+            val response = handle(step.request.http).also { received += it }
+            step = exchange.next(response).getOrThrow()
         }
         throw AssertionError("Exchange finished without sending ${R::class.simpleName}")
     }
@@ -90,8 +95,15 @@ fun ReceivedHttpResponse.withHeader(name: String, value: String) =
  * Error response of an authorization server endpoint, see [OAuth2Exception.toHttpResponse], or 500 for anything else.
  */
 fun Throwable.toAuthorizationServerResponse(): ReceivedHttpResponse =
-    (this as? OAuth2Exception)?.toHttpResponse()?.received()
-        ?: ReceivedHttpResponse(HttpStatusCode.InternalServerError, Headers.Empty, "")
+    (this as? OAuth2Exception)?.toHttpResponse()?.received() ?: internalServerError
+
+/**
+ * Error response of a resource endpoint, see [OAuth2Exception.toResourceServerHttpResponse], or 500 for anything else.
+ */
+fun Throwable.toResourceServerResponse(authorizationHeader: String?): ReceivedHttpResponse =
+    (this as? OAuth2Exception)?.toResourceServerHttpResponse(authorizationHeader)?.received() ?: internalServerError
+
+private val internalServerError = ReceivedHttpResponse(HttpStatusCode.InternalServerError, Headers.Empty, "")
 
 inline fun <reified T> jsonResponse(
     value: T,

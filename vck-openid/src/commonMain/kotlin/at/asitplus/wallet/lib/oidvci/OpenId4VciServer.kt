@@ -15,12 +15,15 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.MediaTypes
+import at.asitplus.wallet.lib.jsonHttpResponse
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -28,6 +31,7 @@ import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
+import io.ktor.http.*
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -90,17 +94,12 @@ class OpenId4VciServer @JvmOverloads constructor(
     private val clock: Clock = Clock.System,
 ) {
 
+    /** Send it converted with [toHttpResponse]. */
     sealed interface CredentialResponse {
-        /**
-         * Send [response] as JSON-serialized content to the client with media
-         * type `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]).
-         */
+        /** Sent as JSON-serialized content with media type `application/json`. */
         data class Plain(val response: CredentialResponseParameters) : CredentialResponse
 
-        /**
-         * Send [response] as JWE-serialized content to the client with media
-         * type `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]).
-         */
+        /** Sent as JWE-serialized content with media type `application/jwt`. */
         data class Encrypted(val response: JweEncrypted) : CredentialResponse
     }
 
@@ -113,8 +112,8 @@ class OpenId4VciServer @JvmOverloads constructor(
         }
 
     /**
-     * MUST be delivered with HTTP header `Cache-Control: no-store` (see [io.ktor.http.HttpHeaders.CacheControl]).
-     * Include [response] as the JSON-serialized body, and [dpopNonce] in HTTP header `DPoP-Nonce` when present.
+     * Send it converted with [toHttpResponse], which sends [response] as the JSON-serialized body, and [dpopNonce] in
+     * HTTP header `DPoP-Nonce` when present.
      */
     data class Nonce(
         val response: ClientNonceResponse,
@@ -122,12 +121,8 @@ class OpenId4VciServer @JvmOverloads constructor(
     )
 
     /**
-     * Serve this result serialized at the path formed by inserting the string `/.well-known/openid-credential-issuer`
-     * (see [OpenIdConstants.WellKnownPaths.CredentialIssuer]) into the Credential Issuer Identifier between the host
-     * component and the path component, if any.
-     * Use `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]) as the `Content-Type`
-     * header (see [io.ktor.http.HttpHeaders.ContentType]) in the response.
-     * See also [signedMetadata].
+     * The metadata of this credential issuer, to be served with [metadataHttpResponse], which selects between this
+     * and [signedMetadata].
      */
     val metadata: IssuerMetadata by lazy {
         IssuerMetadata(
@@ -146,11 +141,8 @@ class OpenId4VciServer @JvmOverloads constructor(
     }
 
     /**
-     * Serve this result serialized at the path formed by inserting the string `/.well-known/openid-credential-issuer`
-     * (see [OpenIdConstants.WellKnownPaths.CredentialIssuer]) into the Credential Issuer Identifier between the host
-     * component and the path component, if any.
-     * Use this only when the client accepts (see `Accept` header [io.ktor.http.HttpHeaders.Accept]) the media type
-     * `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]), otherwise serve [metadata].
+     * The signed metadata of this credential issuer, to be served with [metadataHttpResponse], which selects between
+     * this and [metadata].
      *
      * Implements OID4VCI 1.0, Section 12.2.3, i.e. sets `typ` to [OpenIdConstants.ISSUER_METADATA_JWT_TYPE] and adds
      * the claims `sub` and `iat` to [metadata].
@@ -160,6 +152,31 @@ class OpenId4VciServer @JvmOverloads constructor(
         metadata.copy(subject = metadata.credentialIssuer, issuedAt = clock.now()),
         IssuerMetadata.serializer(),
     )
+
+    /**
+     * The response to serve at the path formed by inserting the string `/.well-known/openid-credential-issuer`
+     * (see [OpenIdConstants.WellKnownPaths.CredentialIssuer]) into the Credential Issuer Identifier between the host
+     * component and the path component, if any: status 200 with [signedMetadata] as `application/jwt` when the
+     * request's `Accept` header [acceptHeader] lists `application/jwt` with a quality not below the one of
+     * `application/json`, else [metadata] as `application/json`
+     * ([OID4VCI 1.0 12.2.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.2)).
+     * The header `Vary: Accept` tells caches about this selection
+     * ([RFC 9110 12.5.5](https://www.rfc-editor.org/rfc/rfc9110#section-12.5.5)).
+     */
+    suspend fun metadataHttpResponse(acceptHeader: String?): KmmResult<PreparedHttpResponse> = catching {
+        if (acceptsSignedMetadata(acceptHeader)) {
+            PreparedHttpResponse(
+                status = HttpStatusCode.OK,
+                headers = headers {
+                    append(HttpHeaders.ContentType, MediaTypes.Application.JWT)
+                    append(HttpHeaders.Vary, HttpHeaders.Accept)
+                },
+                body = signedMetadata().getOrThrow().jws.toString(),
+            )
+        } else {
+            jsonHttpResponse(metadata) { append(HttpHeaders.Vary, HttpHeaders.Accept) }
+        }
+    }
 
     /**
      * Metadata about the credential issuer in
@@ -180,7 +197,7 @@ class OpenId4VciServer @JvmOverloads constructor(
 
     /**
      * Provides a fresh nonce for credential proofs and a DPoP nonce for DPoP proofs.
-     * Requests from the client are HTTP POST.
+     * Requests from the client are HTTP POST. Send the result converted with [toHttpResponse].
      */
     suspend fun nonceWithDpopNonce(): KmmResult<Nonce> = catching {
         Nonce(proofValidator.nonce(), authorizationService.getDpopNonce())
@@ -191,7 +208,7 @@ class OpenId4VciServer @JvmOverloads constructor(
      * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
      * and issues credentials to the client by calling [credentialDataProvider].
      *
-     * Callers need to send the result as HTTP status code 200 back to the client, see [CredentialResponse].
+     * Send the result converted with [toHttpResponse].
      *
      * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
      * @param params Parameters the client sent in the HTTP body, either JSON serialized or as a string,
@@ -199,8 +216,8 @@ class OpenId4VciServer @JvmOverloads constructor(
      * @param credentialDataProvider Extract data from the authenticated user and prepares it for issuing
      * @param request information about the HTTP request the client has made, to validate authentication
      *
-     * @return If the result is an instance of [OAuth2Exception] send [OAuth2Exception.toOAuth2Error] back to the
-     * client, except for instances of [OAuthAuthorizationError]
+     * @return If the result is an instance of [OAuth2Exception], send it converted with
+     * [at.asitplus.wallet.lib.oauth2.toResourceServerHttpResponse], passing [authorizationHeader]
      */
     suspend fun credential(
         authorizationHeader: String,

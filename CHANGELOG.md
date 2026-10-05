@@ -132,6 +132,13 @@ Release 9.0.0 (unreleased):
       `toHttpResponse()` sends as `OAuth-Client-Attestation-Challenge` (attestation-based client authentication,
       draft 10, 6.2); `OAuth2ProtocolClient` uses it for the next request, instead of fetching one from the challenge
       endpoint
+    - Add `OpenId4VciServer.metadataHttpResponse(acceptHeader)`, serving `signedMetadata()` as `application/jwt` when
+      the `Accept` header lists `application/jwt` with a quality not below the one of `application/json`, else
+      `metadata` as `application/json` (OID4VCI 1.0, 12.2.2), with `Vary: Accept`
+    - Add `toHttpResponse()` for `OpenId4VciServer.Nonce` (with `Cache-Control: no-store` and `DPoP-Nonce`) and
+      `OpenId4VciServer.CredentialResponse` (`application/json`, or `application/jwt` when encrypted, each with
+      `Cache-Control: no-store`); errors of the credential endpoint convert with
+      `toResourceServerHttpResponse(authorizationHeader)`
 
 Release 8.0.0:
 

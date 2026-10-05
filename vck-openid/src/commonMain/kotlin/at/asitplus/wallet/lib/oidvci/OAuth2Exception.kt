@@ -118,7 +118,10 @@ sealed class OAuth2Exception(
 
     @Serializable
     class UseDpopNonce(
-        /** Set this as the value for HTTP header `DPoP-Nonce` in the response. */
+        /**
+         * Sent as HTTP header `DPoP-Nonce` by [at.asitplus.wallet.lib.oauth2.toHttpResponse] and
+         * [at.asitplus.wallet.lib.oauth2.toResourceServerHttpResponse].
+         */
         val dpopNonce: String,
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
@@ -126,7 +129,10 @@ sealed class OAuth2Exception(
 
     @Serializable
     class UseAttestationChallenge(
-        /** Set this as the value for HTTP header `OAuth-Client-Attestation-Challenge` in the response. */
+        /**
+         * Sent as HTTP header `OAuth-Client-Attestation-Challenge` by [at.asitplus.wallet.lib.oauth2.toHttpResponse]
+         * and [at.asitplus.wallet.lib.oauth2.toResourceServerHttpResponse].
+         */
         val attestationChallenge: String,
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
