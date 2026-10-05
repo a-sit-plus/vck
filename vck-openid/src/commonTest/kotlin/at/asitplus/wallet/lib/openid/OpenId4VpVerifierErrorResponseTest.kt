@@ -149,6 +149,35 @@ val OpenId4VpVerifierErrorResponseTest by matrixSuite {
             it.verifier.validateAuthnResponse(response).isFailure shouldBe true
         }
 
+        test("an error the holder can't encrypt for direct_post.jwt is sent without encryption (8.3.1)") {
+            // a pre-registered client conveys no key in the request, and the holder knows none out-of-band
+            val verifier = OpenId4VpVerifier(
+                clientIdScheme = ClientIdScheme.PreRegistered("client-${uuid4()}", "https://example.com/cb"),
+            )
+            val state = uuid4().toString()
+            val url = verifier.createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = presentationRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                    responseUrl = "https://example.com/response",
+                    state = state,
+                ),
+                CreationOptions.SignedRequestByValue("https://wallet.example.com/"),
+            ).getOrThrow().url
+            val preparation = it.holder.prepareAuthorizationResponse(url).getOrThrow()
+
+            // a presentation is never sent without encryption
+            it.holder.finalizeAuthorizationResponse(preparation).isFailure shouldBe true
+
+            val declined = OAuth2Exception.AccessDenied("user declined")
+            val response = it.holder.createAuthnErrorResponse(declined, preparation).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            response.params.keys shouldBe setOf("error", "error_description", "state")
+            verifier.validateAuthnResponse(response.params.formUrlEncode()).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult.Error>().error shouldBe
+                    OAuth2Error(error = "access_denied", errorDescription = "user declined", state = state)
+        }
+
         test("parameters next to an encrypted error are not processed, but end the request") {
             val state = uuid4().toString()
             val (url, request) = it.createRequest(state, OpenIdConstants.ResponseMode.DirectPostJwt)
