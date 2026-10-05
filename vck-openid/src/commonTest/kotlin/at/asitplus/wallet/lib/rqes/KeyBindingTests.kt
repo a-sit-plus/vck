@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION") // uses the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient
-
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.csc.contentEquals
@@ -34,6 +32,7 @@ import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSd
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
+import at.asitplus.wallet.lib.openid.createAuthorizationResponse
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
@@ -93,7 +92,7 @@ val KeyBindingTests by matrixSuite {
                 this shouldContain "transaction_data"
             }
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -126,7 +125,7 @@ val KeyBindingTests by matrixSuite {
                 this.shouldContain("transaction_data")
             }
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -160,7 +159,7 @@ val KeyBindingTests by matrixSuite {
                 Url(this).decodeFromQuery<AuthenticationRequestParameters>()
             }
 
-            val malignResponse = it.holderOid4vp.createAuthnResponse(
+            val malignResponse = it.holderOid4vp.createAuthorizationResponse(
                 joseCompliantSerializer.encodeToString(
                     authnRequest.copy(transactionData = malignTransactionData())
                 )
@@ -192,7 +191,7 @@ val KeyBindingTests by matrixSuite {
             ).getOrThrow().url.run {
                 Url(this).decodeFromQuery<AuthenticationRequestParameters>()
             }
-            val malignResponse = it.holderOid4vp.createAuthnResponse(
+            val malignResponse = it.holderOid4vp.createAuthorizationResponse(
                 joseCompliantSerializer.encodeToString(
                     authnRequest.copy(transactionData = malignTransactionData())
                 )

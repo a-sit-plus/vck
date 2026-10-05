@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION") // uses the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient
-
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -105,7 +103,8 @@ val JarmTest by matrixSuite {
             )
 
             shouldThrow<OAuth2Exception.InvalidRequest> {
-                it.holderOid4vp.createAuthnResponse(joseCompliantSerializer.encodeToString(invalidReq)).getOrThrow()
+                it.holderOid4vp.createAuthorizationResponse(joseCompliantSerializer.encodeToString(invalidReq))
+                    .getOrThrow()
             }
         }
 
@@ -144,7 +143,7 @@ val JarmTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             newInstance().validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()

@@ -1,4 +1,4 @@
-@file:Suppress("DEPRECATION") // uses the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient
+@file:Suppress("DEPRECATION") // tests the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient until removed
 
 package at.asitplus.wallet.lib.openid
 
