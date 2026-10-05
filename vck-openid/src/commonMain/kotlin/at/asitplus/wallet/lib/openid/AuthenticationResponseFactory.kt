@@ -158,18 +158,21 @@ internal class AuthenticationResponseFactory(
         }
     }
 
+    /**
+     * Over the DC API, an error is an object with the single property `error`, never encrypted, also for `dc_api.jwt`
+     * ([OpenID4VP 1.0, A.4](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.4)),
+     * since any further detail might reveal information about the user's credentials (15.9.2).
+     */
     @Throws(OAuth2Exception::class, CancellationException::class)
     private suspend fun buildResponseParametersDcApi(
         state: AuthorizationResponsePreparationState,
         response: AuthenticationResponse,
-    ) = if (state.responseRequiresEncryption) {
-        AuthenticationResponseParameters(response = encrypt(state, response))
-    } else {
-        when (response) {
-            is AuthenticationResponse.Error ->
-                AuthenticationResponseParameters(response = joseCompliantSerializer.encodeToString(response.error))
-
-            is AuthenticationResponse.Success -> response.params
+    ) = when (response) {
+        is AuthenticationResponse.Error -> AuthenticationResponseParameters(error = response.error.error)
+        is AuthenticationResponse.Success -> if (state.responseRequiresEncryption) {
+            AuthenticationResponseParameters(response = encrypt(state, response))
+        } else {
+            response.params
         }
     }
 
