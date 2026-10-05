@@ -317,12 +317,12 @@ val OpenId4VciProtocolClientTest by matrixSuite {
             )
 
             requestCredentials(vci, token, format).shouldNotBeEmpty()
+            // The token request uses the attestation challenge of the PAR response (OA-ABCA 6.2)
             http.sent.kinds() shouldBe listOf(
                 "AttestationChallenge",
                 "PushedAuthorization(0)",
                 "AttestationChallenge",
                 "PushedAuthorization(1)",
-                "AttestationChallenge",
                 "Token(0)",
                 "Nonce",
                 "Credential(0)",

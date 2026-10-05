@@ -4,8 +4,8 @@ import at.asitplus.openid.OpenIdConstants.Errors.INVALID_DPOP_PROOF
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.PreparedHttpResponse
+import at.asitplus.wallet.lib.jsonHttpResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.ktor.http.*
 
@@ -57,18 +57,13 @@ fun OAuth2Exception.toResourceServerHttpResponse(
 private fun OAuth2Exception.toErrorResponse(
     status: HttpStatusCode,
     extraHeaders: HeadersBuilder.() -> Unit = {},
-) = PreparedHttpResponse(
-    status = status,
-    headers = Headers.build {
-        append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-        (this@toErrorResponse as? OAuth2Exception.UseDpopNonce)?.let { append(HttpHeaders.DPoPNonce, it.dpopNonce) }
-        (this@toErrorResponse as? OAuth2Exception.UseAttestationChallenge)?.let {
-            append(HttpHeaders.OAuthClientAttestationChallenge, it.attestationChallenge)
-        }
-        extraHeaders()
-    },
-    body = joseCompliantSerializer.encodeToString(toOAuth2Error()),
-)
+) = jsonHttpResponse(toOAuth2Error(), status) {
+    (this@toErrorResponse as? OAuth2Exception.UseDpopNonce)?.let { append(HttpHeaders.DPoPNonce, it.dpopNonce) }
+    (this@toErrorResponse as? OAuth2Exception.UseAttestationChallenge)?.let {
+        append(HttpHeaders.OAuthClientAttestationChallenge, it.attestationChallenge)
+    }
+    extraHeaders()
+}
 
 private fun OAuth2Exception.wwwAuthenticate(scheme: String) = "$scheme error=\"$error\""
 

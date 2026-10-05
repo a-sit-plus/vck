@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.HttpStep
 import at.asitplus.wallet.lib.PreparedHttpRequest
+import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.ProtocolRequest
 import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -77,6 +78,20 @@ val PreparedHttpRequest.path: String
     get() = Url(url).encodedPath
 
 fun PreparedHttpRequest.formParameters(): FormParameters = body.orEmpty().toFormParameters()
+
+/** What the client receives, when a server sends this response. */
+fun PreparedHttpResponse.received() = ReceivedHttpResponse(status = status, headers = headers, body = body)
+
+/** Adds the header [name] with [value], e.g. a fresh DPoP nonce alongside an error (RFC 9449 8.2). */
+fun ReceivedHttpResponse.withHeader(name: String, value: String) =
+    copy(headers = Headers.build { appendAll(headers); append(name, value) })
+
+/**
+ * Error response of an authorization server endpoint, see [OAuth2Exception.toHttpResponse], or 500 for anything else.
+ */
+fun Throwable.toAuthorizationServerResponse(): ReceivedHttpResponse =
+    (this as? OAuth2Exception)?.toHttpResponse()?.received()
+        ?: ReceivedHttpResponse(HttpStatusCode.InternalServerError, Headers.Empty, "")
 
 inline fun <reified T> jsonResponse(
     value: T,

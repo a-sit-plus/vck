@@ -24,7 +24,8 @@ interface AuthorizationService {
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
-     * Responses have to be sent with HTTP status code `201`.
+     * Responses have to be sent with HTTP status code `201`, as `toHttpResponse()` of the result of
+     * [SimpleAuthorizationService.parWithDpopNonce] does.
      *
      * @param input as sent from the client as `POST` body
      * @param httpRequest information about the HTTP request from the client to validate authentication
@@ -40,7 +41,8 @@ interface AuthorizationService {
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
-     * Responses have to be sent with HTTP status code `201`.
+     * Responses have to be sent with HTTP status code `201`, as `toHttpResponse()` of the result of
+     * [SimpleAuthorizationService.parWithDpopNonce] does.
      *
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client to validate authentication
@@ -53,7 +55,7 @@ interface AuthorizationService {
 
     /**
      * Builds the authentication response for this specific user from [loadUserFun].
-     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * Send this result converted with [AuthenticationResponseResult.Redirect.toHttpResponse].
      * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun authorize(
@@ -63,7 +65,8 @@ interface AuthorizationService {
 
     /**
      * Verifies the authorization code sent by the client and issues an access token.
-     * Send this value JSON-serialized back to the client.
+     * Send the result of [SimpleAuthorizationService.tokenWithDpopNonce] converted with `toHttpResponse()`, which
+     * sets the headers the token response needs.
 
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client, to validate authentication
