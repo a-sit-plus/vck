@@ -90,5 +90,5 @@ private fun HeadersBuilder.appendFreshValues(result: ResponseWithDpopNonce<*>) {
     result.attestationChallenge?.let { append(HttpHeaders.OAuthClientAttestationChallenge, it) }
 }
 
-private const val NO_STORE = "no-store"
+internal const val NO_STORE = "no-store"
 private const val NO_CACHE = "no-cache"

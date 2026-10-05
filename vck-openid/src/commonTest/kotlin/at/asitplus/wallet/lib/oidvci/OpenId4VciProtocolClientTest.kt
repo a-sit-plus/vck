@@ -425,6 +425,38 @@ val OpenId4VciProtocolClientTest by matrixSuite {
         }
     }
 
+    /** [RFC 9449 9.](https://datatracker.ietf.org/doc/html/rfc9449#section-9): the resource server asks for a nonce. */
+    test("credential request retries with the DPoP nonce of a 401 with WWW-Authenticate") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val vci = vciClient()
+            val format = vci.selectFormat(this)
+            val token = preAuthorizedToken(format)
+            // the c_nonce without a response of the nonce endpoint, so the client has no DPoP nonce of the issuer
+            val clientNonce = openId4VciServer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+            val request = vci.createCredential(
+                token.params, openId4VciServer.metadata, format, clientNonce, previouslyRequestedScope = format.scope,
+            ).getOrThrow().shouldBeSingleton().first()
+            val sentBefore = http.sent.size
+
+            http.execute(
+                vci.credentialRequest(
+                    request = request,
+                    issuerMetadata = openId4VciServer.metadata,
+                    tokenResponse = token.params,
+                    credentialFormat = format,
+                    credentialScheme = vci.resolveCredentialScheme(format).shouldNotBeNull(),
+                )
+            ).shouldNotBeEmpty()
+
+            http.sent.drop(sentBefore).kinds() shouldBe listOf("Credential(0)", "Credential(1)")
+            http.received[sentBefore].apply {
+                status shouldBe HttpStatusCode.Unauthorized
+                headers[HttpHeaders.WWWAuthenticate] shouldBe "DPoP error=\"$USE_DPOP_NONCE\""
+                headers[HttpHeaders.DPoPNonce].shouldNotBeNull()
+            }
+        }
+    }
+
     // Persisted by wallets, e.g. in the provisioning context kept during the browser round trip
 
     test("credential identifier info keeps its serialized form") {
