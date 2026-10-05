@@ -1,14 +1,14 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.csc.QtspSignatureRequest
-import at.asitplus.csc.SignHashRequestParameters
-import at.asitplus.csc.collection_entries.CertificateParameters
-import at.asitplus.csc.collection_entries.DocumentDigest
-import at.asitplus.csc.collection_entries.KeyParameters
-import at.asitplus.csc.enums.ConformanceLevel
-import at.asitplus.csc.enums.SignatureFormat
-import at.asitplus.csc.enums.SignatureQualifier
+import at.asitplus.csc.api.QtspSignatureRequest
+import at.asitplus.csc.api.SignHashRequestParameters
+import at.asitplus.csc.api.collection_entries.CertificateParameters
+import at.asitplus.csc.api.collection_entries.DocumentDigest
+import at.asitplus.csc.api.collection_entries.KeyParameters
+import at.asitplus.csc.datamodel.basic.ConformanceLevel
+import at.asitplus.csc.datamodel.basic.SignatureFormat
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CscAuthorizationDetails
 import at.asitplus.openid.TokenRequestParameters
