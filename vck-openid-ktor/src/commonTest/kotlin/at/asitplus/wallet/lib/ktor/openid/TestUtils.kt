@@ -42,6 +42,7 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import at.asitplus.wallet.lib.PreparedHttpResponse
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -71,6 +72,10 @@ object TestUtils {
         },
         status = HttpStatusCode.BadRequest
     ).also { Napier.w("Server error: ${throwable.message}", throwable) }
+
+    /** Writes out [response], as converted by a server, e.g. with `directPostHttpResponse()`. */
+    fun MockRequestHandleScope.respond(response: PreparedHttpResponse): HttpResponseData =
+        respond(content = response.body, status = response.status, headers = response.headers)
 
     fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
 
