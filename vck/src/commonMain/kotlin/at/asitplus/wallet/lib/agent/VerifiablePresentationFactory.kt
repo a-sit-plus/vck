@@ -447,9 +447,16 @@ class VerifiablePresentationFactory(
     }
 
     /**
-     * CSC Data Model Bindings 1.0.0 section 7.2.1: CONDITIONAL
-     * When qesApprovalRequest is present, hash the decoded request JSON for mdoc and the original base64url
-     * `transaction_data` string for SD-JWT VC.
+     * Computes qesApproval when a qesApprovalRequest is present, following the approved decisions in
+     * csc-data-classes/STANDARDS_CONFLICTS.md.
+     *
+     * For mdoc, use the supported algorithm identified by the request's hashAlgorithmOID, following ETSI TS 119 432
+     * V1.3.1 B.6.3. This intentionally differs from CSC Data Model Bindings 1.0.0 section 7.2.1.1's fixed SHA-256.
+     *
+     * Preserve the approved CSC format-specific hash input: mdoc hashes the original decoded UTF-8 JSON bytes;
+     * SD-JWT VC hashes the UTF-8 bytes of the original base64url transaction_data text, following CSC Data Model
+     * Bindings 1.0.0 section 7.2.1.2. The SD-JWT input intentionally differs from ETSI 119 432 B.6.3's UTF-8 JSON input.
+     * Parsing is only used to identify the request and its algorithm; never reserialize JSON before hashing.
      */
     private fun PresentationRequestParameters.qesApprovalDigest(encodedTransactionData: Boolean): ByteArray? {
         val matching = transactionData.orEmpty().mapNotNull { transactionData ->
@@ -493,5 +500,4 @@ class VerifiablePresentationFactory(
         CreatePresentationResult.VpJws(toString(), this)
     }
 }
-
 

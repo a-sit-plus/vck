@@ -293,24 +293,59 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             }
         }
 
-        "QES approval is hashed over decoded transaction_data and embedded as mdoc device data" {
-            val approvalJson = """{"type":"https://cloudsignatureconsortium.org/2025/qes-approval","credential_ids":["approval-credential"],"signatureQualifier":"eu_eidas_qes","numSignatures":1,"documentDigests":[{"label":"Contract","hash":"AQID"}],"hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"}"""
-            val encodedTransactionData = approvalJson.encodeToByteArray().encodeToString(Base64UrlStrict)
-            val request = presentationRequest().copy(
-                transactionData = listOf(JsonPrimitive(encodedTransactionData)),
-            )
+        /**
+         * ETSI TS 119 432 V1.3.1 B.6.3 selects the digest algorithm from the request's hashAlgorithmOID;
+         * CSC Data Model Bindings 1.0.0 section 7.2.1.1 instead requires fixed SHA-256 for mdoc approvals.
+         * These tests verify the request-selected algorithm and hashing of the original decoded UTF-8 JSON bytes.
+         */
+        "QES mdoc approval digest" - { fixture ->
+            // Synthetic input retains whitespace, field order and non-ASCII UTF-8 bytes to detect reserialization.
+            fun approvalJson(hashAlgorithmOid: String) = """{
+                "type": "https://cloudsignatureconsortium.org/2025/qes-approval",
+                "credential_ids": ["approval-credential"],
+                "signatureQualifier": "eu_eidas_qes",
+                "numSignatures": 1,
+                "documentDigests": [{ "label": "Conträct", "hash": "AQID" }],
+                "hashAlgorithmOID": "$hashAlgorithmOid"
+            }""".trimIndent()
 
-            val result = it.verifiablePresentationFactory.createVerifiablePresentation(
-                request = request,
-                credential = it.isoCredential,
-                disclosedAttributes = emptyList(),
-            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
+            listOf(Digest.SHA256, Digest.SHA384, Digest.SHA512).asData(
+                nameFn = { digest -> "mdoc uses requested $digest over original decoded UTF-8 JSON" },
+            ) test { digest ->
+                val rawApprovalJson = approvalJson(digest.oid.toString())
+                val encodedTransactionData = rawApprovalJson.encodeToByteArray().encodeToString(Base64UrlStrict)
+                val request = presentationRequest().copy(
+                    transactionData = listOf(JsonPrimitive(encodedTransactionData)),
+                )
 
-            val deviceNamespaces = result.deviceResponse.documents.shouldNotBeNull().single().deviceSigned.namespaces.value
-            val approval = deviceNamespaces.entries[QesApprovalBinding.NAMESPACE]
-                ?.entries?.single { item -> item.key == QesApprovalBinding.DATA_ELEMENT_IDENTIFIER }
-                ?.value.shouldNotBeNull()
-            (approval as ByteArray).contentEquals(Digest.SHA256.digest(approvalJson.encodeToByteArray())) shouldBe true
+                val result = fixture.verifiablePresentationFactory.createVerifiablePresentation(
+                    request = request,
+                    credential = fixture.isoCredential,
+                    disclosedAttributes = emptyList(),
+                ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
+
+                val deviceNamespaces = result.deviceResponse.documents.shouldNotBeNull().single().deviceSigned.namespaces.value
+                val approval = deviceNamespaces.entries[QesApprovalBinding.NAMESPACE]
+                    ?.entries?.single { item -> item.key == QesApprovalBinding.DATA_ELEMENT_IDENTIFIER }
+                    ?.value.shouldNotBeNull()
+                (approval as ByteArray).contentEquals(digest.digest(rawApprovalJson.encodeToByteArray())) shouldBe true
+            }
+
+            test("mdoc rejects an unsupported approval hash algorithm") {
+                val unsupportedOid = "1.2.3.4"
+                val encodedTransactionData = approvalJson(unsupportedOid).encodeToByteArray().encodeToString(Base64UrlStrict)
+                val request = presentationRequest().copy(
+                    transactionData = listOf(JsonPrimitive(encodedTransactionData)),
+                )
+
+                shouldThrow<PresentationException> {
+                    fixture.verifiablePresentationFactory.createVerifiablePresentation(
+                        request = request,
+                        credential = fixture.isoCredential,
+                        disclosedAttributes = emptyList(),
+                    ).getOrThrow()
+                }.message shouldBe "Unsupported qesApproval hash algorithm $unsupportedOid"
+            }
         }
 
         "iso createVerifiablePresentation uses disclosedAttributes (dcql query results) an ZKP request without fallback" {
