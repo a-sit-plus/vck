@@ -2,6 +2,7 @@ package at.asitplus.csc.datamodel.documents
 
 import at.asitplus.csc.datamodel.basic.Hash
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.io.Base64Strict
 import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.base64.Base64ConfigBuilder
@@ -14,12 +15,13 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-
 /**
- * Serializes a [Hash] as the W3C Subresource Integrity string used by CSC Data Model Bindings 1.0.0
- * `qesRequest.checksum`, for example `sha256-BwgJ` (digest name, hyphen, unpadded standard Base64).
- * This is not the structured `Hash` object used for CSC Data Model `DocumentReference.checksum`.
+ * Codec for the SRI checksum string specified by CSC Data Model Bindings 1.0.0 §7.1.2, for example
+ * `sha256-BwgJ` (digest name, hyphen, Base64 without padding). It is retained to document and expose the CSC wire
+ * representation. VC-K's QES wire models follow the conflicting structured [Hash] representation from ETSI TS 119
+ * 432 instead, so this serializer intentionally has no call sites in the project (yet).
  */
+@Suppress("unused")
 object ChecksumSerializer : KSerializer<Hash> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("Hash", PrimitiveKind.STRING)
@@ -32,7 +34,7 @@ object ChecksumSerializer : KSerializer<Hash> {
         encoder.encodeString(
             "${digest.name.toLowerCasePreservingASCIIRules()}-${
                 value.value.encodeToString(
-                    Base64NoPaddingStrict
+                    Base64Strict
                 )
             }"
         )
@@ -42,16 +44,17 @@ object ChecksumSerializer : KSerializer<Hash> {
         val (digestName, valueString) = decoder.decodeString().split("-")
             .also { require(it.size == 2) { "Invalid hash format: $it" } }
         return Hash(
-            valueString.decodeToByteArray(Base64NoPaddingStrict),
+            valueString.decodeToByteArray(Base64Strict),
             Digest.entries.first { it.name.toLowerCasePreservingASCIIRules() == digestName }.oid
         )
     }
 
+    // TODO: Although theoretically defined like this, no one actually uses no padding so we cannot either.
+    @Suppress("unused")
     private val Base64NoPaddingStrict = Base64(config = Base64ConfigBuilder().apply {
         lineBreakInterval = 0
         encodeToUrlSafe = false
         isLenient = false
         padEncoded = false
     }.build())
-
 }

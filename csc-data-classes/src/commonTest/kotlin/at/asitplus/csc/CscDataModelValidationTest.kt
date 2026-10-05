@@ -10,6 +10,7 @@ import at.asitplus.csc.datamodel.documents.DocumentRepresentations
 import at.asitplus.csc.datamodel.requests.CredentialDeletionRequest
 import at.asitplus.csc.datamodel.requests.SignatureCreationRequest
 import at.asitplus.csc.datamodel.requests.SignatureRequest
+import at.asitplus.csc.bindings.QesSignatureRequest
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
@@ -92,6 +93,14 @@ val CscDataModelAssertionsTest by matrixSuite {
                     "href":"https://example.com/contract.pdf",
                     "signatureQualifier":"eu_eidas_qes"
                 }""",
+            )
+        }
+    }
+
+    test("Annex A QES signature requests require a signature qualifier") {
+        shouldThrow<SerializationException> {
+            validationJson.decodeFromString<QesSignatureRequest>(
+                """{"label":"Contract","href":"https://example.com/contract.pdf"}""",
             )
         }
     }

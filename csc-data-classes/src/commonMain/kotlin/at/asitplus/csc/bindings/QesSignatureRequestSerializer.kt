@@ -1,0 +1,64 @@
+package at.asitplus.csc.bindings
+
+import at.asitplus.csc.datamodel.basic.AdesParameters
+import at.asitplus.csc.datamodel.basic.SigningAlgorithm
+import at.asitplus.csc.datamodel.documents.DocumentData
+import at.asitplus.csc.datamodel.documents.DocumentReference
+import kotlinx.serialization.descriptors.elementNames
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+
+/** Applies the CSC Data Model Bindings 6.2.1 flattened signatureRequest shape on the wire. */
+object QesSignatureRequestSerializer :
+    JsonTransformingSerializer<QesSignatureRequest>(QesSignatureRequest.generatedSerializer()) {
+
+    private val documentKeys = listOf(
+        DocumentData.serializer(),
+        DocumentReference.serializer(),
+    ).flatMap { it.descriptor.elementNames }.toSet()
+
+    private val adesKeys = AdesParameters.serializer().descriptor.elementNames.toSet()
+    private val signingAlgorithmKeys = SigningAlgorithm.serializer().descriptor.elementNames.toSet()
+
+    override fun transformSerialize(element: JsonElement): JsonElement = buildJsonObject {
+        element.jsonObject.forEach { (property, component) ->
+            when (property) {
+                QesSignatureRequest::signingAlgorithm.name -> if (component !is JsonNull) {
+                    component.jsonObject.forEach { (key, value) -> put(key, value) }
+                }
+                QesSignatureRequest::document.name,
+                QesSignatureRequest::adesParameters.name,
+                    -> component.jsonObject.forEach { (key, value) -> put(key, value) }
+
+                else -> put(property, component)
+            }
+        }
+    }
+
+    override fun transformDeserialize(element: JsonElement): JsonElement = buildJsonObject {
+        val properties = element.jsonObject
+        val document = properties.filterKeys(documentKeys::contains).toMutableMap()
+        (document[QesSignatureRequest::checksum.name] as? JsonObject)?.let {
+            document.remove(QesSignatureRequest::checksum.name)
+            put(QesSignatureRequest::checksum.name, it)
+        }
+        put(
+            QesSignatureRequest::document.name,
+            JsonObject(document),
+        )
+        put(
+            QesSignatureRequest::adesParameters.name,
+            JsonObject(properties.filterKeys(adesKeys::contains)),
+        )
+        properties.filterKeys(signingAlgorithmKeys::contains).takeIf { it.isNotEmpty() }?.let {
+            put(QesSignatureRequest::signingAlgorithm.name, JsonObject(it))
+        }
+        listOf("responseURI", QesSignatureRequest::signatureQualifier.name).forEach { key ->
+            properties[key]?.let { put(key, it) }
+        }
+    }
+}
