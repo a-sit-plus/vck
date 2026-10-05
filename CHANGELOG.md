@@ -123,6 +123,15 @@ Release 9.0.0 (unreleased):
       access token (credential, userinfo): status 401 with `WWW-Authenticate` for `invalid_token`, `invalid_dpop_proof`
       and `use_dpop_nonce` (the latter with `DPoP-Nonce`), as RFC 6750 3. and RFC 9449 7.1 and 9. require, else 400;
       `use_attestation_challenge` comes with `OAuth-Client-Attestation-Challenge` here, too
+    - Add `toHttpResponse()` for the results of the authorization server: `OAuth2AuthorizationServerMetadata`,
+      `AttestationChallengeResponse` (with `Cache-Control: no-store`), `ResponseWithDpopNonce` of PAR (status 201),
+      token (with `Cache-Control: no-store` and `Pragma: no-cache`) and userinfo (each with `DPoP-Nonce`),
+      `AuthenticationResponseResult.Redirect` (302 with `Location`) and `TokenIntrospectionResult`
+    - Add `ResponseWithDpopNonce.attestationChallenge`: `SimpleAuthorizationService.parWithDpopNonce` and
+      `tokenWithDpopNonce` provide a fresh attestation challenge with attestation-based client authentication, which
+      `toHttpResponse()` sends as `OAuth-Client-Attestation-Challenge` (attestation-based client authentication,
+      draft 10, 6.2); `OAuth2ProtocolClient` uses it for the next request, instead of fetching one from the challenge
+      endpoint
 
 Release 8.0.0:
 
