@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
@@ -11,12 +12,16 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.time.Instant
 
 data class StatusListCwt(
     val value: CoseSigned<ByteArray>,
     override val resolvedAt: Instant?,
 ) : StatusListToken() {
+
+    /** Encodes the signed token for publication as the tagged COSE_Sign1 required by Token Status List Section 5.2. */
+    fun encodeForPublication(): ByteArray = value.serialize(ByteArraySerializer()).wrapInCborTag(18)
 
     override val parsedPayload: KmmResult<StatusListTokenPayload>
         get() = catching { coseCompliantSerializer.decodeFromByteArray<StatusListTokenPayload>(value.payload!!) }

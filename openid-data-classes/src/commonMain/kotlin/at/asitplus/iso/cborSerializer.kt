@@ -71,7 +71,7 @@ object CborCredentialSerializer {
 }
 
 fun ByteArray.stripCborTag(tag: Byte): ByteArray {
-    val tagBytes = byteArrayOf(0xd8.toByte(), tag)
+    val tagBytes = cborTagPrefix(tag)
     return if (this.take(tagBytes.size).toByteArray().contentEquals(tagBytes)) {
         this.drop(tagBytes.size).toByteArray()
     } else {
@@ -79,7 +79,17 @@ fun ByteArray.stripCborTag(tag: Byte): ByteArray {
     }
 }
 
-fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
+/** Encodes a CBOR tag number from 0 to 255 using its shortest head (RFC 8949, Section 3). */
+private fun cborTagPrefix(tag: Byte): ByteArray {
+    val number = tag.toUByte().toInt()
+    return if (number < 24) {
+        byteArrayOf((0xc0 or number).toByte())
+    } else {
+        byteArrayOf(0xd8.toByte(), tag)
+    }
+}
+
+fun ByteArray.wrapInCborTag(tag: Byte) = cborTagPrefix(tag) + this
 
 fun ByteArray.sha256(): ByteArray = Digest.SHA256.digest(this)
 

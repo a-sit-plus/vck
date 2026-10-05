@@ -10,6 +10,7 @@ import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.iso.IssuerSignedItemSerializer
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValidityInfo
@@ -211,4 +212,12 @@ private fun issuerAuth() = CoseSigned.create(
     payloadSerializer = MobileSecurityObject.serializer(),
 )
 
-private fun issuerSignedItem() = IssuerSignedItem(0u, Random.nextBytes(16), "identifier", "value")
+private fun issuerSignedItem() = generateSequence {
+    IssuerSignedItem(0u, Random.nextBytes(16), "identifier", "value")
+}.first { item ->
+    // Exclude accidental tag bytes in the unwrapped data before testing the added tag.
+    val serialized = coseCompliantSerializer.encodeToByteArray(
+        IssuerSignedItemSerializer("org.iso.something", item.elementIdentifier), item
+    )
+    !serialized.encodeToString(Base16(true)).contains("D818")
+}
