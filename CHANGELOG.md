@@ -114,6 +114,9 @@ Release 9.0.0 (unreleased):
       instead of `holderAgent: HolderAgent`. Deprecate the constructor taking `engine` and `httpClientConfig`
     - The deprecated `OpenId4VpHolder` methods of `OpenId4VpKtorHolder.openId4VpHolder` fetch request objects as
       `OpenId4VpProtocolClient` does, i.e. the form posted to `request_uri` has no `charset` either
+    - Fix: Error responses over the Digital Credentials API follow OpenID4VP 1.0, A.4: `data` is an object with the
+      single property `error`, never encrypted, also for `dc_api.jwt`; before, the whole error including `state` and
+      description was passed in `response`, encrypted for `dc_api.jwt`, which verifiers could not process
 - OpenID for Verifiable Presentations verifier:
     - Add `error`, `errorDescription` and `errorUri` to `AuthenticationResponseParameters`, so that authorization error
       responses keep their parameters when decoded from a form post (OpenID4VP 1.0, 8.2), the payload of an encrypted
