@@ -9,6 +9,7 @@ import at.asitplus.openid.TokenIntrospectionJwtPayload
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -178,6 +179,38 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
 
         shouldThrow<InvalidToken> {
             adapter.getTokenInfo("Bearer token", null).getOrThrow()
+        }
+    }
+
+    testSuite("getTokenInfo sends the access token with token_type_hint access_token") {
+        listOf("Bearer token", "DPoP token", "token").asData(nameFn = { it }) test { authorizationHeader ->
+            var form: Map<String, String>? = null
+            val mockEngine = MockEngine { request ->
+                when {
+                    request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
+                        joseCompliantSerializer.encodeToString(
+                            OAuth2AuthorizationServerMetadata.serializer(),
+                            oauthMetadata()
+                        ),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+
+                    request.url.toString() == introspectionEndpoint -> {
+                        form = request.body.toByteArray().decodeToString().toFormParameters()
+                        respond(TokenIntrospectionResponse(active = true).toHttpResponse())
+                    }
+
+                    else -> respondError(HttpStatusCode.NotFound)
+                }
+            }
+
+            RemoteOAuth2AuthorizationServerAdapter(
+                publicContext = issuer,
+                httpClient = HttpClient(mockEngine),
+                internalTokenVerificationService = tokenVerificationService,
+            ).getTokenInfo(authorizationHeader, null).getOrThrow()
+
+            form shouldBe mapOf("token" to "token", "token_type_hint" to "access_token")
         }
     }
 

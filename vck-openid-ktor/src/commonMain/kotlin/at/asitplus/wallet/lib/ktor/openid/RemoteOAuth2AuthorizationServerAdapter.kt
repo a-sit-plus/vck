@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_HINT_ACCESS_TOKEN
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.wallet.lib.DefaultNonceService
@@ -134,11 +135,9 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
         httpRequest: RequestInfo?,
     ): KmmResult<TokenInfo> = catching {
         val oauthMetadata = _metadata.await()
-        val token = authorizationHeader.let { if (it.contains(" ")) it.split(" ").last() else it }
-        val request = TokenIntrospectionRequest(
-            token = token,
-            tokenTypeHint = authorizationHeader.split(" ").firstOrNull()
-        )
+        val token = authorizationHeader.substringAfterLast(" ")
+        // RFC 7009 4.1.2: the token type hint names the kind of token, not its type such as DPoP
+        val request = TokenIntrospectionRequest(token = token, tokenTypeHint = TOKEN_TYPE_HINT_ACCESS_TOKEN)
         oauth2Client.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
             request = request,

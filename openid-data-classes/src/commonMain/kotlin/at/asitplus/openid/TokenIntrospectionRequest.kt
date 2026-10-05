@@ -31,7 +31,8 @@ data class TokenIntrospectionRequest(
      * authorization server MAY ignore this parameter, particularly if it
      * is able to detect the token type automatically.  Values for this
      * field are defined in the "OAuth Token Type Hints" registry defined
-     * in OAuth Token Revocation (RFC7009).
+     * in OAuth Token Revocation (RFC7009), i.e. [OpenIdConstants.TOKEN_TYPE_HINT_ACCESS_TOKEN] or
+     * [OpenIdConstants.TOKEN_TYPE_HINT_REFRESH_TOKEN], not the token type, such as `DPoP`.
      */
     @SerialName("token_type_hint")
     val tokenTypeHint: String? = null,

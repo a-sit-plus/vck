@@ -215,6 +215,10 @@ Release 9.0.0 (unreleased):
       (RFC 7662, 2.2; RFC 7519, 4.1.3): responses with an array failed to parse. `TokenIntrospectionJwtPayload.audience`
       is a `Set<String>`, and the client accepts JWT responses that list its `client_id` in `aud`. Add
       `JwtAudienceSerializer`, which decodes both forms and encodes a single audience as string
+    - Fix: `RemoteOAuth2AuthorizationServerAdapter.getTokenInfo` sends `token_type_hint` `access_token`, instead of the
+      scheme of the `Authorization` header (`DPoP`, `Bearer`), or the token itself for a header without scheme, which
+      are no token type hints (RFC 7009, 4.1.2). Add `OpenIdConstants.TOKEN_TYPE_HINT_ACCESS_TOKEN` and
+      `TOKEN_TYPE_HINT_REFRESH_TOKEN`
 
 Release 8.0.0:
 
