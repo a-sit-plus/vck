@@ -17,7 +17,9 @@ data class DocumentInfo(
     val label: String? = null,
     /**
      * CSC Data Model 1.0.0 section 8.2: REQUIRED
-     * Document digest, encoded as Base64.
+     * Document digest, encoded as a standard Base64 string (the decoded digest bytes). For example, bytes `07 08 09`
+     * are represented as `"BwgJ"` in JSON. This is distinct from the structured [at.asitplus.csc.datamodel.basic.Hash]
+     * checksum used by [DocumentReference].
      */
     @SerialName("hash")
     @Serializable(with = ByteArrayBase64Serializer::class)

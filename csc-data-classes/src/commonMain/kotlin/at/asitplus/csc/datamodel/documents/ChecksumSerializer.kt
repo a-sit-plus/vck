@@ -15,7 +15,11 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 
-/** CSC Data Model Bindings v1.0.0 requires W3C Subresource Integrity format, Base64 and no padding */
+/**
+ * Serializes a [Hash] as the W3C Subresource Integrity string used by CSC Data Model Bindings 1.0.0
+ * `qesRequest.checksum`, for example `sha256-BwgJ` (digest name, hyphen, unpadded standard Base64).
+ * This is not the structured `Hash` object used for CSC Data Model `DocumentReference.checksum`.
+ */
 object ChecksumSerializer : KSerializer<Hash> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("Hash", PrimitiveKind.STRING)

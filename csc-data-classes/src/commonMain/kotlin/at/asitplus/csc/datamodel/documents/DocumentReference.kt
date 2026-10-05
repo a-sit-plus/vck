@@ -29,10 +29,12 @@ data class DocumentReference(
     val href: String,
     /**
      * CSC Data Model 1.0.0 section 8.3: OPTIONAL
-     * Integrity checksum for the remote document.
+     * Integrity checksum for the remote document. In CSC Data Model 1.0.0 / ETSI TS 119 432 Annex A this is the
+     * structured [Hash] object (`value` is standard Base64 and `algorithmOID` is a digest OID), for example
+     * `{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"}`.
+     * CSC Data Model Bindings 1.0.0 SRI-string representation does not apply here.
      */
     @SerialName("checksum")
-    @Serializable(with = ChecksumSerializer::class)
     val checksum: Hash? = null,
     /**
      * CSC Data Model 1.0.0 section 8.3: OPTIONAL

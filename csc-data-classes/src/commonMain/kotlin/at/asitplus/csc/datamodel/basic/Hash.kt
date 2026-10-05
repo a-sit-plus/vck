@@ -12,10 +12,11 @@ import kotlinx.serialization.Transient
 
 /**
  * CSC Data Model 1.0.0 section 7.4: REQUIRED
- * Structured hash containing a digest and its algorithm OID.
+ * Structured hash containing a Base64-encoded digest and its algorithm OID. Its JSON form is an object, for example
+ * `{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"}`.
  *
- * CSC Data Model Bindings 1.0.0 section 6.2.1 uses an SRI string for `qesRequest.checksum`; ETSI TS 119 432 Annex A
- * uses this structured object.
+ * CSC Data Model Bindings 1.0.0 section 6.2.1 uses an SRI string for `qesRequest.checksum`;
+ * ETSI TS 119 432 Annex A uses the structured object.
  */
 @Serializable
 data class Hash(
