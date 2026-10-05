@@ -23,7 +23,6 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator.Constants.WRPRC_JWS_HEADER
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import io.github.aakira.napier.Napier
@@ -55,29 +54,44 @@ class WrprcValidator(
         require(validationData.registrationCertificate.isNotEmpty()) {
             "No registration certificates to verify"
         }
-        val validationResult = validationData.registrationCertificate.mapNotNull { (certificate, _) ->
-            certificate to catchingUnwrapped {
+        val validationResult = validationData.registrationCertificate.mapValues { (certificate, _) ->
+            catching {
                 validateWrpRegistrationCertificate(
                     certificate = certificate,
                     certificateTrustAnchors = certificateTrustAnchors,
                     tokenStatusResolver = tokenStatusResolver,
                     identifierResult = identifierResult
                 )
-            }.getOrNull()
-        }.toMap()
+            }.onFailure { Napier.w("Unable to validate registration certificate", it) }
+        }
 
-        val requestDataValidity = validationData.registrationCertificate.mapNotNull { (certificate, request) ->
-            validateRequest(certificate, request).toList()
-        }.flatten()
+        val requestDataValidity = validationData.registrationCertificate.flatMap { (certificate, request) ->
+            validateCredentialRequests(certificate, request).toList()
+        }
 
-
-        WrprcValidationResult(validationResult, requestDataValidity)
+        WrprcValidationResult(
+            certificateValidationResults = validationResult,
+            requestDataValidationResults = requestDataValidity,
+        )
     }
 
+    @Deprecated(
+        "Use validateCredentialRequests, which does not fail for all requests if one can not be validated",
+        ReplaceWith("validateCredentialRequests(registrationCert, requests)")
+    )
     suspend fun validateRequest(
         registrationCert: WrpRegistrationCertificate, requests: List<WrpCredentialRequest>
-    ) = requests.associate {
-        WrprcRequestValidator(request = it, payload = registrationCert.payload).getOrThrow()
+    ) = validateCredentialRequests(registrationCert, requests).mapValues { it.value.getOrThrow() }
+
+    /**
+     * Validates each of [requests] against [registrationCert], a failure marks that request as invalid.
+     */
+    suspend fun validateCredentialRequests(
+        registrationCert: WrpRegistrationCertificate, requests: List<WrpCredentialRequest>
+    ): Map<WrpCredentialRequest, KmmResult<RequestDataValidity>> = requests.associateWith { request ->
+        WrprcRequestValidator(request = request, payload = registrationCert.payload)
+            .map { (_, validity) -> validity }
+            .onFailure { Napier.w("Unable to validate $request", it) }
     }
 
     private suspend fun validateWrpRegistrationCertificate(
@@ -123,7 +137,7 @@ class WrprcValidator(
         val statusList = certificate.payload.status.statusList.let {
             StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
         }
-        val validStatusList = validateWrpStatusList(statusList, tokenStatusResolver)
+        val tokenStatus = statusList.loadTokenStatus(tokenStatusResolver)
         val validLinkage = validateWrpIdentifierLinkage(identifierResult, certificate.payload)
 
         WrpRegistrationCertificateValidation(
@@ -132,7 +146,8 @@ class WrprcValidator(
             validChain = validChain,
             validPayload = validPayload,
             validLinkage = validLinkage,
-            validStatusList = validStatusList
+            validStatusList = tokenStatus.getOrNull()?.isValid == true,
+            tokenStatus = tokenStatus,
         )
     }
 
@@ -155,7 +170,7 @@ class WrprcValidator(
         val statusList = jwsTyped.payload.status.statusList.let {
             StatusListInfo(it.idx, UniformResourceIdentifier(it.uri))
         }
-        val validStatusList = validateWrpStatusList(statusList, tokenStatusResolver)
+        val tokenStatus = statusList.loadTokenStatus(tokenStatusResolver)
 
         WrpRegistrationCertificateValidation(
             validHeader = validHeader,
@@ -163,7 +178,8 @@ class WrprcValidator(
             validChain = validChain,
             validPayload = validPayload,
             validLinkage = validLinkage,
-            validStatusList = validStatusList
+            validStatusList = tokenStatus.getOrNull()?.isValid == true,
+            tokenStatus = tokenStatus,
         )
     }
 
@@ -246,20 +262,11 @@ class WrprcValidator(
         return true
     }
 
-    private suspend fun validateWrpStatusList(
-        statusList: StatusListInfo,
-        tokenStatusResolver: TokenStatusResolver,
-    ) = if (!statusList.loadTokenStatus(tokenStatusResolver).isValid) {
-        Napier.w("Token status is not valid")
-        false
-    } else true
-
     private suspend fun StatusListInfo.loadTokenStatus(
         tokenStatusResolver: TokenStatusResolver
-    ) = tokenStatusResolver.invoke(this).getOrElse {
-        Napier.w("Unable to obtain token status.", it)
-        TokenStatus.Invalid
-    }
+    ) = tokenStatusResolver.invoke(this)
+        .onFailure { Napier.w("Unable to obtain token status.", it) }
+        .onSuccess { if (!it.isValid) Napier.w("Token status is not valid: $it") }
 
     /**
      * Validates the linkage between access certificate and registration certificate.
