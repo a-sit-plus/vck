@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.csc.bindings.QesApprovalBinding
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.contentEqualsIfArray
+import at.asitplus.signum.indispensable.contentHashCodeIfArray
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
@@ -99,7 +101,9 @@ data class KeyBindingJws(
         if (audience != other.audience) return false
         if (challenge != other.challenge) return false
         if (!sdHash.contentEquals(other.sdHash)) return false
-        if (transactionDataHashes != other.transactionDataHashes) return false
+        if (transactionDataHashes == null || other.transactionDataHashes == null) {
+            if (transactionDataHashes != other.transactionDataHashes) return false
+        } else if (!transactionDataHashes.contentEqualsIfArray(other.transactionDataHashes)) return false
         if (transactionDataHashesAlgorithmString != other.transactionDataHashesAlgorithmString) return false
         if (!qesApproval.contentEquals(other.qesApproval)) return false
         if (transactionDataHashesAlgorithm != other.transactionDataHashesAlgorithm) return false
@@ -112,7 +116,7 @@ data class KeyBindingJws(
         result = 31 * result + audience.hashCode()
         result = 31 * result + challenge.hashCode()
         result = 31 * result + sdHash.contentHashCode()
-        result = 31 * result + transactionDataHashes.hashCode()
+        result = 31 * result + (transactionDataHashes?.contentHashCodeIfArray() ?: 0)
         result = 31 * result + transactionDataHashesAlgorithmString.hashCode()
         result = 31 * result + (qesApproval?.contentHashCode() ?: 0)
         result = 31 * result + transactionDataHashesAlgorithm.hashCode()
