@@ -381,7 +381,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
         suspend fun jwtResponse(
             typ: String = JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
             issuer: String = asUrl,
-            audience: String = clientId,
+            audience: Set<String> = setOf(clientId),
             signer: KeyMaterial = serverKey,
         ) = TokenIntrospectionJwtResponse(
             SignJwt<TokenIntrospectionJwtPayload>(signer, JwsHeaderNone())(
@@ -414,6 +414,12 @@ val OAuth2ProtocolClientTest by matrixSuite {
             http.sent.single().http.headers[HttpHeaders.Accept] shouldBe TOKEN_INTROSPECTION_JWT
         }
 
+        test("accepts aud as array with further resource servers") {
+            val http = FakeHttpStack(scripted(jwtResponse(audience = setOf("https://other.example.com", clientId))))
+
+            http.execute(introspection()).active shouldBe true
+        }
+
         test("accepts typ with the prefix application/") {
             val http = FakeHttpStack(scripted(jwtResponse(typ = TOKEN_INTROSPECTION_JWT)))
 
@@ -424,7 +430,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
             "plain JSON" to { jsonResponse(TokenIntrospectionResponse(active = true)) },
             "typ JWT" to { jwtResponse(typ = "JWT") },
             "iss of another authorization server" to { jwtResponse(issuer = "https://other.example.com") },
-            "aud of another resource server" to { jwtResponse(audience = "https://other.example.com") },
+            "aud of another resource server" to { jwtResponse(audience = setOf("https://other.example.com")) },
             "signed by an untrusted key" to { jwtResponse(signer = EphemeralKeyWithoutCert()) },
         ).entries.asData(nameFn = { "rejects ${it.key}" }) test { (_, response) ->
             val http = FakeHttpStack(scripted(response()))

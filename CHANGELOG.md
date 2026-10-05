@@ -211,6 +211,10 @@ Release 9.0.0 (unreleased):
       signature, the authorization server as `iss` and the `client_id` of the client as `aud`; when `null`, it requests
       JSON responses. Before, a JWT was accepted even when not requested, and by default without verifying it
     - Add `MediaTypes.Application.TOKEN_INTROSPECTION_JWT`
+    - BREAKING: `TokenIntrospectionResponse.audience` is a `Set<String>?`, as `aud` may be a single string or an array
+      (RFC 7662, 2.2; RFC 7519, 4.1.3): responses with an array failed to parse. `TokenIntrospectionJwtPayload.audience`
+      is a `Set<String>`, and the client accepts JWT responses that list its `client_id` in `aud`. Add
+      `JwtAudienceSerializer`, which decodes both forms and encodes a single audience as string
 
 Release 8.0.0:
 

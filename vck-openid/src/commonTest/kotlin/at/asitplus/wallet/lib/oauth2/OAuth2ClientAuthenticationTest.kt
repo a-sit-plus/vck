@@ -637,7 +637,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             jwt.jws.jwsHeader.type shouldBe JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT
             VerifyJwsObject().invoke(jwt.jws).isSuccess shouldBe true
             jwt.payload.issuer shouldBe AUTHORIZATION_SERVER
-            jwt.payload.audience shouldBe it.client.clientId
+            jwt.payload.audience shouldBe setOf(it.client.clientId)
             (Clock.System.now() - jwt.payload.issuedAt).absoluteValue shouldBeLessThan 1.minutes
             jwt.payload.tokenIntrospection.active shouldBe true
         }

@@ -95,7 +95,8 @@ data class TokenIntrospectionResponse(
      * defined in JWT [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519).
      */
     @SerialName("aud")
-    val audience: String? = null,
+    @Serializable(with = JwtAudienceSerializer::class)
+    val audience: Set<String>? = null,
 
     /**
      * OPTIONAL.  String representing the issuer of this token, as
@@ -135,9 +136,13 @@ data class TokenIntrospectionJwtPayload(
     @SerialName("iss")
     val issuer: String,
 
-    /** REQUIRED. Identifies the resource server receiving the token introspection response. */
+    /**
+     * REQUIRED. Identifies the resource server receiving the token introspection response; a single string on the
+     * wire for one audience, else an array ([RFC 7519 4.1.3](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3)).
+     */
     @SerialName("aud")
-    val audience: String,
+    @Serializable(with = JwtAudienceSerializer::class)
+    val audience: Set<String>,
 
     /** REQUIRED. The time when the authorization server created the introspection response. */
     @SerialName("iat")

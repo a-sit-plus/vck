@@ -484,7 +484,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
      * [InvalidToken]. With [verifyTokenIntrospectionJwt], it asks for a JWT response
      * ([RFC 9701 4.](https://www.rfc-editor.org/rfc/rfc9701#section-4)), and accepts it only with `typ`
      * `token-introspection+jwt`, a verified signature, the authorization server as `iss`, and the `client_id` of
-     * [oAuth2Client] as `aud` ([RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5)).
+     * [oAuth2Client] in `aud` ([RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5)).
      *
      * Sends `([AttestationChallenge] TokenIntrospection){1,3}`.
      */
@@ -739,7 +739,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             require(type == JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT) { "Invalid typ: $type" }
             verifyJwt(jwt.jws).getOrElse { throw IllegalArgumentException("Signature not verified", it) }
             require(jwt.payload.issuer == issuer) { "iss is not the authorization server: ${jwt.payload.issuer}" }
-            require(jwt.payload.audience == oAuth2Client.clientId) { "aud is not this client: ${jwt.payload.audience}" }
+            require(oAuth2Client.clientId in jwt.payload.audience) { "aud is not this client: ${jwt.payload.audience}" }
             jwt.payload.tokenIntrospection
         }
     }.getOrElse {

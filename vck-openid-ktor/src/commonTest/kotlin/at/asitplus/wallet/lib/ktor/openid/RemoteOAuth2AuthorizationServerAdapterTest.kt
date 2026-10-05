@@ -200,7 +200,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                         JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
                         TokenIntrospectionJwtPayload(
                             issuer = issuer,
-                            audience = OAuth2Client().clientId,
+                            audience = setOf(OAuth2Client().clientId),
                             issuedAt = Clock.System.now(),
                             tokenIntrospection = TokenIntrospectionResponse(active = true, scope = "scope"),
                         ),

@@ -869,7 +869,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
                     TokenIntrospectionJwtPayload(
                         issuer = publicContext,
-                        audience = resourceServer,
+                        audience = setOf(resourceServer),
                         issuedAt = Clock.System.now(),
                         tokenIntrospection = response,
                     ),
