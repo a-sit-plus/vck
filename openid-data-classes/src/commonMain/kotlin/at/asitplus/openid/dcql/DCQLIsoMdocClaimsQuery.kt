@@ -84,6 +84,7 @@ data class DCQLIsoMdocClaimsQuery(
             namespace = namespace,
             claimName = resolvedClaimName,
             claimValue = value,
+            requestedClaimName = claimName.takeIf { it != resolvedClaimName },
         )
     }
 }
