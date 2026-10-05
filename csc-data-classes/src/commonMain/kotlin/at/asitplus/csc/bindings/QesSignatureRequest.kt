@@ -40,12 +40,13 @@ data class QesSignatureRequest(
     val responseUri: String? = null,
     /**
      * ETSI TS 119 432 Annex A.6.4: OPTIONAL
-     * Structured checksum; CSC Data Model Bindings uses an SRI string instead.
+     * Structured checksum. CSC Data Model Bindings 1.0.0 normatively specifies an SRI string for this field; VC-K
+     * follows ETSI TS 119 432 where the definitions conflict and uses the structured [Hash] form throughout.
      */
     val checksum: Hash? = null,
     /**
-     * ETSI TS 119 432 Annex A.6.4: REQUIRED
-     * CSC Data Model Bindings places the qualifier on the enclosing qesRequest.
+     * ETSI TS 119 432 Annex A.6.4: REQUIRED for each signature request.
+     * The enclosing QES transaction may also carry its CSC-level qualifier.
      */
-    val signatureQualifier: SignatureQualifier? = null,
+    val signatureQualifier: SignatureQualifier,
 )

@@ -10,6 +10,7 @@ import at.asitplus.csc.bindings.X509PresentationResponse
 import at.asitplus.csc.datamodel.basic.AdesParameters
 import at.asitplus.csc.datamodel.basic.Hash
 import at.asitplus.csc.datamodel.basic.SignatureFormat
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.csc.datamodel.documents.DocumentData
 import at.asitplus.csc.datamodel.documents.DocumentInfo
 import at.asitplus.csc.datamodel.documents.DocumentReference
@@ -39,15 +40,17 @@ val CscDataModelBindingsSerializationTest by matrixSuite {
             adesParameters = AdesParameters(signatureFormat = SignatureFormat.PADES),
             responseUri = "https://example.test/signatures/1",
             checksum = Hash(byteArrayOf(7, 8, 9), ObjectIdentifier("2.16.840.1.101.3.4.2.1")),
+            signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
         ).shouldRoundTripAs(
-            """{"label":"Contract","href":"https://example.test/contract.pdf","checksum":{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"},"signature_format":"P","responseURI":"https://example.test/signatures/1"}""",
+            """{"label":"Contract","href":"https://example.test/contract.pdf","checksum":{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"},"signature_format":"P","responseURI":"https://example.test/signatures/1","signatureQualifier":"eu_eidas_qes"}""",
         )
     }
 
     test("qes signature request flattens inline document data") {
         QesSignatureRequest(
             document = DocumentData(label = "Inline", document = byteArrayOf(1, 2, 3)),
-        ).shouldRoundTripAs("""{"label":"Inline","document":"AQID"}""")
+            signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+        ).shouldRoundTripAs("""{"label":"Inline","document":"AQID","signatureQualifier":"eu_eidas_qes"}""")
     }
 
     test("qes approval document flattens both documentInfo and documentReference forms") {
@@ -68,6 +71,13 @@ val CscDataModelBindingsSerializationTest by matrixSuite {
         X509PresentationResponse(
             qes = QesResponse(documentWithSignature = listOf(byteArrayOf(1, 2, 3))),
         ).shouldRoundTripAs("""{"qes":{"documentWithSignature":["AQID"]}}""")
+    }
+
+    test("qes response supports detached inline signatures and an empty out-of-band body") {
+        QesResponse(signatureObject = listOf(byteArrayOf(4, 5, 6))).shouldRoundTripAs(
+            """{"signatureObject":["BAUG"]}""",
+        )
+        QesResponse().shouldRoundTripAs("{}")
     }
 
     test("X.509 metadata query serializes fingerprints, policies, and key constraints") {

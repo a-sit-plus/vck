@@ -46,16 +46,17 @@ val QesApprovalRequestBindingsTest by matrixSuite {
         decoded.documentDigests[1].documentInfo shouldBe null
     }
 
-    test("CSC Data Model Bindings 7.1.2 published qesApprovalRequest vector") {
+    test("non-normative CSC Data Model Bindings 7.1.2 example adapted to ETSI TS 119 432") {
+        // The published example is non-normative; use the structured checksum required by the TS profile.
         val publishedVector = """{
             "type":"https://cloudsignatureconsortium.org/2025/qes-approval",
             "credential_ids":["xyz123"],
             "numSignatures":2,
             "signatureQualifier":"eu_eidas_qes",
             "documentInfos":[
-                {"label":"Example Contract","hash":"sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=","hashType":"sodr","access":{"type":"OTP","oneTimePassword":"51623"},"href":"https://protected.rp.example/contract-01.pdf?token=HS9naJKWwp901hBcK348IUHiuH8374","checksum":"sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="},
-                {"label":"Example Terms of Service","hash":"HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0=","hashType":"sodr","access":{"type":"public"},"href":"https://public.rp-cdn.example/terms-and-conditions.pdf","checksum":"sha256-HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0="},
-                {"label":"Example Invoice","hash":"nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ=","hashType":"sodr","access":{"type":"OTP","oneTimePassword":"83920"},"href":"https://protected.rp.example/invoice-2025-07.pdf?token=jk47ns88sna9a","checksum":"sha256-nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ="}
+                {"label":"Example Contract","hash":"sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=","hashType":"sodr","access":{"type":"OTP","oneTimePassword":"51623"},"href":"https://protected.rp.example/contract-01.pdf?token=HS9naJKWwp901hBcK348IUHiuH8374","checksum":{"value":"sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=","algorithmOID":"2.16.840.1.101.3.4.2.1"}},
+                {"label":"Example Terms of Service","hash":"HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0=","hashType":"sodr","access":{"type":"public"},"href":"https://public.rp-cdn.example/terms-and-conditions.pdf","checksum":{"value":"HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0=","algorithmOID":"2.16.840.1.101.3.4.2.1"}},
+                {"label":"Example Invoice","hash":"nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ=","hashType":"sodr","access":{"type":"OTP","oneTimePassword":"83920"},"href":"https://protected.rp.example/invoice-2025-07.pdf?token=jk47ns88sna9a","checksum":{"value":"nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ=","algorithmOID":"2.16.840.1.101.3.4.2.1"}}
             ],
             "hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"
         }""".trimIndent()
@@ -71,7 +72,8 @@ val QesApprovalRequestBindingsTest by matrixSuite {
         decoded.hashAlgorithmOid shouldBe ObjectIdentifier("2.16.840.1.101.3.4.2.1")
     }
 
-    test("ETSI TS 119 432 Annex B.6.2 published qesApprovalRequest vector") {
+    test("non-normative ETSI TS 119 432 Annex B.6.2 qesApprovalRequest example") {
+        // This published example illustrates Annex B; normative requirements are tested separately.
         val publishedVector = """{
             "type":"https://cloudsignatureconsortium.org/2025/qes-approval",
             "credential_ids":["xyz123"],

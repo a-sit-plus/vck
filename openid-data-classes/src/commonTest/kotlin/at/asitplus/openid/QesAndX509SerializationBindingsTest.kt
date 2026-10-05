@@ -16,7 +16,8 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 @OptIn(ExperimentalEncodingApi::class)
 val QesAndX509SerializationBindingsTest by matrixSuite {
-    test("ETSI Annex A.12 QES request and response serialization examples") {
+    test("non-normative ETSI Annex A.12 QES examples adapted to the Annex A requirements") {
+        // These illustrative examples exercise the profile shape; they are not normative vectors.
         val annexARequest = """{
             "type":"https://cloudsignatureconsortium.org/2025/qes",
             "credential_ids":["qes-cert-1"],
@@ -65,7 +66,8 @@ val QesAndX509SerializationBindingsTest by matrixSuite {
             ?.contentEquals(byteArrayOf(4, 5, 6)) shouldBe true
     }
 
-    test("CSC Data Model Bindings 8.1 and 8.2 X.509 examples") {
+    test("X.509 metadata query and response binding shapes") {
+        // Synthetic fixtures exercise the binding shapes; they are not copied specification vectors.
         val query = X509MetadataQuery(
             certificateFingerprints = listOf(
                 Hash(

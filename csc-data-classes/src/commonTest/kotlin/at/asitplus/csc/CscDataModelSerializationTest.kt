@@ -143,7 +143,7 @@ val CscDataModelSerializationTest by matrixSuite {
                 "label":"Contract",
                 "access":{"type":"public"},
                 "href":"https://example.com/contract.pdf",
-                "checksum":"sha256-BwgJ",
+                "checksum":{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"},
                 "signature_format":"P",
                 "signAlgo":"1.2.840.10045.4.3.2"
             }""",
