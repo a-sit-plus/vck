@@ -2,6 +2,7 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.AgeAttestation
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import kotlinx.serialization.SerialName
@@ -81,7 +82,7 @@ data class DCQLIsoMdocClaimsQuery(
 
         DCQLClaimsQueryResult.IsoMdocResult(
             namespace = namespace,
-            claimName = claimName,
+            claimName = resolvedClaimName,
             claimValue = value,
         )
     }
