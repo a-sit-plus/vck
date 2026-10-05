@@ -113,7 +113,7 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow().apply {
+                .vpTokenOrThrow().apply {
                     shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                     credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first()
                         .getOrThrow().apply {

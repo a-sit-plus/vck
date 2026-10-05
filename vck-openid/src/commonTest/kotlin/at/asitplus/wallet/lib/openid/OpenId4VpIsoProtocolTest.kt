@@ -84,7 +84,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 .createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -111,7 +111,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 .createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -138,7 +138,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -174,7 +174,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             //println("this is the response:\n$input")
 
             it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
@@ -212,7 +212,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             //println("this is the response:\n$input")
 
             it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
@@ -257,7 +257,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 }
 
             scope.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.shouldHaveSize(2).apply {
                     values.first { it.first().getOrThrow().hasDocType(AtomicAttribute2023.isoDocType) }.first()
@@ -284,7 +284,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()

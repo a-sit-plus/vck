@@ -684,7 +684,8 @@ private fun Map.Entry<DCQLClaimsPathPointer, Any>.toIssuerSignedItem(): IssuerSi
 
 private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean =
     catching {
-        when (val vpTokenValidationResult = this.vpTokenValidationResult.shouldNotBeNull().getOrThrow()) {
+        val vpTokenValidationResult = shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.getOrThrow()
+        when (vpTokenValidationResult) {
             is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
                 .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                 .containsAllAttributes(expectedAttributes)

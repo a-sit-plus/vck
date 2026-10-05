@@ -220,7 +220,7 @@ val OpenId4VpInteropTest by matrixSuite {
             response.params.entries.firstOrNull { it.key == "presentation_submission" }.shouldBeNull()
 
             it.verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.shouldBeSingleton().first()
                 .shouldBeSingleton().first().getOrThrow()

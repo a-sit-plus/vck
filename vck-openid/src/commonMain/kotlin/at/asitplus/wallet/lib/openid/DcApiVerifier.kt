@@ -276,6 +276,13 @@ class DcApiVerifier @JvmOverloads constructor(
      * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.
      *
      * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store.
+     *
+     * For OpenID4VP, succeeds with an [AuthnResponseResult] if the response has been processed: a presentation
+     * ([AuthnResponseResult.Success], valid or not) or an authorization error response of the wallet
+     * ([AuthnResponseResult.Error], carrying only `error`, see OpenID4VP 1.0, A.4). Either one ends the request, so a
+     * second response to it fails. Fails if the response has not been processed, i.e. it is malformed, can't be
+     * correlated with a request, comes from an origin not in the `expected_origins` of a signed request, or violates
+     * the protection its request requires.
      */
     suspend fun validateAuthnResponse(
         input: String,
@@ -293,6 +300,13 @@ class DcApiVerifier @JvmOverloads constructor(
      * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.
      *
      * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store.
+     *
+     * For OpenID4VP, succeeds with an [AuthnResponseResult] if the response has been processed: a presentation
+     * ([AuthnResponseResult.Success], valid or not) or an authorization error response of the wallet
+     * ([AuthnResponseResult.Error], carrying only `error`, see OpenID4VP 1.0, A.4). Either one ends the request, so a
+     * second response to it fails. Fails if the response has not been processed, i.e. it is malformed, can't be
+     * correlated with a request, comes from an origin not in the `expected_origins` of a signed request, or violates
+     * the protection its request requires.
      */
     suspend fun validateAuthnResponse(
         input: DigitalCredentialInterface,
@@ -331,13 +345,14 @@ class DcApiVerifier @JvmOverloads constructor(
         expectedOrigin: String,
     ): KmmResult<AuthnResponseResult> = catching {
         Napier.d("validateAuthnResponse: $input")
-        val (request, session) = responseProcessor.consume(input, externalId)
-        // the request has been consumed, so a response over the wrong transport or origin ends it, too
-        validateTransport(request, input, expectedOrigin)
-        AuthnResponseResult(
-            vpTokenValidationResult = validateVpToken(request, input, expectedOrigin, session),
-            request = request,
-        )
+        with(responseProcessor.consume(input, externalId)) {
+            // the request has been consumed, so a response over the wrong transport or origin ends it, too
+            validateTransport(request, input, expectedOrigin)
+            error?.let { AuthnResponseResult.Error(it, request) } ?: AuthnResponseResult.Success(
+                vpTokenResult = validateVpToken(request, input, expectedOrigin, session),
+                request = request,
+            )
+        }
     }
 
     internal suspend fun validateIsoResponse(
