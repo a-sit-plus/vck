@@ -3,8 +3,10 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -14,11 +16,13 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
@@ -28,6 +32,7 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyUserProvider.user
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -183,16 +188,24 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                     )
                 ).getOrThrow()
 
-                @Suppress("DEPRECATION")
-                suspend fun introspect(token: TokenResponseParameters) = server.tokenIntrospection(
-                    TokenIntrospectionRequest(token = token.accessToken),
-                    RequestInfo(
-                        url = "https://example.com/",
-                        method = HttpMethod.Get,
-                        clientAttestation = this.clientAttestation,
-                        clientAttestationPop = freshPop()
-                    )
-                ).getOrThrow()
+                suspend fun introspect(
+                    token: TokenResponseParameters,
+                    accept: String? = null,
+                ): TokenIntrospectionResult {
+                    val pop = freshPop()
+                    return server.tokenIntrospection(
+                        TokenIntrospectionRequest(token = token.accessToken),
+                        RequestInfo(
+                            url = "https://example.com/",
+                            method = HttpMethod.Post,
+                            headers = headers {
+                                append(HttpHeaders.OAuthClientAttestation, clientAttestation.toString())
+                                append(HttpHeaders.OAuthClientAttestationPop, pop.toString())
+                                accept?.let { append(HttpHeaders.Accept, it) }
+                            },
+                        )
+                    ).getOrThrow()
+                }
             }
         }
     } - {
@@ -612,6 +625,30 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             it.introspect(token)
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
                 .apply { active shouldBe true }
+        }
+
+        test("token introspection with JWT response for the authenticated resource server") {
+            val state = uuid4().toString()
+            val token = it.getToken(state, it.codeViaPar(state))
+
+            val jwt = it.introspect(token, accept = MediaTypes.Application.TOKEN_INTROSPECTION_JWT)
+                .shouldBeInstanceOf<TokenIntrospectionJwtResponse>().jwt
+
+            jwt.jws.jwsHeader.type shouldBe JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT
+            VerifyJwsObject().invoke(jwt.jws).isSuccess shouldBe true
+            jwt.payload.issuer shouldBe AUTHORIZATION_SERVER
+            jwt.payload.audience shouldBe it.client.clientId
+            (Clock.System.now() - jwt.payload.issuedAt).absoluteValue shouldBeLessThan 1.minutes
+            jwt.payload.tokenIntrospection.active shouldBe true
+        }
+
+        test("token introspection with JWT response for an inactive token has only active") {
+            val state = uuid4().toString()
+            val token = it.getToken(state, it.codeViaPar(state)).copy(accessToken = uuid4().toString())
+
+            it.introspect(token, accept = MediaTypes.Application.TOKEN_INTROSPECTION_JWT)
+                .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
+                .jwt.payload.tokenIntrospection shouldBe TokenIntrospectionResponse(active = false)
         }
 
         test("authorization code flow without client authentication") {

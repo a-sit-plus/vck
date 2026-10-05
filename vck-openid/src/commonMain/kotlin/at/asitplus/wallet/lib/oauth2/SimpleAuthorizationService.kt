@@ -24,6 +24,7 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.openid.TokenIntrospectionJwtPayload
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
@@ -34,9 +35,11 @@ import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.wallet.lib.acceptsOverJson
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.MediaTypes.Application.TOKEN_INTROSPECTION_JWT
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -60,6 +63,7 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
@@ -79,6 +83,7 @@ import kotlin.time.Duration.Companion.minutes
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449),
  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  * [OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
+ * [JWT Response for OAuth Token Introspection](https://www.rfc-editor.org/rfc/rfc9701)
  * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
  */
 class SimpleAuthorizationService @JvmOverloads constructor(
@@ -150,8 +155,11 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
     /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */
     private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = DEFAULT_WALLET_ATTESTATION_ALGORITHMS,
-    /** Used to sign JWT introspection responses (RFC 9701). */
-    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponse> =
+    /**
+     * Used to sign JWT introspection responses (RFC 9701), which resource servers verify with the key of this
+     * authorization server, i.e. the default ephemeral key is only good for tests.
+     */
+    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionJwtPayload> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /** Used to create and verify `issuer_state` values of credential offers. */
     private val issuerStateService: CodeService = DefaultCodeService(),
@@ -823,12 +831,18 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         tokenService.verification.getTokenInfo(authorizationHeader)
     }
 
+    /**
+     * Answers with a [TokenIntrospectionJwtResponse]
+     * ([RFC 9701](https://www.rfc-editor.org/rfc/rfc9701)) when the `Accept` header of [httpRequest] asks for
+     * `application/token-introspection+jwt`, which needs an [AuthenticatedClient], the resource server, as `aud`
+     * ([RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5)); else with a [TokenIntrospectionResponse].
+     */
     override suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenIntrospectionResult> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()
-        clientAuthenticationService.authenticateClient(
+        val client = clientAuthenticationService.authenticateClient(
             httpRequest = httpRequest,
             clientId = null,
             validatedClientKey = validatedClientKey
@@ -847,16 +861,23 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                 TokenIntrospectionResponse(active = false)
             }
         )
-        when (request.responseFormat) {
-            TokenIntrospectionRequest.ResponseFormat.JWT -> TokenIntrospectionJwtResponse(
-                jwt = signIntrospectionJwt(
+        if (acceptsOverJson(httpRequest?.headers?.get(HttpHeaders.Accept), TOKEN_INTROSPECTION_JWT)) {
+            val resourceServer = (client as? AuthenticatedClient)?.clientId
+                ?: throw InvalidClient("JWT introspection responses require client authentication")
+            TokenIntrospectionJwtResponse(
+                signIntrospectionJwt(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
-                    response,
-                    TokenIntrospectionResponse.serializer()
-                ).getOrThrow().toString()
+                    TokenIntrospectionJwtPayload(
+                        issuer = publicContext,
+                        audience = resourceServer,
+                        issuedAt = Clock.System.now(),
+                        tokenIntrospection = response,
+                    ),
+                    TokenIntrospectionJwtPayload.serializer()
+                ).getOrThrow()
             )
-
-            else -> response
+        } else {
+            response
         }
     }
 

@@ -3,13 +3,11 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
 import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
@@ -22,6 +20,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.*
 
 val OAuth2ClientTest by matrixSuite {
     fixture {
@@ -104,7 +103,7 @@ val OAuth2ClientTest by matrixSuite {
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
                 .apply { active shouldBe true }
         }
-        test("token introspection JWT response") {
+        test("token introspection JWT response requires client authentication") {
             val preAuth = it.server.providePreAuthorizedCode(user)
                 .shouldNotBeNull()
             val state = uuid4().toString()
@@ -114,13 +113,17 @@ val OAuth2ClientTest by matrixSuite {
                 scope = it.scope
             )
             val token = it.server.token(tokenRequest, null).getOrThrow()
-            val jwtResponse = it.server.tokenIntrospection(
-                TokenIntrospectionRequest(token = token.accessToken, responseFormat = ResponseFormat.JWT),
-                null
-            ).getOrThrow()
-                .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
-            val parsed = JwsCompactTyped<TokenIntrospectionResponse>(jwtResponse.jwt)
-            parsed.payload.active shouldBe true
+
+            shouldThrow<OAuth2Exception.InvalidClient> {
+                it.server.tokenIntrospection(
+                    TokenIntrospectionRequest(token = token.accessToken),
+                    RequestInfo(
+                        url = "https://example.com/introspect",
+                        method = HttpMethod.Post,
+                        headers = headersOf(HttpHeaders.Accept, MediaTypes.Application.TOKEN_INTROSPECTION_JWT),
+                    )
+                ).getOrThrow()
+            }
         }
         test("process with pushed authorization request and JAR") {
             val state = uuid4().toString()

@@ -8,6 +8,7 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.PreparedHttpResponse
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jsonHttpResponse
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import io.ktor.http.*
@@ -63,13 +64,18 @@ fun ResponseWithDpopNonce<TokenResponseParameters>.toHttpResponse(): PreparedHtt
     }
 
 /**
- * Converts the result of the token introspection endpoint to its response: status 200 with the result as JSON
- * ([RFC 7662 2.2](https://datatracker.ietf.org/doc/html/rfc7662#section-2.2)), i.e. a
- * [TokenIntrospectionJwtResponse] as `{"jwt": …}`, as [OAuth2ProtocolClient] expects it.
+ * Converts the result of the token introspection endpoint to its response: status 200 with the
+ * [TokenIntrospectionResponse] as JSON ([RFC 7662 2.2](https://datatracker.ietf.org/doc/html/rfc7662#section-2.2)),
+ * or the JWT of the [TokenIntrospectionJwtResponse] as `application/token-introspection+jwt`
+ * ([RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5)).
  */
 fun TokenIntrospectionResult.toHttpResponse(): PreparedHttpResponse = when (this) {
     is TokenIntrospectionResponse -> jsonHttpResponse(this)
-    is TokenIntrospectionJwtResponse -> jsonHttpResponse(this)
+    is TokenIntrospectionJwtResponse -> PreparedHttpResponse(
+        status = HttpStatusCode.OK,
+        headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.TOKEN_INTROSPECTION_JWT),
+        body = jwt.toString(),
+    )
 }
 
 /**

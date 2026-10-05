@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib
 
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.data.MediaTypes
 import io.ktor.http.*
 
 /**
@@ -26,3 +27,18 @@ internal inline fun <reified T> jsonHttpResponse(
     },
     body = joseCompliantSerializer.encodeToString(value),
 )
+
+/**
+ * Whether the `Accept` header [acceptHeader] asks for [mediaType] instead of JSON, i.e. lists [mediaType] explicitly,
+ * with a quality not below the one of `application/json` (or `application/*`, `*/*`).
+ * Wildcards alone never select [mediaType], as JSON is the representation every client understands.
+ */
+internal fun acceptsOverJson(acceptHeader: String?, mediaType: String): Boolean {
+    val accepted = parseHeaderValue(acceptHeader).associate { it.value.trim().lowercase() to it.quality }
+    val quality = accepted[mediaType] ?: return false
+    val jsonQuality = accepted[MediaTypes.Application.JSON]
+        ?: accepted["application/*"]
+        ?: accepted["*/*"]
+        ?: 0.0
+    return quality > 0.0 && quality >= jsonQuality
+}

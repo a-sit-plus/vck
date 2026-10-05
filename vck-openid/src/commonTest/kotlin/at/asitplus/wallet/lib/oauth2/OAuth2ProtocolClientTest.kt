@@ -9,6 +9,8 @@ import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenIntrospectionJwtPayload
+import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
@@ -22,8 +24,13 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.data.MediaTypes.Application.TOKEN_INTROSPECTION_JWT
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
@@ -38,6 +45,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlin.time.Clock
 
 val OAuth2ProtocolClientTest by matrixSuite {
 
@@ -366,6 +374,65 @@ val OAuth2ProtocolClientTest by matrixSuite {
         inputs.map { it.credentialIssuer } shouldBe List(2) { issuerMetadata.credentialIssuer }
     }
 
+    testSuite("token introspection with JWT response") {
+        val serverKey = EphemeralKeyWithoutCert()
+        val verifier = VerifyJwsObjectTrusted(trustedKeys = { setOf(serverKey.jsonWebKey) })
+
+        suspend fun jwtResponse(
+            typ: String = JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
+            issuer: String = asUrl,
+            audience: String = clientId,
+            signer: KeyMaterial = serverKey,
+        ) = TokenIntrospectionJwtResponse(
+            SignJwt<TokenIntrospectionJwtPayload>(signer, JwsHeaderNone())(
+                typ,
+                TokenIntrospectionJwtPayload(
+                    issuer = issuer,
+                    audience = audience,
+                    issuedAt = Clock.System.now(),
+                    tokenIntrospection = TokenIntrospectionResponse(active = true, scope = "scope"),
+                ),
+                TokenIntrospectionJwtPayload.serializer(),
+            ).getOrThrow()
+        ).toHttpResponse().received()
+
+        fun introspection() = OAuth2ProtocolClient(
+            oAuth2Client = OAuth2Client(clientId = clientId),
+            randomSource = RandomSource.Default,
+            verifyTokenIntrospectionJwt = verifier,
+        ).callTokenIntrospection(
+            oauthMetadata = scriptedMetadata(tokenEndPointAuthMethods = null),
+            request = TokenIntrospectionRequest(token = uuid4().toString()),
+            popAudience = asUrl,
+        )
+
+        test("requests and accepts it") {
+            val http = FakeHttpStack(scripted(jwtResponse()))
+
+            http.execute(introspection()).scope shouldBe "scope"
+
+            http.sent.single().http.headers[HttpHeaders.Accept] shouldBe TOKEN_INTROSPECTION_JWT
+        }
+
+        test("accepts typ with the prefix application/") {
+            val http = FakeHttpStack(scripted(jwtResponse(typ = TOKEN_INTROSPECTION_JWT)))
+
+            http.execute(introspection()).active shouldBe true
+        }
+
+        mapOf<String, suspend () -> ReceivedHttpResponse>(
+            "plain JSON" to { jsonResponse(TokenIntrospectionResponse(active = true)) },
+            "typ JWT" to { jwtResponse(typ = "JWT") },
+            "iss of another authorization server" to { jwtResponse(issuer = "https://other.example.com") },
+            "aud of another resource server" to { jwtResponse(audience = "https://other.example.com") },
+            "signed by an untrusted key" to { jwtResponse(signer = EphemeralKeyWithoutCert()) },
+        ).entries.asData(nameFn = { "rejects ${it.key}" }) test { (_, response) ->
+            val http = FakeHttpStack(scripted(response()))
+
+            shouldThrow<OAuth2Exception.InvalidToken> { http.execute(introspection()) }
+        }
+    }
+
     test("exchange rejects calls in the wrong state") {
         val metadata = scriptedMetadata()
 
@@ -386,21 +453,20 @@ val OAuth2ProtocolClientTest by matrixSuite {
 
     // Client authentication and DPoP against an actual authorization server
 
-    test("token introspection handles jwt response") {
-        with(AuthorizationServerFixture(requirePAR = false)) {
+    test("token introspection with JWT response from the authorization server") {
+        with(AuthorizationServerFixture(requirePAR = false, verifyTokenIntrospectionJwt = VerifyJwsObject())) {
             val tokenResponse = authorizationCodeFlow()
 
             http.execute(
                 client.callTokenIntrospection(
                     oauthMetadata = metadata(),
-                    request = TokenIntrospectionRequest(
-                        token = tokenResponse.params.accessToken,
-                        tokenTypeHint = tokenResponse.params.tokenType,
-                        responseFormat = TokenIntrospectionRequest.ResponseFormat.JWT,
-                    ),
+                    request = TokenIntrospectionRequest(token = tokenResponse.params.accessToken),
                     popAudience = authorizationService.publicContext,
                 )
             ).active shouldBe true
+
+            http.sent.last().http.headers[HttpHeaders.Accept] shouldBe TOKEN_INTROSPECTION_JWT
+            http.received.last().headers[HttpHeaders.ContentType] shouldBe TOKEN_INTROSPECTION_JWT
         }
     }
 

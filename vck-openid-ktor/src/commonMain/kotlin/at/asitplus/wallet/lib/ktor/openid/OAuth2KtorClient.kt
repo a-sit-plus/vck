@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
@@ -75,8 +76,9 @@ class OAuth2KtorClient private constructor(
      * requires, so that refresh tokens remain usable after the app restarts, else an ephemeral key
      * @param randomSource source for random bytes, i.e., nonces for proof-of-possession of key material for
      * sender-constrained tokens
-     * @param verifyTokenIntrospectionJwt verifies signed token introspection responses; by default, every syntactically
-     * valid JWS is accepted
+     * @param verifyTokenIntrospectionJwt verifies the signature of JWT responses of token introspection (RFC 9701)
+     * against the keys of the authorization server; when set, token introspection requests and accepts only JWT
+     * responses, when `null` (the default) plain JSON responses
      */
     constructor(
         httpClient: HttpClient,
@@ -84,7 +86,7 @@ class OAuth2KtorClient private constructor(
         clientAttestation: ClientAttestation? = null,
         dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
         randomSource: RandomSource = RandomSource.Secure,
-        verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+        verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
     ) : this(
         client = httpClient.config { followRedirects = false },
         protocolClient = OAuth2ProtocolClient(
@@ -109,8 +111,9 @@ class OAuth2KtorClient private constructor(
      * application, so redirection back from browser works
      * @param randomSource Source for random bytes, i.e., nonces for proof-of-possession of key material for
      * sender-constrained tokens.
-     * @param verifyTokenIntrospectionJwt Verifies signed token introspection responses. By default, every
-     * syntactically valid JWS is accepted.
+     * @param verifyTokenIntrospectionJwt verifies the signature of JWT responses of token introspection (RFC 9701)
+     * against the keys of the authorization server; when set, token introspection requests and accepts only JWT
+     * responses, when `null` (the default) plain JSON responses
      * @param loadInstanceAttestation Return a new Wallet Instance Attestation (WIA) to authenticate the Wallet App to
      * the Authorization Service with OAuth Attestation Based Client Auth.
      * Returned JWT MUST reference [keyMaterial] in [JsonWebToken.confirmationClaim].
@@ -128,7 +131,7 @@ class OAuth2KtorClient private constructor(
         dpopKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         oAuth2Client: OAuth2Client,
         randomSource: RandomSource = RandomSource.Secure,
-        verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+        verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
         loadInstanceAttestation: (suspend (OAuth2ProtocolClient.LoadInstanceAttestationInput) -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
     ) : this(
         client = buildHttpClient(engine, cookiesStorage, httpClientConfig),

@@ -190,6 +190,27 @@ Release 9.0.0 (unreleased):
     - Add `directPostHttpResponse(redirectUri)` in `vck-openid` (`at.asitplus.wallet.lib.openid`), the answer of the
       verifier's response endpoint for `direct_post` and `direct_post.jwt`: a JSON object with the optional
       `redirect_uri` (OpenID4VP 1.0, 8.2), with `Cache-Control: no-store`
+- Token introspection with JWT responses (RFC 9701):
+    - BREAKING: Remove `TokenIntrospectionRequest.responseFormat` and `TokenIntrospectionRequest.ResponseFormat`, as
+      no specification defines the form parameter `response_format`: a JWT response is requested with the header
+      `Accept: application/token-introspection+jwt` (RFC 9701, 4)
+    - BREAKING: `TokenIntrospectionJwtResponse` holds the signed JWT (`JwsCompactTyped<TokenIntrospectionJwtPayload>`)
+      and is no longer serialized as `{"jwt": …}`; `toHttpResponse()` sends the JWT itself as body with
+      `Content-Type: application/token-introspection+jwt` (RFC 9701, 5)
+    - Add `TokenIntrospectionJwtPayload`, with the claims `iss`, `aud`, `iat` and `token_introspection` that RFC 9701, 5
+      requires, instead of the members of the introspection response at the top level of the JWT
+    - BREAKING: The constructor parameter `signIntrospectionJwt` of `SimpleAuthorizationService` signs a
+      `TokenIntrospectionJwtPayload`
+    - `SimpleAuthorizationService.tokenIntrospection` answers with a JWT when the `Accept` header of the request asks for
+      `application/token-introspection+jwt`, with the authorization server as `iss` and the authenticated client, i.e.
+      the resource server, as `aud`; without client authentication it refuses such requests with `invalid_client`
+      (status 400, RFC 9701, 5)
+    - BREAKING: `verifyTokenIntrospectionJwt` of `OAuth2ProtocolClient`, `OAuth2KtorClient` and
+      `RemoteOAuth2AuthorizationServerAdapter` is a `VerifyJwsObjectFun?`, `null` by default. When set, token
+      introspection requests JWT responses, and accepts only those with `typ` `token-introspection+jwt`, a verified
+      signature, the authorization server as `iss` and the `client_id` of the client as `aud`; when `null`, it requests
+      JSON responses. Before, a JWT was accepted even when not requested, and by default without verifying it
+    - Add `MediaTypes.Application.TOKEN_INTROSPECTION_JWT`
 
 Release 8.0.0:
 
