@@ -27,11 +27,10 @@ import io.ktor.http.*
 
 class RequestParser(
     /**
-     * Need to implement if resources are defined by reference, i.e. the URL for a
-     * [at.asitplus.signum.indispensable.josef.JsonWebKeySet],
-     * or the request itself as `request_uri`, or `presentation_definition_uri`.
+     * Fetches a request object passed by reference in `request_uri`, see [extractRequest].
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
+     * Wallets fetch request objects with [OpenId4VpProtocolClient] instead.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Holds the ephemeral encryption keys advertised in `wallet_metadata` when fetching a request object with POST. */

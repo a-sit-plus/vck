@@ -59,6 +59,9 @@ import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredential
  * we can parse and validate it in [startAuthorizationResponsePreparation],
  * show the information to the user,
  * and create the response in [finalizeAuthorizationResponse], and send it back to the verifier.
+ *
+ * This class sends no HTTP requests: wallets fetch a request object passed by reference, and post responses to the
+ * verifier, with [OpenId4VpProtocolClient], which returns [at.asitplus.wallet.lib.HttpExchange]s for any HTTP stack.
  */
 class OpenId4VpHolder @JvmOverloads constructor(
     /** Key material used to encrypt responses and sign ID tokens. */
