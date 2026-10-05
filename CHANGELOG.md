@@ -114,6 +114,12 @@ Release 9.0.0 (unreleased):
       instead of `holderAgent: HolderAgent`. Deprecate the constructor taking `engine` and `httpClientConfig`
     - The deprecated `OpenId4VpHolder` methods of `OpenId4VpKtorHolder.openId4VpHolder` fetch request objects as
       `OpenId4VpProtocolClient` does, i.e. the form posted to `request_uri` has no `charset` either
+- OpenID for Verifiable Presentations verifier:
+    - Add `error`, `errorDescription` and `errorUri` to `AuthenticationResponseParameters`, so that authorization error
+      responses keep their parameters when decoded from a form post (OpenID4VP 1.0, 8.2), the payload of an encrypted
+      response (8.3.1), or the `data` of a Digital Credentials API response (A.4)
+    - BREAKING (binary): The constructor and `copy` of `AuthenticationResponseParameters` gain these trailing
+      parameters; calls with named or leading positional arguments still compile
 - Server-side HTTP responses:
     - Add `PreparedHttpResponse` in `vck-openid` (package `at.asitplus.wallet.lib`), a response with status, headers and
       encoded body, to be written out unchanged with any HTTP server stack
