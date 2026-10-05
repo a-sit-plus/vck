@@ -1,8 +1,14 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
+import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
+import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsTyped
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 import kotlin.time.Instant
 
 /**
@@ -116,13 +122,64 @@ data class TokenIntrospectionResponse(
     ) : TokenIntrospectionResult
 
 /**
- * [RFC 9701: JWT Response for OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/rfc9701/): Response.
+ * [RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5): The JWT response for OAuth 2.0 Token
+ * Introspection, i.e. a JWT with `typ` `token-introspection+jwt`, sent as body with
+ * `Content-Type: application/token-introspection+jwt`.
+ *
+ *
+ * *Contains [Serializer] but not marked as serializable, see [JwsCompactStringSerializer]*
+ */
+@JvmInline
+value class TokenIntrospectionJwtResponse(
+    val value: JwsCompactTyped<TokenIntrospectionJwtPayload>
+) : TokenIntrospectionResult {
+
+    override fun toString(): String = value.toString()
+
+    //Only necessary because we do not want to tag the class as @Serializable
+    object Serializer : KSerializer<TokenIntrospectionJwtResponse> by TransformingSerializerTemplate(
+        InternalTypedSerializer,
+        encodeAs = { it.value },
+        decodeAs = ::TokenIntrospectionJwtResponse,
+    )
+
+    @Suppress("DEPRECATION")
+    private object InternalTypedSerializer :
+        KSerializer<JwsCompactTyped<TokenIntrospectionJwtPayload>> by JwsTypedSerializerTemplate(
+            JwsCompactStringSerializer,
+            TokenIntrospectionJwtPayload.serializer(),
+        )
+
+    companion object {
+        operator fun invoke(jwtString: String): TokenIntrospectionJwtResponse =
+            TokenIntrospectionJwtResponse(JwsTyped(jwtString))
+    }
+}
+
+/**
+ * [RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5): Claims of the [TokenIntrospectionJwtResponse].
+ * Leaves out `sub` and `exp`, as the JWT SHOULD NOT include them, so that it can not be misused as an access token.
  */
 @Serializable
-data class TokenIntrospectionJwtResponse(
+data class TokenIntrospectionJwtPayload(
+    /** REQUIRED. The issuer identifier of the authorization server. */
+    @SerialName("iss")
+    val issuer: String,
+
+    /** REQUIRED. Identifies the resource server receiving the token introspection response. */
+    @SerialName("aud")
+    val audience: String,
+
+    /** REQUIRED. The time when the authorization server created the introspection response. */
+    @SerialName("iat")
+    @Serializable(with = InstantLongSerializer::class)
+    val issuedAt: Instant,
+
     /**
-     * REQUIRED.  JWT containing the token introspection response claims.
+     * REQUIRED. The members of the token introspection response ([RFC 7662 2.2](https://datatracker.ietf.org/doc/html/rfc7662#section-2.2)).
+     * For an invalid, expired, revoked token, or a token not intended for the calling resource server, only
+     * `active` with `false`.
      */
-    @SerialName("jwt")
-    val jwt: String,
-) : TokenIntrospectionResult
+    @SerialName("token_introspection")
+    val tokenIntrospection: TokenIntrospectionResponse,
+)

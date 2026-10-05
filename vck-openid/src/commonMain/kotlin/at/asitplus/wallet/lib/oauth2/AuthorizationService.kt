@@ -87,10 +87,13 @@ interface AuthorizationService {
     ): KmmResult<JsonObject>
 
     /**
-     * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection
+     * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection, with
+     * [RFC 9701](https://www.rfc-editor.org/rfc/rfc9701) JWT responses for an `Accept` header asking for
+     * `application/token-introspection+jwt`. Send the result with its `toHttpResponse()`.
      *
      * @param request as sent from the client as form POST
-     * @param httpRequest information about the HTTP request from the client, to validate authentication
+     * @param httpRequest information about the HTTP request from the client (including the `Accept` header), to
+     * validate authentication
      */
     suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,

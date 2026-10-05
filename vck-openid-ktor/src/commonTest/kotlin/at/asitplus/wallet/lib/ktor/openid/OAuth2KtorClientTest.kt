@@ -20,6 +20,8 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
@@ -57,6 +59,7 @@ val OAuth2KtorClientTest by matrixSuite {
         strategy: CredentialAuthorizationServiceStrategy,
         requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>?,
         requirePAR: Boolean,
+        verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
     ): Context {
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val authorizationEndpointPath = "/authorize"
@@ -164,6 +167,7 @@ val OAuth2KtorClientTest by matrixSuite {
                 },
                 dpopKeyMaterial = EphemeralKeyWithoutCert(),
                 randomSource = RandomSource.Default,
+                verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
             ),
         )
     }
@@ -203,7 +207,14 @@ val OAuth2KtorClientTest by matrixSuite {
     }
 
     test("token introspection handles jwt response") {
-        with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = false)) {
+        with(
+            setup(
+                strategy = strategy,
+                requestObjectSigningAlgorithms = setOf(JwsAlgorithm.Signature.ES256),
+                requirePAR = false,
+                verifyTokenIntrospectionJwt = VerifyJwsObject(),
+            )
+        ) {
             val authorizationResult = client.startAuthorization(
                 oauthMetadata = authorizationService.metadata(),
                 authorizationServer = authorizationService.publicContext,
@@ -222,11 +233,7 @@ val OAuth2KtorClientTest by matrixSuite {
 
             client.callTokenIntrospection(
                 oauthMetadata = authorizationService.metadata(),
-                request = TokenIntrospectionRequest(
-                    token = tokenResponse.params.accessToken,
-                    tokenTypeHint = tokenResponse.params.tokenType,
-                    responseFormat = TokenIntrospectionRequest.ResponseFormat.JWT,
-                ),
+                request = TokenIntrospectionRequest(token = tokenResponse.params.accessToken),
                 popAudience = authorizationService.publicContext,
             ).active shouldBe true
         }

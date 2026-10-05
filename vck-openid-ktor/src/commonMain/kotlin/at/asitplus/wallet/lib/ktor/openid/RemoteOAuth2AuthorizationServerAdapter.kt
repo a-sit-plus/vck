@@ -5,9 +5,9 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.RequestInfo
@@ -53,8 +53,9 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
      * @param clientAttestation authenticates with
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
      * at the remote Authorization Server, or `null` to not use it
-     * @param verifyTokenIntrospectionJwt verifies signed token introspection responses of the remote Authorization
-     * Server; by default, every syntactically valid JWS is accepted
+     * @param verifyTokenIntrospectionJwt verifies the signature of JWT responses of token introspection (RFC 9701)
+     * against the keys of the remote Authorization Server; when set, token introspection requests and accepts only JWT
+     * responses, when `null` (the default) plain JSON responses
      * @param dpopNonceService used to provide DPoP nonces for credential requests, which will be verified by
      * [internalTokenVerificationService]
      * @param scope [CoroutineScope] to fetch the authorization server's metadata
@@ -65,7 +66,7 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
         internalTokenVerificationService: TokenVerificationService,
         oauth2Client: OAuth2Client = OAuth2Client(),
         clientAttestation: ClientAttestation? = null,
-        verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+        verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
         dpopNonceService: NonceService = DefaultNonceService(),
         scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     ) : this(
