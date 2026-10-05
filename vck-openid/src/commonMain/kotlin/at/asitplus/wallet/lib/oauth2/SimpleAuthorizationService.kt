@@ -115,8 +115,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      */
     private val userInfoEndpointPath: String = "/userinfo",
     /**
-     * Used to build [OAuth2AuthorizationServerMetadata.introspectionEndpoint], i.e. implementers need to forward POST or GET
-     * requests to that URI (which starts with [publicContext]) to [getTokenInfo].
+     * Used to build [OAuth2AuthorizationServerMetadata.introspectionEndpoint], i.e. implementers need to forward POST
+     * requests to that URI (which starts with [publicContext]) to [tokenIntrospection], as the endpoint accepts only
+     * POST ([RFC 7662 2.1](https://datatracker.ietf.org/doc/html/rfc7662#section-2.1)).
      */
     private val introspectionEndpointPath: String = "/introspect",
     /**
