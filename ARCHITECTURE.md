@@ -103,7 +103,8 @@ Important areas:
 Refactor here when changing protocol state, request/response construction, validation policy, proof handling, or
 client/server OAuth2 behavior. Keep raw HTTP client/server mechanics out of this module; use callback abstractions
 for remote resource retrieval and transport-specific integration. The wallet-side OAuth2, OpenID4VCI and OpenID4VP
-clients do not send requests at all, but return `HttpExchange`s.
+clients do not send requests at all, but return `HttpExchange`s; the server-side results convert to
+`PreparedHttpResponse`s (see [Server-Side HTTP Responses](#server-side-http-responses)).
 
 ### `vck-openid-ktor`
 
@@ -347,6 +348,28 @@ Rules to keep when changing these clients:
   stack: the verifier's `redirect_uri` must be an absolute `https` URI.
 - Send form bodies as `application/x-www-form-urlencoded` without a `charset` parameter, which the media type does not
   define and some strict servers reject.
+
+### Server-Side HTTP Responses
+
+The server side (authorization server, credential issuer, OpenID4VP verifier) is the counterpart: its methods return
+protocol results, and `toHttpResponse()` converts each result into a `PreparedHttpResponse` (status, headers, encoded
+body, `vck-openid/.../lib/PreparedHttpResponse.kt`) that integrators write out unchanged with any HTTP server stack.
+The same placement rule applies: whatever decides the status or ends up in a header belongs to `vck-openid`, not to
+the integrator's controllers, e.g. `Cache-Control: no-store`, `DPoP-Nonce`, `OAuth-Client-Attestation-Challenge`,
+`WWW-Authenticate`, content types and the content negotiation of signed issuer metadata.
+
+- Success converters live next to the results: `oauth2/AuthorizationServerResponses.kt`,
+  `oidvci/OpenId4VciServerResponses.kt` (and `OpenId4VciServer.metadataHttpResponse`, which signs), and
+  `openid/OpenId4VpVerifierResponses.kt`.
+- Errors convert in `oauth2/OAuth2ErrorResponses.kt`, with two converters, because the same error code needs another
+  status at a resource endpoint: `OAuth2Exception.toHttpResponse()` for authorization server endpoints (400), and
+  `toResourceServerHttpResponse(authorizationHeader)` for endpoints accessed with an access token (credential,
+  userinfo), which answers token and DPoP errors with 401 and `WWW-Authenticate`. Throwables that are not
+  `OAuth2Exception`s are the integrator's.
+- `WWW-Authenticate` carries only the error code, never the description, which may contain the access token.
+- Server methods keep their results; a new response header or status is a change of the converter, with a test of
+  its status, headers and body. The test fixtures (`AuthorizationServerFixture`, the mock verifiers) answer through
+  the converters, so the protocol clients are tested against them end to end.
 
 ### Key Material and Crypto
 
