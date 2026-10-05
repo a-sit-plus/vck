@@ -79,7 +79,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values
                 .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -133,7 +133,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
             // but it burns the request, as authentication responses are never retryable
             it.verifierOid4vp.validateAuthnResponse(
                 ResponseParametersFrom.Post(AuthenticationResponseParameters(state = state))
-            ).getOrThrow().vpTokenValidationResult.shouldNotBeNull().isFailure shouldBe true
+            ).getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.isFailure shouldBe true
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).isFailure shouldBe true
         }
@@ -160,7 +160,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(
                 ResponseParametersFrom.Post(AuthenticationResponseParameters(state = state))
-            ).getOrThrow().vpTokenValidationResult.shouldNotBeNull().isFailure shouldBe true
+            ).getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.isFailure shouldBe true
 
             // restore the stored request, so only the consumed challenge can reject the genuine response
             it.stateToAuthnRequestStore.put(state, storedRequest)
@@ -192,7 +192,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values
                 .shouldBeSingleton().first()

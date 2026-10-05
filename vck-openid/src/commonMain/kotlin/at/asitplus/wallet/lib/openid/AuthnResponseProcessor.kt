@@ -6,6 +6,7 @@ import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier.ChallengeSession
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -25,17 +26,19 @@ internal class AuthnResponseProcessor(
 
     /**
      * A response correlated with its [request], which has been consumed along with its nonce and ephemeral
-     * encryption key. Verify the presentations of the response with [session].
+     * encryption key. The response is the wallet's authorization [error], or else a presentation, to verify with
+     * [session].
      */
     data class ConsumedResponse(
         val request: AuthenticationRequestParameters,
         val session: ChallengeSession,
+        val error: OAuth2Error?,
     )
 
     /**
      * Correlates [input] by [externalId] (DC API) or else by its `state` (URL/QR), and ends the lifecycle of that
-     * request. Then validates what does not depend on the transport: the protection of [input] as the request
-     * requires it, and the response type of the request.
+     * request. Then validates what does not depend on the transport: the content of [input], see [authorizationError], its
+     * protection as the request requires it, and the response type of the request.
      *
      * The ephemeral encryption key is no longer needed after this: decrypting the response happens while parsing it,
      * and validating the `vp_token` only needs the public key from the request.
@@ -53,9 +56,10 @@ internal class AuthnResponseProcessor(
             val session = nonceAwareVerifier.consumeChallenge(
                 requireNotNull(request.nonce) { "nonce not present in $request" }
             )
-            requestFactory.validateResponseProtection(request, input)
+            val error = input.authorizationError()
+            requestFactory.validateResponseProtection(request, input, error)
             request.requireVpTokenResponseType()
-            return ConsumedResponse(request, session)
+            return ConsumedResponse(request, session, error)
         } finally {
             withContext(NonCancellable) { requestFactory.discardEphemeralResponseKey(request) }
         }

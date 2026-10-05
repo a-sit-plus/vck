@@ -33,6 +33,7 @@ import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
 import at.asitplus.wallet.lib.openid.createAuthorizationResponse
+import at.asitplus.wallet.lib.openid.vpTokenOrThrow
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
@@ -96,7 +97,7 @@ val KeyBindingTests by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
                 .shouldBeSingleton().first()
@@ -129,7 +130,7 @@ val KeyBindingTests by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
                 .shouldBeSingleton().first()
@@ -167,7 +168,7 @@ val KeyBindingTests by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             verifierOid4Vp.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.shouldBeSingleton().first().first().isFailure shouldBe true
         }
@@ -199,7 +200,7 @@ val KeyBindingTests by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             lenientVerifier.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
                 .shouldBeSingleton().first()

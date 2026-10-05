@@ -182,8 +182,15 @@ class OpenId4VpVerifier @JvmOverloads constructor(
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      *
-     * For the response modes `direct_post` and `direct_post.jwt`, answer the posted response with
-     * [directPostHttpResponse] once it has been processed.
+     * Succeeds if the response has been processed, see [AuthnResponseResult]: it is a presentation
+     * ([AuthnResponseResult.Success], valid or not) or an authorization error response of the wallet
+     * ([AuthnResponseResult.Error]). Either one ends the request, so a second response to it fails. Fails if the
+     * response has not been processed, i.e. it is malformed, can't be correlated with a request, or violates the
+     * protection its request requires.
+     *
+     * For the response modes `direct_post` and `direct_post.jwt`, answer a processed response with
+     * [directPostHttpResponse] (OpenID4VP 1.0, 8.2), and one that has not been processed with a non-success status,
+     * e.g. 400.
      */
     suspend fun validateAuthnResponse(
         input: String,
@@ -195,18 +202,21 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     /**
      * Validates an Authentication Response from the Wallet,
      * in case it has been parsed into [ResponseParametersFrom] with [ResponseParser].
+     *
+     * See [validateAuthnResponse] for the outcomes.
      */
     suspend fun validateAuthnResponse(
         input: ResponseParametersFrom,
-    ) = catching {
+    ): KmmResult<AuthnResponseResult> = catching {
         Napier.d("validateAuthnResponse: $input")
-        val (request, session) = responseProcessor.consume(input, externalId = null)
-        // the request has been consumed, so a response over the wrong transport ends it, too
-        validateTransport(input)
-        AuthnResponseResult(
-            vpTokenValidationResult = validateVpToken(request, input, session),
-            request = request,
-        )
+        with(responseProcessor.consume(input, externalId = null)) {
+            // the request has been consumed, so a response over the wrong transport ends it, too
+            validateTransport(input)
+            error?.let { AuthnResponseResult.Error(it, request) } ?: AuthnResponseResult.Success(
+                vpTokenResult = validateVpToken(request, input, session),
+                request = request,
+            )
+        }
     }
 
     /** Enforces this verifier's transport: URL/QR, i.e. anything but the Digital Credentials API. */

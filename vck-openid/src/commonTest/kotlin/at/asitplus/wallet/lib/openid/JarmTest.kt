@@ -147,7 +147,7 @@ val JarmTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             newInstance().validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
         }
     }
 }

@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.ResponseParametersFrom
@@ -22,7 +23,6 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
@@ -32,6 +32,7 @@ import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SignJwtFun
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.utils.MapStore
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -242,15 +243,29 @@ internal class OpenId4VpRequestFactory(
     /**
      * Validates that [input] is protected as [authnRequest] requested: for response modes requiring encryption, it
      * must have been encrypted to the key of that request, or to [decryptionKeyMaterial] for requests without one.
+     *
+     * The only exception are authorization errors ([error]) in plaintext, where OpenID4VP 1.0 allows them: as a form
+     * post for `direct_post.jwt` (8.3.1), and in the `data` of the Digital Credentials API for `dc_api.jwt` (A.4).
+     * OpenID4VC HAIP 1.0 requires encryption for every response, but an error carries no credential, so accepting it
+     * is no downgrade; a plaintext `vp_token` is never accepted.
      */
     @Throws(IllegalArgumentException::class)
     fun validateResponseProtection(
         authnRequest: AuthenticationRequestParameters,
         input: ResponseParametersFrom,
+        error: OAuth2Error?,
     ) {
         if (authnRequest.responseMode?.requiresEncryption != true) return
-        require(input is ResponseParametersFrom.JweDecrypted) {
-            "response_mode requires encryption, but no encrypted response was given"
+        if (input !is ResponseParametersFrom.JweDecrypted) {
+            val plaintextErrorAllowed = error != null && when (authnRequest.responseMode) {
+                OpenIdConstants.ResponseMode.DirectPostJwt -> input is ResponseParametersFrom.Post
+                OpenIdConstants.ResponseMode.DcApiJwt -> input is ResponseParametersFrom.DcApi
+                else -> false
+            }
+            require(plaintextErrorAllowed) {
+                "response_mode requires encryption, but no encrypted response was given"
+            }
+            return
         }
         val responseKeyId = input.jweDecrypted.header.keyId
         val ephemeralKey = authnRequest.ephemeralResponseKey
