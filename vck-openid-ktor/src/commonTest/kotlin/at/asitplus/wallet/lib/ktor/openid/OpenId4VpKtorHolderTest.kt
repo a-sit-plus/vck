@@ -700,6 +700,32 @@ val OpenId4VpKtorHolderTest by matrixSuite {
             it.answeredStatuses shouldBe listOf(HttpStatusCode.OK)
         }
 
+        test("a presentation that can't be encrypted for direct_post.jwt fails, and its error is sent unencrypted") {
+            val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            val attributes = mapOf(DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString())
+            it.storeMockCredentials(scheme, SD_JWT, attributes)
+            val results = mutableListOf<KmmResult<AuthnResponseResult>>()
+            // a pre-registered client conveys no key in the request, and the wallet knows none out-of-band
+            it.setupRelyingPartyService(
+                clientId = uuid4().toString(),
+                requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestOptionsCredential(scheme, SD_JWT, attributePaths = attributes.keys)
+                    ).toDCQLRequest(),
+                    responseMode = ResponseMode.DirectPostJwt,
+                ),
+            ) { result -> results += result }
+            it.setupWallet(HttpClient(it.mockEngine))
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+
+            it.wallet.finalizeAuthorizationResponse(state).isFailure shouldBe true
+
+            // OpenID4VP 1.0, 8.3.1: the wallet may send an error without encryption, which the verifier processes
+            results.single().getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Error>()
+                .error.error shouldBe "invalid_request"
+            it.answeredStatuses shouldBe listOf(HttpStatusCode.OK)
+        }
+
         test("No matching credential test") {
             val euPidScheme = AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
             it.setup(
