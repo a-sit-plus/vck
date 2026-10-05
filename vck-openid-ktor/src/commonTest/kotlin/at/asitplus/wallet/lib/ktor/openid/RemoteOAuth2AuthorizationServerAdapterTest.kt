@@ -10,6 +10,7 @@ import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.toFormParameters
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -235,7 +236,11 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                             issuer = issuer,
                             audience = setOf(OAuth2Client().clientId),
                             issuedAt = Clock.System.now(),
-                            tokenIntrospection = TokenIntrospectionResponse(active = true, scope = "scope"),
+                            tokenIntrospection = TokenIntrospectionResponse(
+                                active = true,
+                                scope = "scope",
+                                confirmationClaim = ConfirmationClaim(jsonWebKeyThumbprint = "thumbprint"),
+                            ),
                         ),
                         TokenIntrospectionJwtPayload.serializer()
                     ).getOrThrow()
@@ -257,6 +262,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
 
         val tokenInfo = adapter.getTokenInfo("Bearer token", null).getOrThrow()
         tokenInfo.scope shouldBe "scope"
+        tokenInfo.confirmationClaim?.jsonWebKeyThumbprint shouldBe "thumbprint"
         accept shouldBe MediaTypes.Application.TOKEN_INTROSPECTION_JWT
     }
 

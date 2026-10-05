@@ -184,4 +184,5 @@ private fun TokenIntrospectionResponse.toTokenInfo(token: String) = TokenInfo(
     token = token,
     scope = this.scope,
     authorizationDetails = this.authorizationDetails,
+    confirmationClaim = this.confirmationClaim,
 )

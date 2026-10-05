@@ -855,6 +855,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                     active = true,
                     scope = it.scope,
                     authorizationDetails = it.authorizationDetails,
+                    // RFC 9449 6.2: the binding of a DPoP-bound token, whose token_type then MUST be DPoP
+                    confirmationClaim = it.confirmationClaim,
+                    tokenType = it.confirmationClaim?.jsonWebKeyThumbprint?.let { OpenIdConstants.TOKEN_TYPE_DPOP },
                 )
             },
             onFailure = {

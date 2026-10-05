@@ -101,7 +101,12 @@ val OAuth2ClientTest by matrixSuite {
                 null
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+                .apply {
+                    active shouldBe true
+                    // bearer tokens are bound to no key
+                    confirmationClaim.shouldBeNull()
+                    tokenType.shouldBeNull()
+                }
         }
         test("token introspection JWT response requires client authentication") {
             val preAuth = it.server.providePreAuthorizedCode(user)

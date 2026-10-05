@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import kotlinx.serialization.Serializable
@@ -60,4 +61,11 @@ data class TokenInfo(
     val token: String,
     val authorizationDetails: Set<AuthorizationDetails>? = null,
     val scope: String? = null,
+    /**
+     * Confirmation of the key a DPoP-bound token is bound to, i.e. its JWK SHA-256 thumbprint in `jkt`
+     * ([RFC 9449 6.](https://datatracker.ietf.org/doc/html/rfc9449#section-6)). Before granting access with this
+     * token, check that the DPoP proof of the request is signed with that key
+     * ([RFC 9449 7.1](https://datatracker.ietf.org/doc/html/rfc9449#section-7.1)).
+     */
+    val confirmationClaim: ConfirmationClaim? = null,
 )
