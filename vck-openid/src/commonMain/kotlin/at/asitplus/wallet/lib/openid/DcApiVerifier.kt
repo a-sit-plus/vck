@@ -283,6 +283,9 @@ class DcApiVerifier @JvmOverloads constructor(
      * second response to it fails. Fails if the response has not been processed, i.e. it is malformed, can't be
      * correlated with a request, comes from an origin not in the `expected_origins` of a signed request, or violates
      * the protection its request requires.
+     *
+     * For ISO/IEC 18013-7 Annex C, succeeds with an [Iso180137AnnexCResult]: the verified documents
+     * ([Iso180137AnnexCWrapper]), or the error status of the wallet's device response ([Iso180137AnnexCError]).
      */
     suspend fun validateAuthnResponse(
         input: String,
@@ -307,6 +310,9 @@ class DcApiVerifier @JvmOverloads constructor(
      * second response to it fails. Fails if the response has not been processed, i.e. it is malformed, can't be
      * correlated with a request, comes from an origin not in the `expected_origins` of a signed request, or violates
      * the protection its request requires.
+     *
+     * For ISO/IEC 18013-7 Annex C, succeeds with an [Iso180137AnnexCResult]: the verified documents
+     * ([Iso180137AnnexCWrapper]), or the error status of the wallet's device response ([Iso180137AnnexCError]).
      */
     suspend fun validateAuthnResponse(
         input: DigitalCredentialInterface,
@@ -359,7 +365,7 @@ class DcApiVerifier @JvmOverloads constructor(
         receivedData: DCAPIResponse,
         externalId: String,
         expectedOrigin: String
-    ): KmmResult<Iso180137AnnexCWrapper> = catching {
+    ): KmmResult<Iso180137AnnexCResult> = catching {
         val isoMdocRequest = stateToIsoMdocRequestStore.remove(externalId)
             ?: throw IllegalStateException("Can't load request for response to $externalId")
         val decryptionKey = ephemeralEncryptionKeyService.consumeKey(externalId)?.getUnderLyingSigner() as? Signer.ECDSA
@@ -382,6 +388,16 @@ class DcApiVerifier @JvmOverloads constructor(
             ct = encryptedResponseData.cipherText,
         )
         val deviceResponse = coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(encodedDeviceResponse)
+        if (deviceResponse.status != DEVICE_RESPONSE_STATUS_OK) {
+            // ISO/IEC 18013-5, 10.3.6: "If the mdoc returns a status code different than 0, it shall not return any
+            // documents"; the request has been consumed above, so the error ends it like a presentation
+            with(deviceResponse) {
+                require(listOf(documents, zkDocuments, encryptedDocuments).all { it.isNullOrEmpty() }) {
+                    "Device response with status $status must not contain documents"
+                }
+            }
+            return@catching Iso180137AnnexCError(deviceResponse.status)
+        }
 
         val documents = verifier.verifyPresentationIsoMdoc(
             input = deviceResponse,
@@ -450,3 +466,6 @@ class DcApiVerifier @JvmOverloads constructor(
         )
     )
 }
+
+/** ISO/IEC 18013-5, 10.3.6: normal processing, the only status of a device response that carries documents. */
+private const val DEVICE_RESPONSE_STATUS_OK = 0U

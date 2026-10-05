@@ -11,6 +11,7 @@ import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.SessionTranscript
@@ -55,6 +56,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
@@ -125,6 +127,9 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                     isoMdocRequest: IsoMdocRequest,
                     origin: String = callingOrigin,
                 ) = createWalletResponse(holderAgent, isoMdocRequest, origin, requestedCredential)
+
+                suspend fun deviceResponse(isoMdocRequest: IsoMdocRequest) =
+                    createDeviceResponse(holderAgent, isoMdocRequest, callingOrigin, requestedCredential)
             }
         }
     } - {
@@ -169,7 +174,7 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 expectedOrigin = callingOrigin,
             ).getOrThrow()
 
-            result.documents.shouldBeSingleton().first().apply {
+            result.shouldBeInstanceOf<Iso180137AnnexCWrapper>().documents.shouldBeSingleton().first().apply {
                 validItems.firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
                     .shouldNotBeNull().elementValue shouldBe "Susanne"
                 validItems.firstOrNull { it.elementIdentifier == CLAIM_DATE_OF_BIRTH }
@@ -187,7 +192,7 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 receivedData = dcApiResponse,
                 externalId = transactionId,
                 expectedOrigin = callingOrigin,
-            ).getOrThrow().documents.shouldBeSingleton()
+            ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>().documents.shouldBeSingleton()
 
             // there is no nonce to consume in this flow, so the stored request is what makes it single-use:
             // resubmitting the very same encrypted device response must not validate again
@@ -216,6 +221,33 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 externalId = transactionId,
                 expectedOrigin = callingOrigin,
             ).isFailure shouldBe true
+        }
+
+        "an error status of the wallet's device response is returned, ending the request (ISO/IEC 18013-5, 10.3.6)" - { f ->
+            listOf(10U, 11U, 12U).asData() test { status ->
+                val transactionId = uuid4().toString()
+                val isoMdocRequest = f.createIsoMdocRequest(transactionId)
+                val dcApiResponse = IsoMdocResponse(
+                    sealDeviceResponse(isoMdocRequest, callingOrigin, DeviceResponse(Version(1, 0), status = status))
+                )
+
+                f.verifier.validateAuthnResponse(dcApiResponse, transactionId, callingOrigin)
+                    .getOrThrow() shouldBe Iso180137AnnexCError(status)
+
+                f.verifier.validateAuthnResponse(dcApiResponse, transactionId, callingOrigin).isFailure shouldBe true
+            }
+        }
+
+        test("a device response with an error status and documents is rejected") { f ->
+            val transactionId = uuid4().toString()
+            val isoMdocRequest = f.createIsoMdocRequest(transactionId)
+            val withDocuments = f.deviceResponse(isoMdocRequest).copy(status = 10U)
+
+            f.verifier.validateIsoResponse(
+                receivedData = sealDeviceResponse(isoMdocRequest, callingOrigin, withDocuments),
+                externalId = transactionId,
+                expectedOrigin = callingOrigin,
+            ).exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "must not contain documents"
         }
 
         test("a rejected attempt consumes the transaction id, so the genuine response is not accepted later") { f ->
@@ -418,17 +450,30 @@ private suspend fun createWalletResponse(
     isoMdocRequest: IsoMdocRequest,
     origin: String,
     requestedCredential: RequestOptionsCredential,
-): DCAPIResponse {
-    val sessionTranscript = SessionTranscript.forDcApi(
-        DCAPIHandover(
-            type = TYPE_DCAPI,
-            hash = coseCompliantSerializer.encodeToByteArray(
-                DCAPIInfo(isoMdocRequest.encryptionInfo, origin.serializeOrigin()!!)
-            ).sha256(),
-        )
+): DCAPIResponse = sealDeviceResponse(
+    isoMdocRequest,
+    origin,
+    createDeviceResponse(holder, isoMdocRequest, origin, requestedCredential),
+)
+
+private fun sessionTranscriptFor(isoMdocRequest: IsoMdocRequest, origin: String) = SessionTranscript.forDcApi(
+    DCAPIHandover(
+        type = TYPE_DCAPI,
+        hash = coseCompliantSerializer.encodeToByteArray(
+            DCAPIInfo(isoMdocRequest.encryptionInfo, origin.serializeOrigin()!!)
+        ).sha256(),
     )
+)
+
+private suspend fun createDeviceResponse(
+    holder: Holder,
+    isoMdocRequest: IsoMdocRequest,
+    origin: String,
+    requestedCredential: RequestOptionsCredential,
+): DeviceResponse {
+    val sessionTranscript = sessionTranscriptFor(isoMdocRequest, origin)
     val calcIsoSessionTranscript = { sessionTranscript }
-    val deviceResponse = holder.createDefaultPresentation(
+    return holder.createDefaultPresentation(
         request = PresentationRequestParameters(
             nonce = uuid4().toString(), // not relevant for mdoc device authentication
             audience = origin,
@@ -440,11 +485,18 @@ private suspend fun createWalletResponse(
         .verifiablePresentations.values.shouldBeSingleton().first().shouldBeSingleton().first()
         .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
         .deviceResponse
+}
 
+/** Encrypts [deviceResponse] as the wallet does for ISO/IEC 18013-7 Annex C, for the calling [origin]. */
+private fun sealDeviceResponse(
+    isoMdocRequest: IsoMdocRequest,
+    origin: String,
+    deviceResponse: DeviceResponse,
+): DCAPIResponse {
     val sealed = hpke.SealBase(
         pkR = isoMdocRequest.encryptionInfo.encryptionParameters.recipientPublicKey
             .toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC,
-        info = coseCompliantSerializer.encodeToByteArray(sessionTranscript),
+        info = coseCompliantSerializer.encodeToByteArray(sessionTranscriptFor(isoMdocRequest, origin)),
         aad = byteArrayOf(),
         pt = coseCompliantSerializer.encodeToByteArray(deviceResponse),
     )
