@@ -155,9 +155,18 @@ val request = verifier.createAuthnRequest(
 // For RequestByReference/SignedRequestByReference also serve the request object at your request_uri, with the
 // parameters the wallet may have posted: request.loadRequestObjectHttpResponse(walletParameters).getOrThrow()
 
-val response = verifier.validateAuthnResponse(walletRedirectUrlOrDirectPostBody).getOrThrow()
-val vpValidation = response.vpTokenValidationResult?.getOrThrow()
-// For direct_post and direct_post.jwt, answer the wallet's POST, optionally with a redirect_uri for the wallet:
+val response = verifier.validateAuthnResponse(walletRedirectUrlOrDirectPostBody).getOrElse {
+    // Not processed, e.g. malformed or for an unknown state: answer the wallet's POST with a non-success status
+    return badRequest(it)
+}
+when (response) {
+    // The wallet presented: getOrThrow() fails for an invalid presentation
+    is AuthnResponseResult.Success -> response.vpTokenResult.getOrThrow()
+    // The wallet declined, e.g. with access_denied; escape the wallet's error_description when displaying it
+    is AuthnResponseResult.Error -> response.error
+}
+// Either one ends the request. For direct_post and direct_post.jwt, answer the wallet's POST of a processed response,
+// optionally with a redirect_uri for the wallet:
 val answer = directPostHttpResponse(redirectUri = "https://rp.example/result#response_code=$freshSecret")
 ```
 

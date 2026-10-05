@@ -303,14 +303,32 @@ checks live in `vck`. Holder store entries retain the credential issuer certific
 trust policy out of the serializers and extract certificates per credential format rather than treating a response as
 having one issuer.
 
-Protocol-owned presentation challenges flow through `NonceService` and `NonceChallengeVerifier`; OpenID request state
-is stored and validated against the response before successful nonces are consumed. Reuse these boundaries rather
-than adding protocol-specific nonce maps or validating only values echoed by the caller.
+Protocol-owned presentation challenges flow through `NonceService` and `NonceChallengeVerifier`; OpenID4VP verifiers
+consume the nonce together with the request a response answers, see *OpenID4VP Verifier Responses*. Reuse these
+boundaries rather than adding protocol-specific nonce maps or validating only values echoed by the caller.
 
 Credential issuance and status-list publication are also separate responsibilities. `IssuerAgent` asks an optional
 `StatusListAgent` for a status reference, while `IssuerCredentialStore` records issued credentials and
 `ReferencedTokenStore` owns status-list indices, identifiers, and revocation state. Keep custom persistence adapters at
 those interfaces instead of coupling status-list generation back to credential signing.
+
+### OpenID4VP Verifier Responses
+
+`OpenId4VpVerifier` and `DcApiVerifier` let `AuthnResponseProcessor.consume()` process every authorization response,
+then continue with their transport checks and the validation of the `vp_token`. Rules to keep:
+
+- A response correlated with its request (by `state`, or by `externalId` over the DC API) ends that request before
+  anything that can fail: the request is removed from the store, its nonce consumed, and its ephemeral encryption key
+  removed. Authorization responses are not retryable, so a second response to the request finds none. This relies on
+  `MapStore.remove` being atomic, also in custom stores.
+- An authorization error response of the wallet is a processed outcome (`AuthnResponseResult.Error`) and ends the
+  request like a presentation (`AuthnResponseResult.Success`); both are answered with `directPostHttpResponse()`.
+  `validateAuthnResponse` fails only for responses that have not been processed: malformed, not correlated, or
+  violating the protection or transport the request requires.
+- Transport checks (no DC API response to `OpenId4VpVerifier`, the calling origin in the `expected_origins` of a
+  signed DC API request) apply to errors as well, so they stay outside of the `vp_token` validation.
+- `direct_post.jwt` and `dc_api.jwt` accept a plaintext response only for an error, where OpenID4VP 1.0 allows it
+  (8.3.1, A.4), never for a `vp_token`.
 
 ### Client-Side HTTP Exchanges
 
