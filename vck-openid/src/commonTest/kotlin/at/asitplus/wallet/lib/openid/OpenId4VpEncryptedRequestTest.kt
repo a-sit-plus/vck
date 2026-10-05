@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION") // uses the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient
-
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -23,6 +21,7 @@ import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.oauth2.FakeHttpStack
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.uuid4
@@ -80,16 +79,14 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                     ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
                     requireEncryptedRequests: Boolean = false,
                     serve: suspend (at.asitplus.openid.RequestObjectParameters?) -> String = { "" },
-                ) = OpenId4VpHolder(
-                    holder = holderAgent,
-                    randomSource = RandomSource.Default,
-                    ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
-                    requireEncryptedRequests = requireEncryptedRequests,
-                    remoteResourceRetriever = { input ->
-                        if (input.url == requestUrl)
-                            serve(input.requestObjectParameters).also { served = it }
-                        else null
-                    },
+                ) = Wallet(
+                    holder = OpenId4VpHolder(
+                        holder = holderAgent,
+                        randomSource = RandomSource.Default,
+                        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+                        requireEncryptedRequests = requireEncryptedRequests,
+                    ),
+                    endpoint = requestUriEndpoint(requestUrl) { parameters -> serve(parameters).also { served = it } },
                 )
             }
         }
@@ -106,7 +103,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
 
             val holder = f.holder(EphemeralEncryptionKeyService()) { jar.invoke(it).getOrThrow() }
 
-            holder.createAuthnResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -127,7 +124,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
 
             val holder = f.holder { jar.invoke(it).getOrThrow() }
 
-            holder.createAuthnResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -149,7 +146,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 jar.invoke(it?.copy(walletMetadataString = null)).getOrThrow()
             }
 
-            holder.createAuthnResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -173,7 +170,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 ).getOrThrow().serialize()
             }
 
-            holder.createAuthnResponse(url).isFailure shouldBe true
+            holder.createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "encryption key is consumed, so the same request object can't be replayed" { f ->
@@ -191,9 +188,9 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 first ?: jar.invoke(params).getOrThrow().also { first = it }
             }
 
-            holder.createAuthnResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url).getOrThrow()
             first.shouldNotBeNull()
-            holder.createAuthnResponse(url).isFailure shouldBe true
+            holder.createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "encrypted request object is rejected if we did not ask for encryption" { f ->
@@ -214,7 +211,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 ).getOrThrow().serialize()
             }
 
-            holder.createAuthnResponse(url).isFailure shouldBe true
+            holder.createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "no encryption when verifier and wallet share no content encryption algorithm" { f ->
@@ -236,14 +233,12 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 randomSource = RandomSource.Default,
                 ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
                 supportedJweEncryptionAlgorithms = setOf(JweEncryption.A256GCM),
-                remoteResourceRetriever = { input ->
-                    if (input.url == f.requestUrl)
-                        jar.invoke(input.requestObjectParameters).getOrThrow().also { f.served = it }
-                    else null
-                },
             )
+            val endpoint = requestUriEndpoint(f.requestUrl) { parameters ->
+                jar.invoke(parameters).getOrThrow().also { f.served = it }
+            }
 
-            holder.createAuthnResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url, endpoint).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { verifier.validateAuthnResponse(it.url).getOrThrow() }
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -266,7 +261,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 jar.invoke(it?.copy(walletNonce = null)).getOrThrow()
             }
 
-            holder.createAuthnResponse(url).isFailure shouldBe true
+            holder.createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "no wallet metadata is sent when fetching the request object with GET" { f ->
@@ -284,7 +279,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 jar.invoke(it).getOrThrow()
             }
 
-            holder.createAuthnResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -306,7 +301,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 jar.invoke(it?.copy(walletMetadataString = null)).getOrThrow()
             }
 
-            holder.createAuthnResponse(url).isFailure shouldBe true
+            holder.createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "GET flow is still accepted when we require encryption" { f ->
@@ -323,7 +318,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 jar.invoke(it).getOrThrow()
             }
 
-            holder.createAuthnResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -351,7 +346,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
 
             val holder = f.holder(EphemeralEncryptionKeyService()) { jar.invoke(it).getOrThrow() }
 
-            holder.startAuthorizationResponsePreparation(url).getOrThrow().apply {
+            holder.prepareAuthorizationResponse(url).getOrThrow().apply {
                 requestWasEncrypted shouldBe true
                 request.decryptedFrom.shouldNotBeNull().apply {
                     algorithm shouldBe JweAlgorithm.ECDH_ES
@@ -371,7 +366,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
 
             val holder = f.holder { jar.invoke(it).getOrThrow() }
 
-            holder.startAuthorizationResponsePreparation(url).getOrThrow().apply {
+            holder.prepareAuthorizationResponse(url).getOrThrow().apply {
                 requestWasEncrypted shouldBe false
                 request.decryptedFrom shouldBe null
             }
@@ -392,7 +387,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 )
             }
 
-            holder.createAuthnResponse(url).isFailure shouldBe true
+            holder.createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "encrypted request object whose payload is plain JSON is rejected" { f ->
@@ -416,7 +411,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 ).getOrThrow().serialize()
             }
 
-            holder.createAuthnResponse(url).isFailure shouldBe true
+            holder.createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "request object with the wrong typ is rejected" { f ->
@@ -437,7 +432,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 ).getOrThrow().toString()
             }
 
-            holder.createAuthnResponse(url).isFailure shouldBe true
+            holder.createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "plain request object in the request parameter is rejected" { f ->
@@ -448,7 +443,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 f.requestFactory.createPlainAuthnRequest(f.requestOptions)
             ).encodeURLParameter()
 
-            f.holder().createAuthnResponse(url).isFailure shouldBe true
+            f.holder().createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "unparseable request parameter is rejected" { f ->
@@ -459,7 +454,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 f.requestOptions, CreationOptions.Query(f.walletUrl)
             ).getOrThrow().url + "&request=not-a-request-object"
 
-            f.holder().createAuthnResponse(url).isFailure shouldBe true
+            f.holder().createAuthorizationResponse(url).isFailure shouldBe true
         }
 
         "wallet metadata carries exactly one encryption key, fresh for every request" { f ->
@@ -479,10 +474,16 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
                 jar.invoke(params).getOrThrow()
             }
 
-            holder.createAuthnResponse(url).getOrThrow()
-            holder.createAuthnResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url).getOrThrow()
+            holder.createAuthorizationResponse(url).getOrThrow()
             keyIds.size shouldBe 2
             keyIds[0].shouldNotBeNull() shouldNotBe keyIds[1].shouldNotBeNull()
         }
     }
+}
+
+/** A wallet fetching request objects from the `request_uri` [endpoint] of the verifier. */
+private class Wallet(private val holder: OpenId4VpHolder, private val endpoint: FakeHttpStack) {
+    suspend fun createAuthorizationResponse(input: String) = holder.createAuthorizationResponse(input, endpoint)
+    suspend fun prepareAuthorizationResponse(input: String) = holder.prepareAuthorizationResponse(input, endpoint)
 }

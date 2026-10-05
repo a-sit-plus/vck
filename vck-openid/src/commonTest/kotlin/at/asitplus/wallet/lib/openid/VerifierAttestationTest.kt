@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION") // uses the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient
-
 package at.asitplus.wallet.lib.openid
 
 /*
@@ -78,7 +76,7 @@ val VerifierAttestationTest by matrixSuite {
                 ),
                 randomSource = RandomSource.Default,
             )
-            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+            val authnResponse = holderOid4vp.createAuthorizationResponse(authnRequestWithRequestObject).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()

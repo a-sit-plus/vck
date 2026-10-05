@@ -10,7 +10,6 @@ import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
-import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
@@ -71,13 +70,10 @@ val OpenId4VpProtocolClientTest by matrixSuite {
         CreationOptions.SignedRequestByReference(walletUrl, requestUrl, method),
     ).getOrThrow()
 
-    /** Serves the request object of this request as the verifier does, decoding the form of a POST to it. */
-    fun CreatedRequest.serve(
+    /** The verifier's `request_uri` endpoint serving the request object of this request, see [requestUriEndpoint]. */
+    fun CreatedRequest.endpoint(
         alter: (RequestObjectParameters?) -> RequestObjectParameters? = { it },
-    ): suspend (PreparedHttpRequest) -> ReceivedHttpResponse = { request ->
-        val parameters = request.body?.decodeFromFormUrlEncoded<RequestObjectParameters>()
-        plainAnswer(loadRequestObject.shouldNotBeNull().invoke(alter(parameters)).getOrThrow())
-    }
+    ) = requestUriEndpoint(requestUrl) { loadRequestObject.shouldNotBeNull().invoke(alter(it)).getOrThrow() }
 
     /** The parameters of the request object of this request, as served for a GET. */
     suspend fun CreatedRequest.requestObjectParameters(): AuthenticationRequestParameters =
@@ -105,9 +101,36 @@ val OpenId4VpProtocolClientTest by matrixSuite {
         http.sent.shouldBeEmpty()
     }
 
+    test("request that is not an authorization request is rejected") {
+        // a request for remote signature creation (RQES), which is parsed into `SignatureRequestParameters`
+        val input = """
+            {
+              "response_type": "sign_response",
+              "client_id": "ff008dbe-0a00-43aa-8cbd-57b44fbd8cf9",
+              "response_mode": "direct_post",
+              "response_uri": "https://example.com/wallet/sd/upload",
+              "nonce": "SD6caM6K17zn6lnvVlu9FQ92Je2rWg-rqbMegL1CBIY",
+              "signatureQualifier": "eu_eidas_qes",
+              "documentDigests": [
+                { "hash": "dbe822af4b1cfddea8e8526a04a46557074d093cb02fee0f3dcc5f323629504e", "label": "sample.pdf" }
+              ],
+              "documentLocations": [
+                { "uri": "https://example.com/rp/document/sample.pdf", "method": { "type": "public" } }
+              ],
+              "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1"
+            }
+        """.replace("\n", "").trimIndent()
+        val http = FakeHttpStack(scripted())
+
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            http.execute(client().prepareAuthorizationResponse(input))
+        }.message.shouldNotBeNull() shouldContain "SignatureRequestParameters"
+        http.sent.shouldBeEmpty()
+    }
+
     test("request object passed by reference is fetched with GET") {
         val request = byReference()
-        val http = FakeHttpStack(request.serve())
+        val http = request.endpoint()
 
         http.execute(client().prepareAuthorizationResponse(request.url))
             .request.shouldBeInstanceOf<RequestParametersFrom.Jws<*>>()
@@ -123,7 +146,7 @@ val OpenId4VpProtocolClientTest by matrixSuite {
 
     test("request object passed by reference with request_uri_method=post is fetched with wallet metadata and nonce") {
         val request = byReference(RequestUriMethod.POST)
-        val http = FakeHttpStack(request.serve())
+        val http = request.endpoint()
 
         val state = http.execute(client().prepareAuthorizationResponse(request.url))
 
@@ -141,7 +164,7 @@ val OpenId4VpProtocolClientTest by matrixSuite {
 
     test("request object without the wallet nonce sent fails") {
         val request = byReference(RequestUriMethod.POST)
-        val http = FakeHttpStack(request.serve { it?.copy(walletNonce = null) })
+        val http = request.endpoint { it?.copy(walletNonce = null) }
 
         shouldThrow<OAuth2Exception.InvalidRequest> {
             http.execute(client().prepareAuthorizationResponse(request.url))
@@ -151,7 +174,7 @@ val OpenId4VpProtocolClientTest by matrixSuite {
 
     test("request object encrypted to the key advertised in wallet metadata is decrypted") {
         val request = byReference(RequestUriMethod.POST)
-        val http = FakeHttpStack(request.serve())
+        val http = request.endpoint()
         val holder = OpenId4VpHolder(ephemeralEncryptionKeyService = EphemeralEncryptionKeyService())
 
         http.execute(client(holder).prepareAuthorizationResponse(request.url))

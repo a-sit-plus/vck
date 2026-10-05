@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION") // uses the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient
-
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
@@ -86,7 +84,7 @@ private suspend fun present(holder: HolderAgent, verifierOid4vp: OpenId4VpVerifi
         CreationOptions.Query("https://example.com/wallet/${uuid4()}")
     ).getOrThrow().url.let { authnRequest ->
         val authnResponse = OpenId4VpHolder(holder = holder, randomSource = RandomSource.Default)
-            .createAuthnResponse(authnRequest).getOrThrow()
+            .createAuthorizationResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
             .vpTokenValidationResult.shouldNotBeNull().getOrThrow()

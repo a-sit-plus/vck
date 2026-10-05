@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION") // uses the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient
-
 package at.asitplus.wallet.lib.openid
 
 /*
@@ -102,7 +100,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 ),
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
-            it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .error.shouldNotBeNull()
         }
@@ -124,7 +122,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
             ).getOrThrow().url
 
             val authnResponse =
-                it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+                it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -174,7 +172,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val vcFreshnessSummary = it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -203,7 +201,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .error.shouldNotBeNull()
         }
@@ -223,7 +221,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -250,7 +248,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .error.shouldNotBeNull()
         }
@@ -270,7 +268,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -295,7 +293,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
             ).getOrThrow().url
 
             val preparationState =
-                it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow()
+                it.holderOid4vp.prepareAuthorizationResponse(authnRequest).getOrThrow()
 
             val matchesWithBadQueryIdentifiers = it.holderAgent
                 .matchPresentationRequestAgainstCredentialStore(dcqlRequest).getOrThrow()
@@ -333,7 +331,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
             ).getOrThrow().url
 
             val preparationState =
-                it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow()
+                it.holderOid4vp.prepareAuthorizationResponse(authnRequest).getOrThrow()
 
             val otherDcqlQuery = CredentialPresentationRequestBuilder(
                 RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
@@ -394,7 +392,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow()
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest).getOrThrow()
 
             val goodMatches = it.holderAgent
                 .matchPresentationRequestAgainstCredentialStore(dcqlRequest).getOrThrow()
@@ -428,7 +426,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -464,7 +462,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val groupedResult = it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()

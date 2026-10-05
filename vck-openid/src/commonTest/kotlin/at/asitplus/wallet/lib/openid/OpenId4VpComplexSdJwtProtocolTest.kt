@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION") // uses the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient
-
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
@@ -111,7 +109,7 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
                 CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
