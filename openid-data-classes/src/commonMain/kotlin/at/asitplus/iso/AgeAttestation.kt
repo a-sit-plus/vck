@@ -25,9 +25,6 @@ object AgeAttestation {
     fun isAgeAttestation(elementIdentifier: String): Boolean = thresholdOf(elementIdentifier) != null
 
     /**
-     * Resolves which data element answers a request for [requestedElement], given the elements [available] in one
-     * namespace of a credential (element identifier to element value).
-     *
      * For an age attestation identifier this implements 7.2.5:
      * 1. Among the attestations with value `true`, take the one whose NN is equal to or larger than the requested
      *    NN with the smallest difference.
