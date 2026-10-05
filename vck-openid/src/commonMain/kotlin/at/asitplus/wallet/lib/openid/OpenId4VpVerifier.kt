@@ -183,6 +183,9 @@ class OpenId4VpVerifier @JvmOverloads constructor(
      * - a URL, containing parameters in the fragment, e.g. `https://example.com#id_token=...`
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
+     *
+     * For the response modes `direct_post` and `direct_post.jwt`, answer the posted response with
+     * [directPostHttpResponse] once it has been processed.
      */
     suspend fun validateAuthnResponse(
         input: String,

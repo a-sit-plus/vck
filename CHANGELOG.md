@@ -139,6 +139,11 @@ Release 9.0.0 (unreleased):
       `OpenId4VciServer.CredentialResponse` (`application/json`, or `application/jwt` when encrypted, each with
       `Cache-Control: no-store`); errors of the credential endpoint convert with
       `toResourceServerHttpResponse(authorizationHeader)`
+    - Add `CreatedRequest.loadRequestObjectHttpResponse(params)` in `vck-openid`, serving the request object at the
+      verifier's `request_uri` as `application/oauth-authz-req+jwt` (OpenID4VP 1.0, 5.10.1)
+    - Add `directPostHttpResponse(redirectUri)` in `vck-openid` (`at.asitplus.wallet.lib.openid`), the answer of the
+      verifier's response endpoint for `direct_post` and `direct_post.jwt`: a JSON object with the optional
+      `redirect_uri` (OpenID4VP 1.0, 8.2), with `Cache-Control: no-store`
 
 Release 8.0.0:
 

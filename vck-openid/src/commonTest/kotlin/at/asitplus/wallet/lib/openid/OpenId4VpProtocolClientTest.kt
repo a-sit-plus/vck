@@ -23,6 +23,7 @@ import at.asitplus.wallet.lib.oauth2.FakeHttpStack
 import at.asitplus.wallet.lib.oauth2.formParameters
 import at.asitplus.wallet.lib.oauth2.jsonResponse
 import at.asitplus.wallet.lib.oauth2.kinds
+import at.asitplus.wallet.lib.oauth2.received
 import at.asitplus.wallet.lib.oauth2.scripted
 import at.asitplus.wallet.lib.oauth2.toErrorResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -48,7 +49,7 @@ val OpenId4VpProtocolClientTest by matrixSuite {
     fun plainAnswer(body: String, headers: Headers = Headers.Empty) =
         ReceivedHttpResponse(HttpStatusCode.OK, headers, body)
 
-    fun redirectUriAnswer(redirectUri: String) = jsonResponse(OpenId4VpSuccess(redirectUri))
+    fun redirectUriAnswer(redirectUri: String) = directPostHttpResponse(redirectUri).received()
 
     // Step sequences, see the KDoc of the methods of OpenId4VpProtocolClient
 
@@ -70,10 +71,18 @@ val OpenId4VpProtocolClientTest by matrixSuite {
         CreationOptions.SignedRequestByReference(walletUrl, requestUrl, method),
     ).getOrThrow()
 
-    /** The verifier's `request_uri` endpoint serving the request object of this request, see [requestUriEndpoint]. */
+    /**
+     * The verifier's `request_uri` endpoint serving the request object of this request with
+     * [loadRequestObjectHttpResponse], for the parameters the wallet sent, changed by [alter].
+     */
     fun CreatedRequest.endpoint(
         alter: (RequestObjectParameters?) -> RequestObjectParameters? = { it },
-    ) = requestUriEndpoint(requestUrl) { loadRequestObject.shouldNotBeNull().invoke(alter(it)).getOrThrow() }
+    ) = FakeHttpStack { request ->
+        if (request.url == requestUrl) loadRequestObjectHttpResponse(
+            alter(request.body?.decodeFromFormUrlEncoded<RequestObjectParameters>())
+        ).getOrThrow().received()
+        else ReceivedHttpResponse(HttpStatusCode.NotFound, Headers.Empty, "")
+    }
 
     /** The parameters of the request object of this request, as served for a GET. */
     suspend fun CreatedRequest.requestObjectParameters(): AuthenticationRequestParameters =
@@ -239,6 +248,12 @@ val OpenId4VpProtocolClientTest by matrixSuite {
         redirectUris.forEach {
             http.execute(client().sendAuthorizationResponse(response)) shouldBe it
         }
+    }
+
+    test("no redirect_uri for the verifier's answer without one") {
+        val http = FakeHttpStack(scripted(directPostHttpResponse().received()))
+
+        http.execute(client().sendAuthorizationResponse(response)).shouldBeNull()
     }
 
     test("no redirect_uri for an empty or non-JSON body, or JSON without redirect_uri") {
