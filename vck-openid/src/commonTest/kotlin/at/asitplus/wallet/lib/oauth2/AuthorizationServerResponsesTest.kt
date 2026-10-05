@@ -113,7 +113,7 @@ val AuthorizationServerResponsesTest by matrixSuite {
                 JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
                 TokenIntrospectionJwtPayload(
                     issuer = "https://as.example.com",
-                    audience = "https://rs.example.com",
+                    audience = setOf("https://rs.example.com"),
                     issuedAt = Clock.System.now(),
                     tokenIntrospection = TokenIntrospectionResponse(active = true),
                 ),
