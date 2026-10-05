@@ -64,7 +64,7 @@ VC-K provides full implementations of the OpenID protocol family for credential 
     - Signed and/or encrypted responses
     - Digital Credential Query Language (DCQL)
     - ISO DeviceRequest presentation for direct ISO 18013-5 and DC API transports
-    - See classes `OpenId4VpVerifier` and `OpenId4VpHolder`
+    - See classes `OpenId4VpVerifier`, `OpenId4VpHolder` and `OpenId4VpProtocolClient`
 
 ## EUDI Wallet Compatibility
 
@@ -158,28 +158,48 @@ val response = verifier.validateAuthnResponse(walletRedirectUrlOrDirectPostBody)
 val vpValidation = response.vpTokenValidationResult?.getOrThrow()
 ```
 
-On the wallet side, use the two-step API when the user must review and choose credentials. `OpenId4VpKtorHolder` from
-`vck-openid-ktor` wraps the same holder flow and also performs the HTTP POST/redirect response handling. To establish
-trust in the relying party sending a request, pass a `relyingPartyTrust`: it verifies the request object per client
-identifier scheme, with trust anchors for `x509_san_dns` and `x509_hash`, trusted attesters for
-`verifier_attestation`, and a registry of known clients for `pre-registered`.
+On the wallet side, use the two-step API when the user must review and choose credentials. To establish trust in
+the relying party sending a request, pass a `relyingPartyTrust`: it verifies the request object per client identifier
+scheme, with trust anchors for `x509_san_dns` and `x509_hash`, trusted attesters for `verifier_attestation`, and a
+registry of known clients for `pre-registered`.
+
+`OpenId4VpKtorHolder` from `vck-openid-ktor` sends the requests to the verifier with Ktor, i.e. it fetches a request
+object passed by reference and posts the response:
 
 ```kotlin
-val holder = OpenId4VpHolder(
+val wallet = OpenId4VpKtorHolder(
+    engine = httpClientEngine,
     keyMaterial = holderKeyMaterial,
-    holder = holderAgent,
-    remoteResourceRetriever = { request -> httpClient.get(request.url).bodyAsText() },
+    holderAgent = holderAgent,
 )
 
-val preparation = holder.startAuthorizationResponsePreparation(requestUrlFromQrOrDeepLink).getOrThrow()
+val preparation = wallet.startAuthorizationResponsePreparation(requestUrlFromQrOrDeepLink).getOrThrow()
+val matches = wallet.getMatchingCredentials(preparation).getOrThrow()
+
+// Show preparation.verifierInfo and matches to the user, then continue after consent.
+when (val result = wallet.finalizeAuthorizationResponse(preparation).getOrThrow()) {
+    // The URL carrying the response, or the verifier's redirect_uri after posting it (always an absolute https URI)
+    is OpenId4VpKtorHolder.AuthenticationSuccess -> result.redirectUri?.let { openBrowser(it) }
+    is OpenId4VpKtorHolder.AuthenticationForward -> returnToBrowserDcApi(result.authenticationResponseResult)
+}
+```
+
+Without Ktor, `OpenId4VpHolder` creates the response, and `OpenId4VpProtocolClient` returns the `HttpExchange`s to
+fetch the request object and to post the response. Send their requests with your HTTP stack, as `execute` shows for
+[OpenID4VCI](#openid4vci-credential-issuance):
+
+```kotlin
+val holder = OpenId4VpHolder(keyMaterial = holderKeyMaterial, holder = holderAgent)
+val client = OpenId4VpProtocolClient(holder)
+
+val preparation = execute(client.prepareAuthorizationResponse(requestUrlFromQrOrDeepLink))
 val matches = holder.getMatchingCredentials(preparation).getOrThrow()
 
 // Show preparation.verifierInfo and matches to the user, then continue after consent.
-val authnResponse = holder.finalizeAuthorizationResponse(preparation).getOrThrow()
-
-when (authnResponse) {
+when (val authnResponse = holder.finalizeAuthorizationResponse(preparation).getOrThrow()) {
     is AuthenticationResponseResult.Redirect -> openBrowser(authnResponse.url)
-    is AuthenticationResponseResult.Post -> postForm(authnResponse.url, authnResponse.params)
+    is AuthenticationResponseResult.Post -> execute(client.sendAuthorizationResponse(authnResponse))
+        ?.let { openBrowser(it) }
     is AuthenticationResponseResult.DcApi -> returnToBrowserDcApi(authnResponse)
 }
 ```

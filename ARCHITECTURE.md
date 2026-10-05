@@ -86,7 +86,9 @@ Important areas:
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/openid`
   OpenID4VP and Digital Credentials API behavior: `OpenId4VpHolder`, `OpenId4VpVerifier`, `DcApiHolder`,
   `DcApiVerifier`, request parsing/factories, response creation/validation, verifier attestation, DCQL, and ISO/IEC
-  18013-7 Annex C integration.
+  18013-7 Annex C integration. `OpenId4VpProtocolClient` covers the wallet's requests to the verifier, i.e. fetching
+  the request object and posting the authorization response (see
+  [Client-Side HTTP Exchanges](#client-side-http-exchanges)).
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oidvci`
   OpenID4VCI wallet and issuer behavior: `OpenId4VciClient`, `OpenId4VciServer`, `ProofValidator`, credential scheme
   mapping, credential request creation, proof validation, encryption handling, and `OpenId4VciProtocolClient` for the
@@ -100,8 +102,8 @@ Important areas:
 
 Refactor here when changing protocol state, request/response construction, validation policy, proof handling, or
 client/server OAuth2 behavior. Keep raw HTTP client/server mechanics out of this module; use callback abstractions
-for remote resource retrieval and transport-specific integration. The wallet-side OAuth2 and OpenID4VCI clients do not
-send requests at all, but return `HttpExchange`s.
+for remote resource retrieval and transport-specific integration. The wallet-side OAuth2, OpenID4VCI and OpenID4VP
+clients do not send requests at all, but return `HttpExchange`s.
 
 ### `vck-openid-ktor`
 
@@ -112,9 +114,10 @@ Important areas:
 
 - `vck-openid-ktor/src/commonMain/kotlin/at/asitplus/wallet/lib/ktor/openid`
   Ktor-backed OpenID4VCI and OpenID4VP clients, shared HTTP-client configuration and error mapping, plus remote
-  credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciKtorClient` and `RemoteOAuth2AuthorizationServerAdapter`
-  only send the requests of the exchanges of `OAuth2ProtocolClient` and `OpenId4VciProtocolClient` (`execute` in
-  `HttpClient.kt`), and run the exchanges of each flow in order; they contain no protocol logic and no DPoP handling.
+  credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciKtorClient`, `OpenId4VpKtorHolder` and
+  `RemoteOAuth2AuthorizationServerAdapter` only send the requests of the exchanges of `OAuth2ProtocolClient`,
+  `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient` (`execute` in `HttpClient.kt`), and run the exchanges of
+  each flow in order; they contain no protocol logic and no DPoP handling.
 
 Put Ktor engine selection, request execution, response body handling, cache policy, and Ktor-specific test doubles
 here. Non-success responses are `HttpErrorResponseException` instances (defined in `vck-openid`, so that exchanges
@@ -310,20 +313,23 @@ those interfaces instead of coupling status-list generation back to credential s
 
 ### Client-Side HTTP Exchanges
 
-The wallet-side OAuth2 and OpenID4VCI clients in `vck-openid` never send HTTP requests themselves, so they work with
-any HTTP stack. Code is placed by where its output goes:
+The wallet-side OAuth2, OpenID4VCI and OpenID4VP clients in `vck-openid` never send HTTP requests themselves, so they
+work with any HTTP stack. Code is placed by where its output goes:
 
-- Everything inside a request or response body stays in the parameter builders `OAuth2Client` and `OpenId4VciClient`:
-  PKCE, JAR, scope and authorization details, credential request proofs, key attestations, encryption.
-- Everything that ends up in an HTTP header or depends on HTTP responses lives in `OAuth2ProtocolClient` and
-  `OpenId4VciProtocolClient`: `Authorization`, DPoP proofs and nonces, client attestation and its PoP, attestation
-  challenges, retries, and response parsing.
+- Everything inside a request or response body stays in the parameter builders `OAuth2Client` and `OpenId4VciClient`,
+  and in `OpenId4VpHolder` and `RequestParser` for OpenID4VP: PKCE, JAR, scope and authorization details, credential
+  request proofs, key attestations, encryption, request object parsing and decryption, presentations.
+- Everything that ends up in an HTTP header or depends on HTTP responses lives in `OAuth2ProtocolClient`,
+  `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient`: `Authorization`, DPoP proofs and nonces, client
+  attestation and its PoP, attestation challenges, retries, and response parsing, e.g. the `redirect_uri` in the
+  verifier's answer to an authorization response.
 
 Each call of the protocol clients returns an `HttpExchange` (`vck-openid/.../lib/HttpExchange.kt`). The caller calls
 `next()`, sends each request it gets (`HttpStep.Send`), and passes the response back, until the exchange is done. The
-caller also runs the exchanges of a flow in order (metadata, authorization, token, nonce, credential); the Ktor
-clients are such callers. Every request is one of the kinds of `ProtocolRequest`, and the KDoc of each method lists
-the kinds, order and retry limit of its exchange, e.g. `([AttestationChallenge] Token){1,3}`.
+caller also runs the exchanges of a flow in order (metadata, authorization, token, nonce, credential; or request
+object, then the authorization response after the user's consent); the Ktor clients are such callers. Every request
+is one of the kinds of `ProtocolRequest`, and the KDoc of each method lists the kinds, order and retry limit of its
+exchange, e.g. `([AttestationChallenge] Token){1,3}`.
 
 Rules to keep when changing these clients:
 
@@ -337,6 +343,10 @@ Rules to keep when changing these clients:
   origin. Attestation challenges are single-use.
 - Load the client attestation, and check its key, before any request of an attempt, so that a request that cannot
   authenticate is never sent.
+- Check what a server's answer asks the wallet to do in the protocol client, so the check applies with every HTTP
+  stack: the verifier's `redirect_uri` must be an absolute `https` URI.
+- Send form bodies as `application/x-www-form-urlencoded` without a `charset` parameter, which the media type does not
+  define and some strict servers reject.
 
 ### Key Material and Crypto
 
