@@ -1,6 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -114,6 +115,17 @@ data class TokenIntrospectionResponse(
 
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,
+
+    /**
+     * OPTIONAL. Confirmation of the key the token is bound to
+     * ([RFC 7800 3.1](https://datatracker.ietf.org/doc/html/rfc7800#section-3.1)), for a DPoP-bound token the JWK
+     * SHA-256 thumbprint of the DPoP key in `jkt`
+     * ([RFC 9449 6.2](https://datatracker.ietf.org/doc/html/rfc9449#section-6.2)). A resource server MUST check that
+     * the DPoP proof of the request is signed with that key
+     * ([RFC 9449 7.1](https://datatracker.ietf.org/doc/html/rfc9449#section-7.1)).
+     */
+    @SerialName("cnf")
+    val confirmationClaim: ConfirmationClaim? = null,
 
     ) : TokenIntrospectionResult
 

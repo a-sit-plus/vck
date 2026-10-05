@@ -27,6 +27,14 @@ val TokenIntrospectionSerializationTest by matrixSuite {
         ) shouldBe """{"active":true,"aud":["https://a.example.com","https://b.example.com"]}"""
     }
 
+    test("DPoP binding in cnf (RFC 9449 6.2)") {
+        val json = """{"active":true,"sub":"someone@example.com","iss":"https://server.example.com",""" +
+                """"nbf":1562262611,"exp":1562266216,"cnf":{"jkt":"0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I"}}"""
+
+        joseCompliantSerializer.decodeFromString<TokenIntrospectionResponse>(json)
+            .confirmationClaim?.jsonWebKeyThumbprint shouldBe "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I"
+    }
+
     test("JWT payload round trip with the claims of RFC 9701 5.") {
         val payload = TokenIntrospectionJwtPayload(
             issuer = "https://as.example.com/",

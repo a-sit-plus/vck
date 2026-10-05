@@ -219,6 +219,11 @@ Release 9.0.0 (unreleased):
       scheme of the `Authorization` header (`DPoP`, `Bearer`), or the token itself for a header without scheme, which
       are no token type hints (RFC 7009, 4.1.2). Add `OpenIdConstants.TOKEN_TYPE_HINT_ACCESS_TOKEN` and
       `TOKEN_TYPE_HINT_REFRESH_TOKEN`
+    - Add `TokenIntrospectionResponse.confirmationClaim` (`cnf`) and `TokenInfo.confirmationClaim`:
+      `SimpleAuthorizationService.tokenIntrospection` conveys the binding of a DPoP-bound access token as `cnf` with the
+      JWK SHA-256 thumbprint in `jkt`, and `token_type` `DPoP` (RFC 9449, 6.2), and
+      `RemoteOAuth2AuthorizationServerAdapter.getTokenInfo` passes it on, so that a resource server can check that the
+      DPoP proof of a request is signed with that key (RFC 9449, 7.1)
 
 Release 8.0.0:
 
