@@ -74,7 +74,7 @@ data class TrustValidation(
      */
     val credentialIdentifier: String?,
     /** Names the trust source the anchors came from, e.g. the URL of a trust list, but never the certificates. */
-    val source: String?,
+    val source: String? = null,
 )
 
 /**

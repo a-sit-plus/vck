@@ -3,13 +3,8 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
-import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
-import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
-import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
-import at.asitplus.wallet.lib.validation.Requirement.OPTIONAL
-import at.asitplus.wallet.lib.validation.Requirement.REQUIRED
-import at.asitplus.wallet.lib.validation.Requirement.REQUIRED_IF_APPLICABLE
+import at.asitplus.wallet.lib.validation.CheckOutcome.*
+import at.asitplus.wallet.lib.validation.Requirement.*
 
 /*
  * Dependency and decision rules of validation, as pure functions over the report model.
@@ -57,7 +52,7 @@ internal fun credentialChecksWithoutPrerequisites(
     return CredentialChecks(
         parsing = parsing,
         issuerSignature = parsing.ifPassed { issuerSignature },
-        issuerTrust = TrustValidation(Blocked(), credentialIdentifier = null, source = null),
+        issuerTrust = TrustValidation(Blocked(), credentialIdentifier = null),
         semantics = Blocked(),
         disclosedItems = emptyList(),
         holderBinding = Blocked(),
