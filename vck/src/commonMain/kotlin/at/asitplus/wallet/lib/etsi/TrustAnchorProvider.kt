@@ -25,15 +25,20 @@ interface TrustAnchorProvider {
 
 
 
+/**
+ * Trust anchors from Lists of Trusted Entities. Anchors of one list never authorize a credential type of another,
+ * and a credential type without a known list has no anchors; to trust further sources for a type, use a
+ * [at.asitplus.wallet.lib.validation.CredentialTrustScope].
+ */
 class LoTETrustAnchorProvider(
     /** Every list the app has fetched and verified, from whichever stages it enabled. */
     private val trustLists: suspend () -> Collection<ListOfTrustedEntities>,
-    /** Lists for a credential type. Default: prefix mapping. */
+    /** Lists for a credential type. Default: the list of [LoteProfile.fromSchemeIdentifier], or none. */
     private val trustListsFor: suspend (credentialIdentifier: String) -> Collection<ListOfTrustedEntities> = { id ->
-        val profile = LoteProfile.fromSchemeIdentifier(id)
-        trustLists().filter { LoTEFilterService().profileOf(it) == profile }
+        LoteProfile.fromSchemeIdentifier(id)
+            ?.let { profile -> trustLists().filter { LoTEFilterService().profileOf(it) == profile } }
+            .orEmpty()
     },
-    private val additionalAnchors: List<X509Certificate> = emptyList(),
     private val filter: LoTEFilterService = LoTEFilterService(),
 ) : TrustAnchorProvider {
 
@@ -59,5 +64,5 @@ class LoTETrustAnchorProvider(
 
 
 
-    private fun List<TrustedCertificate>.anchors() = additionalAnchors + mapNotNull { it.certificate }
+    private fun List<TrustedCertificate>.anchors() = mapNotNull { it.certificate }
 }

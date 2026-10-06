@@ -7053,7 +7053,7 @@ val LoTEFilterTest by matrixSuite {
             ),
         ).asData() test { (_, data) ->
             val lote = Json.decodeFromString<ListOfTrustedEntities>(data.json)
-            val expectedProfile = data.fixedProfile ?: LoteProfile.fromSchemeIdentifier(data.schemeIdentifier)
+            val expectedProfile = checkNotNull(data.fixedProfile ?: LoteProfile.fromSchemeIdentifier(data.schemeIdentifier))
             val trustedCerts = LoTEFilterService().extractIssuanceCertificates(lote, expectedProfile)
 
             trustedCerts.size shouldNotBe 0
