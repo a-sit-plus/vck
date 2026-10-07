@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION") // tests the OpenId4VpHolder methods replaced by OpenId4VpProtocolClient until removed
+
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.testballoon.matrix.matrixSuite

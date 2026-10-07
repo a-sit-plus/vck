@@ -112,7 +112,7 @@ internal suspend fun <T> HttpClient.execute(exchange: HttpExchange<T>): T {
 }
 
 /** Sends [prepared] without ktor's response validation, so that every status code reaches the exchange. */
-private suspend fun HttpClient.send(prepared: PreparedHttpRequest): HttpResponse = request(prepared.url) {
+internal suspend fun HttpClient.send(prepared: PreparedHttpRequest): HttpResponse = request(prepared.url) {
     method = prepared.method
     expectSuccess = false
     prepared.headers.forEach { name, values ->

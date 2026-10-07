@@ -54,7 +54,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val authnRequest =
                 verifierOid4vp.createAuthnRequest(reqOptions, CreationOptions.Query(walletUrl)).getOrThrow().url
 
-            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
+            val params = holderOid4vp.prepareAuthorizationResponse(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
             val serialized =
@@ -110,7 +110,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
-            val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
+            val params = holderOid4vp.prepareAuthorizationResponse(serializedRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Jws<AuthenticationRequestParameters>>()
 
             val serialized =

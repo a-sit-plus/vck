@@ -6,10 +6,10 @@ import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants.ResponseMode
-import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
@@ -24,6 +24,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
@@ -32,13 +33,14 @@ import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupid.EuPidDataElements
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
+import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.DCQLMatchingResult
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -60,26 +62,29 @@ import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
-import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
+import at.asitplus.wallet.lib.openid.OpenId4VpSuccess
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
@@ -96,17 +101,18 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
 
-@Suppress("unused")
-val OpenId4VpWalletTest by matrixSuite {
+val OpenId4VpKtorHolderTest by matrixSuite {
 
     fixture {
         object {
             val countdownLatch = Mutex(true)
             val keyMaterial = EphemeralKeyWithoutCert()
             val holderAgent = HolderAgent(keyMaterial)
-            lateinit var wallet: OpenId4VpWallet
+            lateinit var wallet: OpenId4VpKtorHolder
             lateinit var url: String
             lateinit var mockEngine: HttpClientEngine
+            /** Content types of the authorization responses posted to the mock RP. */
+            val postedContentTypes = mutableListOf<ContentType?>()
 
             suspend fun setup(
                 scheme: CredentialScheme,
@@ -118,6 +124,7 @@ val OpenId4VpWalletTest by matrixSuite {
                 requestUriMethod: JarRequestParameters.RequestUriMethod =
                     JarRequestParameters.RequestUriMethod.GET,
                 ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+                redirectUriAfterPost: String? = null,
             ) {
                 val requestOptions = OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
@@ -134,19 +141,19 @@ val OpenId4VpWalletTest by matrixSuite {
                 if (storeCredentials) {
                     storeMockCredentials(scheme, representation, attributes)
                 }
-                setupRelyingPartyService(clientId, requestOptions, requestUriMethod) {
+                setupRelyingPartyService(clientId, requestOptions, requestUriMethod, redirectUriAfterPost) {
                     verifyReceivedAttributes(it, attributes)
                 }
-                setupWallet(this.mockEngine, ephemeralEncryptionKeyService)
+                setupWallet(HttpClient(this.mockEngine), ephemeralEncryptionKeyService)
             }
 
             fun setupWallet(
-                engine: HttpClientEngine,
+                httpClient: HttpClient,
                 ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
-            ) = OpenId4VpWallet(
-                engine = engine,
+            ) = OpenId4VpKtorHolder(
+                httpClient = httpClient,
                 keyMaterial = keyMaterial,
-                holderAgent = holderAgent,
+                holder = holderAgent,
                 ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
             ).also { this.wallet = it }
 
@@ -205,13 +212,14 @@ val OpenId4VpWalletTest by matrixSuite {
 
             /**
              * Setup the mock relying party service, for getting requests (referenced by `request_uri`) and to decode posted
-             * authentication responses
+             * authentication responses, answering posted ones with [redirectUriAfterPost], if set
              */
             suspend fun setupRelyingPartyService(
                 clientId: String,
                 requestOptions: OpenId4VpRequestOptions,
                 requestUriMethod: JarRequestParameters.RequestUriMethod =
                     JarRequestParameters.RequestUriMethod.GET,
+                redirectUriAfterPost: String? = null,
                 validate: (KmmResult<AuthnResponseResult>) -> Unit,
             ) {
                 val requestEndpointPath = "/request/${uuid4()}"
@@ -249,12 +257,18 @@ val OpenId4VpWalletTest by matrixSuite {
                             .startsWith(redirectUri) -> {
                             val requestBody = request.body.toByteArray().decodeToString()
                             val result = if (requestBody.isNotEmpty()) {
+                                postedContentTypes += request.body.contentType
                                 verifier.validateAuthnResponse(requestBody)
                             } else {
                                 verifier.validateAuthnResponse(request.url.toString())
                             }
                             validate(result)
-                            respondOk()
+                            redirectUriAfterPost?.let {
+                                respond(
+                                    content = joseCompliantSerializer.encodeToString(OpenId4VpSuccess(it)),
+                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                                )
+                            } ?: respondOk()
                         }
 
                         else -> respondError(HttpStatusCode.NotFound)
@@ -281,10 +295,156 @@ val OpenId4VpWalletTest by matrixSuite {
             val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
             it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
                 .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
 
             assertPresentation(it.countdownLatch)
+        }
+
+        test("direct_post answer with an https redirect_uri returns it") {
+            val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            val redirectUri = "https://rp.example.com/cb#response_code=${uuid4()}"
+            it.setup(
+                scheme = euPidSdJwtScheme,
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+                redirectUriAfterPost = redirectUri,
+            )
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+                .redirectUri shouldBe redirectUri
+
+            assertPresentation(it.countdownLatch)
+            it.postedContentTypes.map { it.toString() } shouldBe listOf("application/x-www-form-urlencoded")
+        }
+
+        test("direct_post answer with a javascript: redirect_uri fails") {
+            val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            it.setup(
+                scheme = euPidSdJwtScheme,
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+                redirectUriAfterPost = "javascript:alert(document.cookie)",
+            )
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            shouldThrow<IllegalArgumentException> {
+                it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+            }
+
+            // the RP has processed the response anyway, and gets no error response after it
+            assertPresentation(it.countdownLatch)
+            it.postedContentTypes.size shouldBe 1
+        }
+
+        test("requests are sent with the app's client and its plugins") {
+            it.setup(
+                scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+            )
+            it.setupWallet(HttpClient(it.mockEngine) { defaultRequest { header("X-Wallet-App", "test") } })
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+
+            assertPresentation(it.countdownLatch)
+            (it.mockEngine as MockEngine).requestHistory.apply {
+                map { request -> request.method } shouldBe listOf(HttpMethod.Get, HttpMethod.Post)
+                forEach { request -> request.headers["X-Wallet-App"] shouldBe "test" }
+            }
+        }
+
+        test("request object is not fetched through a redirect, even if the app's client follows redirects") {
+            val requestUrl = "http://rp.example.com/request/${uuid4()}"
+            val (url, jar) = OpenId4VpVerifier(
+                clientIdScheme = ClientIdScheme.PreRegistered(uuid4().toString(), "http://rp.example.com/cb"),
+            ).createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                    ).toDCQLRequest(),
+                ),
+                CreationOptions.SignedRequestByReference("http://wallet.example.com/", requestUrl),
+            ).getOrThrow()
+            jar.shouldNotBeNull()
+            // the redirect target serves the request object, so following the redirect would succeed
+            val engine = MockEngine { request ->
+                if (request.url.encodedPath == "/moved") respond(jar.invoke(null).getOrThrow())
+                else respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "http://rp.example.com/moved"))
+            }
+            it.setupWallet(HttpClient(engine) { followRedirects = true })
+
+            it.wallet.startAuthorizationResponsePreparation(url)
+                .exceptionOrNull().shouldBeInstanceOf<HttpErrorResponseException>()
+                .status shouldBe HttpStatusCode.Found
+            engine.requestHistory.map { request -> request.url.toString() } shouldBe listOf(requestUrl)
+        }
+
+        test("deprecated constructor taking an engine sends the requests too") {
+            it.setup(
+                scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+            )
+            @Suppress("DEPRECATION")
+            val wallet = OpenId4VpKtorHolder(
+                engine = it.mockEngine,
+                keyMaterial = it.keyMaterial,
+                holderAgent = it.holderAgent,
+            )
+
+            val state = wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+
+            assertPresentation(it.countdownLatch)
+        }
+
+        test("deprecated OpenId4VpHolder methods fetch request objects with the app's client") {
+            it.setup(
+                scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+                requestUriMethod = JarRequestParameters.RequestUriMethod.POST,
+            )
+            val unknownRequestUri = URLBuilder(it.url)
+                .apply { parameters["request_uri"] = "http://rp.example.com/unknown" }.buildString()
+
+            @Suppress("DEPRECATION")
+            val prepared = it.wallet.openId4VpHolder.startAuthorizationResponsePreparation(it.url)
+            @Suppress("DEPRECATION")
+            val notFound = it.wallet.openId4VpHolder.startAuthorizationResponsePreparation(unknownRequestUri)
+
+            prepared.getOrThrow()
+            notFound.exceptionOrNull().shouldBeInstanceOf<HttpErrorResponseException>()
+                .status shouldBe HttpStatusCode.NotFound
+            (it.mockEngine as MockEngine).requestHistory.first().apply {
+                method shouldBe HttpMethod.Post
+                body.contentType.toString() shouldBe "application/x-www-form-urlencoded"
+            }
         }
 
         test("presentEuPidCredentialSdJwtEncryptedRequestByPost") {
@@ -303,7 +463,7 @@ val OpenId4VpWalletTest by matrixSuite {
 
             val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
                 .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
 
             assertPresentation(it.countdownLatch)
@@ -324,7 +484,7 @@ val OpenId4VpWalletTest by matrixSuite {
             val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
             // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
             it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationSuccess>()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
                 .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
 
             assertPresentation(it.countdownLatch)
@@ -332,7 +492,7 @@ val OpenId4VpWalletTest by matrixSuite {
 
         test("DC API") {
             val mdlScheme = AttributeIndex.resolveIdentifier(MDL_DOCTYPE, ISO_MDOC)
-            it.setupWallet(HttpClient().engine)
+            it.setupWallet(HttpClient())
 
             val attributes = mapOf(
                 DCQLClaimsPathPointer("family_name") to "XXXMûstérfřău",
@@ -478,7 +638,7 @@ val OpenId4VpWalletTest by matrixSuite {
             val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
             it.wallet.finalizeAuthorizationResponse(preparationState, presentation)
                 .getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpWallet.AuthenticationForward>()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationForward>()
                 .authenticationResponseResult.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>().apply {
                     val responseJson = joseCompliantSerializer.encodeToString(
                         AuthenticationResponseParameters.serializer(),
@@ -518,22 +678,24 @@ val OpenId4VpWalletTest by matrixSuite {
 }
 
 // TODO: ClaimToBeIssued with DCQLClaimsPathPointer!
-private fun Map.Entry<DCQLClaimsPathPointer, Any>.toClaimToBeIssued(): ClaimToBeIssued = ClaimToBeIssued(key.getFirstName(), value)
+private fun Map.Entry<DCQLClaimsPathPointer, Any>.toClaimToBeIssued(): ClaimToBeIssued =
+    ClaimToBeIssued(key.getFirstName(), value)
 
 private fun Map.Entry<DCQLClaimsPathPointer, Any>.toIssuerSignedItem(): IssuerSignedItem =
     IssuerSignedItem(0U, Random.nextBytes(16), key.getFirstName(), value)
 
 
-private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean = catching {
-    when (val vpTokenValidationResult = this.vpTokenValidationResult.shouldNotBeNull().getOrThrow()) {
-        is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
-            .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
-            .containsAllAttributes(expectedAttributes)
+private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean =
+    catching {
+        when (val vpTokenValidationResult = this.vpTokenValidationResult.shouldNotBeNull().getOrThrow()) {
+            is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
+                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .containsAllAttributes(expectedAttributes)
 
+        }
+    }.getOrElse {
+        false
     }
-}.getOrElse {
-    false
-}
 
 private fun Verifier.VerifyPresentationResult.containsAllAttributes(
     attributes: Map<DCQLClaimsPathPointer, String>

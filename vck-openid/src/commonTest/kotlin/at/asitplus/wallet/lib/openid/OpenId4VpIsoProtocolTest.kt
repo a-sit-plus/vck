@@ -81,7 +81,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
             val authnResponse = it.holderOid4vp
-                .createAuthnResponse(authnRequest).getOrThrow()
+                .createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -108,7 +108,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
             val authnResponse = it.holderOid4vp
-                .createAuthnResponse(authnRequest).getOrThrow()
+                .createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -135,7 +135,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
@@ -167,7 +167,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 .getOrThrow().url
             //println("this is the request:\n$authnRequest")
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             val input = authnResponse.params.formUrlEncode()
@@ -205,7 +205,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             ).getOrThrow().url
             //println("this is the request:\n$authnRequest")
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             val input = authnResponse.params.formUrlEncode()
@@ -246,7 +246,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnRequest = scope.verifierOid4vp.createAuthnRequest(requestOptions, Query(scope.walletUrl))
                 .getOrThrow().url
 
-            val authnResponse = scope.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = scope.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>().apply {
                     // make sure there are two device responses for two credentials returned in the presentation
                     params["vp_token"].shouldNotBeEmpty().shouldNotBeNull().apply {
@@ -281,7 +281,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .vpTokenValidationResult.shouldNotBeNull().getOrThrow()

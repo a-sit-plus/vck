@@ -76,7 +76,7 @@ val VerifierAttestationTest by matrixSuite {
                 ),
                 randomSource = RandomSource.Default,
             )
-            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+            val authnResponse = holderOid4vp.createAuthorizationResponse(authnRequestWithRequestObject).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()

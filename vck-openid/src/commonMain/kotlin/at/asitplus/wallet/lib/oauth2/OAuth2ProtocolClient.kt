@@ -47,7 +47,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import io.ktor.utils.io.charsets.*
 import kotlinx.serialization.json.JsonObject
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -702,10 +701,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
     private fun formPost(url: String, parameters: FormParameters) = PreparedHttpRequest(
         url = url,
         method = HttpMethod.Post,
-        headers = headersOf(
-            HttpHeaders.ContentType,
-            ContentType.Application.FormUrlEncoded.withCharset(Charsets.UTF_8).toString()
-        ),
+        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded.toString()),
         body = parameters.formUrlEncode(),
     )
 

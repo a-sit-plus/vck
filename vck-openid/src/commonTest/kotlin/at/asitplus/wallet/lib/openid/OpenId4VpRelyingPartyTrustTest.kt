@@ -224,7 +224,7 @@ private suspend fun validate(clientId: String, trust: Set<RelyingPartyTrust>?) =
     ).encodeToParameters().formUrlEncode()
 
     OpenId4VpHolder(relyingPartyTrust = trust, randomSource = RandomSource.Default)
-        .startAuthorizationResponsePreparation("https://wallet.example.com/?$request").getOrThrow()
+        .prepareAuthorizationResponse("https://wallet.example.com/?$request").getOrThrow()
 }
 
 private fun subjectAltNameDns(dnsName: String) = listOf(
@@ -293,7 +293,7 @@ private suspend fun presentTo(
         holder = holder,
         relyingPartyTrust = trust,
         randomSource = RandomSource.Default,
-    ).createAuthnResponse(request).getOrThrow()
+    ).createAuthorizationResponse(request).getOrThrow()
         .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 }
 
