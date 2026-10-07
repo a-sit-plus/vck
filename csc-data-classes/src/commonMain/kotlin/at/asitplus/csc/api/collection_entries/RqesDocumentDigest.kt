@@ -1,11 +1,11 @@
 package at.asitplus.csc.api.collection_entries
 
 import at.asitplus.KmmResult
+import at.asitplus.awesn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifierStringSerializer
 import at.asitplus.catching
 import at.asitplus.csc.iff
 import at.asitplus.csc.or
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

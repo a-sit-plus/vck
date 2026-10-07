@@ -1,7 +1,7 @@
 package at.asitplus.csc.datamodel.documents
 
 import at.asitplus.csc.datamodel.basic.Hash
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.WellKnownDigest
 import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.base64.Base64ConfigBuilder
@@ -43,7 +43,7 @@ object ChecksumSerializer : KSerializer<Hash> {
             .also { require(it.size == 2) { "Invalid hash format: $it" } }
         return Hash(
             valueString.decodeToByteArray(Base64NoPaddingStrict),
-            Digest.entries.first { it.name.toLowerCasePreservingASCIIRules() == digestName }.oid
+            WellKnownDigest.entries.first { it.name.toLowerCasePreservingASCIIRules() == digestName }.oid
         )
     }
 

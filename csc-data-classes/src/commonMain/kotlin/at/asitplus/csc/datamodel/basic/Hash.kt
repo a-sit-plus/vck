@@ -1,8 +1,9 @@
 package at.asitplus.csc.datamodel.basic
 
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
+import at.asitplus.awesn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifierStringSerializer
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.digest.WellKnownDigest
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import io.ktor.util.*
 import kotlinx.serialization.SerialName
@@ -36,7 +37,7 @@ data class Hash(
     val algorithmOid: ObjectIdentifier,
 ) {
     @Transient
-    val digest: Digest = Digest.entries.first { it.oid == algorithmOid }
+    val digest: Digest = WellKnownDigest.entries.first { it.oid == algorithmOid }
 
     init {
         require(value.isNotEmpty()) { "value must not be empty" }

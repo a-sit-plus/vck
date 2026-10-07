@@ -1,9 +1,9 @@
 package at.asitplus.csc.datamodel.authorization
 
+import at.asitplus.awesn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifierStringSerializer
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.csc.datamodel.documents.DocumentInfo
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
