@@ -58,7 +58,7 @@ internal class AuthenticatedExchange<T>(
     private var state: State = State.Start
 
     /** Loaded for each attempt before fetching a challenge, so that a request that cannot authenticate is never sent. */
-    private var clientAttestation: JwsCompactTyped<JsonWebToken>? = null
+    private var instanceAttestation: JwsCompactTyped<JsonWebToken>? = null
 
     override suspend fun next(response: ReceivedHttpResponse?): KmmResult<HttpStep<T>> = catching {
         val current = state
@@ -78,8 +78,8 @@ internal class AuthenticatedExchange<T>(
     private suspend fun startAttempt(attempt: Int): HttpStep<T> = when (authentication) {
         is Authentication.AccessToken -> sendAttempt(attempt, null)
         is Authentication.Client -> {
-            clientAttestation = client.loadClientAttestation(authentication)
-            client.attestationChallengeRequest(authentication, request.url, clientAttestation)
+            instanceAttestation = client.loadInstanceAttestation(authentication)
+            client.attestationChallengeRequest(authentication, request.url, instanceAttestation)
                 ?.let {
                     state = State.AwaitingChallenge(attempt)
                     HttpStep.Send(ProtocolRequest.AttestationChallenge(it))
@@ -97,7 +97,7 @@ internal class AuthenticatedExchange<T>(
                 authentication = authentication,
                 resourceUrl = request.url,
                 httpMethod = request.method,
-                clientAttestation = clientAttestation,
+                instanceAttestation = instanceAttestation,
                 fetchedChallenge = fetchedChallenge,
             )
         }

@@ -87,12 +87,12 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
                 )
             )
         )
-        val openId4VciClient = OpenId4VciClient(remoteResourceRetriever = retriever::invoke)
+        val client = OpenId4VciClient(remoteResourceRetriever = retriever::invoke)
         val input = URLBuilder("https://wallet.example.org").apply {
             parameters.append("credential_offer_uri", offerUri)
         }.buildString()
 
         @Suppress("DEPRECATION") // the only user of this retriever contract for credential offers
-        openId4VciClient.parseCredentialOffer(input).getOrThrow() shouldBe offer
+        client.parseCredentialOffer(input).getOrThrow() shouldBe offer
     }
 }

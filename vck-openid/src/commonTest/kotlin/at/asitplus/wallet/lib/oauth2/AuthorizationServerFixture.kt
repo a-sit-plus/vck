@@ -101,10 +101,7 @@ class AuthorizationServerFixture(
 
     val client = OAuth2ProtocolClient(
         oAuth2Client = OAuth2Client(clientId = clientId),
-        keyMaterial = clientAuthKeyMaterial,
-        dpopKeyMaterial = if (useSingleKey) clientAuthKeyMaterial else EphemeralKeyWithoutCert(),
-        randomSource = RandomSource.Default,
-        loadInstanceAttestation = {
+        clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
             captureAttestationInput?.invoke(it)
             catching {
                 BuildClientAttestationJwt(
@@ -114,6 +111,8 @@ class AuthorizationServerFixture(
                 )
             }
         },
+        dpopKeyMaterial = if (useSingleKey) clientAuthKeyMaterial else EphemeralKeyWithoutCert(),
+        randomSource = RandomSource.Default,
     )
 
     suspend fun metadata() = authorizationService.metadata()

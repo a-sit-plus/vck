@@ -25,16 +25,17 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.MediaTypes
-import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
-import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.LazyExchange
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
+import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.PlainExchange
 import at.asitplus.wallet.lib.oauth2.ValueExchange
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 
 /**
  * Implements the client side of
@@ -48,12 +49,12 @@ import kotlin.jvm.JvmOverloads
  *  * Credential offer, if any: [loadCredentialOffer], then the pre-authorized code or authorization code flow for it.
  *  * Pre-authorized code: [loadIssuerMetadata], [parseCredentialMetadata], [OAuth2ProtocolClient.loadAuthorizationServerMetadata]
  *    of [selectAuthorizationServer], [OAuth2ProtocolClient.requestTokenWithPreAuthorizedCode], [nonceRequest],
- *    [OpenId4VciClient.createCredential], and [credentialRequest] for each of those credential requests.
+ *    [createCredential], and [credentialRequest] for each of those credential requests.
  *  * Authorization code: the same, but with [OAuth2ProtocolClient.startAuthorization], opening its URL in the browser,
  *    and [OAuth2ProtocolClient.requestTokenWithAuthCode] with the redirect back to the wallet, instead of the
  *    pre-authorized token request.
  *  * Refreshing a credential: [OAuth2ProtocolClient.requestTokenWithRefreshToken], [nonceRequest],
- *    [OpenId4VciClient.createCredential], and [credentialRequest].
+ *    [createCredential], and [credentialRequest].
  *
  * DPoP proofs and nonces for the credential issuer are handled by [oauth2Client].
  */
@@ -75,7 +76,9 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
      *
      * Sends no request for a credential offer passed by value, and `CredentialOffer` for one passed by reference.
      */
-    fun loadCredentialOffer(input: String): HttpExchange<CredentialOffer> = LazyExchange {
+    fun loadCredentialOffer(
+        input: String
+    ): HttpExchange<CredentialOffer> = LazyExchange {
         when (val parsed = vciClient.parseCredentialOfferInput(input)) {
             is OpenId4VciClient.CredentialOfferInput.ByValue -> ValueExchange(parsed.offer)
             is OpenId4VciClient.CredentialOfferInput.ByReference -> PlainExchange(
@@ -109,66 +112,112 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
     /**
      * Parses [issuerMetadata] and returns a list of [CredentialIdentifierInfo].
      */
-    fun parseCredentialMetadata(issuerMetadata: IssuerMetadata): KmmResult<Collection<CredentialIdentifierInfo>> =
-        catching {
-            issuerMetadata.supportedCredentialConfigurations.map {
-                CredentialIdentifierInfo(
-                    issuerMetadata = issuerMetadata,
-                    credentialIdentifier = it.key,
-                    supportedCredentialFormat = it.value
-                )
-            }.also {
-                Napier.i("parseCredentialMetadata returns $it")
-            }
+    fun parseCredentialMetadata(
+        issuerMetadata: IssuerMetadata
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
+        issuerMetadata.supportedCredentialConfigurations.map {
+            CredentialIdentifierInfo(
+                issuerMetadata = issuerMetadata,
+                credentialIdentifier = it.key,
+                supportedCredentialFormat = it.value
+            )
+        }.also {
+            Napier.i("parseCredentialMetadata returns $it")
         }
+    }
 
     /**
      * The authorization server to use for [issuerMetadata], i.e. the first entry of
      * [IssuerMetadata.authorizationServers], or [credentialIssuer] itself.
      */
-    fun selectAuthorizationServer(issuerMetadata: IssuerMetadata, credentialIssuer: String): String =
-        issuerMetadata.authorizationServers?.firstOrNull() ?: credentialIssuer
+    fun selectAuthorizationServer(
+        issuerMetadata: IssuerMetadata,
+        credentialIssuer: String
+    ): String = issuerMetadata.authorizationServers?.firstOrNull()
+        ?: credentialIssuer
 
     /** Resolves the [CredentialScheme] of [credentialFormat] from the registered schemes, see [AttributeIndex]. */
-    suspend fun resolveCredentialScheme(credentialFormat: SupportedCredentialFormat): CredentialScheme? =
-        when (credentialFormat) {
-            is SupportedCredentialFormatIsoMdoc ->
-                AttributeIndex.resolveIdentifier(credentialFormat.docType, ISO_MDOC)
+    suspend fun resolveCredentialScheme(
+        credentialFormat: SupportedCredentialFormat
+    ): CredentialScheme? = when (credentialFormat) {
+        is SupportedCredentialFormatIsoMdoc ->
+            AttributeIndex.resolveIdentifier(credentialFormat.docType, ISO_MDOC)
 
-            is SupportedCredentialFormatSdJwt ->
-                AttributeIndex.resolveIdentifier(credentialFormat.sdJwtVcType, SD_JWT)
+        is SupportedCredentialFormatSdJwt ->
+            AttributeIndex.resolveIdentifier(credentialFormat.sdJwtVcType, SD_JWT)
 
-            is SupportedCredentialFormatW3cVcJwt ->
-                AttributeIndex.resolveIdentifierPlainJwt(credentialFormat.credentialDefinition.types)
+        is SupportedCredentialFormatW3cVcJwt ->
+            AttributeIndex.resolveIdentifierPlainJwt(credentialFormat.credentialDefinition.types)
 
-            is SupportedCredentialFormatW3cVcJsonLd ->
-                AttributeIndex.resolveIdentifierPlainJwt(credentialFormat.credentialDefinition.type)
+        is SupportedCredentialFormatW3cVcJsonLd ->
+            AttributeIndex.resolveIdentifierPlainJwt(credentialFormat.credentialDefinition.type)
 
-            is SupportedCredentialFormatW3cVcJwtJsonLd ->
-                AttributeIndex.resolveIdentifierPlainJwt(credentialFormat.credentialDefinition.type)
-        }
+        is SupportedCredentialFormatW3cVcJwtJsonLd ->
+            AttributeIndex.resolveIdentifierPlainJwt(credentialFormat.credentialDefinition.type)
+    }
 
     /**
      * Requests a fresh `c_nonce` from [IssuerMetadata.nonceEndpointUrl], to be used in
-     * [OpenId4VciClient.createCredential], or `null` if the credential issuer has no nonce endpoint.
+     * [createCredential], or `null` if the credential issuer has no nonce endpoint.
      * The `DPoP-Nonce` of the response, if any, is used by [oauth2Client] for the DPoP proofs of the following
      * [credentialRequest]s.
      *
      * Sends `Nonce`.
      */
-    fun nonceRequest(issuerMetadata: IssuerMetadata): HttpExchange<String>? =
-        issuerMetadata.nonceEndpointUrl?.let { url ->
-            PlainExchange(
-                candidates = listOf(ProtocolRequest.Nonce(PreparedHttpRequest(url = url, method = HttpMethod.Post))),
-                parse = { joseCompliantSerializer.decodeFromString<ClientNonceResponse>(it.body).clientNonce },
-                onResponse = { requestUrl, response ->
-                    oauth2Client.recordResourceServerResponse(requestUrl, response.headers)
-                },
-            )
-        }
+    fun nonceRequest(
+        issuerMetadata: IssuerMetadata
+    ): HttpExchange<String>? = issuerMetadata.nonceEndpointUrl?.let { url ->
+        PlainExchange(
+            candidates = listOf(ProtocolRequest.Nonce(PreparedHttpRequest(url = url, method = HttpMethod.Post))),
+            parse = { joseCompliantSerializer.decodeFromString<ClientNonceResponse>(it.body).clientNonce },
+            onResponse = { requestUrl, response ->
+                oauth2Client.recordResourceServerResponse(requestUrl, response.headers)
+            },
+        )
+    }
 
     /**
-     * Sends [request], as created by [OpenId4VciClient.createCredential], to the
+     * Creates the credential requests for [tokenResponse] with [OpenId4VciClient.createCredential], whose proof JWTs
+     * name the `client_id` of [oauth2Client] as the issuer, as
+     * [OID4VCI 1.0 Appendix F.1](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-F.1)
+     * requires. Send each one with [credentialRequest].
+     */
+    suspend fun createCredential(
+        tokenResponse: TokenResponseParameters,
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String? = null,
+        previouslyRequestedScope: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<OpenId4VciClient.CredentialRequest>> = vciClient.createCredential(
+        tokenResponse = tokenResponse,
+        metadata = metadata,
+        credentialFormat = credentialFormat,
+        clientNonce = clientNonce,
+        previouslyRequestedScope = previouslyRequestedScope,
+        clock = clock,
+        clientId = oauth2Client.oAuth2Client.clientId,
+    )
+
+    /**
+     * Creates the credential request for exactly one credential with [OpenId4VciClient.createCredential], whose proof
+     * JWT names the `client_id` of [oauth2Client] as the issuer. Send it with [credentialRequest].
+     */
+    suspend fun createCredential(
+        metadata: IssuerMetadata,
+        credentialConfigurationId: String,
+        clientNonce: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<OpenId4VciClient.CredentialRequest> = vciClient.createCredential(
+        metadata = metadata,
+        credentialConfigurationId = credentialConfigurationId,
+        clientNonce = clientNonce,
+        clock = clock,
+        clientId = oauth2Client.oAuth2Client.clientId,
+    )
+
+    /**
+     * Sends [request], as created by [createCredential], to the
      * [IssuerMetadata.credentialEndpointUrl] with the access token from [tokenResponse], and parses the (possibly
      * encrypted) response into credentials to store.
      *
