@@ -52,7 +52,7 @@ internal fun credentialChecksWithoutPrerequisites(
     return CredentialChecks(
         parsing = parsing,
         issuerSignature = parsing.ifPassed { issuerSignature },
-        issuerTrust = TrustValidation(Blocked(), credentialIdentifier = null),
+        issuerTrust = TrustValidation(Blocked()),
         semantics = Blocked(),
         disclosedItems = emptyList(),
         holderBinding = Blocked(),

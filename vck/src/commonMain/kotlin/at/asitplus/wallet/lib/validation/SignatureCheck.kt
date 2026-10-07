@@ -38,8 +38,8 @@ data class SignatureVerification(
  *     certificate the trust check evaluates.
  *
  * A `jku` is never followed: no artifact in scope resolves its key that way, and following a URL the sender chose
- * invites server-side request forgery [RFC8725-3.10]. Where a protocol does resolve keys from a URL, its client
- * retrieves them like any other HTTP request, and passes the key as `key`.
+ * "could result in server-side request forgery (SSRF) attacks" (RFC 8725, 3.10). Where a protocol does resolve keys
+ * from a URL, its client retrieves them like any other HTTP request, and passes the key as `key`.
  *
  * Only asymmetric signature algorithms are accepted, never `none` or a MAC.
  */
@@ -132,12 +132,3 @@ class SignatureCheck @JvmOverloads constructor(
         return (protectedChain ?: unprotectedChain)?.map { X509Certificate.decodeFromDer(it) }
     }
 }
-
-/*
- * References
- *
- * | Tag          | Source                                                                                         |
- * |--------------|------------------------------------------------------------------------------------------------|
- * | RFC8725-3.10 | RFC 8725 (JSON Web Token Best Current Practices), 3.10 Do Not Trust Received Claims: blindly   |
- * |              | following a `jku` or `x5u` header "could result in server-side request forgery (SSRF) attacks" |
- */

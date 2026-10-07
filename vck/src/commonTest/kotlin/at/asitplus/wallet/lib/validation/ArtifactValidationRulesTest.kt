@@ -13,7 +13,7 @@ import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.JsonObject
 import kotlin.time.Duration.Companion.seconds
 
-private val walletProvider = TrustValidation(Passed, credentialIdentifier = null, source = "wallet providers")
+private val walletProvider = TrustValidation(Passed, source = "wallet providers")
 
 private val noStatus = StatusValidation(NotApplicable, emptyList(), NotApplicable)
 
@@ -57,7 +57,7 @@ private val passingClientAttestation = ClientAttestationChecks(
     challenge = Passed,
 )
 
-private val relyingPartyTrust = TrustValidation(Passed, credentialIdentifier = null, source = "x509_san_dns anchors")
+private val relyingPartyTrust = TrustValidation(Passed, source = "x509_san_dns anchors")
 
 private val passingRequestObject = RequestObjectChecks(
     parsing = Passed,

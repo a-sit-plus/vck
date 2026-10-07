@@ -19,14 +19,15 @@ internal enum class TrustRule {
     /**
      * The signing certificate is issued by an anchor, or the chain consists of only the signing certificate, which is
      * itself an anchor: issuers of credentials, as `requireTrustedSigningCertificate` with `allowDirectTrust`.
-     * [HAIP-X5C] forbids a self-signed signer of an SD-JWT VC, which a directly listed one may be (L1).
+     * A directly listed certificate may be self-signed, which OpenID4VC HAIP 1.0, 6.1.1 forbids for the issuer of an
+     * SD-JWT VC.
      */
     ISSUED_BY_ANCHOR_OR_LISTED,
 
     /**
      * The signing certificate is issued by an anchor, the anchor is not transported, and the signer is not
-     * self-signed: status list tokens [HAIP-STATUS], key attestations [HAIP-KA], wallet attestations [HAIP-WIA],
-     * and signed metadata [HAIP-METADATA].
+     * self-signed, as OpenID4VC HAIP 1.0 requires for status list tokens (6.1), key attestations (4.5.1), wallet
+     * attestations (4.4.1), and signed issuer metadata (4.1).
      */
     ISSUED_BY_ANCHOR,
 
@@ -44,8 +45,8 @@ internal enum class TrustRule {
  * Blocked if no anchors are configured at all (`null`), failed if there are none, as the configured trust source
  * then authorizes no signer, and failed if the chain does not lead to an anchor.
  */
-// TODO Evaluate the revocation of every certificate in the path, RFC 5280 6.1.3 (a)(3) [RFC5280-PATH], once CRL
-//  and OCSP are supported (L1)
+// TODO Evaluate the revocation of every certificate in the path, as path validation requires ("the certificate is not
+//  revoked", RFC 5280, 6.1.3 (a)(3)), once CRL and OCSP are supported
 internal suspend fun checkTrust(
     chain: CertificateChain?,
     anchors: Set<X509Certificate>?,
@@ -72,7 +73,7 @@ internal suspend fun checkTrust(
 /**
  * Whether [chain] is authorized for [purpose] by the anchors of the signed [credentialIdentifier], see
  * [CredentialTrustAnchors]: issuers may be issued by an anchor or listed themselves, status list signers have to be
- * issued by an anchor [HAIP-STATUS].
+ * issued by an anchor (OpenID4VC HAIP 1.0, 6.1).
  *
  * Blocked if no [CredentialTrustAnchors] are configured, no scope covers the type, or its anchors are unavailable.
  */
@@ -108,21 +109,3 @@ internal suspend fun CredentialTrustAnchors?.checkCredentialTrust(
         source = anchors.source
     )
 }
-
-/*
- * References
- *
- * | Tag           | Source                                                                                      |
- * |---------------|---------------------------------------------------------------------------------------------|
- * | HAIP-METADATA | OpenID4VC HAIP 1.0 (2025-12-24), 4.1 Issuer Metadata: x5c, trust anchor not included,       |
- * |               | signer not self-signed                                                                      |
- * | HAIP-WIA      | OpenID4VC HAIP 1.0, 4.4.1 Wallet Attestation: certificate and chain excluding the trust     |
- * |               | anchor in x5c                                                                               |
- * | HAIP-KA       | OpenID4VC HAIP 1.0, 4.5.1 Key Attestation: trust anchor not included, signer not            |
- * |               | self-signed                                                                                 |
- * | HAIP-STATUS   | OpenID4VC HAIP 1.0, 6.1 IETF SD-JWT VC Profile: Status List Token key in x5c, trust anchor  |
- * |               | not included, signer not self-signed                                                        |
- * | HAIP-X5C      | OpenID4VC HAIP 1.0, 6.1.1 Issuer identification and key resolution: issuer certificate and  |
- * |               | chain in x5c, trust anchor not included, signer not self-signed                             |
- * | RFC5280-PATH  | RFC 5280, 6.1.3 (a)(3): "the certificate is not revoked"                                    |
- */
