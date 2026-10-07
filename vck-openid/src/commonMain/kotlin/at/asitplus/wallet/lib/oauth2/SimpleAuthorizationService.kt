@@ -6,8 +6,8 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AttestationChallengeResponse
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferGrants
 import at.asitplus.openid.CredentialOfferGrantsAuthCode
@@ -30,6 +30,7 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -41,15 +42,14 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.CodeService
-import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFunInput
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.TokenInfo
-import at.asitplus.openid.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.RequestParser
 import at.asitplus.wallet.lib.utils.DefaultMapStore
@@ -884,7 +884,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
  *
  * Send it converted with `toHttpResponse()`, which sets the headers.
  */
-data class ResponseWithDpopNonce<T>(
+data class ResponseWithDpopNonce<T> @JvmOverloads constructor(
     val response: T,
     /** Sent as HTTP header `DPoP-Nonce`, see [HttpHeaders.DPoPNonce] */
     val dpopNonce: String?,

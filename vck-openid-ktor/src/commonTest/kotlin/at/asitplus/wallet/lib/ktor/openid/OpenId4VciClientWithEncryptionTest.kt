@@ -34,6 +34,7 @@ import at.asitplus.wallet.lib.ktor.openid.TestUtils.credentialDataProviderFun
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondResourceServerError
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifyIsoMdocCredential
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
 import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
@@ -41,11 +42,13 @@ import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
+import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.IssuerEncryptionService
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
+import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -131,8 +134,8 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: RequestParameters =
                         RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
-                    authorizationService.par(authnRequest, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
+                    authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -145,7 +148,7 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
                         if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
                         else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     authorizationService.authorize(authnRequest) { catching { dummyUser() } }.fold(
-                        onSuccess = { respondRedirect(it.url) },
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -153,18 +156,19 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromFormUrlEncoded<TokenRequestParameters>()
-                    authorizationService.token(params, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
+                    authorizationService.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
                 request.url.fullPath.startsWith(nonceEndpointPath) -> {
-                    respond(openId4VciServer.nonceWithDpopNonce().getOrThrow())
+                    respond(openId4VciServer.nonceWithDpopNonce().getOrThrow().toHttpResponse())
                 }
 
                 request.url.fullPath.startsWith(challengeEndpointPath) -> {
-                    respond(authorizationService.attestationChallenge().getOrThrow())
+                    authorizationService.attestationChallenge().getOrThrow().shouldNotBeNull()
+                        .let { respond(it.toHttpResponse()) }
                 }
 
                 request.url.fullPath.startsWith(credentialEndpointPath) -> {
@@ -180,8 +184,8 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
                         ),
                         request = request.toRequestInfo(),
                     ).fold(
-                        onSuccess = { respond(it) },
-                        onFailure = { respondOAuth2Error(it) }
+                        onSuccess = { respond(it.toHttpResponse()) },
+                        onFailure = { respondResourceServerError(it, authn) }
                     )
                 }
 
