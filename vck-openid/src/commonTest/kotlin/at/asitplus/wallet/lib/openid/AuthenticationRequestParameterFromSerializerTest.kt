@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestObjectParameters
@@ -68,7 +69,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val authnRequest = joseCompliantSerializer.encodeToString(
                 verifierOid4vp.createAuthnRequest(reqOptions, byReference).getOrThrow()
                     .loadRequestObject.shouldNotBeNull().invoke(RequestObjectParameters()).getOrThrow().run {
-                        JwsCompactTyped<AuthenticationRequestParameters>(this).payload
+                        JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>(this).payload
                     }
             )
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
@@ -83,7 +84,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
         "DcApiUnsigned test $representation" {
             val parameters = verifierOid4vp.createAuthnRequest(reqOptions, byReference).getOrThrow()
                 .loadRequestObject.shouldNotBeNull().invoke(RequestObjectParameters()).getOrThrow().run {
-                    JwsCompactTyped<AuthenticationRequestParameters>(this).payload
+                    JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>(this).payload
                 }
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiUnsigned(
                 parameters = parameters,
@@ -151,9 +152,9 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
-            val compactTyped = JwsTyped<AuthenticationRequestParameters>(serializedRequest)
+            val compactTyped = JwsTyped<AuthenticationRequestParameters, JwsHeader>(serializedRequest)
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped<AuthenticationRequestParameters>(listOf(compactTyped.jws.toJwsFlattened())),
+                jwsTyped = JwsTyped<AuthenticationRequestParameters, JwsHeader>(listOf(compactTyped.jws.toJwsFlattened())),
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
@@ -183,8 +184,8 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             Url(authnRequestUrl).decodeFromQuery<JarRequestParameters>().request.shouldNotBeNull()
 
         val params = RequestParametersFrom.Jws<AuthenticationRequestParameters>(
-            jws = JwsTyped<AuthenticationRequestParameters>(serializedRequest).jws,
-            parameters = JwsTyped<AuthenticationRequestParameters>(serializedRequest).payload,
+            jws = JwsTyped<AuthenticationRequestParameters, JwsHeader>(serializedRequest).jws,
+            parameters = JwsTyped<AuthenticationRequestParameters, JwsHeader>(serializedRequest).payload,
             decryptedFrom = JweHeader(
                 algorithm = JweAlgorithm.ECDH_ES,
                 encryption = JweEncryption.A128GCM,

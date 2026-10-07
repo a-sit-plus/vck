@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -352,7 +354,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractLeafCertKey(): JsonWebKey? =
         (this as? RequestParametersFrom.Jws<AuthenticationRequestParameters>)?.jws?.let {
-            (it as? JwsCompact)?.jwsHeader?.certificateChain?.firstOrNull()?.publicKey
+            (it as? JwsCompact)?.typed<AuthenticationRequestParameters, JwsHeader>()?.wrappedHeader?.header?.certificateChain?.firstOrNull()?.publicKey
                 ?.toJsonWebKey()
         }
 

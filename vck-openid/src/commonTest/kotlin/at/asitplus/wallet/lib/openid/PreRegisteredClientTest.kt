@@ -12,6 +12,7 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -182,7 +183,7 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             authnRequest.clientId shouldBe it.clientId
             val jar = authnRequest.request.shouldNotBeNull()
-            val jwsObject = JwsCompactTyped<AuthenticationRequestParameters>(jar)
+            val jwsObject = JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>(jar)
             VerifyJwsObject().invoke(jwsObject.jws).getOrThrow()
 
             val authnResponse = it.holderOid4vp.createAuthnResponse(jar).getOrThrow()
@@ -428,7 +429,7 @@ val PreRegisteredClientTest by matrixSuite {
                 remoteResourceRetriever = {
                     if (it.url == requestUrl) {
                         jar.invoke(it.requestObjectParameters).getOrThrow().also {
-                            JwsCompactTyped<AuthenticationRequestParameters>(it).payload.walletNonce.also {
+                            JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>(it).payload.walletNonce.also {
                                 it.shouldNotBeNull()
                                 nonceMap.contains(it).shouldBeTrue()
                             }

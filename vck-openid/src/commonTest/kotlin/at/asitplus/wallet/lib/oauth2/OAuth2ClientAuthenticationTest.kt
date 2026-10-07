@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.signum.indispensable.josef.typed
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
@@ -136,8 +139,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
                 @Suppress("DEPRECATION")
                 suspend fun par(
-                    clientAttestation: JwsCompactTyped<JsonWebToken> = this.clientAttestation,
-                    clientAttestationPop: JwsCompactTyped<JsonWebToken>? = null,
+                    clientAttestation: JwsCompactTyped<JsonWebToken, JwsHeader> = this.clientAttestation,
+                    clientAttestationPop: JwsCompactTyped<JsonWebToken, JwsHeader>? = null,
                 ) = server.par(
                     client.createAuthRequestJar(state = uuid4().toString(), scope = scope),
                     RequestInfo(
@@ -686,7 +689,9 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
     }
 }
 
-private suspend fun JwsCompactTyped<JsonWebToken>.withHeaderAlg(alg: JwsAlgorithm.Signature) =
-    JwsCompactTyped<JsonWebToken>(jws.jwsHeader.copy(algorithm = alg), jws.getPayload<JsonWebToken>().getOrThrow()) {
-        jws.signature.rawByteArray
-    }
+private suspend fun JwsCompactTyped<JsonWebToken, JwsHeader>.withHeaderAlg(alg: JwsAlgorithm.Signature) =
+    JwsCompact(
+        protectedHeader = wrappedHeader.header.copy(algorithm = alg),
+        payload = jws.plainPayload,
+        signer = { jws.plainSignature },
+    ).typed<JsonWebToken, JwsHeader>()

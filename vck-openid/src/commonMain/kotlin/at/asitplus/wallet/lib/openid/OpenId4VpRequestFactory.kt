@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -141,7 +142,7 @@ internal class OpenId4VpRequestFactory(
         requestOptions: OpenId4VpRequestOptions,
         signing: RequestObjectSigning,
         requestObjectParameters: RequestObjectParameters? = null,
-    ): KmmResult<JwsCompactTyped<AuthenticationRequestParameters>> = catching {
+    ): KmmResult<JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>> = catching {
         val requestObject = createPlainAuthnRequest(requestOptions, requestObjectParameters)
         val preRegisteredIssuer = (clientIdScheme as? ClientIdScheme.PreRegistered)
             ?.let { it.issuerUri ?: it.clientId }

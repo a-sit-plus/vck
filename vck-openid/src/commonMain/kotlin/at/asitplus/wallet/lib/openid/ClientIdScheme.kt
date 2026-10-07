@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.signum.indispensable.pki.AlternativeNames
 import at.asitplus.signum.indispensable.pki.GeneralName
 import at.asitplus.awesn1.crypto.pki.X509GeneralName
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.iso.sha256
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -44,7 +45,7 @@ sealed class ClientIdScheme(
      * the public key MUST be obtained from the `client_metadata` parameter.
      */
     class VerifierAttestation(
-        val attestationJwt: JwsCompactTyped<JsonWebToken>,
+        val attestationJwt: JwsCompactTyped<JsonWebToken, JwsHeader>,
         redirectUri: String,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.VerifierAttestation,

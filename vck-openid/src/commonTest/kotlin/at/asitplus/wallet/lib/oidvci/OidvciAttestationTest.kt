@@ -19,6 +19,7 @@ package at.asitplus.wallet.lib.oidvci
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeaderWrapped
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
@@ -192,7 +193,7 @@ val OidvciAttestationTest by matrixSuite {
                     .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
                     .response
 
-                JwsCompactTyped<VerifiableCredentialJws>(
+                JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
                     credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull(),
                 ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                     shouldNotThrowAny {
@@ -508,7 +509,7 @@ val OidvciAttestationTest by matrixSuite {
                     .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
                     .response
 
-                JwsCompactTyped<VerifiableCredentialJws>(
+                JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
                     credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull(),
                 ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                     shouldNotThrowAny {
@@ -763,4 +764,4 @@ private suspend fun buildValidKeyAttestation(
 ).getOrThrow()
 
 private suspend fun JwsCompact.withHeaderAlg(alg: JwsAlgorithm.Signature): JwsCompact =
-    JwsCompact(jwsHeader.copy(algorithm = alg), plainPayload) { byteArrayOf() }
+    JwsCompact(JwsHeaderWrapped.fromParts<JwsHeader>(plainProtectedHeader).header.copy(algorithm = alg), plainPayload) { byteArrayOf() }

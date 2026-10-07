@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferGrantsPreAuthCodeTransactionCode
 import at.asitplus.openid.CredentialRequestParameters
@@ -287,7 +288,7 @@ val OidvciPreAuthTest by matrixSuite {
                 .shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsCompactTyped<VerifiableCredentialJws>(
+                JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
                     it.credentialString.shouldNotBeNull()
                 ).payload.subject
             }.toSet().shouldHaveSize(2)

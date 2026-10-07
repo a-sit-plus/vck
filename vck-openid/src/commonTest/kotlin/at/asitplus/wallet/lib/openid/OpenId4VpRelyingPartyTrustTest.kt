@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.awesn1.Asn1EncapsulatingOctetString
@@ -252,7 +253,7 @@ private suspend fun attestationJwt(
     attester: KeyMaterial,
     subject: String,
     confirmedKey: KeyMaterial,
-): JwsCompactTyped<JsonWebToken> = SignJwt<JsonWebToken>(attester, JwsHeaderNone())(
+): JwsCompactTyped<JsonWebToken, JwsHeader> = SignJwt<JsonWebToken>(attester, JwsHeaderNone())(
     null,
     JsonWebToken(
         issuer = "https://attester.example.com",
