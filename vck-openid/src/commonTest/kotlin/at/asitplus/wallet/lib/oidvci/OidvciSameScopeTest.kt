@@ -12,6 +12,7 @@ package at.asitplus.wallet.lib.oidvci
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
@@ -133,7 +134,7 @@ val OidvciSameScopeTest by matrixSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsCompactTyped<VerifiableCredentialJws>(
+            JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
                 serializedCredential
             ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
         }
@@ -346,7 +347,7 @@ val OidvciSameScopeTest by matrixSuite {
 }
 
 private fun String.assertSdJwtReceived(): Int =
-    JwsCompactTyped<VerifiableCredentialSdJwt>(
+    JwsCompactTyped<VerifiableCredentialSdJwt, JwsHeader>(
         substringBefore("~")
     ).payload.disclosureDigests
         .shouldNotBeNull()

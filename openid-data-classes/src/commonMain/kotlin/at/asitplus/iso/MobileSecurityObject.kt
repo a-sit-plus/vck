@@ -1,6 +1,6 @@
 package at.asitplus.iso
 
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import io.github.z4kn4fein.semver.Version
 import kotlinx.serialization.SerialName

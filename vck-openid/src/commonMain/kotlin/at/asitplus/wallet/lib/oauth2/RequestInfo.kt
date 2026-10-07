@@ -2,9 +2,8 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import io.ktor.http.*
 import kotlin.jvm.JvmOverloads
 
@@ -22,9 +21,9 @@ data class RequestInfo @JvmOverloads constructor(
     internal constructor(
         url: String,
         method: HttpMethod,
-        dpop: JwsCompactTyped<JsonWebToken>? = null,
-        clientAttestation: JwsCompactTyped<JsonWebToken>? = null,
-        clientAttestationPop: JwsCompactTyped<JsonWebToken>? = null,
+        dpop: JwsCompactTyped<JsonWebToken, JwsHeader>? = null,
+        clientAttestation: JwsCompactTyped<JsonWebToken, JwsHeader>? = null,
+        clientAttestationPop: JwsCompactTyped<JsonWebToken, JwsHeader>? = null,
     ) : this(
         url = url,
         method = method,
@@ -36,28 +35,28 @@ data class RequestInfo @JvmOverloads constructor(
     )
 
     /** Value of the header `DPoP` (RFC 9449). The value of the header is a JSON Web Token (JWT) */
-    val dpop: JwsCompactTyped<JsonWebToken>?
+    val dpop: JwsCompactTyped<JsonWebToken, JwsHeader>?
         get() = headers.parseSingletonJwt(HttpHeaders.DPoP)
 
     /**
      * Value of the header `OAuth-Client-Attestation` (OAuth 2.0 Attestation-Based Client Authentication).
      * A JWT that conforms to the structure and syntax as defined in Section 4.2
      */
-    val clientAttestation: JwsCompactTyped<JsonWebToken>?
+    val clientAttestation: JwsCompactTyped<JsonWebToken, JwsHeader>?
         get() = headers.parseSingletonJwt(HttpHeaders.OAuthClientAttestation)
 
     /**
      * Value of the header `OAuth-Client-Attestation-PoP` (OAuth 2.0 Attestation-Based Client Authentication).
      * A JWT that adheres to the structure and syntax as defined in Section 4.3
      */
-    val clientAttestationPop: JwsCompactTyped<JsonWebToken>?
+    val clientAttestationPop: JwsCompactTyped<JsonWebToken, JwsHeader>?
         get() = headers.parseSingletonJwt(HttpHeaders.OAuthClientAttestationPop)
 
     /** Reads and parses the value of `headerName`, and also checks that there is exactly one such header. */
-    private fun Headers?.parseSingletonJwt(headerName: String): JwsTyped<JwsCompact, JsonWebToken>? =
+    private fun Headers?.parseSingletonJwt(headerName: String): JwsCompactTyped<JsonWebToken, JwsHeader>? =
         this?.contains(headerName)?.takeIf { it }?.let {
             catchingUnwrapped {
-                getAll(headerName).orEmpty().single().let { JwsCompactTyped<JsonWebToken>(it) }
+                getAll(headerName).orEmpty().single().let { JwsCompactTyped<JsonWebToken, JwsHeader>(it) }
             }.getOrNull()
         }
 

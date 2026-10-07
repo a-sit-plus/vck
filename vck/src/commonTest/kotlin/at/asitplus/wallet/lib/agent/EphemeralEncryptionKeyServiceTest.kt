@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.supreme.agree.keyAgreement
-import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.indispensable.agree.keyAgreement
+import at.asitplus.signum.indispensable.sign.Signer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.uuid4
@@ -46,9 +46,9 @@ val EphemeralEncryptionKeyServiceTest by matrixSuite {
 
         val wallet = EphemeralKeyWithoutCert()
         val secretFromRecoveredKey = (recovered.getUnderLyingSigner() as Signer.ECDSA)
-            .keyAgreement(wallet.publicKey as CryptoPublicKey.EC).getOrThrow()
+            .keyAgreement(wallet.publicKey as CryptoPublicKey.EC)
         val secretFromWalletSide = (wallet.getUnderLyingSigner() as Signer.ECDSA)
-            .keyAgreement(created.publicKey as CryptoPublicKey.EC).getOrThrow()
+            .keyAgreement(created.publicKey as CryptoPublicKey.EC)
 
         secretFromRecoveredKey shouldBe secretFromWalletSide
     }

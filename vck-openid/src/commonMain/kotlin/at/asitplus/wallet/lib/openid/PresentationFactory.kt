@@ -5,7 +5,7 @@ import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.VpFormatsSupported
-import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -86,7 +86,7 @@ internal class PresentationFactory(
         }
     }
 
-    internal fun calcSessionTranscript(
+    internal suspend fun calcSessionTranscript(
         clientId: String? = null,
         responseUrl: String? = null,
         nonce: String,

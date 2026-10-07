@@ -1,5 +1,7 @@
 package at.asitplus.csc
 
+import at.asitplus.awesn1.Asn1Null
+import at.asitplus.awesn1.ObjectIdentifier
 import at.asitplus.csc.datamodel.authorization.SignatureCreationApproval
 import at.asitplus.csc.datamodel.basic.AdesParameters
 import at.asitplus.csc.datamodel.basic.Attribute
@@ -18,9 +20,7 @@ import at.asitplus.csc.datamodel.documents.DocumentRepresentations
 import at.asitplus.csc.datamodel.documents.DocumentType
 import at.asitplus.csc.datamodel.requests.SignatureCreationRequest
 import at.asitplus.csc.datamodel.requests.SignatureRequest
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.asn1.Asn1Null
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe

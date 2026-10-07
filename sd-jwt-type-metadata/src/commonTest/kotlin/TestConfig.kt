@@ -1,3 +1,4 @@
+import at.asitplus.signum.supreme.Supreme
 import at.asitplus.testballoon.matrix.ExecutionMode
 import at.asitplus.testballoon.matrix.MatrixTestDefaults
 import de.infix.testBalloon.framework.core.TestSession
@@ -10,5 +11,6 @@ class TestConfig : TestSession(
     init {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
+        Supreme.init()
     }
 }

@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSigned
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
@@ -21,7 +21,7 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         vcSerialized: String,
         scheme: VcJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo?,
-        issuer: X509Certificate?
+        issuer: Certificate?
     ) = SubjectCredentialStore.StoreEntry.Vc(
         vcSerialized = vcSerialized,
         vc = vc,
@@ -36,7 +36,7 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         disclosures: Map<String, SelectiveDisclosureItem?>,
         scheme: SdJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo?,
-        issuer: X509Certificate?
+        issuer: Certificate?
     ) = SubjectCredentialStore.StoreEntry.SdJwt(
         vcSerialized = vcSerialized,
         sdJwt = vc,
@@ -50,7 +50,7 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         issuerSigned: IssuerSigned,
         scheme: IsoMdocCredentialScheme,
         renewalInfo: CredentialRenewalInfo?,
-        issuer: X509Certificate?
+        issuer: Certificate?
     ) = SubjectCredentialStore.StoreEntry.Iso(
         issuerSigned = issuerSigned,
         renewalInfo = renewalInfo,

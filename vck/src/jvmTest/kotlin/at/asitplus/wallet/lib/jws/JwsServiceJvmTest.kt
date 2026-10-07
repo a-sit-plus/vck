@@ -1,8 +1,12 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.signum.indispensable.encodeToTlv
+import at.asitplus.signum.indispensable.sign.sign
 import at.asitplus.signum.HazardousMaterials
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
+import at.asitplus.signum.indispensable.sign.RsaAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -11,7 +15,11 @@ import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
-import at.asitplus.signum.supreme.sign.EphemeralKey
+import at.asitplus.signum.indispensable.sign.Signer
+import at.asitplus.signum.dsl.ec
+import at.asitplus.signum.dsl.rsa
+import kotlinx.coroutines.runBlocking
+import at.asitplus.signum.supreme.Supreme
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.benasher44.uuid.uuid4
@@ -52,13 +60,13 @@ val JwsServiceJvmTest by matrixSuite {
             ("RSA" to 3072),
             ("RSA" to 4096)
         )
-    val rsaVersions: MutableList<X509SignatureAlgorithm> = mutableListOf(
-        X509SignatureAlgorithm.RS256,
-        X509SignatureAlgorithm.RS384,
-        X509SignatureAlgorithm.RS512,
-        X509SignatureAlgorithm.PS256,
-        X509SignatureAlgorithm.PS384,
-        X509SignatureAlgorithm.PS512
+    val rsaVersions: MutableList<SignatureAlgorithm> = mutableListOf(
+        RsaAlgorithm.withSHA256andPKCS1Padding,
+        RsaAlgorithm.withSHA384andPKCS1Padding,
+        RsaAlgorithm.withSHA512andPKCS1Padding,
+        RsaAlgorithm.withSHA256andPSSPadding,
+        RsaAlgorithm.withSHA384andPSSPadding,
+        RsaAlgorithm.withSHA512andPSSPadding
     )
 
     configurations.forEach { thisConfiguration ->
@@ -66,9 +74,9 @@ val JwsServiceJvmTest by matrixSuite {
 
             val algo = when (thisConfiguration.first) {
                 "EC" -> when (thisConfiguration.second) {
-                    256 -> X509SignatureAlgorithm.ES256
-                    384 -> X509SignatureAlgorithm.ES384
-                    521 -> X509SignatureAlgorithm.ES512
+                    256 -> EcdsaAlgorithm.withSHA256
+                    384 -> EcdsaAlgorithm.withSHA384
+                    521 -> EcdsaAlgorithm.withSHA512
                     else -> throw IllegalArgumentException("Unknown EC Curve size") // necessary(compiler), but otherwise redundant else-branch
                 }
 
@@ -80,8 +88,8 @@ val JwsServiceJvmTest by matrixSuite {
                 else -> throw IllegalArgumentException("Unknown Key Type") // -||-
             }
 
-            val ephemeralKey = EphemeralKey {
-                if (algo is X509SignatureAlgorithm.ECDSA)
+            val ephemeralKey = runBlocking { Supreme.init(); Signer.Ephemeral {
+                if (algo is EcdsaAlgorithm)
                     ec {
                         curve = when (thisConfiguration.second) {
                             256 -> ECCurve.SECP_256_R_1
@@ -89,18 +97,20 @@ val JwsServiceJvmTest by matrixSuite {
                             521 -> ECCurve.SECP_521_R_1
                             else -> throw IllegalArgumentException("Unknown EC Curve size") // necessary(compiler), but otherwise redundant else-branch
                         }
-                        digests = setOf(curve.nativeDigest)
+                        digest = curve.nativeDigest
                     }
                 else
                     rsa {
                         this.bits = thisConfiguration.second
+                        digest = (algo as RsaAlgorithm).digest as at.asitplus.signum.indispensable.digest.WellKnownDigest
+                        padding = if (algo.parameters is RsaAlgorithm.Parameters.Pkcs1Padded) RsaAlgorithm.Padding.PKCS1 else RsaAlgorithm.Padding.PSS
                     }
-            }.getOrThrow()
+            } }
 
-            val jvmVerifier = if (algo is X509SignatureAlgorithm.ECDSA)
-                ECDSAVerifier(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as ECPublicKey)
-            else RSASSAVerifier(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as RSAPublicKey)
-            val jvmSigner = if (algo is X509SignatureAlgorithm.ECDSA)
+            val jvmVerifier = if (algo is EcdsaAlgorithm)
+                ECDSAVerifier(ephemeralKey.publicKey.toJcaPublicKey() as ECPublicKey)
+            else RSASSAVerifier(ephemeralKey.publicKey.toJcaPublicKey() as RSAPublicKey)
+            val jvmSigner = if (algo is EcdsaAlgorithm)
                 ECDSASigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
             else RSASSASigner(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
 
@@ -117,7 +127,7 @@ val JwsServiceJvmTest by matrixSuite {
                         JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
                     ).getOrThrow()
                     val selfVerify = verifyJwsSignatureObject(signed.jws)
-                    withClue("$algo: Signature: ${signed.jws.signature.encodeToTlv().toDerHexString()}") {
+                    withClue("$algo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         selfVerify.getOrThrow()
                     }
                 }
@@ -137,7 +147,7 @@ val JwsServiceJvmTest by matrixSuite {
                     val parsedJwsSigned = JwsCompact(signedLibObject)
                     parsedJwsSigned.getPayload<JsonElement>()
                         .getOrThrow().jsonPrimitive.content shouldBe randomPayload.content
-                    val parsedSig = parsedJwsSigned.signature.rawByteArray.encodeToString(Base64UrlStrict)
+                    val parsedSig = parsedJwsSigned.plainSignature.encodeToString(Base64UrlStrict)
 
                     withClue(
                         "$algo: \nSignatures should match\n" +
@@ -149,7 +159,7 @@ val JwsServiceJvmTest by matrixSuite {
                         parsedSig shouldBe libObject.signature.toString()
                     }
 
-                    withClue("$algo: Signature: ${parsedJwsSigned.signature.encodeToTlv().toDerHexString()}") {
+                    withClue("$algo: Signature: ${parsedJwsSigned.plainSignature.toHexString()}") {
                         verifyJwsSignatureObject(parsedJwsSigned).getOrThrow()
                     }
                 }

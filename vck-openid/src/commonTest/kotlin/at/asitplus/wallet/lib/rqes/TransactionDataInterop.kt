@@ -4,8 +4,8 @@ import at.asitplus.csc.api.collection_entries.RqesDocumentDigestEntry.DocumentLo
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.sha_256
+import at.asitplus.awesn1.KnownOIDs
+import at.asitplus.awesn1.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -72,7 +72,7 @@ val TransactionDataInterop by matrixSuite {
             c3N3b3JkIgogICAgICB9LAogICAgICAiRFRCUy9SIjogIlZZRGw0b1RlSjVUbUlQQ1hLZFRYMU1TV1JMSTlDS1ljeU1SejZ4bGFHZyIsCiAg
             ICAgICJEVEJTL1JIYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCiAgICB9CiAgXSwKICAicHJvY2Vzc0lEIjog
             ImVPWjZVd1h5ZUZMSzk4RG81MXgzM2ZtdXY0T3FBejVaYzRsc2hLTnRFZ1E9Igp9
-        """.trimIndent()
+        """.trimIndent().lineSequence().joinToString("")
 
         val transactionData = joseCompliantSerializer.decodeFromString(
             Base64URLTransactionDataSerializer, joseCompliantSerializer.encodeToString(input)
@@ -131,7 +131,7 @@ val TransactionDataInterop by matrixSuite {
             ewogICJ0eXBlIjogInFjZXJ0X2NyZWF0aW9uX2FjY2VwdGFuY2UiLAogICJjcmVkZW50aWFsX2lkcyI6IFtdLAogICJRQ190ZXJtc19jb25k
             aXRpb25zX3VyaSI6ICJodHRwczovL2V4YW1wbGUuY29tL3RvcyIsCiAgIlFDX2hhc2giOiAia1hBZ3dEY2RBZTNvYnhwbzhVb0RrQytEK2I3
             T0NyRG84SU9HWmpTWDgvTT0iLAogICJRQ19oYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCn0
-        """.trimIndent()
+        """.trimIndent().lineSequence().joinToString("")
 
         val parsed = joseCompliantSerializer.decodeFromString(
             Base64URLTransactionDataSerializer, joseCompliantSerializer.encodeToString(input)

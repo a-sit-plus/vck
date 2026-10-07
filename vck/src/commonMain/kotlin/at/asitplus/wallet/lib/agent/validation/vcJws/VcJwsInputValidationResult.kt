@@ -12,6 +12,7 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.validation.common.SubjectMatchingResult
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -29,7 +30,7 @@ sealed interface VcJwsInputValidationResult {
 
     data class ContentValidationSummary(
         val input: String,
-        val parsed: JwsCompactTyped<VerifiableCredentialJws>,
+        val parsed: JwsCompactTyped<VerifiableCredentialJws, JwsHeader>,
         val isIntegrityGood: Boolean,
         val subjectMatchingResult: SubjectMatchingResult?,
         val contentSemanticsValidationSummary: VcJwsContentSemanticsValidationSummary,

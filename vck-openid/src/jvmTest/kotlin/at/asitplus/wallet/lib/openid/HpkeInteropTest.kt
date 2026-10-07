@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
+import at.asitplus.signum.indispensable.agree.KeyAgreementPrivateValue
 import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -38,7 +38,7 @@ val HpkeInteropTest by matrixSuite {
     }
 
     test("Bouncy Castle seals, signum opens") {
-        val recipientKey = KeyAgreementPrivateValue.ECDH.Ephemeral(ECCurve.SECP_256_R_1).getOrThrow()
+        val recipientKey = KeyAgreementPrivateValue.ECDH.Ephemeral(ECCurve.SECP_256_R_1)
         val recipientPublicKey = bcHpke.deserializePublicKey(
             signumHpke.kem.SerializePublicKey(recipientKey.publicValue)
         )

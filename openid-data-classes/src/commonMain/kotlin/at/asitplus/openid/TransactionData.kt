@@ -1,7 +1,7 @@
 package at.asitplus.openid
 
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.digest.digest
 import io.ktor.utils.io.charsets.*
 import io.ktor.utils.io.core.*
 import kotlinx.serialization.SerialName
@@ -24,7 +24,7 @@ typealias TransactionDataBase64Url = JsonPrimitive
  *
  * https://github.com/openid/OpenID4VP/issues/457
  */
-fun TransactionDataBase64Url.digest(digest: Digest): ByteArray =
+suspend fun TransactionDataBase64Url.digest(digest: Digest): ByteArray =
     digest.digest(content.toByteArray(Charsets.UTF_8))
 
 /**

@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.josef.JwsHeaderWrapped
+import at.asitplus.signum.indispensable.encodeToDer
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.sha256
@@ -15,7 +18,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.signum.indispensable.josef.typed
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
@@ -95,10 +98,10 @@ internal class AuthorizationRequestValidator(
         val verified = when (val jws = jwsTyped.jws) {
             is JwsCompact -> verifyJwsSignature(jws, publicKey).isSuccess
 
-            is JwsGeneral -> jws.jwsHeaders.indices.any { index ->
-                (jws.jwsHeaders[index].algorithm as? JwsAlgorithm.Signature)?.let { algorithm ->
+            is JwsGeneral -> jws.signatureElements.indices.any { index ->
+                (JwsHeaderWrapped.fromParts<JwsHeader>(jws.signatureElements[index].plainProtectedHeader, jws.signatureElements[index].unprotectedHeader).header.algorithm as? JwsAlgorithm.Signature)?.let { algorithm ->
                     verifySignature(
-                        jws.signatureInputs[index], jws.signatures[index], algorithm.algorithm, publicKey
+                        jws.signatureInputs[index], JWS.getSignature(algorithm, jws.signatureElements[index].plainSignature), algorithm.algorithm, publicKey
                     ).isSuccess
                 } == true
             }
@@ -118,11 +121,11 @@ internal class AuthorizationRequestValidator(
     private suspend fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeVerifierAttestation() {
         val signedRequest = this as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
             ?: throw InvalidRequest("verifier_attestation client_id_scheme requires a signed request object")
-        val attestation = (signedRequest.jwsTyped.jws as? JwsCompact)?.jwsHeader?.attestationJwt
+        val attestation = (signedRequest.jwsTyped.jws as? JwsCompact)?.typed<AuthenticationRequestParameters, JwsHeader>()?.wrappedHeader?.header?.attestationJwt
             ?: throw InvalidRequest("verifier_attestation client_id_scheme requires a jwt in the JOSE header")
 
         val attesterNotTrusted = "verifier attestation not issued by a trusted party"
-        if (attestation.jwsHeader.certificateChain != null) {
+        if (attestation.typed<JsonWebToken, JwsHeader>().wrappedHeader.header.certificateChain != null) {
             relyingPartyTrust?.requireTrustedBy<RelyingPartyTrust.VerifierAttesterCertificates>(
                 configured = "trusted verifier attester certificates",
                 rejected = attesterNotTrusted,
@@ -141,7 +144,7 @@ internal class AuthorizationRequestValidator(
             }
         }
 
-        val attestationPayload: JsonWebToken = attestation.typed<JsonWebToken, JwsCompact>().payload
+        val attestationPayload: JsonWebToken = attestation.typed<JsonWebToken, JwsHeader>().payload
         if (attestationPayload.subject != parameters.clientIdWithoutPrefix) {
             throw InvalidRequest(
                 "client_id ${parameters.clientIdWithoutPrefix} not matching sub ${attestationPayload.subject}"
@@ -244,8 +247,8 @@ internal class AuthorizationRequestValidator(
             ?: throw InvalidRequest("x509 client_id_scheme requires a signed request object")
 
         val certChain = when (val jws = signedRequest.jwsTyped.jws) {
-            is JwsCompact -> jws.jwsHeader.certificateChain
-            is JwsGeneral -> jws.signatureElements.firstOrNull()?.jwsHeader?.certificateChain
+            is JwsCompact -> jws.typed<AuthenticationRequestParameters, JwsHeader>().wrappedHeader.header.certificateChain
+            is JwsGeneral -> jws.typed<AuthenticationRequestParameters, JwsHeader>().wrappedHeaders.firstOrNull()?.header?.certificateChain
             else -> null
         }
         val leaf = certChain
@@ -269,13 +272,11 @@ internal class AuthorizationRequestValidator(
         relyingPartyTrust?.requireTrustedBy<RelyingPartyTrust.Certificates>("trusted relying party certificates") {
             certChain.requireTrustedSigningCertificate(it.certificates)
         }
-        signedRequest.verifyRequestObjectSignature(leaf.decodedPublicKey.getOrElse {
-            throw InvalidRequest("Could not read key from certificate in x5c", it)
-        })
+        signedRequest.verifyRequestObjectSignature(leaf.publicKey)
     }
 
     private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanDns(
-        leaf: X509Certificate,
+        leaf: Certificate,
         responseModeIsDirectPost: Boolean,
         responseModeIsDcApi: Boolean,
     ) {
@@ -298,11 +299,11 @@ internal class AuthorizationRequestValidator(
         }
     }
 
-    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanHash(
-        leaf: X509Certificate,
+    private suspend fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanHash(
+        leaf: Certificate,
     ) {
         val expectedHash = parameters.clientIdWithoutPrefix
-        val calculatedHash = leaf.encodeToDerSafe()
+        val calculatedHash = catchingUnwrapped { leaf.encodeToDer() }
             .getOrElse { throw InvalidRequest("Could not encode certificate to DER", it) }
             .sha256().encodeToString(Base64UrlStrict)
         if (calculatedHash != expectedHash) {
@@ -360,8 +361,8 @@ private inline fun <reified T : RelyingPartyTrust> Set<RelyingPartyTrust>.requir
  */
 @Throws(OAuth2Exception::class)
 internal fun JWS.requireRequestObjectType() = when (this) {
-    is JwsCompact -> listOf(jwsHeader)
-    is JwsGeneral -> jwsHeaders
+    is JwsCompact -> listOf(JwsHeaderWrapped.fromParts<JwsHeader>(plainProtectedHeader).header)
+    is JwsGeneral -> signatureElements.map { JwsHeaderWrapped.fromParts<JwsHeader>(it.plainProtectedHeader, it.unprotectedHeader).header }
     else -> throw InvalidRequest("Unsupported request object signature: $this")
 }.forEach {
     if (it.type != JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST)

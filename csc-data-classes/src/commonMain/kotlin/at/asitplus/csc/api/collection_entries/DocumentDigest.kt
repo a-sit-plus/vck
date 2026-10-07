@@ -1,5 +1,8 @@
 package at.asitplus.csc.api.collection_entries
 
+import at.asitplus.awesn1.Asn1Element
+import at.asitplus.awesn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifierStringSerializer
 import at.asitplus.csc.api.Hashes
 import at.asitplus.csc.api.SignDocRequestParameters
 import at.asitplus.csc.api.contentEquals
@@ -10,11 +13,8 @@ import at.asitplus.csc.datamodel.basic.SignatureFormat
 import at.asitplus.csc.datamodel.basic.SignedEnvelopeProperty
 import at.asitplus.csc.getHashAlgorithm
 import at.asitplus.csc.getSignAlgorithm
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.asn1.Asn1Element
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient

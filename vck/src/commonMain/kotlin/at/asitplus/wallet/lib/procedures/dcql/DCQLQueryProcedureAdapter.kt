@@ -16,6 +16,11 @@ package at.asitplus.wallet.lib.procedures.dcql
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.typed
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.awesn1.encoding.decodeFromDer
+import at.asitplus.catching
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLIsoMdocCredential
@@ -24,20 +29,20 @@ import at.asitplus.openid.dcql.DCQLQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLQueryResponse
 import at.asitplus.openid.dcql.DCQLSdJwtCredential
 import at.asitplus.openid.dcql.DCQLVcJwsCredential
-import at.asitplus.signum.indispensable.asn1.Asn1Decodable
-import at.asitplus.signum.indispensable.asn1.Asn1Element
-import at.asitplus.signum.indispensable.asn1.Asn1Encodable
-import at.asitplus.signum.indispensable.asn1.Asn1Sequence
-import at.asitplus.signum.indispensable.asn1.Identifiable
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.TagClass
-import at.asitplus.signum.indispensable.asn1.authorityKeyIdentifier_2_5_29_35
-import at.asitplus.signum.indispensable.asn1.decodeRethrowing
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import at.asitplus.signum.indispensable.asn1.encoding.decode
+import at.asitplus.awesn1.Asn1Decodable
+import at.asitplus.awesn1.Asn1Element
+import at.asitplus.awesn1.Asn1Encodable
+import at.asitplus.awesn1.Asn1Sequence
+import at.asitplus.awesn1.Identifiable
+import at.asitplus.awesn1.KnownOIDs
+import at.asitplus.awesn1.ObjectIdentifier
+import at.asitplus.awesn1.TagClass
+import at.asitplus.awesn1.authorityKeyIdentifier_2_5_29_35
+import at.asitplus.awesn1.decodeRethrowing
+import at.asitplus.awesn1.encoding.Asn1
+import at.asitplus.awesn1.encoding.decode
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
@@ -109,7 +114,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         return DCQLVcJwsCredential(
             satisfiesCryptographicHolderBinding = !credential.vcJws.subject.isNullOrEmpty(),
             types = credential.vcJws.vc.type,
-            authorityKeyIdentifiers = vp.jws.jws.jwsHeader.certificateChain?.flatMap {
+            authorityKeyIdentifiers = vp.jws.wrappedHeader.header.certificateChain?.flatMap {
                 it.getAuthorityKeyIdentifier()
             } ?: listOf(),
             claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
@@ -136,7 +141,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
                 documentType = document.docType,
                 satisfiesCryptographicHolderBinding = document.issuerSigned.issuerAuth.payload?.deviceKeyInfo != null,
                 authorityKeyIdentifiers = document.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
-                    X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
+                    Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
                 } ?: listOf(),
             )
         }
@@ -145,7 +150,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
     private fun VerifyPresentationResult.SuccessSdJwt.toDCQLCredential() = DCQLSdJwtCredential(
         claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(reconstructedJsonObject),
         satisfiesCryptographicHolderBinding = verifiableCredentialSdJwt.confirmationClaim != null,
-        authorityKeyIdentifiers = sdJwtSigned.jws.jwsHeader.certificateChain?.flatMap {
+        authorityKeyIdentifiers = sdJwtSigned.jws.typed<JsonWebToken, JwsHeader>().wrappedHeader.header.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         type = verifiableCredentialSdJwt.verifiableCredentialType,
@@ -168,19 +173,19 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         ),
         satisfiesCryptographicHolderBinding = issuerSigned.issuerAuth.payload?.deviceKeyInfo != null,
         authorityKeyIdentifiers = issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
-            X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
+            Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
         } ?: listOf(),
         documentType = schemeIdentifier
     )
 
-    private fun SubjectCredentialStore.StoreEntry.SdJwt.toDCQLCredential() = DCQLSdJwtCredential(
+    private suspend fun SubjectCredentialStore.StoreEntry.SdJwt.toDCQLCredential() = DCQLSdJwtCredential(
         claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
             CredentialToJsonConverter.toJsonElement(this)
         ),
         satisfiesCryptographicHolderBinding = sdJwt.confirmationClaim != null,
         authorityKeyIdentifiers = SdJwtSigned.parseCatching(
             vcSerialized
-        ).getOrThrow().jws.jwsHeader.certificateChain?.flatMap {
+        ).getOrThrow().jws.typed<JsonWebToken, JwsHeader>().wrappedHeader.header.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         type = sdJwt.verifiableCredentialType,
@@ -191,19 +196,19 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             CredentialToJsonConverter.toJsonElement(this.vc)
         ),
         satisfiesCryptographicHolderBinding = !vc.subject.isNullOrEmpty(),
-        authorityKeyIdentifiers = JwsCompactTyped<VerifiableCredentialJws>(
+        authorityKeyIdentifiers = JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
             vcSerialized
-        ).jws.jwsHeader.certificateChain?.flatMap {
+        ).wrappedHeader.header.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         types = vc.vc.type,
     )
 
     // take all authority key identifiers from chain, assuming chain is validated elsewhere
-    private fun X509Certificate.getAuthorityKeyIdentifier() = tbsCertificate.extensions?.filter {
+    private fun Certificate.getAuthorityKeyIdentifier() = tbsCertificate.extensions?.filter {
         it.oid == KnownOIDs.authorityKeyIdentifier_2_5_29_35
     }?.mapNotNull {
-        AuthorityKeyIdentifier.decodeFromDerSafe(it.value.asEncapsulatingOctetString().content)
+        catching { AuthorityKeyIdentifier.decodeFromDer((it as at.asitplus.signum.indispensable.pki.CertificateExtension.X509Representable).derEncodedValue) }
             .getOrNull()?.keyIdentifier?.let { DCQLAuthorityKeyIdentifier(it) }
     } ?: listOf()
 }

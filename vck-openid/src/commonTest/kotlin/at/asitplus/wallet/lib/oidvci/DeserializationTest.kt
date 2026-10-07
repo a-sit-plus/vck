@@ -7,7 +7,7 @@ import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentString
 import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
-import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
@@ -106,12 +106,12 @@ val DeserializationTest by matrixSuite {
                     scope shouldBe "UniversityDegree"
                     supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("did:example")
                     supportedSigningAlgorithms.shouldNotBeNull().apply {
-                        shouldContain(SignatureAlgorithm.ECDSAwithSHA256)
+                        shouldContain(JwsAlgorithm.Signature.ES256.algorithm)
                     }
                     supportedProofTypes.shouldNotBeNull().apply {
                         get("jwt").shouldNotBeNull().apply {
                             supportedSigningAlgorithmsParsed.shouldNotBeNull().apply {
-                                shouldContain(SignatureAlgorithm.ECDSAwithSHA256)
+                                shouldContain(JwsAlgorithm.Signature.ES256.algorithm)
                             }
                         }
                     }
@@ -213,7 +213,7 @@ val DeserializationTest by matrixSuite {
                     docType shouldBe MDL_DOCTYPE
                     supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("cose_key")
                     supportedSigningAlgorithms.shouldNotBeNull().apply {
-                        shouldContain(SignatureAlgorithm.ECDSAwithSHA256) // both -7 and -9 shall map to this
+                        shouldContain(JwsAlgorithm.Signature.ES256.algorithm) // both -7 and -9 shall map to this
                     }
                     credentialMetadata.shouldNotBeNull().apply {
                         display.shouldNotBeNull().apply {
@@ -348,12 +348,12 @@ val DeserializationTest by matrixSuite {
                     sdJwtVcType shouldBe "SD_JWT_VC_example_in_OpenID4VCI"
                     supportedBindingMethods.shouldNotBeNull().shouldBeSingleton().shouldContain("jwk")
                     supportedSigningAlgorithms.shouldNotBeNull().apply {
-                        shouldContain(SignatureAlgorithm.ECDSAwithSHA256)
+                        shouldContain(JwsAlgorithm.Signature.ES256.algorithm)
                     }
                     supportedProofTypes.shouldNotBeNull().apply {
                         get("jwt").shouldNotBeNull().apply {
                             supportedSigningAlgorithmsParsed.shouldNotBeNull().apply {
-                                shouldContain(SignatureAlgorithm.ECDSAwithSHA256)
+                                shouldContain(JwsAlgorithm.Signature.ES256.algorithm)
                             }
                             keyAttestationRequired.shouldNotBeNull().apply {
                                 keyStorage.shouldNotBeNull().shouldContain("iso_18045_moderate")

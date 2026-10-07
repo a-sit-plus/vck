@@ -19,7 +19,7 @@ import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.sha256
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
@@ -228,7 +228,7 @@ class Verifier {
         extractAndVerifyData(issuerSignedItems, mdlItems, CLAIM_GIVEN_NAME)
     }
 
-    private fun extractAndVerifyData(
+    private suspend fun extractAndVerifyData(
         issuerSignedItems: IssuerSignedList,
         mdlItems: ValueDigestList,
         key: String,

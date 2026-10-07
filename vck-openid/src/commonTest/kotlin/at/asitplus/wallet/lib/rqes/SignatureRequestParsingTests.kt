@@ -24,7 +24,7 @@ val SignatureRequestParsingTests by matrixSuite {
         NQD5el-IfOYrRgz-gOwRkR9ewOquTkcFu1BPWSwH_BenEUlgECrf9Di2bGAcLrC4DLIc79dyPGKi3WZO4HAoZWIdN5wEeSf6Ke4Ua0GUFiZlu_a1
         wtAs5ZL6iClkxS91kB3E59yOH6lf41EGxI2TE7M3giGBswJS9vIeU6mQDmy42pkNS6PE5VUIau0wJcyu_ChK-Ms6svEQgQ_hC4aKYiYBf4rnRLW8
         hirG-hSH91qvkqmS89STalIfl1eZtxThhmhxhldNkqUuDGlgTyFv
-    """.trimIndent()
+    """.trimIndent().lineSequence().joinToString("")
     val parser = RequestParser()
 
     "can parse SignatureRequestParameter from signed JWT" {

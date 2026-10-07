@@ -1,15 +1,16 @@
 package at.asitplus.wallet.openid.dcql
 
+import at.asitplus.signum.indispensable.encodeToTlv
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResponse
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.Document
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.awesn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.pki.CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueIsoMdoc
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueSdJwt
@@ -187,7 +188,7 @@ val DCQLQueryProcedureAdapterTest by matrixSuite {
         val aki = Random.nextBytes(20)
         val issuerKeyMaterial = EphemeralKeyWithSelfSignedCert(
             extensions = listOf(
-                X509CertificateExtension(
+                CertificateExtension(
                     oid = AuthorityKeyIdentifier.oid,
                     value = Asn1EncapsulatingOctetString(listOf(AuthorityKeyIdentifier(aki).encodeToTlv()))
                 )

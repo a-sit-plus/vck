@@ -1,8 +1,8 @@
 package at.asitplus.openid
 
-import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import kotlin.time.Instant
 
 internal fun String.toJwsAlgorithm(): JwsAlgorithm? =

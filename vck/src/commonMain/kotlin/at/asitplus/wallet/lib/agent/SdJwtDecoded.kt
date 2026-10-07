@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.SdJwtConstants
@@ -28,7 +28,15 @@ import kotlinx.serialization.json.jsonPrimitive
  * See [Selective Disclosure for JSON Web Tokens](https://datatracker.ietf.org/doc/html/rfc9901)
  */
 class SdJwtDecoded @Throws(IllegalArgumentException::class)
-constructor(sdJwtSigned: SdJwtSigned) {
+private constructor(sdJwtSigned: SdJwtSigned, private val disclosuresByDigest: Map<String, String>) {
+
+    companion object {
+        suspend operator fun invoke(sdJwtSigned: SdJwtSigned): SdJwtDecoded {
+            val payload = sdJwtSigned.jws.getPayload<JsonObject>().getOrThrow()
+            val digest = payload[SdJwtConstants.SD_ALG]?.jsonPrimitive?.content.toDigest() ?: Digest.SHA256
+            return SdJwtDecoded(sdJwtSigned, sdJwtSigned.rawDisclosures.associateBy { it.hashDisclosure(digest) })
+        }
+    }
 
     private val disclosures: Collection<String> = sdJwtSigned.rawDisclosures
     private val _validDisclosures = mutableMapOf<String, SelectiveDisclosureItem>()
@@ -107,7 +115,7 @@ constructor(sdJwtSigned: SdJwtSigned) {
     }
 
     private fun JsonPrimitive.toValidatedItem(digest: Digest): SelectiveDisclosureItem? =
-        disclosures.firstOrNull { it.hashDisclosure(digest) == this.content }?.let { disclosure ->
+        disclosuresByDigest[this.content]?.let { disclosure ->
             disclosure.toSdItem()
                 ?.also { _validDisclosures[disclosure] = it }
         }

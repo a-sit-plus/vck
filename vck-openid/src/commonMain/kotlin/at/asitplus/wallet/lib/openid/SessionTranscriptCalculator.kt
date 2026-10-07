@@ -13,7 +13,7 @@ import at.asitplus.wallet.lib.extensions.sessionTranscriptThumbprint
 import kotlinx.serialization.encodeToByteArray
 
 internal fun interface SessionTranscriptCalculator {
-    operator fun invoke(
+    suspend operator fun invoke(
         clientId: String?,
         nonce: String,
         responseUrl: String?,
@@ -25,7 +25,7 @@ internal fun interface SessionTranscriptCalculator {
 
 /** Calculates the ISO session transcript for URL transport, i.e. from [OpenId4VpVerifier]. */
 internal class UrlSessionTranscriptCalculator : SessionTranscriptCalculator {
-    override fun invoke(
+    override suspend fun invoke(
         clientId: String?,
         nonce: String,
         responseUrl: String?,
@@ -54,7 +54,7 @@ internal class UrlSessionTranscriptCalculator : SessionTranscriptCalculator {
 
 /** Calculates the ISO session transcript for DCAPI transport, i.e. from [DcApiVerifier]. */
 internal class DcApiSessionTranscriptCalculator : SessionTranscriptCalculator {
-    override fun invoke(
+    override suspend fun invoke(
         clientId: String?,
         nonce: String,
         responseUrl: String?,

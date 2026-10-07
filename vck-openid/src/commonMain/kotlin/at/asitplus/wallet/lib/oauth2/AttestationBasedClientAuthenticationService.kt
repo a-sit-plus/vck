@@ -12,6 +12,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -133,17 +134,19 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
         )
     }
 
-    private fun JwsCompactTyped<JsonWebToken>.validateWalletInstanceAttestation(clientId: String?) {
-        if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
-            throw InvalidClient("invalid client attestation typ: ${jws.jwsHeader.type}")
-        }
-        if (jws.jwsHeader.certificateChain.isNullOrEmpty()) {
-            throw InvalidClient("client attestation has no x5c")
-        }
-        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            jws.jwsHeader.algorithm !in supportedSigningAlgorithms
-        ) {
-            throw InvalidClient("unsupported client attestation alg: ${jws.jwsHeader.algorithm}")
+    private fun JwsCompactTyped<JsonWebToken, JwsHeader>.validateWalletInstanceAttestation(clientId: String?) {
+        with(wrappedHeader.header) {
+            if (type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
+                throw InvalidClient("invalid client attestation typ: $type")
+            }
+            if (certificateChain.isNullOrEmpty()) {
+                throw InvalidClient("client attestation has no x5c")
+            }
+            if (algorithm !is JwsAlgorithm.Signature ||
+                algorithm !in supportedSigningAlgorithms
+            ) {
+                throw InvalidClient("unsupported client attestation alg: $algorithm")
+            }
         }
         if (payload.subject == null) {
             throw InvalidClient("client attestation has no sub")
@@ -182,16 +185,18 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
         }
     }
 
-    private suspend fun JwsCompactTyped<JsonWebToken>.validateWalletInstanceAttestationPop(
+    private suspend fun JwsCompactTyped<JsonWebToken, JwsHeader>.validateWalletInstanceAttestationPop(
         attestationSubject: String?
     ) {
-        if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
-            throw InvalidClient("invalid client attestation PoP typ: ${jws.jwsHeader.type}")
-        }
-        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            jws.jwsHeader.algorithm !in supportedSigningAlgorithms
-        ) {
-            throw InvalidClient("unsupported client attestation PoP alg: ${jws.jwsHeader.algorithm}")
+        with(wrappedHeader.header) {
+            if (type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
+                throw InvalidClient("invalid client attestation PoP typ: $type")
+            }
+            if (algorithm !is JwsAlgorithm.Signature ||
+                algorithm !in supportedSigningAlgorithms
+            ) {
+                throw InvalidClient("unsupported client attestation PoP alg: $algorithm")
+            }
         }
         if (issuerIdentifier != null && payload.audience != issuerIdentifier) {
             throw InvalidClient(

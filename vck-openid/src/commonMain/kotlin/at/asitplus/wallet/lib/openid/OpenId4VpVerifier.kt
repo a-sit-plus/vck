@@ -9,7 +9,7 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
-import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.MdocDeviceSignatureVerifier

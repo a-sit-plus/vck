@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
@@ -24,7 +25,7 @@ import kotlin.time.Instant
  * transported with a credential or token belongs to an issuer we trust.
  */
 fun interface TrustedCertificates {
-    suspend operator fun invoke(): Set<X509Certificate>
+    suspend operator fun invoke(): Set<Certificate>
 }
 
 /**
@@ -69,7 +70,7 @@ suspend fun CertificateChain?.requireTrustedSigningCertificate(
     at: Instant = Clock.System.now(),
     /** Whether a chain of exactly one certificate contained in [trustedIssuers] counts as directly trusted. */
     allowDirectTrust: Boolean = true,
-): X509Certificate {
+): Certificate {
     val chain = this?.takeIf { it.isNotEmpty() }
         ?: throw IllegalArgumentException("No certificate transported with the signed object")
     val signingCertificate = chain.leaf
@@ -79,7 +80,7 @@ suspend fun CertificateChain?.requireTrustedSigningCertificate(
 
     // Compare the full certificate, not just its key: a listed signer does not confer trust on other
     // certificates sharing that key. DER comparison also works when the transported certificate was decoded anew.
-    fun isListed(certificate: X509Certificate) = trusted.any {
+    fun isListed(certificate: Certificate) = trusted.any {
         it.encodeToDer().contentEquals(certificate.encodeToDer())
     }
     val isDirectlyTrusted = allowDirectTrust && chain.size == 1 && isListed(signingCertificate)

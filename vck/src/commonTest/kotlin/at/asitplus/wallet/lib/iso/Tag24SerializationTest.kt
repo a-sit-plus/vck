@@ -19,7 +19,7 @@ import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.stripCborTag
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
 import at.asitplus.signum.indispensable.cosef.CoseHeader

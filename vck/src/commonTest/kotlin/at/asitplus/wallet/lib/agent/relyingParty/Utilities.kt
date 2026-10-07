@@ -2,6 +2,12 @@
 
 package at.asitplus.wallet.lib.agent.relyingParty
 
+import at.asitplus.awesn1.crypto.pki.X500AttributeTypeAndValue
+import at.asitplus.signum.indispensable.pki.X500Name
+import at.asitplus.awesn1.Asn1Integer
+import at.asitplus.signum.indispensable.sign.sign
+import at.asitplus.signum.indispensable.encodeToDer
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
@@ -31,22 +37,19 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.openid.truncateToSeconds
-import at.asitplus.signum.indispensable.asn1.Asn1String
-import at.asitplus.signum.indispensable.asn1.Asn1Time
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.awesn1.Asn1String
+import at.asitplus.awesn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
 import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
-import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.signum.indispensable.sign.signature
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -106,37 +109,36 @@ suspend fun issueWrpAccessCertificate(
     wrpacIdentifier: WrpacIdentifier,
     subjectPublicKey: EphemeralKeyWithoutCert,
     validity: Duration,
-): X509Certificate {
+): Certificate {
     val oid = when (wrpacIdentifier) {
         is WrpacIdentifier.WrpacLegalIdentifier -> OID_ORGANIZATION_IDENTIFIER
         is WrpacIdentifier.WrpacNaturalIdentifier -> OID_SERIAL_NUMBER
     }
-    val algorithm = issuer.signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
+    val algorithm = issuer.signatureAlgorithm
     val notBefore = System.now().truncateToSeconds()
     val tbsCertificate = TbsCertificate(
-        version = 2,
-        serialNumber = Random.nextBytes(8),
-        issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(issuerName)))),
-        subjectName = listOf(
-            RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(subjectName))),
+        serialNumber = Asn1Integer.fromUnsignedByteArray(Random.nextBytes(8)),
+        issuerName = X500Name(listOf(RelativeDistinguishedName(X500AttributeTypeAndValue.CommonName(Asn1String.UTF8(issuerName))))),
+        subjectName = X500Name(listOf(
+            RelativeDistinguishedName(X500AttributeTypeAndValue.CommonName(Asn1String.UTF8(subjectName))),
             RelativeDistinguishedName(
-                AttributeTypeAndValue.Other(oid, Asn1String.UTF8(wrpacIdentifier.identifier)),
+                X500AttributeTypeAndValue(oid, Asn1String.UTF8(wrpacIdentifier.identifier)),
             ),
-        ),
-        validFrom = Asn1Time(notBefore),
-        validUntil = Asn1Time((notBefore + validity).truncateToSeconds()),
+        )),
+        validFrom = notBefore,
+        validUntil = (notBefore + validity).truncateToSeconds(),
         signatureAlgorithm = algorithm,
         publicKey = subjectPublicKey.publicKey,
         extensions = listOf(),
     )
-    val signature = issuer.sign(tbsCertificate.encodeToDer()).asKmmResult().getOrThrow()
-    return X509Certificate(tbsCertificate, algorithm, signature)
+    val signature = issuer.sign(tbsCertificate.encodeToDer()).signature
+    return Certificate(tbsCertificate, signature)
 }
 
 data class WrpFixture(
     val trustAnchors: TrustedCertificates,
     val wrpIdentifier: String,
-    val wrpacChain: List<X509Certificate>,
+    val wrpacChain: List<Certificate>,
     val clientId: String,
     val wrprcSigningKeyMaterial: KeyMaterial,
 )
@@ -322,7 +324,7 @@ suspend fun WrpFixture.validateWrprc(
 ) = catching {
     val wrprcJws = signWrprc(signingKeyMaterial, payload, type = jwsType)
     val registrationCertificate: WrpRegistrationCertificate =
-        WrpRegistrationCertificate.WrpJwtRegistrationCertificate(jwsTyped = JwsCompactTyped<WrpPayload>(wrprcJws))
+        WrpRegistrationCertificate.WrpJwtRegistrationCertificate(jwsTyped = JwsCompactTyped<WrpPayload, JwsHeader>(wrprcJws))
     val credentialRequests = request?.toWrpCredentialRequest() ?: emptyList()
     val validationData = WrpRequestData(
         clientId = clientId,

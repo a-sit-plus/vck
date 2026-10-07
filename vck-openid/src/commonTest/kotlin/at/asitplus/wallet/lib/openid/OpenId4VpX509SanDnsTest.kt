@@ -2,14 +2,14 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.Asn1Primitive
-import at.asitplus.signum.indispensable.asn1.Asn1String
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import at.asitplus.signum.indispensable.asn1.subjectAltName_2_5_29_17
-import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.awesn1.Asn1EncapsulatingOctetString
+import at.asitplus.awesn1.Asn1Primitive
+import at.asitplus.awesn1.Asn1String
+import at.asitplus.awesn1.KnownOIDs
+import at.asitplus.awesn1.encoding.Asn1
+import at.asitplus.awesn1.subjectAltName_2_5_29_17
+import at.asitplus.awesn1.crypto.pki.X509GeneralName
+import at.asitplus.signum.indispensable.pki.CertificateExtension
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -38,14 +38,14 @@ val OpenId4VpX509SanDnsTest by matrixSuite {
             }
             val clientId = "example.com"
             val extensions = listOf(
-                X509CertificateExtension(
+                CertificateExtension(
                     KnownOIDs.subjectAltName_2_5_29_17,
                     critical = false,
                     Asn1EncapsulatingOctetString(
                         listOf(
                             Asn1.Sequence {
                                 +Asn1Primitive(
-                                    SubjectAltNameImplicitTags.dNSName,
+                                    X509GeneralName.Tags.dnsName,
                                     Asn1String.UTF8(clientId).encodeToTlv().content
                                 )
                             }

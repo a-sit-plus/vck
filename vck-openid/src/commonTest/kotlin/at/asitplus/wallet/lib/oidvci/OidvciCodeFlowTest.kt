@@ -12,6 +12,7 @@ package at.asitplus.wallet.lib.oidvci
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.AuthorizationDetails
@@ -188,7 +189,7 @@ val OidvciCodeFlowTest by matrixSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsCompactTyped<VerifiableCredentialJws>(
+            JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
                 serializedCredential
             ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                 shouldNotThrowAny {
@@ -296,7 +297,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsCompactTyped<VerifiableCredentialJws>(
+                JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
                     it.credentialString.shouldNotBeNull()
                 ).payload.subject
             }.toSet().shouldHaveSize(2)
@@ -663,7 +664,7 @@ val OidvciCodeFlowTest by matrixSuite {
     }
 }
 
-private fun String.assertSdJwtReceived(): Int = JwsCompactTyped<VerifiableCredentialSdJwt>(
+private fun String.assertSdJwtReceived(): Int = JwsCompactTyped<VerifiableCredentialSdJwt, JwsHeader>(
     substringBefore("~")
 ).payload.disclosureDigests
     .shouldNotBeNull()

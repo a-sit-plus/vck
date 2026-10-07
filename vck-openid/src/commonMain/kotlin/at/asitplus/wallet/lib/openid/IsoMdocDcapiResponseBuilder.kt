@@ -30,7 +30,7 @@ object IsoMdocDcapiResponseBuilder {
     )
 
     /** Builds the DC API session transcript bound to the request encryption information and calling origin. */
-    fun sessionTranscriptFor(isoMdocWalletRequest: RequestParametersFrom.IsoMdocDcApi): SessionTranscript {
+    suspend fun sessionTranscriptFor(isoMdocWalletRequest: RequestParametersFrom.IsoMdocDcApi): SessionTranscript {
         val isoMdocRequest = isoMdocWalletRequest.parameters.isoMdocRequest
         val callingOrigin = isoMdocWalletRequest.callingOrigin.serializeOrigin()
             ?: throw IllegalArgumentException("Invalid calling origin")

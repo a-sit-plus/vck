@@ -21,6 +21,7 @@ class TestConfig : TestSession(
     testConfig = DefaultConfiguration.apply { MatrixTestDefaults { execution = ExecutionMode.Concurrent(8) } }
 ) {
     init {
+        at.asitplus.signum.supreme.Supreme.init()
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
 

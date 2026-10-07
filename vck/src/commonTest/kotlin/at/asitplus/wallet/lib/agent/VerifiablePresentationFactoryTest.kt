@@ -324,7 +324,7 @@ private fun presentationRequest() = PresentationRequestParameters(
     calcIsoSessionTranscript = simpleTranscriptCallback,
 )
 
-private fun CreatePresentationResult.SdJwt.disclosedClaimNames(): Set<String> =
+private suspend fun CreatePresentationResult.SdJwt.disclosedClaimNames(): Set<String> =
     SdJwtDecoded(sdJwt).reconstructedJsonObject?.keys ?: emptySet()
 
 private fun CreatePresentationResult.DeviceResponse.disclosedIsoClaimNames(namespace: String) =

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
@@ -72,7 +73,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
             @Suppress("DEPRECATION")
             suspend fun validateDpop(
-                dpop: JwsCompactTyped<JsonWebToken>,
+                dpop: JwsCompactTyped<JsonWebToken, JwsHeader>,
                 url: String = tokenUrl,
                 method: HttpMethod = HttpMethod.Post,
             ) = tokenService.verification.extractValidatedClientKey(
@@ -143,7 +144,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
         test("getUserInfo rejects an access token with an invalid signature") {
             // The jti is readable from any observed access token, so user info must not be reachable by
             // replaying it in a token this authorization server did not sign
-            val payload = JwsCompactTyped<OpenId4VciAccessToken>(it.getAccessToken().accessToken).payload
+            val payload = JwsCompactTyped<OpenId4VciAccessToken, JwsHeader>(it.getAccessToken().accessToken).payload
             val forged = it.signAccessToken(payload, key = EphemeralKeyWithoutCert())
 
             shouldThrow<OAuth2Exception.InvalidToken> {
@@ -152,7 +153,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
         }
 
         test("getUserInfo rejects an expired access token") {
-            val payload = JwsCompactTyped<OpenId4VciAccessToken>(it.getAccessToken().accessToken).payload
+            val payload = JwsCompactTyped<OpenId4VciAccessToken, JwsHeader>(it.getAccessToken().accessToken).payload
             val expired = it.signAccessToken(payload.copy(expiration = Clock.System.now() - 1.hours))
 
             shouldThrow<OAuth2Exception.InvalidToken> {
@@ -417,7 +418,7 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 nonce = es384Only.dpopNonce(),
                 randomSource = RandomSource.Default,
             )
-            es256Proof.jws.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
+            es256Proof.wrappedHeader.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
 
             @Suppress("DEPRECATION")
             shouldThrow<OAuth2Exception.InvalidDpopProof> {

@@ -1,18 +1,20 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JwkType
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
-import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.signum.supreme.sign.EphemeralKey
-import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.indispensable.pki.Certificate
+import at.asitplus.signum.indispensable.pki.CertificateExtension
+import at.asitplus.signum.indispensable.sign.Signer
+import at.asitplus.catching
+import at.asitplus.signum.indispensable.sign.sign
+import at.asitplus.signum.indispensable.sign.signature
+import at.asitplus.signum.dsl.ec
+import at.asitplus.signum.supreme.Supreme
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
@@ -32,7 +34,7 @@ interface KeyMaterial : Signer {
      * May be used to transport the signing key for a COSE structure.
      * a `null` value signifies that raw public keys are used and no certificate is present
      */
-    suspend fun getCertificate(): X509Certificate?
+    suspend fun getCertificate(): Certificate?
 
     val jsonWebKey: JsonWebKey
         get() = publicKey.toJsonWebKey(null)
@@ -50,24 +52,20 @@ interface PublishedKeyMaterial : KeyMaterial {
 }
 
 abstract class KeyWithSelfSignedCert(
-    private val extensions: List<X509CertificateExtension>,
+    private val extensions: List<CertificateExtension>,
     private val customKeyId: String,
     private val lifetimeInSeconds: Long,
 ) : KeyMaterial {
     override val identifier: String get() = customKeyId
     private val crtMut = Mutex()
-    private var _certificate: X509Certificate? = null
+    private var _certificate: Certificate? = null
 
-    override suspend fun getCertificate(): X509Certificate? {
+    override suspend fun getCertificate(): Certificate? {
         crtMut.withLock {
-            if (_certificate == null) _certificate = X509Certificate.generateSelfSignedCertificate(
-                publicKey,
-                signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow(),
-                lifetimeInSeconds = lifetimeInSeconds,
-                extensions = extensions,
-            ) {
-                sign(it).asKmmResult()
-            }.onFailure { Napier.e("Could not self-sign Cert", it) }.getOrNull()
+            if (_certificate == null) _certificate = Certificate.generateSelfSignedCertificate(
+                publicKey, signatureAlgorithm, lifetimeInSeconds, extensions,
+            ) { catching { sign(it).signature } }
+                .onFailure { Napier.e("Could not self-sign Cert", it) }.getOrNull()
         }
         return _certificate
     }
@@ -77,34 +75,34 @@ abstract class KeyWithSelfSignedCert(
  * Generate new key material with a random key, and a self-signed certificate, e.g. used in tests
  */
 class EphemeralKeyWithSelfSignedCert @JvmOverloads constructor(
-    val key: EphemeralKey = EphemeralKey {
-        ec {
-            curve = ECCurve.SECP_256_R_1
-            digests = setOf(Digest.SHA256)
-        }
-    }.getOrThrow(),
-    extensions: List<X509CertificateExtension> = listOf(),
+    val key: Signer.WithExportableKey = newEphemeralSigner(),
+    extensions: List<CertificateExtension> = listOf(),
     customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
     lifetimeInSeconds: Long = 30,
-) : KeyWithSelfSignedCert(extensions, customKeyId, lifetimeInSeconds), Signer by key.signer().getOrThrow() {
-    override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
+) : KeyWithSelfSignedCert(extensions, customKeyId, lifetimeInSeconds), Signer by key {
+    override fun getUnderLyingSigner(): Signer = key
 }
 
 /**
  * Generate new key material with a random key, e.g. used in tests
  */
 class EphemeralKeyWithoutCert @JvmOverloads constructor(
-    val key: EphemeralKey = EphemeralKey {
+    val key: Signer.WithExportableKey = newEphemeralSigner(),
+    val customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
+) : KeyMaterial, Signer by key {
+    override val identifier: String = customKeyId
+    override fun getUnderLyingSigner(): Signer = key
+    override suspend fun getCertificate(): Certificate? = null
+}
+
+private fun newEphemeralSigner(): Signer.WithExportableKey = kotlinx.coroutines.runBlocking {
+    Supreme.init()
+    Signer.Ephemeral {
         ec {
             curve = ECCurve.SECP_256_R_1
-            digests = setOf(Digest.SHA256)
+            digest = Digest.SHA256
         }
-    }.getOrThrow(),
-    val customKeyId: String = Random.nextBytes(8).encodeToString(Base16Strict).lowercase(),
-) : KeyMaterial, Signer by key.signer().getOrThrow() {
-    override val identifier: String = customKeyId
-    override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
-    override suspend fun getCertificate(): X509Certificate? = null
+    }
 }
 
 /**

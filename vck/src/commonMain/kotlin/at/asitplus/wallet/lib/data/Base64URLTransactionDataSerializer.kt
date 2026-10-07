@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -47,4 +47,4 @@ fun TransactionData.toBase64UrlJsonString(): TransactionDataBase64Url = joseComp
     )
 ) as TransactionDataBase64Url
 
-fun TransactionData.digest(digest: Digest): ByteArray = toBase64UrlJsonString().digest(digest)
+suspend fun TransactionData.digest(digest: Digest): ByteArray = toBase64UrlJsonString().digest(digest)

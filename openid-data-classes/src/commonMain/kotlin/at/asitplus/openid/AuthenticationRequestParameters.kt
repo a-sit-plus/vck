@@ -1,19 +1,19 @@
 package at.asitplus.openid
 
+import at.asitplus.awesn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifierStringSerializer
 import at.asitplus.csc.api.Hashes
 import at.asitplus.csc.api.serializers.HashesSerializer
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.data.NonEmptyList
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.time.Instant
 
 /**
  * Contents of an OIDC Authentication Request.

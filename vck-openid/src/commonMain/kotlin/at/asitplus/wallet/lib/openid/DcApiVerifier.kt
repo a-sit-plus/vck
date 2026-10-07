@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.agree.KeyAgreementPrivateValue
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dcapi.DCAPIHandover
@@ -30,7 +31,7 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.openid.dcql.toIso180137AnnexCDeviceRequest
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
-import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -38,7 +39,6 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
-import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.MdocDeviceSignatureVerifier
 import at.asitplus.wallet.lib.NonceService
@@ -361,7 +361,7 @@ class DcApiVerifier @JvmOverloads constructor(
     ): KmmResult<Iso180137AnnexCWrapper> = catching {
         val isoMdocRequest = stateToIsoMdocRequestStore.remove(externalId)
             ?: throw IllegalStateException("Can't load request for response to $externalId")
-        val decryptionKey = ephemeralEncryptionKeyService.consumeKey(externalId)?.getUnderLyingSigner() as? Signer.ECDSA
+        val decryptionKey = ephemeralEncryptionKeyService.consumeKey(externalId)?.getUnderLyingSigner() as? KeyAgreementPrivateValue.ECDH
             ?: throw IllegalStateException("Can't load ephemeral decryption key for response to $externalId")
         val serializedOrigin = expectedOrigin.serializeOrigin()
             ?: throw IllegalStateException("Expected origin invalid")
@@ -430,7 +430,7 @@ class DcApiVerifier @JvmOverloads constructor(
         ).getOrThrow()
     }
 
-    fun createDcApiSessionTranscriptAnnexC(
+    suspend fun createDcApiSessionTranscriptAnnexC(
         toBeHashed: SessionTranscriptContentHashable,
     ): SessionTranscript = SessionTranscript.forDcApi(
         DCAPIHandover(

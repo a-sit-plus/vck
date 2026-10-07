@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.signum.indispensable.digest.WellKnownDigest
+import at.asitplus.signum.indispensable.sign.RsaAlgorithm
+import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
 import at.asitplus.catchingUnwrapped
 import at.asitplus.csc.api.QtspSignatureRequest
 import at.asitplus.csc.api.SignHashRequestParameters
@@ -12,8 +15,7 @@ import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CscAuthorizationDetails
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -107,7 +109,7 @@ val RqesOpenId4VpHolderTest by matrixSuite {
             val digests = it.dummyValueProvider.buildDocumentDigests()
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val validSigningAlgo = validCert.keyParameters.algo.shuffled().firstNotNullOf { oid ->
-                catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull()
+                catchingUnwrapped { (EcdsaAlgorithm.entries + RsaAlgorithm.entries).first { it.asn1Representation.oid == oid } }.getOrNull()
             }
             val signatureProperties = it.baseSignatureProperties.copy(
                 signatureFormat = SignatureFormat.entries.random(),
@@ -143,7 +145,7 @@ val RqesOpenId4VpHolderTest by matrixSuite {
             )
             with(testDocumentDigests) {
                 this shouldNotBe null
-                this.signAlgoOid shouldBe validCert.toSigningCredential().supportedSigningAlgorithms.first().oid
+                this.signAlgoOid shouldBe validCert.toSigningCredential().supportedSigningAlgorithms.first().asn1Representation.oid
                 // These change before each test
                 this.signatureFormat shouldBe signatureProperties.signatureFormat
                 this.conformanceLevel shouldBe signatureProperties.conformanceLevel
@@ -177,7 +179,7 @@ val RqesOpenId4VpHolderTest by matrixSuite {
                 signingCredential = validCert.toSigningCredential(),
                 documentDigests = documentDigests,
                 redirectUrl = "someOtherURL",
-                hashAlgorithm = Digest.entries.random(),
+                hashAlgorithm = WellKnownDigest.entries.toList().random(),
                 signatureProperties = signatureProperties,
             )
 
@@ -205,7 +207,7 @@ val RqesOpenId4VpHolderTest by matrixSuite {
                     it.rqesWalletService.getCscAuthenticationDetails(
                         signingCredential = validCert.toSigningCredential(),
                         it.dummyValueProvider.buildDocumentDigests(),
-                        Digest.entries.random(),
+                        WellKnownDigest.entries.toList().random(),
                         signatureProperties = signatureProperties,
                     )
                 )
@@ -220,7 +222,7 @@ val RqesOpenId4VpHolderTest by matrixSuite {
         test("SignHash") {
             val validCert = it.dummyValueProvider.getCredentialInfo()
             val validSigningAlgo = validCert.keyParameters.algo.shuffled().firstNotNullOf { oid ->
-                catchingUnwrapped { X509SignatureAlgorithm.entries.first { it.oid == oid } }.getOrNull()
+                catchingUnwrapped { (EcdsaAlgorithm.entries + RsaAlgorithm.entries).first { it.asn1Representation.oid == oid } }.getOrNull()
             }
 
             val request = it.rqesWalletService.createSignHashRequestParameters(
@@ -231,7 +233,7 @@ val RqesOpenId4VpHolderTest by matrixSuite {
             ).shouldBeInstanceOf<SignHashRequestParameters>()
 
             request.credentialId shouldBe validCert.credentialID
-            request.signAlgoOid shouldBe validSigningAlgo.oid
+            request.signAlgoOid shouldBe validSigningAlgo.asn1Representation.oid
 
             val serialized = joseCompliantSerializer.encodeToString(request)
             joseCompliantSerializer.decodeFromString<QtspSignatureRequest>(serialized)
@@ -240,9 +242,9 @@ val RqesOpenId4VpHolderTest by matrixSuite {
     }
 }
 
-val X509SignatureAlgorithm.digest: Digest
+val SignatureAlgorithm.digest: WellKnownDigest
     get() = when (this) {
-        is X509SignatureAlgorithm.ECDSA -> digest
-        is X509SignatureAlgorithm.RSAPSS -> digest
-        is X509SignatureAlgorithm.RSAPKCS1 -> digest
+        is EcdsaAlgorithm -> requireNotNull(digest) as WellKnownDigest
+        is RsaAlgorithm -> digest as WellKnownDigest
+        else -> error("Unsupported signature algorithm: $this")
     }

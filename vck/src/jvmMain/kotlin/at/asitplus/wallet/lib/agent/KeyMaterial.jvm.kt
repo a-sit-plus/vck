@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.signum.supreme.os.JKSProvider
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
@@ -28,18 +28,18 @@ class KeyStoreMaterial
     signer = runBlocking {
         JKSProvider {
             withBackingObject { store = keyStore }
-        }.getOrThrow().getSignerForKey(keyAlias) {
+        }.getSignerForKey(keyAlias) {
             this.privateKeyPassword = privateKeyPassword
-            provider = providerName
-        }.getOrThrow()
+            provider = at.asitplus.signum.dsl.JCAProviderRef.Of(providerName)
+        }
     },
     customKeyId = customKeyId
 ) {
-    override suspend fun getCertificate(): X509Certificate? =
-        certAlias?.let { X509Certificate.decodeFromByteArray(keyStore.getCertificate(it).encoded) }
+    override suspend fun getCertificate(): Certificate? =
+        certAlias?.let { Certificate.decodeFromByteArray(keyStore.getCertificate(it).encoded) }
 
-    fun getCertificateChain(): List<X509Certificate>? =
-        certAlias?.let { keyStore.getCertificateChain(it).mapNotNull { X509Certificate.decodeFromByteArray(it.encoded) } }
+    fun getCertificateChain(): List<Certificate>? =
+        certAlias?.let { keyStore.getCertificateChain(it).mapNotNull { Certificate.decodeFromByteArray(it.encoded) } }
 }
 
 /**
@@ -64,15 +64,15 @@ class PublishedKeyStoreMaterial
     signer = runBlocking {
         JKSProvider {
             withBackingObject { store = keyStore }
-        }.getOrThrow().getSignerForKey(keyAlias) {
+        }.getSignerForKey(keyAlias) {
             this.privateKeyPassword = privateKeyPassword
-            provider = providerName
-        }.getOrThrow()
+            provider = at.asitplus.signum.dsl.JCAProviderRef.Of(providerName)
+        }
     },
     customKeyId = customKeyId,
     keySetUrl = keySetUrl,
 ) {
-    override suspend fun getCertificate(): X509Certificate? =
-        certAlias?.let { X509Certificate.decodeFromByteArray(keyStore.getCertificate(it).encoded) }
+    override suspend fun getCertificate(): Certificate? =
+        certAlias?.let { Certificate.decodeFromByteArray(keyStore.getCertificate(it).encoded) }
 
 }

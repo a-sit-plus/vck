@@ -13,6 +13,7 @@ package at.asitplus.wallet.lib.agent.validation.vcJws
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -32,9 +33,9 @@ data class VcJwsInputValidator @JvmOverloads constructor(
     suspend operator fun invoke(
         input: String,
         publicKey: CryptoPublicKey?,
-        vpJws: JwsCompactTyped<VerifiablePresentationJws>?,
+        vpJws: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>?,
     ): VcJwsInputValidationResult {
-        val jws = catching { JwsCompactTyped<VerifiableCredentialJws>(input) }
+        val jws = catching { JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(input) }
             .getOrElse { return VcJwsInputValidationResult.ParsingError(input, it) }
         val vcJws = jws.payload
 

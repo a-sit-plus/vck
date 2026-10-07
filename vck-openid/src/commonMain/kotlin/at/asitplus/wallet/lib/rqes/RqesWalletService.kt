@@ -18,10 +18,11 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CscAuthorizationDetails
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm.Companion.entries
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
+import at.asitplus.signum.indispensable.sign.RsaAlgorithm
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.rqes.RqesWalletService.SigningCredential
 import com.benasher44.uuid.uuid4
@@ -53,8 +54,8 @@ class RqesWalletService(
 
     data class SigningCredential(
         val credentialId: String,
-        val certificates: List<X509Certificate>,
-        val supportedSigningAlgorithms: List<X509SignatureAlgorithm>,
+        val certificates: List<Certificate>,
+        val supportedSigningAlgorithms: List<SignatureAlgorithm>,
     )
 
     enum class RqesOauthScope(val value: String) {
@@ -74,20 +75,20 @@ class RqesWalletService(
     ): AuthorizationDetails = CscAuthorizationDetails(
         credentialID = signingCredential.credentialId,
         signatureQualifier = signatureProperties.signatureQualifier,
-        hashAlgorithmOid = hashAlgorithm.oid,
+        hashAlgorithmOid = hashAlgorithm.asn1Representation.oid,
         documentDigests = documentDigests,
         documentLocations = documentLocation
     )
 
     suspend fun getCscDocumentDigests(
         documentDigests: Collection<OAuthDocumentDigest>,
-        signatureAlgorithm: X509SignatureAlgorithm,
+        signatureAlgorithm: SignatureAlgorithm,
         signatureProperties: SignatureProperties = SignatureProperties(),
     ): DocumentDigest = DocumentDigest(
         hashes = documentDigests.map { it.hash },
         signatureFormat = signatureProperties.signatureFormat,
         conformanceLevel = signatureProperties.conformanceLevel,
-        signAlgoOid = signatureAlgorithm.oid,
+        signAlgoOid = signatureAlgorithm.asn1Representation.oid,
         signedEnvelopeProperty = signatureProperties.signedEnvelopeProperty
     )
 
@@ -148,14 +149,14 @@ class RqesWalletService(
         signingCredential: SigningCredential,
         dtbsr: Hashes,
         sad: String,
-        signatureAlgorithm: X509SignatureAlgorithm,
+        signatureAlgorithm: SignatureAlgorithm,
     ): QtspSignatureRequest = signingCredential.let {
         require(it.supportedSigningAlgorithms.contains(signatureAlgorithm))
         SignHashRequestParameters(
             credentialId = it.credentialId,
             sad = sad,
             hashes = dtbsr,
-            signAlgoOid = signatureAlgorithm.oid,
+            signAlgoOid = signatureAlgorithm.asn1Representation.oid,
         )
     }
 }
@@ -196,7 +197,7 @@ fun CredentialInfo.toSigningCredential(): SigningCredential {
     }
 
     val signingAlgos = this.keyParameters.algo
-        .mapNotNull { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
+        .mapNotNull { oid -> catching { (EcdsaAlgorithm.entries + RsaAlgorithm.entries).first { it.asn1Representation.oid == oid } }.getOrNull() }
 
     require(signingAlgos.isNotEmpty()) { "Supported signing algorithms must not be null or empty" }
 

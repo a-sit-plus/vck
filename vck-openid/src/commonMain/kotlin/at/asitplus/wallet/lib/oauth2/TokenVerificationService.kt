@@ -13,6 +13,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -155,24 +156,26 @@ class JwtTokenVerificationService(
         if (!dpopNonceService.verifyAndRemoveNonce(nonce)) {
             throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: $nonce")
         }
-        dpopProof.jws.jwsHeader.jsonWebKey
+        dpopProof.wrappedHeader.header.jsonWebKey
             ?: throw InvalidDpopProof("DPoP JWT contains no public key")
     }
 
     private suspend fun verifyDpopProof(
         httpRequest: RequestInfo,
-    ): JwsCompactTyped<JsonWebToken> = httpRequest.dpop?.also {
+    ): JwsCompactTyped<JsonWebToken, JwsHeader> = httpRequest.dpop?.also {
         verifyJwsObject(it.jws).getOrElse { throw InvalidDpopProof("DPoP JWT not verified.", it) }
-        if (it.jws.jwsHeader.type != JwsContentTypeConstants.DPOP_JWT) {
-            throw InvalidDpopProof("DPoP JWT invalid type: ${it.jws.jwsHeader.type}")
-        }
-        if (it.jws.jwsHeader.jsonWebKey == null) {
-            throw InvalidDpopProof("DPoP JWT contains no public key")
-        }
-        if (it.jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            it.jws.jwsHeader.algorithm !in supportedSignatureAlgorithms
-        ) {
-            throw InvalidDpopProof("DPoP JWT unsupported alg: ${it.jws.jwsHeader.algorithm}")
+        with(it.wrappedHeader.header) {
+            if (type != JwsContentTypeConstants.DPOP_JWT) {
+                throw InvalidDpopProof("DPoP JWT invalid type: $type")
+            }
+            if (jsonWebKey == null) {
+                throw InvalidDpopProof("DPoP JWT contains no public key")
+            }
+            if (algorithm !is JwsAlgorithm.Signature ||
+                algorithm !in supportedSignatureAlgorithms
+            ) {
+                throw InvalidDpopProof("DPoP JWT unsupported alg: $algorithm")
+            }
         }
         if (it.payload.httpTargetUrl != httpRequest.url) {
             throw InvalidDpopProof("DPoP JWT htu incorrect: ${it.payload.httpTargetUrl}")
@@ -196,7 +199,7 @@ class JwtTokenVerificationService(
     /** @param validatedClientKey the key from the extracted DPoP proof */
     internal suspend fun validateDpopProof(
         accessToken: String?,
-        tokenJwt: JwsCompactTyped<OpenId4VciAccessToken>,
+        tokenJwt: JwsCompactTyped<OpenId4VciAccessToken, JwsHeader>,
         httpRequest: RequestInfo?,
         dpopNonceService: NonceService,
         validatedClientKey: JsonWebKey?,
@@ -204,8 +207,8 @@ class JwtTokenVerificationService(
         val dpopProof = verifyDpopProof(httpRequest ?: throw InvalidDpopProof("Missing RequestInfo"))
         val jwkThumbprintFromToken = tokenJwt.payload.confirmationClaim?.jsonWebKeyThumbprint
         if (jwkThumbprintFromToken == null ||
-            dpopProof.jws.jwsHeader.jsonWebKey == null ||
-            dpopProof.jws.jwsHeader.jsonWebKey!!.jwkThumbprintPlain != jwkThumbprintFromToken
+            dpopProof.wrappedHeader.header.jsonWebKey == null ||
+            dpopProof.wrappedHeader.header.jsonWebKey!!.jwkThumbprintPlain != jwkThumbprintFromToken
         ) {
             throw InvalidDpopProof("DPoP JWT JWK not matching cnf.jkt")
         }
@@ -236,14 +239,14 @@ class JwtTokenVerificationService(
         accessToken: String,
         expectedType: String,
         nonceService: NonceService = this.nonceService,
-    ): JwsCompactTyped<OpenId4VciAccessToken> {
-        val jwt = catching { JwsCompactTyped<OpenId4VciAccessToken>(accessToken) }
+    ): JwsCompactTyped<OpenId4VciAccessToken, JwsHeader> {
+        val jwt = catching { JwsCompactTyped<OpenId4VciAccessToken, JwsHeader>(accessToken) }
             .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
         verifyJwsSignatureWithKey(jwt.jws, issuerKey).getOrElse {
             throw InvalidToken("DPoP Token not verified")
         }
-        if (jwt.jws.jwsHeader.type != expectedType) {
-            throw InvalidToken("typ not valid: ${jwt.jws.jwsHeader.type}")
+        if (jwt.wrappedHeader.header.type != expectedType) {
+            throw InvalidToken("typ not valid: ${jwt.wrappedHeader.header.type}")
         }
         if (jwt.payload.jwtId == null || !nonceService.verifyNonce(jwt.payload.jwtId!!)) {
             throw InvalidToken("jti not valid: ${jwt.payload.jwtId}")

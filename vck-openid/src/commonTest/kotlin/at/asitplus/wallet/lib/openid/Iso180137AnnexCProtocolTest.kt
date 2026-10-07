@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.encodeToDer
+import at.asitplus.signum.indispensable.decodeFromPem
+import at.asitplus.signum.indispensable.sign.EcdsaPrivateKey
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
 import at.asitplus.dcapi.DCAPIInfo
@@ -117,9 +120,9 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                     .data
 
                 /** The ephemeral encryption key the verifier created for the request identified by [state]. */
-                suspend fun storedEphemeralKey(state: String): CryptoPrivateKey.EC.WithPublicKey =
-                    CryptoPrivateKey.decodeFromPem(ephemeralKeyStore.get(state).shouldNotBeNull()).getOrThrow()
-                        .shouldBeInstanceOf<CryptoPrivateKey.EC.WithPublicKey>()
+                suspend fun storedEphemeralKey(state: String): EcdsaPrivateKey.WithPublicKey =
+                    CryptoPrivateKey.decodeFromPem(ephemeralKeyStore.get(state).shouldNotBeNull())
+                        .shouldBeInstanceOf<EcdsaPrivateKey.WithPublicKey>()
 
                 suspend fun walletResponse(
                     isoMdocRequest: IsoMdocRequest,
@@ -394,7 +397,7 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
             it.itemsRequest.value.requestInfo.shouldNotBeNull().euWrprc shouldBe euWrprc
         }
 
-        fun transcriptFor(origin: String) = IsoMdocDcapiResponseBuilder.sessionTranscriptFor(
+        suspend fun transcriptFor(origin: String) = IsoMdocDcapiResponseBuilder.sessionTranscriptFor(
             RequestParametersFrom.IsoMdocDcApi(
                 parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(isoMdocRequest),
                 jsonString = "",

@@ -27,7 +27,7 @@ private const val SD_JWT_VC_TYPE = "vct"
  */
 object CredentialToJsonConverter {
 
-    fun toJsonElement(credential: SubjectCredentialStore.StoreEntry): JsonElement = when (credential) {
+    suspend fun toJsonElement(credential: SubjectCredentialStore.StoreEntry): JsonElement = when (credential) {
         is SubjectCredentialStore.StoreEntry.Vc -> buildJsonObject {
             put("type", JsonPrimitive(credential.schemeIdentifier))
             val vcAsJsonElement = joseCompliantSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject)

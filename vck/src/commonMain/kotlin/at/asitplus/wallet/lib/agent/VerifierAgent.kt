@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
@@ -60,7 +61,7 @@ class VerifierAgent @JvmOverloads constructor(
     )
 
     override suspend fun verifyPresentationVcJwt(
-        input: JwsCompactTyped<VerifiablePresentationJws>,
+        input: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>,
         challenge: String,
     ): KmmResult<VerifyPresentationResult.Success> = validatorVcJws.verifyVpJws(
         input = input,

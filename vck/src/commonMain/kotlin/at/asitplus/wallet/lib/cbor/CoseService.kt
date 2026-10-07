@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.signum.indispensable.sign.sign
+import at.asitplus.signum.indispensable.decodeFromDer
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
@@ -14,10 +17,10 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.signum.supreme.mac.mac
-import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.signum.indispensable.pki.Certificate
+import at.asitplus.signum.indispensable.sign.signature
+import at.asitplus.signum.indispensable.mac.mac
+import at.asitplus.signum.indispensable.sign.SignatureVerifier
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.VerifyMac
@@ -281,7 +284,7 @@ object CoseUtils {
         protectedHeader: CoseHeader,
         payload: P?,
         serializer: KSerializer<P>,
-    ): CryptoSignature.RawByteEncodable =
+    ): CryptoSignature =
         CoseSigned.prepare<P>(
             protectedHeader = protectedHeader,
             externalAad = byteArrayOf(),
@@ -290,7 +293,7 @@ object CoseUtils {
         ).let { signatureInput ->
             val serialized = coseCompliantSerializer.encodeToByteArray(signatureInput)
             Napier.d("COSE Signature input is ${serialized.encodeToString(Base16())}")
-            keyMaterial.sign(serialized).asKmmResult().getOrElse {
+            catching { keyMaterial.sign(serialized).signature }.getOrElse {
                 throw IllegalStateException("No signature from native code", it)
             }
         }
@@ -314,7 +317,7 @@ object CoseUtils {
             val serialized = coseCompliantSerializer.encodeToByteArray(macInput)
             Napier.d("COSE Mac input is ${serialized.encodeToString(Base16())}")
             val key = (keyMaterial.keyParams as CoseKeyParams.SymmKeyParams).k
-            (keyMaterial.algorithm as CoseAlgorithm.MAC).algorithm.mac(key, serialized).getOrThrow()
+            (keyMaterial.algorithm as CoseAlgorithm.MAC).algorithm.mac(key, serialized)
         }
 
 }
@@ -324,7 +327,7 @@ fun interface VerifyCoseSignatureFun<P> {
         coseSigned: CoseSigned<P>,
         externalAad: ByteArray,
         detachedPayload: ByteArray?,
-    ): KmmResult<Verifier.Success>
+    ): KmmResult<SignatureVerifier.Success>
 }
 
 /**
@@ -413,14 +416,14 @@ class VerifyCoseSignatureTrustedCertificate<P : Any> @JvmOverloads constructor(
     ) = catching {
         val signingCertificate = coseSigned.certificateChain()
             .requireTrustedSigningCertificate(trustedIssuers)
-        val issuerKey = signingCertificate.decodedPublicKey.getOrThrow().toCoseKey().getOrThrow()
+        val issuerKey = signingCertificate.publicKey.toCoseKey().getOrThrow()
         verifyCoseSignature(coseSigned, issuerKey, externalAad, detachedPayload).getOrThrow()
     }
 
     /** Certificates are transported DER-encoded in COSE headers, in contrast to JWS headers. */
     private fun CoseSigned<*>.certificateChain(): CertificateChain? =
         (protectedHeader.certificateChain ?: unprotectedHeader?.certificateChain)?.map {
-            X509Certificate.decodeFromDerSafe(it).getOrElse { throwable ->
+            catching { Certificate.decodeFromDer(it) }.getOrElse { throwable ->
                 throw IllegalArgumentException("Could not parse certificate from COSE header", throwable)
             }
         }
@@ -432,7 +435,7 @@ fun interface VerifyCoseSignatureWithKeyFun<P> {
         signer: CoseKey,
         externalAad: ByteArray,
         detachedPayload: ByteArray?,
-    ): KmmResult<Verifier.Success>
+    ): KmmResult<SignatureVerifier.Success>
 }
 
 /**
@@ -519,6 +522,6 @@ val CoseHeader.publicKey: CoseKey?
     get() = kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
         ?: certificateChain?.firstOrNull()?.let {
             catchingUnwrapped {
-                X509Certificate.decodeFromDer(it)
-            }.getOrNull()?.decodedPublicKey?.getOrNull()?.toCoseKey()?.getOrThrow()
+                Certificate.decodeFromDer(it)
+            }.getOrNull()?.publicKey?.toCoseKey()?.getOrThrow()
         }

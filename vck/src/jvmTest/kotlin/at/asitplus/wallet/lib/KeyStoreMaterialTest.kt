@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib
 
-import at.asitplus.signum.supreme.SignatureResult
+import at.asitplus.signum.indispensable.sign.sign
+import at.asitplus.signum.indispensable.sign.SignatureResult
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import io.kotest.matchers.nulls.shouldBeNull

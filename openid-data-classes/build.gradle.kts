@@ -1,5 +1,6 @@
 import at.asitplus.gradle.VcLibVersions
 import at.asitplus.gradle.commonImplementationAndApiDependencies
+import at.asitplus.gradle.datetime
 import at.asitplus.gradle.envExtra
 import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.ktor
@@ -37,6 +38,7 @@ kotlin {
                 implementation(project(":rfc3986-uri-syntax"))
                 implementation(napier())
                 commonImplementationAndApiDependencies()
+                api(project.datetime())
             }
         }
     }

@@ -10,7 +10,7 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialScheme
@@ -44,7 +44,7 @@ interface SubjectCredentialStore {
         vcSerialized: String,
         scheme: VcJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo? = null,
-        issuer: X509Certificate? = null
+        issuer: Certificate? = null
     ): StoreEntry
 
     /**
@@ -60,7 +60,7 @@ interface SubjectCredentialStore {
         disclosures: Map<String, SelectiveDisclosureItem?>,
         scheme: SdJwtCredentialScheme,
         renewalInfo: CredentialRenewalInfo? = null,
-        issuer: X509Certificate? = null
+        issuer: Certificate? = null
     ): StoreEntry
 
     /**
@@ -73,7 +73,7 @@ interface SubjectCredentialStore {
         issuerSigned: IssuerSigned,
         scheme: IsoMdocCredentialScheme,
         renewalInfo: CredentialRenewalInfo? = null,
-        issuer: X509Certificate? = null
+        issuer: Certificate? = null
     ): StoreEntry
 
     /**
@@ -87,7 +87,7 @@ interface SubjectCredentialStore {
     sealed interface StoreEntry {
         val credentialFormat: CredentialFormatEnum
         val renewalInfo: CredentialRenewalInfo?
-        val issuer: X509Certificate?
+        val issuer: Certificate?
         val schemeIdentifier: String
         suspend fun resolveScheme(): CredentialScheme
 
@@ -100,7 +100,7 @@ interface SubjectCredentialStore {
             @SerialName("credential-renewal-info")
             override val renewalInfo: CredentialRenewalInfo? = null,
             @Serializable(with = Base64X509CertificateSerializer::class)
-            override val issuer: X509Certificate? = null,
+            override val issuer: Certificate? = null,
             /** See [VcJwtCredentialScheme.vcType] or `vc.vc.type` */
             @SerialName("scheme-identifier")
             override val schemeIdentifier: String
@@ -124,7 +124,7 @@ interface SubjectCredentialStore {
             @SerialName("credential-renewal-info")
             override val renewalInfo: CredentialRenewalInfo? = null,
             @Serializable(with = Base64X509CertificateSerializer::class)
-            override val issuer: X509Certificate? = null,
+            override val issuer: Certificate? = null,
             /** See [SdJwtCredentialScheme.sdJwtType] or `sdJwt.verifiableCredentialType` */
             @SerialName("scheme-identifier")
             override val schemeIdentifier: String
@@ -143,7 +143,7 @@ interface SubjectCredentialStore {
             @SerialName("credential-renewal-info")
             override val renewalInfo: CredentialRenewalInfo? = null,
             @Serializable(with = Base64X509CertificateSerializer::class)
-            override val issuer: X509Certificate? = null,
+            override val issuer: Certificate? = null,
             /** See [IsoMdocCredentialScheme.isoDocType] or `issuerSigned.issuerAuth.payload.docType` */
             @SerialName("scheme-identifier")
             override val schemeIdentifier: String
@@ -156,7 +156,7 @@ interface SubjectCredentialStore {
         }
 
         @Throws(IllegalArgumentException::class)
-        fun getDcApiId(): String = when (this) {
+        suspend fun getDcApiId(): String = when (this) {
             is Vc -> vc.jwtId
             is SdJwt -> sdJwt.jwtId
                 ?: joseCompliantSerializer.encodeToString(sdJwt).toByteArray().sha256().toHexString()

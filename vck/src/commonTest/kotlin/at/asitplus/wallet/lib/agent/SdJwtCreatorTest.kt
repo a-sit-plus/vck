@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentIndex
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement

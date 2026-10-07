@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.pki.CertificateChain

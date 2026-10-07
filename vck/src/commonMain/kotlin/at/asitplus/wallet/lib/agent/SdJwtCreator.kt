@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.wallet.lib.agent.SdJwtCreator.disallowedNames
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
@@ -31,7 +31,7 @@ object SdJwtCreator {
      *
      * @return The encoded JSON object and the disclosure strings
      */
-    fun Collection<ClaimToBeIssued>.toSdJsonObject(
+    suspend fun Collection<ClaimToBeIssued>.toSdJsonObject(
         randomSource: RandomSource = RandomSource.Secure,
         digest: Digest = Digest.SHA256,
     ): Pair<JsonObject, Collection<String>> {
@@ -42,7 +42,7 @@ object SdJwtCreator {
     private fun JsonObject.withAlg(digest: Digest): JsonObject =
         JsonObject(this + (SD_ALG to digest.toIanaName().toJsonElement()))
 
-    fun Collection<ClaimToBeIssued>.toIntSdJsonObject(
+    suspend fun Collection<ClaimToBeIssued>.toIntSdJsonObject(
         randomSource: RandomSource = RandomSource.Secure,
         digest: Digest = Digest.SHA256,
     ): Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
@@ -94,7 +94,7 @@ object SdJwtCreator {
         } to disclosures
     }
 
-    private fun Collection<ClaimToBeIssuedArrayElement>.toArraySdJsonObject(
+    private suspend fun Collection<ClaimToBeIssuedArrayElement>.toArraySdJsonObject(
         randomSource: RandomSource = RandomSource.Secure,
         digest: Digest = Digest.SHA256,
     ): Pair<JsonElement, Collection<String>> = mutableListOf<String>().let { disclosures ->

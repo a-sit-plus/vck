@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceRequestInfo

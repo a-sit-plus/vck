@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
@@ -174,7 +175,7 @@ class RequestParser(
         invalidRequestDescription: String = "request content not a valid request object",
     ): RequestParametersFrom<*>? {
         val jws = catching { JwsCompact(this) }.getOrNull() ?: return null
-        val typedJws = catching { jws.typed<RequestParameters, JwsCompact>() }.getOrElse {
+        val typedJws = catching { jws.typed<RequestParameters, JwsHeader>() }.getOrElse {
             throw InvalidRequest(invalidRequestDescription, it)
         }
         typedJws.jws.requireRequestObjectType()

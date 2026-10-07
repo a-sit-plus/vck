@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.BatchCredentialIssuanceMetadata
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
@@ -12,30 +11,24 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
-import at.asitplus.wallet.lib.agent.validation.toTokenStatusResolver
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -160,7 +153,7 @@ class CredentialIssuer @JvmOverloads constructor(
      * Implements OID4VCI 1.0, Section 12.2.3, i.e. sets `typ` to [OpenIdConstants.ISSUER_METADATA_JWT_TYPE] and adds
      * the claims `sub` and `iat` to [metadata].
      */
-    suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata>> = signMetadata(
+    suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata, JwsHeader>> = signMetadata(
         OpenIdConstants.ISSUER_METADATA_JWT_TYPE,
         metadata.copy(subject = metadata.credentialIssuer, issuedAt = clock.now()),
         IssuerMetadata.serializer(),

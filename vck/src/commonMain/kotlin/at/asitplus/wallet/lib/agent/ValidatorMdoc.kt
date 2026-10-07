@@ -9,11 +9,11 @@ import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.wrapInCborTag
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.indispensable.digest.digest
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessIso
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.mdoc.MdocInputValidator
@@ -110,7 +110,7 @@ class ValidatorMdoc @JvmOverloads constructor(
      *
      * See ISO/IEC 18013-5:2021, 9.3.1 Inspection procedure for issuer data authentication
      */
-    private fun ByteStringWrapper<IssuerSignedItem>.verify(
+    private suspend fun ByteStringWrapper<IssuerSignedItem>.verify(
         mdlItems: ValueDigestList?,
         digest: Digest = Digest.SHA256
     ): Boolean {

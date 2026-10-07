@@ -1,10 +1,10 @@
 package at.asitplus.openid
 
+import at.asitplus.awesn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifierStringSerializer
 import at.asitplus.csc.api.collection_entries.DocumentLocation
 import at.asitplus.csc.api.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

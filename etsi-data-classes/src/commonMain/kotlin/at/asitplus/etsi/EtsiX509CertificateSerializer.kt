@@ -1,7 +1,7 @@
 package at.asitplus.etsi
 
 import at.asitplus.signum.indispensable.io.X509CertificateBase64Serializer
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -10,7 +10,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 
-class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
+class EtsiX509CertificateSerializer : KSerializer<Certificate?> {
     private val delegate = EtsiX509CertificateSerializationSurrogate.serializer()
     override val descriptor: SerialDescriptor
         get() = SerialDescriptor(
@@ -20,7 +20,7 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
 
     override fun serialize(
         encoder: Encoder,
-        value: X509Certificate?
+        value: Certificate?
     ) {
         if (value == null) return encoder.encodeNull()
 
@@ -37,7 +37,7 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
      * parsing these "in-the-wild" certificates can throw exceptions. This catch block ensures
      * a single malformed certificate does not crash the deserialization of the entire trusted list.
      */
-    override fun deserialize(decoder: Decoder): X509Certificate? = try {
+    override fun deserialize(decoder: Decoder): Certificate? = try {
         if (decoder is JsonDecoder) {
             val element = decoder.decodeJsonElement()
             decoder.json.decodeFromJsonElement(delegate, element).value
@@ -52,7 +52,7 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
     private data class EtsiX509CertificateSerializationSurrogate(
         @SerialName(SerialNames.VALUE)
         @Serializable(with = X509CertificateBase64Serializer::class)
-        val value: X509Certificate
+        val value: Certificate
     ) {
         object SerialNames {
             const val VALUE = "val"

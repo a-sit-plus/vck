@@ -14,6 +14,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.wallet.lib.MdocDeviceSignatureVerifier
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier.ChallengeSession
@@ -144,7 +145,7 @@ internal class VpTokenValidator(
 
             CredentialFormatEnum.JWT_VC -> if (requireCryptographicHolderBinding != false) {
                 session.verifyPresentationVcJwt(
-                    input = JwsCompactTyped<VerifiablePresentationJws>(
+                    input = JwsCompactTyped<VerifiablePresentationJws, JwsHeader>(
                         relatedPresentation.extractContent()
                     ),
                 )
@@ -161,16 +162,18 @@ internal class VpTokenValidator(
                 input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                     .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) },
             ) { challenge ->
-                mdocDeviceSignatureVerifier.verifyDocument(
-                    sessionTranscript = createSessionTranscript(
-                        clientId = clientId,
-                        nonce = challenge,
-                        responseUrl = responseUrl,
-                        clientIdRequired = clientIdRequired,
-                        origin = origin,
-                        recipientKey = recipientKey,
-                    )
-                )
+                { mso, document ->
+                    mdocDeviceSignatureVerifier.verifyDocument(
+                        sessionTranscript = createSessionTranscript(
+                            clientId = clientId,
+                            nonce = challenge,
+                            responseUrl = responseUrl,
+                            clientIdRequired = clientIdRequired,
+                            origin = origin,
+                            recipientKey = recipientKey,
+                        )
+                    )(mso, document)
+                }
             }
 
             else -> throw IllegalArgumentException("descriptor.format: $credentialFormat")

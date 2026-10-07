@@ -1,15 +1,15 @@
 package at.asitplus.wallet.lib.etsi
 
-import at.asitplus.signum.indispensable.asn1.Asn1Element
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.Asn1Sequence
-import at.asitplus.signum.indispensable.asn1.Asn1StructuralException
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.basicConstraints_2_5_29_19
-import at.asitplus.signum.indispensable.asn1.encoding.decodeToBoolean
-import at.asitplus.signum.indispensable.asn1.encoding.decodeToInt
-import at.asitplus.signum.indispensable.asn1.encoding.parse
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.awesn1.Asn1Element
+import at.asitplus.awesn1.Asn1Sequence
+import at.asitplus.awesn1.Asn1StructuralException
+import at.asitplus.awesn1.KnownOIDs
+import at.asitplus.awesn1.basicConstraints_2_5_29_19
+import at.asitplus.awesn1.encoding.decodeToBoolean
+import at.asitplus.awesn1.encoding.decodeToInt
+import at.asitplus.awesn1.encoding.parse
+import at.asitplus.signum.indispensable.pki.Certificate
+import at.asitplus.signum.indispensable.pki.CertificateExtension
 
 /**
  * The `BasicConstraints` extension of a certificate, see
@@ -21,9 +21,9 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
  *      pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
  * ```
  *
- * Signum models certificate extensions as opaque [X509CertificateExtension.value] octet strings and exposes no
+ * Signum models certificate extensions as opaque [CertificateExtension.X509Representable.derEncodedValue] bytes and exposes no
  * typed accessor for this one, so it is decoded here. Keep this decoding, not the trust rules built on it, in
- * sync with Signum: once it ships a typed `BasicConstraints`, [X509Certificate.basicConstraints] can delegate to
+ * sync with Signum: once it ships a typed `BasicConstraints`, [Certificate.basicConstraints] can delegate to
  * it and the rest of this file stays as it is.
  */
 data class BasicConstraints(
@@ -47,7 +47,7 @@ data class BasicConstraints(
  * @throws Asn1StructuralException if the extension is present but malformed. A certificate whose constraints
  * cannot be read is not silently treated as unconstrained.
  */
-val X509Certificate.basicConstraints: BasicConstraints?
+val Certificate.basicConstraints: BasicConstraints?
     get() {
         val matches = tbsCertificate.extensions.orEmpty()
             .filter { it.oid == KnownOIDs.basicConstraints_2_5_29_19 }
@@ -55,15 +55,8 @@ val X509Certificate.basicConstraints: BasicConstraints?
         if (matches.size > 1) {
             throw Asn1StructuralException("More than one BasicConstraints extension in certificate")
         }
-        // Parsed certificates carry the extension value as an encapsulating octet string when its content could
-        // be parsed as ASN.1, and as a primitive one otherwise; a hand-built certificate may use either.
-        val value = matches.single().value.asOctetString()
-        val element = when (value) {
-            is Asn1EncapsulatingOctetString -> value.children.singleOrNull()
-                ?: throw Asn1StructuralException("BasicConstraints does not hold exactly one element")
-
-            else -> Asn1Element.parse(value.content)
-        }
+        val extension = matches.single() as CertificateExtension.X509Representable
+        val element = Asn1Element.parse(extension.derEncodedValue)
         val sequence = element as? Asn1Sequence
             ?: throw Asn1StructuralException("BasicConstraints is not a SEQUENCE but ${element.tag}")
 
@@ -90,5 +83,5 @@ val X509Certificate.basicConstraints: BasicConstraints?
  * constraints extension is not present [...] or the value of cA is not set to TRUE, then the certified public
  * key MUST NOT be used to verify certificate signatures."
  */
-val X509Certificate.isCertificateAuthority: Boolean
+val Certificate.isCertificateAuthority: Boolean
     get() = basicConstraints?.certificateAuthority == true

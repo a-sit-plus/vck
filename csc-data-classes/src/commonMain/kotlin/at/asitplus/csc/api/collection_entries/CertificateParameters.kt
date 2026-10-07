@@ -3,7 +3,7 @@ package at.asitplus.csc.api.collection_entries
 import at.asitplus.csc.api.CredentialInfo
 import at.asitplus.csc.api.CredentialInfoRequest
 import at.asitplus.csc.api.serializers.Base64X509CertificateSerializer
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -30,7 +30,7 @@ data class CertificateParameters(
      * value SHALL NOT be returned.
      */
     @SerialName("certificates")
-    val certificates: List<@Serializable(with = Base64X509CertificateSerializer::class) X509Certificate>? = null,
+    val certificates: List<@Serializable(with = Base64X509CertificateSerializer::class) Certificate>? = null,
 
     /**
      * REQUIRED-CONDITIONAL.

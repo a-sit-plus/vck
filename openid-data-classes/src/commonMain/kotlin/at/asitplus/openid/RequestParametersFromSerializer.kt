@@ -9,11 +9,13 @@ import at.asitplus.openid.RequestParametersFrom.SerialNames.PARENT
 import at.asitplus.openid.RequestParametersFrom.SerialNames.URL
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import at.asitplus.signum.indispensable.josef.JWS
-import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JwsGeneral
-import at.asitplus.signum.indispensable.josef.JwsTyped
+import at.asitplus.signum.indispensable.josef.JwsGeneralTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -101,7 +103,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
     fun toRequestParametersFrom(): RequestParametersFrom<T> = when {
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Multisigned ->
             RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped(requireJwsGeneral(), requireAuthenticationRequestParameters()),
+                jwsTyped = requireJwsGeneral().typedWithPayload(requireAuthenticationRequestParameters()) as JwsGeneralTyped<AuthenticationRequestParameters, JwsHeader>,
                 credentialIds = requireCredentialIds(),
                 callingPackageName = requireCallingPackageName(),
                 callingOrigin = requireCallingOrigin(),
@@ -109,7 +111,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
 
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Signed ->
             RequestParametersFrom.OpenId4VpDcApiSigned(
-                jwsTyped = JwsTyped(requireJwsCompact(), requireAuthenticationRequestParameters()),
+                jwsTyped = requireJwsCompact().typedWithPayload(requireAuthenticationRequestParameters()) as JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>,
                 credentialIds = requireCredentialIds(),
                 callingPackageName = requireCallingPackageName(),
                 callingOrigin = requireCallingOrigin(),

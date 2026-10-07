@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.openid.SupportedAlgorithmsContainerIso
 import at.asitplus.openid.VpFormatsSupported
-import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey

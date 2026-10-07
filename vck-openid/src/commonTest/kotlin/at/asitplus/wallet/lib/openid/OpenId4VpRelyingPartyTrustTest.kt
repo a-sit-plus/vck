@@ -1,18 +1,19 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.Asn1Primitive
-import at.asitplus.signum.indispensable.asn1.Asn1String
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import at.asitplus.signum.indispensable.asn1.subjectAltName_2_5_29_17
+import at.asitplus.awesn1.Asn1EncapsulatingOctetString
+import at.asitplus.awesn1.Asn1Primitive
+import at.asitplus.awesn1.Asn1String
+import at.asitplus.awesn1.KnownOIDs
+import at.asitplus.awesn1.encoding.Asn1
+import at.asitplus.awesn1.subjectAltName_2_5_29_17
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.awesn1.crypto.pki.X509GeneralName
+import at.asitplus.signum.indispensable.pki.CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -228,14 +229,14 @@ private suspend fun validate(clientId: String, trust: Set<RelyingPartyTrust>?) =
 }
 
 private fun subjectAltNameDns(dnsName: String) = listOf(
-    X509CertificateExtension(
+    CertificateExtension(
         KnownOIDs.subjectAltName_2_5_29_17,
         critical = false,
         Asn1EncapsulatingOctetString(
             listOf(
                 Asn1.Sequence {
                     +Asn1Primitive(
-                        SubjectAltNameImplicitTags.dNSName,
+                        X509GeneralName.Tags.dnsName,
                         Asn1String.UTF8(dnsName).encodeToTlv().content
                     )
                 }
@@ -252,7 +253,7 @@ private suspend fun attestationJwt(
     attester: KeyMaterial,
     subject: String,
     confirmedKey: KeyMaterial,
-): JwsCompactTyped<JsonWebToken> = SignJwt<JsonWebToken>(attester, JwsHeaderNone())(
+): JwsCompactTyped<JsonWebToken, JwsHeader> = SignJwt<JsonWebToken>(attester, JwsHeaderNone())(
     null,
     JsonWebToken(
         issuer = "https://attester.example.com",

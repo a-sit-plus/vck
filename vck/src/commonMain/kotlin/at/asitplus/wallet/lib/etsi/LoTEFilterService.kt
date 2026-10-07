@@ -7,10 +7,10 @@ import at.asitplus.etsi.ListOfTrustedEntities
 import at.asitplus.etsi.MultilingualCharacterString
 import at.asitplus.etsi.TEName
 import at.asitplus.rfc3986uri.Rfc3986UniformResourceIdentifier
-import at.asitplus.signum.indispensable.asn1.Asn1Primitive
-import at.asitplus.signum.indispensable.asn1.Asn1String
+import at.asitplus.awesn1.Asn1Primitive
+import at.asitplus.awesn1.Asn1String
 import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import kotlinx.serialization.Serializable
 
 enum class ServiceKind { ISSUANCE, REVOCATION }
@@ -110,10 +110,10 @@ class LoTEFilterService {
      * Checks if the Organization (O) attribute within the certificate's Subject Name matches any of
      * the localized names the provider declares, i.e. its [TEName] or its [TETradeName].
      */
-    private fun X509Certificate.hasMatchingOrganization(names: List<MultilingualCharacterString>): Boolean {
-        val orgName = tbsCertificate.subjectName
+    private fun Certificate.hasMatchingOrganization(names: List<MultilingualCharacterString>): Boolean {
+        val orgName = tbsCertificate.subjectName.relativeDistinguishedNames
             .flatMap { it.attrsAndValues }
-            .filterIsInstance<AttributeTypeAndValue.Organization>()
+            .filter { it.oid == at.asitplus.awesn1.ObjectIdentifier("2.5.4.10") }
             .firstOrNull()
             ?.asStringOrNull() ?: return false
 
@@ -123,7 +123,7 @@ class LoTEFilterService {
     /**
      * Unwraps the Organization value wrapper into a standard String,
      */
-    private fun AttributeTypeAndValue.Organization.asStringOrNull(): String? = when (val element = value) {
+    private fun AttributeTypeAndValue.asStringOrNull(): String? = when (val element = (this as? AttributeTypeAndValue.X509Representable)?.asn1Representation?.value) {
         is Asn1Primitive -> runCatching { Asn1String.decodeFromTlv(element).value }.getOrNull()
         else -> element.toString()
     }
@@ -131,7 +131,7 @@ class LoTEFilterService {
 
 /** `serviceType` property should be removed in future */
 data class TrustedCertificate(
-    val certificate: @Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?,
+    val certificate: @Serializable(with = EtsiX509CertificateSerializer::class) Certificate?,
     val providerName: TEName,
     val serviceTypeIdentifier: String
 )

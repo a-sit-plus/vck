@@ -1,9 +1,12 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.signum.indispensable.encodeToTlv
+import at.asitplus.signum.indispensable.sign.sign
 import at.asitplus.signum.HazardousMaterials
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseInput
 import at.asitplus.signum.indispensable.cosef.CoseSigned
@@ -13,7 +16,10 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
-import at.asitplus.signum.supreme.sign.EphemeralKey
+import at.asitplus.signum.indispensable.sign.Signer
+import at.asitplus.signum.dsl.ec
+import kotlinx.coroutines.runBlocking
+import at.asitplus.signum.supreme.Supreme
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.authlete.cbor.CBORByteArray
@@ -40,39 +46,39 @@ import java.security.interfaces.ECPublicKey
 
 val CoseServiceJvmTest by matrixSuite {
 
-    val configurations: List<Pair<EphemeralKey, X509SignatureAlgorithm>> =
+    val configurations: List<Pair<Signer.WithExportableKey, SignatureAlgorithm>> =
         listOf(
-            EphemeralKey {
+            runBlocking { Supreme.init(); Signer.Ephemeral {
                 ec {
                     curve = ECCurve.SECP_256_R_1
-                    digests = setOf(curve.nativeDigest)
+                    digest = curve.nativeDigest
                 }
-            }.getOrThrow() to X509SignatureAlgorithm.ES256,
+            } } to EcdsaAlgorithm.withSHA256,
 
-            EphemeralKey {
+            runBlocking { Supreme.init(); Signer.Ephemeral {
                 ec {
                     curve = ECCurve.SECP_384_R_1
-                    digests = setOf(curve.nativeDigest)
+                    digest = curve.nativeDigest
                 }
-            }.getOrThrow() to X509SignatureAlgorithm.ES384,
+            } } to EcdsaAlgorithm.withSHA384,
 
-            EphemeralKey {
+            runBlocking { Supreme.init(); Signer.Ephemeral {
                 ec {
                     curve = ECCurve.SECP_521_R_1
-                    digests = setOf(curve.nativeDigest)
+                    digest = curve.nativeDigest
                 }
-            }.getOrThrow() to X509SignatureAlgorithm.ES512
+            } } to EcdsaAlgorithm.withSHA512
         )
 
     configurations.forEach { (ephemeralKey, sigAlgo) ->
         val coseAlgorithm = sigAlgo.toCoseAlgorithm().getOrThrow()
         val extLibAlgorithm = when (sigAlgo) {
-            X509SignatureAlgorithm.ES256 -> COSEAlgorithms.ES256
-            X509SignatureAlgorithm.ES384 -> COSEAlgorithms.ES384
-            X509SignatureAlgorithm.ES512 -> COSEAlgorithms.ES512
+            EcdsaAlgorithm.withSHA256 -> COSEAlgorithms.ES256
+            EcdsaAlgorithm.withSHA384 -> COSEAlgorithms.ES384
+            EcdsaAlgorithm.withSHA512 -> COSEAlgorithms.ES512
             else -> throw IllegalArgumentException("Unknown Algorithm")
         }
-        val extLibVerifier = COSEVerifier(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as ECPublicKey)
+        val extLibVerifier = COSEVerifier(ephemeralKey.publicKey.toJcaPublicKey() as ECPublicKey)
 
         @OptIn(HazardousMaterials::class)
         val extLibSigner = COSESigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
@@ -207,8 +213,8 @@ val CoseServiceJvmTest by matrixSuite {
     }
 }
 
-private fun CryptoSignature.RawByteEncodable.encodeToString(): String =
-    (this as CryptoSignature.EC.DefiniteLength).rawByteArray.encodeToString(Base16())
+private fun CryptoSignature.encodeToString(): String =
+    coseBytes.encodeToString(Base16())
 
 private fun COSESign1.toCoseSigned(): CoseSigned<ByteArray> =
     CoseSigned.deserialize(ByteArraySerializer(), this.encode()).getOrThrow()

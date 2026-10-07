@@ -1,21 +1,23 @@
 package at.asitplus.wallet.lib.jws
 
 
+import at.asitplus.awesn1.crypto.pki.X500AttributeTypeAndValue
+import at.asitplus.signum.indispensable.pki.X500Name
+import at.asitplus.awesn1.Asn1Integer
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.signum.ecmath.times
-import at.asitplus.signum.indispensable.CryptoPublicKey.EC.Companion.asPublicKey
+import at.asitplus.signum.indispensable.sign.EcdsaPublicKey.Companion.asPublicKey
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.signum.indispensable.asn1.Asn1String
-import at.asitplus.signum.indispensable.asn1.Asn1Time
+import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
+import at.asitplus.awesn1.Asn1String
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
 import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
 import com.benasher44.uuid.uuid4
 import com.ionspin.kotlin.bignum.integer.BigInteger
@@ -77,17 +79,16 @@ val JwsHeaderSerializationTest by matrixSuite {
 
 }
 
-private fun randomCertificate() = X509Certificate(
+private fun randomCertificate() = Certificate(
     TbsCertificate(
-        serialNumber = Random.nextBytes(16),
-        issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.Printable("Test")))),
+        serialNumber = Asn1Integer.fromUnsignedByteArray(Random.nextBytes(16)),
+        issuerName = X500Name(listOf(RelativeDistinguishedName(X500AttributeTypeAndValue.CommonName(Asn1String.Printable("Test"))))),
         publicKey = ECCurve.SECP_256_R_1.getNOTCRYPTORandomPublicKey(),
-        signatureAlgorithm = X509SignatureAlgorithm.ES256,
-        subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.Printable("Test")))),
-        validFrom = Asn1Time(Clock.System.now()),
-        validUntil = Asn1Time(Clock.System.now()),
+        signatureAlgorithm = EcdsaAlgorithm.withSHA256,
+        subjectName = X500Name(listOf(RelativeDistinguishedName(X500AttributeTypeAndValue.CommonName(Asn1String.Printable("Test"))))),
+        validFrom = Clock.System.now(),
+        validUntil = Clock.System.now(),
     ),
-    X509SignatureAlgorithm.ES256,
     CryptoSignature.EC.fromRawBytes(
         ECCurve.SECP_256_R_1,
         Random.nextBytes(ECCurve.SECP_256_R_1.scalarLength.bytes.toInt() * 2)

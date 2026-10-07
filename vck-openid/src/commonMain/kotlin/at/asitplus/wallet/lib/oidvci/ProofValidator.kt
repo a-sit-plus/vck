@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
@@ -128,12 +129,12 @@ class ProofValidator @JvmOverloads constructor(
         else -> null
     }
 
-    private suspend fun JwsCompactTyped<JsonWebToken>.validateJwtProof(): KeysAndNonces {
-        if (jws.jwsHeader.type != OpenIdConstants.PROOF_JWT_TYPE) {
-            throw InvalidProof("invalid typ: ${jws.jwsHeader.type}")
+    private suspend fun JwsCompactTyped<JsonWebToken, JwsHeader>.validateJwtProof(): KeysAndNonces {
+        if (wrappedHeader.header.type != OpenIdConstants.PROOF_JWT_TYPE) {
+            throw InvalidProof("invalid typ: ${wrappedHeader.header.type}")
         }
-        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature || jws.jwsHeader.algorithm !in supportedAlgorithms) {
-            throw InvalidProof("unsupported proof alg: ${jws.jwsHeader.algorithm}")
+        if (wrappedHeader.header.algorithm !is JwsAlgorithm.Signature || wrappedHeader.header.algorithm !in supportedAlgorithms) {
+            throw InvalidProof("unsupported proof alg: ${wrappedHeader.header.algorithm}")
         }
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             throw InvalidNonce("invalid nonce: ${payload.nonce}")
@@ -144,7 +145,7 @@ class ProofValidator @JvmOverloads constructor(
         if (payload.issuedAt == null || payload.issuedAt!! > (clock.now() + timeLeeway)) {
             throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
         }
-        val keyAttestation = jws.jwsHeader.keyAttestationParsed
+        val keyAttestation = wrappedHeader.header.keyAttestationParsed
         if (requireKeyAttestation && keyAttestation == null) {
             throw InvalidProof("key_attestation not contained in JWT proof")
         }
@@ -164,7 +165,7 @@ class ProofValidator @JvmOverloads constructor(
         }
         return KeysAndNonces(
             keys = listOf(
-                jws.jwsHeader.publicKey ?: throw InvalidProof("could not extract public key from ${jws.jwsHeader}")
+                wrappedHeader.header.publicKey ?: throw InvalidProof("could not extract public key from ${wrappedHeader.header}")
             ),
             nonces = setOf(payload.nonce!!)
         )
@@ -174,7 +175,7 @@ class ProofValidator @JvmOverloads constructor(
      * OID4VCI 8.2.1.3: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
      * in the `attested_keys` claim.
      */
-    private suspend fun JwsCompactTyped<KeyAttestationJwt>.validateAttestationProof(): KeysAndNonces {
+    private suspend fun JwsCompactTyped<KeyAttestationJwt, JwsHeader>.validateAttestationProof(): KeysAndNonces {
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
@@ -184,14 +185,14 @@ class ProofValidator @JvmOverloads constructor(
         )
     }
 
-    private suspend fun JwsCompactTyped<KeyAttestationJwt>.validateKeyAttestation(): Collection<CryptoPublicKey> {
-        if (jws.jwsHeader.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
-            throw InvalidProof("invalid typ: ${jws.jwsHeader.type}")
+    private suspend fun JwsCompactTyped<KeyAttestationJwt, JwsHeader>.validateKeyAttestation(): Collection<CryptoPublicKey> {
+        if (wrappedHeader.header.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
+            throw InvalidProof("invalid typ: ${wrappedHeader.header.type}")
         }
-        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            jws.jwsHeader.algorithm !in supportedAlgorithms
+        if (wrappedHeader.header.algorithm !is JwsAlgorithm.Signature ||
+            wrappedHeader.header.algorithm !in supportedAlgorithms
         ) {
-            throw InvalidProof("unsupported key attestation alg: ${jws.jwsHeader.algorithm}")
+            throw InvalidProof("unsupported key attestation alg: ${wrappedHeader.header.algorithm}")
         }
         if (payload.issuer != null) {
             throw InvalidProof("key attestation must not contain iss")

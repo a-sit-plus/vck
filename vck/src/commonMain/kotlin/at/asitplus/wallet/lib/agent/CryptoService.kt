@@ -6,12 +6,12 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.MessageAuthenticationCode
-import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.supreme.mac.mac
-import at.asitplus.signum.supreme.sign.SignatureInput
-import at.asitplus.signum.supreme.sign.Verifier
-import at.asitplus.signum.supreme.sign.verifierFor
+import at.asitplus.signum.indispensable.mac.MessageAuthenticationCode
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
+import at.asitplus.signum.indispensable.mac.mac
+import at.asitplus.signum.indispensable.sign.SignatureInput
+import at.asitplus.signum.indispensable.sign.SignatureVerifier
+import at.asitplus.signum.indispensable.sign.verifierFor
 import kotlin.jvm.JvmOverloads
 
 fun interface VerifySignatureFun {
@@ -20,7 +20,7 @@ fun interface VerifySignatureFun {
         signature: CryptoSignature,
         algorithm: SignatureAlgorithm,
         publicKey: CryptoPublicKey,
-    ): KmmResult<Verifier.Success>
+    ): KmmResult<SignatureVerifier.Success>
 }
 
 class VerifySignature : VerifySignatureFun {
@@ -29,8 +29,8 @@ class VerifySignature : VerifySignatureFun {
         signature: CryptoSignature,
         algorithm: SignatureAlgorithm,
         publicKey: CryptoPublicKey
-    ): KmmResult<Verifier.Success> = algorithm.verifierFor(publicKey).transform {
-        it.verify(SignatureInput(input), signature)
+    ): KmmResult<SignatureVerifier.Success> = catching {
+        algorithm.verifierFor(publicKey).verify(SignatureInput(input), signature)
     }
 }
 
@@ -57,7 +57,7 @@ class VerifyMac() : VerifyMacFun {
         algorithm: MessageAuthenticationCode,
         key: ByteArray
     ): KmmResult<VerifyMacFun.Success> = catching {
-        val realTag = algorithm.mac(key, input).getOrThrow()
+        val realTag = algorithm.mac(key, input)
         if (realTag.contentEquals(tag))
             VerifyMacFun.Success
         else

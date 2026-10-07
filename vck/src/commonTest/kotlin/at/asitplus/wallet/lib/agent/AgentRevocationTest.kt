@@ -21,7 +21,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueIsoMdoc
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
-import at.asitplus.signum.supreme.sign.Verifier.Success
+import at.asitplus.signum.indispensable.sign.SignatureVerifier.Success
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -31,7 +31,6 @@ import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList.Kind
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType

@@ -1,21 +1,23 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.awesn1.crypto.pki.X500AttributeTypeAndValue
+import at.asitplus.signum.indispensable.pki.X500Name
+import at.asitplus.awesn1.Asn1Integer
+import at.asitplus.signum.indispensable.sign.sign
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.basicConstraints_2_5_29_19
-import at.asitplus.signum.indispensable.asn1.Asn1String
-import at.asitplus.signum.indispensable.asn1.Asn1Time
-import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
+import at.asitplus.awesn1.encoding.Asn1
+import at.asitplus.awesn1.Asn1EncapsulatingOctetString
+import at.asitplus.awesn1.KnownOIDs
+import at.asitplus.awesn1.basicConstraints_2_5_29_19
+import at.asitplus.awesn1.Asn1String
 import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
-import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.indispensable.pki.Certificate
+import at.asitplus.signum.indispensable.pki.CertificateExtension
+import at.asitplus.signum.indispensable.sign.signature
+import at.asitplus.signum.indispensable.sign.Signer
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -26,7 +28,7 @@ import kotlin.time.Instant
  * A certificate authority for tests, i.e. an ephemeral key with a self-signed certificate that can issue
  * certificates for other keys.
  *
- * In contrast to [X509Certificate.generateSelfSignedCertificate], which hardcodes both the issuer and the
+ * In contrast to [Certificate.generateSelfSignedCertificate], which hardcodes both the issuer and the
  * subject name to `Default`, this sets distinct names, so that name chaining in
  * [at.asitplus.wallet.lib.etsi.isTrustedBy] is actually exercised.
  */
@@ -35,7 +37,7 @@ class TestCertificateAuthority private constructor(
     private val key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
     private val validity: Duration = 5.minutes,
     /** The certificate to put on a trust list. */
-    val certificate: X509Certificate,
+    val certificate: Certificate,
 ) {
 
     /** Key material whose [KeyMaterial.getCertificate] is issued by this authority, for use as an issuer key. */
@@ -44,7 +46,7 @@ class TestCertificateAuthority private constructor(
         validity: Duration = this.validity,
         validFrom: Instant = Clock.System.now(),
         key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
-        extensions: List<X509CertificateExtension> = listOf(),
+        extensions: List<CertificateExtension> = listOf(),
         /**
          * Whether the issued certificate may itself issue certificates, i.e. whether it asserts
          * `BasicConstraints` with `cA` set. Defaults to `false`, because an issued certificate is an end entity
@@ -75,27 +77,26 @@ class TestCertificateAuthority private constructor(
             issuerKey: KeyMaterial,
             validity: Duration = 5.minutes,
             validFrom: Instant = Clock.System.now(),
-            extensions: List<X509CertificateExtension> = listOf(),
-        ): X509Certificate {
-            val algorithm = issuerKey.signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
+            extensions: List<CertificateExtension> = listOf(),
+        ): Certificate {
+            val algorithm = issuerKey.signatureAlgorithm
             val notBefore = validFrom.truncateToSeconds()
             val tbsCertificate = TbsCertificate(
-                version = 2,
-                serialNumber = Random.nextBytes(8),
-                issuerName = listOf(RelativeDistinguishedName(commonName(issuerName))),
-                subjectName = listOf(RelativeDistinguishedName(commonName(subjectName))),
-                validFrom = Asn1Time(notBefore),
-                validUntil = Asn1Time((notBefore + validity).truncateToSeconds()),
+                serialNumber = Asn1Integer.fromUnsignedByteArray(Random.nextBytes(8)),
+                issuerName = X500Name(listOf(RelativeDistinguishedName(commonName(issuerName)))),
+                subjectName = X500Name(listOf(RelativeDistinguishedName(commonName(subjectName)))),
+                validFrom = notBefore,
+                validUntil = (notBefore + validity).truncateToSeconds(),
                 signatureAlgorithm = algorithm,
                 publicKey = publicKey,
                 extensions = extensions,
             )
-            val signature = issuerKey.sign(tbsCertificate.encodeToDer()).asKmmResult().getOrThrow()
-            return X509Certificate(tbsCertificate, algorithm, signature)
+            val signature = issuerKey.sign(tbsCertificate.encodeToDer()).signature
+            return Certificate(tbsCertificate, signature)
         }
 
         private fun commonName(value: String) =
-            AttributeTypeAndValue.CommonName(Asn1String.UTF8(value))
+            X500AttributeTypeAndValue.CommonName(Asn1String.UTF8(value))
 
         suspend operator fun invoke(
             name: String = "Test CA ${Random.nextInt()}",
@@ -128,11 +129,11 @@ class TestCertificateAuthority private constructor(
 /** Key material presenting a certificate built by [TestCertificateAuthority.certificateFor]. */
 class KeyWithFixedCert(
     private val key: EphemeralKeyWithoutCert,
-    private val certificate: X509Certificate,
+    private val certificate: Certificate,
 ) : KeyMaterial, Signer by key {
     override val identifier: String get() = key.identifier
     override fun getUnderLyingSigner(): Signer = key.getUnderLyingSigner()
-    override suspend fun getCertificate(): X509Certificate = certificate
+    override suspend fun getCertificate(): Certificate = certificate
 }
 
 /** A key with a self-signed certificate, with control over its validity window, unlike [EphemeralKeyWithSelfSignedCert]. */
@@ -156,7 +157,7 @@ suspend fun selfSignedKey(
  * Without it [at.asitplus.wallet.lib.etsi.isTrustedBy] refuses to let the certificate issue anything, so a test
  * authority that omitted this would be rejected as a trust anchor.
  */
-private fun basicConstraintsCa(pathLength: Int? = null) = X509CertificateExtension(
+private fun basicConstraintsCa(pathLength: Int? = null) = CertificateExtension(
     oid = KnownOIDs.basicConstraints_2_5_29_19,
     critical = true,
     value = Asn1EncapsulatingOctetString(listOf(Asn1.Sequence {

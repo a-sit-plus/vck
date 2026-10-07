@@ -44,6 +44,7 @@ import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.decodeFromQuery
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -71,13 +72,10 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer.CredentialResponse
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidEncryptionParameters
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
@@ -85,7 +83,6 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
-import at.asitplus.openid.decodeFromQuery
 
 /**
  * Client service to retrieve credentials using OID4VCI
@@ -108,7 +105,7 @@ class WalletService @JvmOverloads constructor(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Handles credential request encryption and credential response decryption. */
     private val encryptionService: WalletEncryptionService = WalletEncryptionService(),
-    private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt>>)? = null,
+    private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt, JwsHeader>>)? = null,
     /**
      * Selects the key binding to embed in the [JwsHeader] of a credential request proof JWT,
      * as defined in the OpenID for Verifiable Credential Issuance specification.
@@ -505,7 +502,7 @@ class WalletService @JvmOverloads constructor(
         if (keyAttestationRequired != null && loadKeyAttestation == null) {
             throw IllegalArgumentException("Key attestation required, none provided")
         }
-        val keyAttestation: JwsCompactTyped<KeyAttestationJwt>? = if (keyAttestationRequired != null) {
+        val keyAttestation: JwsCompactTyped<KeyAttestationJwt, JwsHeader>? = if (keyAttestationRequired != null) {
             loadKeyAttestation?.invoke(
                 KeyAttestationInput(
                     credentialIssuer = credentialIssuer,
@@ -576,7 +573,7 @@ class WalletService @JvmOverloads constructor(
         )
     )
 
-    private fun JwsCompactTyped<KeyAttestationJwt>.requireKeyMaterialAtAttestedKeyIndex0() {
+    private fun JwsCompactTyped<KeyAttestationJwt, JwsHeader>.requireKeyMaterialAtAttestedKeyIndex0() {
         val attestedKey = payload.attestedKeys.firstOrNull()
             ?: throw IllegalArgumentException("Key attestation required, none provided")
         if (attestedKey.jwkThumbprintPlain != keyMaterial.jsonWebKey.jwkThumbprintPlain) {
@@ -593,7 +590,7 @@ class WalletService @JvmOverloads constructor(
         credentialScheme: CredentialScheme,
     ): Holder.StoreCredentialInput = when (credentialRepresentation) {
         PLAIN_JWT -> Vc(
-            signedVcJws = JwsCompactTyped<VerifiableCredentialJws>(this),
+            signedVcJws = JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(this),
             vcJws = this,
             scheme = credentialScheme as VcJwtCredentialScheme
         )

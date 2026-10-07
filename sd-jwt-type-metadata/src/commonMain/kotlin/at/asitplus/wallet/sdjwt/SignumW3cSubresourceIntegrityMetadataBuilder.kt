@@ -1,8 +1,8 @@
 package at.asitplus.wallet.sdjwt
 
 import at.asitplus.csp2.ContentSecurityPolicySourceExpressionHashAlgorithm
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.digest.digest
 
 object SignumW3cSubresourceIntegrityMetadataBuilder : W3cSubresourceIntegrityMetadataBuilder {
     override suspend fun build(

@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifier
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.ConstantIndex

@@ -1,14 +1,14 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
+import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlin.time.Instant
 
 /**
  * Key Binding JWT for SD-JWT, per [RFC 9901](https://datatracker.ietf.org/doc/html/rfc9901#name-key-binding-jwt).

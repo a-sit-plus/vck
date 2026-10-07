@@ -45,7 +45,7 @@ val OidvciMetadataTest by matrixSuite {
         test("signed metadata as per OID4VCI 1.0, Section 12.2.3") {
             val signed = it.issuer.signedMetadata().getOrThrow()
 
-            signed.jws.jwsHeader.type shouldBe OpenIdConstants.ISSUER_METADATA_JWT_TYPE
+            signed.wrappedHeader.header.type shouldBe OpenIdConstants.ISSUER_METADATA_JWT_TYPE
             VerifyJwsObject()(signed.jws).getOrThrow()
             joseCompliantSerializer.decodeFromString<JsonObject>(signed.jws.plainPayload.decodeToString()).apply {
                 get("sub").shouldNotBeNull().jsonPrimitive.content shouldBe it.issuer.metadata.credentialIssuer

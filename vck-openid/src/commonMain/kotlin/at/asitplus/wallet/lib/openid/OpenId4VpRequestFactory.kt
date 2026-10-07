@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -11,7 +12,7 @@ import at.asitplus.openid.SupportedAlgorithmsContainerIso
 import at.asitplus.openid.SupportedAlgorithmsContainerJwt
 import at.asitplus.openid.SupportedAlgorithmsContainerSdJwt
 import at.asitplus.openid.VpFormatsSupported
-import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
@@ -141,7 +142,7 @@ internal class OpenId4VpRequestFactory(
         requestOptions: OpenId4VpRequestOptions,
         signing: RequestObjectSigning,
         requestObjectParameters: RequestObjectParameters? = null,
-    ): KmmResult<JwsCompactTyped<AuthenticationRequestParameters>> = catching {
+    ): KmmResult<JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>> = catching {
         val requestObject = createPlainAuthnRequest(requestOptions, requestObjectParameters)
         val preRegisteredIssuer = (clientIdScheme as? ClientIdScheme.PreRegistered)
             ?.let { it.issuerUri ?: it.clientId }

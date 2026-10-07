@@ -1,11 +1,13 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.signum.indispensable.sign.sign
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
-import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.agree.KeyAgreementPrivateValue
+import at.asitplus.awesn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -41,11 +43,13 @@ import at.asitplus.signum.indispensable.symmetric.nonce
 import at.asitplus.signum.indispensable.symmetric.randomKey
 import at.asitplus.signum.indispensable.symmetric.requiresNonce
 import at.asitplus.signum.supreme.agree.Ephemeral
-import at.asitplus.signum.supreme.agree.keyAgreement
-import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.signum.supreme.hash.digest
-import at.asitplus.signum.supreme.sign.Signer
-import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.signum.indispensable.agree.keyAgreement
+import at.asitplus.signum.indispensable.sign.signature
+import at.asitplus.signum.indispensable.josef.JwsHeaderWrapped
+import at.asitplus.signum.indispensable.josef.JWS
+import at.asitplus.signum.indispensable.digest.digest
+import at.asitplus.signum.indispensable.sign.Signer
+import at.asitplus.signum.indispensable.sign.SignatureVerifier
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
@@ -113,7 +117,7 @@ fun interface SignJwtFun<P : Any> {
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
-    ): KmmResult<JwsCompactTyped<P>>
+    ): KmmResult<JwsCompactTyped<P, JwsHeader>>
 }
 
 /** Create a [JwsCompact], setting [JwsHeader.type] to the specified value, applying the header modifier. */
@@ -123,7 +127,7 @@ fun interface SignJwtExtFun<P : Any> {
         payload: P,
         serializer: SerializationStrategy<P>,
         additionalHeaderModifier: JwsHeaderModifierFun,
-    ): KmmResult<JwsCompactTyped<P>>
+    ): KmmResult<JwsCompactTyped<P, JwsHeader>>
 }
 
 /** Create a [JwsCompact], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
@@ -135,21 +139,20 @@ class SignJwt<P : Any>(
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
-    ): KmmResult<JwsCompactTyped<P>> = catching {
+    ): KmmResult<JwsCompactTyped<P, JwsHeader>> = catching {
         val header = JwsHeader(
             algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             type = type,
         ).let {
             headerModifier(it, keyMaterial)
         }
-        JwsCompactTyped(
-            JwsCompact(
-                protectedHeader = header,
-                payload = joseCompliantSerializer.encodeToString(serializer, payload).encodeToByteArray(),
-                signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
-            ),
-            payload
+        val jws = JwsCompact(
+            protectedHeader = header,
+            payload = joseCompliantSerializer.encodeToString(serializer, payload).encodeToByteArray(),
+            signer = { keyMaterial.sign(it).signature.joseBytes }
         )
+        val wrapped = JwsHeaderWrapped.fromParts(JwsHeader.serializer(), jws.plainProtectedHeader)
+        JwsCompactTyped(jws, payload, wrapped, JWS.getSignature(header.algorithm, jws.plainSignature))
     }
 }
 
@@ -163,7 +166,7 @@ class SignJwtExt<P : Any>(
         payload: P,
         serializer: SerializationStrategy<P>,
         additionalHeaderModifier: JwsHeaderModifierFun,
-    ): KmmResult<JwsCompactTyped<P>> = catching {
+    ): KmmResult<JwsCompactTyped<P, JwsHeader>> = catching {
         val header = JwsHeader(
             algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             type = type,
@@ -172,14 +175,13 @@ class SignJwtExt<P : Any>(
         }.let {
             additionalHeaderModifier(it)
         }
-        JwsCompactTyped(
-            JwsCompact(
-                protectedHeader = header,
-                payload = joseCompliantSerializer.encodeToString(serializer, payload).encodeToByteArray(),
-                signer = { keyMaterial.sign(it).asKmmResult().getOrThrow().rawByteArray }
-            ),
-            payload
+        val jws = JwsCompact(
+            protectedHeader = header,
+            payload = joseCompliantSerializer.encodeToString(serializer, payload).encodeToByteArray(),
+            signer = { keyMaterial.sign(it).signature.joseBytes }
         )
+        val wrapped = JwsHeaderWrapped.fromParts(JwsHeader.serializer(), jws.plainProtectedHeader)
+        JwsCompactTyped(jws, payload, wrapped, JWS.getSignature(header.algorithm, jws.plainSignature))
     }
 }
 
@@ -202,7 +204,7 @@ class EncryptJwe : EncryptJweFun {
     ) = catching {
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
-        val ephemeralKeyPair = KeyAgreementPrivateValue.ECDH.Ephemeral(crv).getOrThrow()
+        val ephemeralKeyPair = KeyAgreementPrivateValue.ECDH.Ephemeral(crv)
         val jweEncryption = header.encryption
             ?: throw IllegalArgumentException("No encryption in JWE header")
         val jweHeader = header.copy(
@@ -245,7 +247,7 @@ object JweUtils {
      * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-4.6),
      * and [NIST.800-56A](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf)
      */
-    fun concatKdf(
+    suspend fun concatKdf(
         z: ByteArray,
         jweEncryption: JweEncryption,
         apu: ByteArray?,
@@ -274,7 +276,7 @@ object JweUtils {
     ): JweEncrypted {
         val cryptoPublicKey = recipientKey.toCryptoPublicKey().getOrThrow()
         require(cryptoPublicKey is CryptoPublicKey.EC)
-        val z = ephemeralKeyPair.keyAgreement(cryptoPublicKey).getOrThrow()
+        val z = ephemeralKeyPair.keyAgreement(cryptoPublicKey)
         val intermediateKey = concatKdf(
             z,
             jweEncryption,
@@ -300,9 +302,8 @@ object JweUtils {
         header: JweHeader,
         jweObject: JweEncrypted,
     ): JweDecrypted<String> {
-        val z = (keyMaterial.getUnderLyingSigner() as Signer.ECDSA)
+        val z = (keyMaterial.getUnderLyingSigner() as KeyAgreementPrivateValue.ECDH)
             .keyAgreement(header.ephemeralKeyPair?.toCryptoPublicKey()?.getOrThrow() as CryptoPublicKey.EC)
-            .getOrThrow()
         val intermediateKey = concatKdf(
             z,
             header.encryption!!,
@@ -519,7 +520,7 @@ fun interface VerifyJwsSignatureFun {
     suspend operator fun invoke(
         jwsObject: JwsCompact,
         publicKey: CryptoPublicKey,
-    ): KmmResult<Verifier.Success>
+    ): KmmResult<SignatureVerifier.Success>
 }
 
 /**
@@ -533,11 +534,11 @@ class VerifyJwsSignature @JvmOverloads constructor(
         jwsObject: JwsCompact,
         publicKey: CryptoPublicKey,
     ) = catching {
-        val jwsAlgorithm = jwsObject.jwsHeader.algorithm
+        val jwsAlgorithm = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.algorithm
         require(jwsAlgorithm is JwsAlgorithm.Signature) { "Algorithm not supported: $jwsAlgorithm" }
         verifySignature(
             jwsObject.signatureInput,
-            jwsObject.signature,
+            JWS.getSignature(jwsAlgorithm, jwsObject.plainSignature),
             jwsAlgorithm.algorithm,
             publicKey,
         ).getOrThrow()
@@ -548,7 +549,7 @@ fun interface VerifyJwsSignatureWithKeyFun {
     suspend operator fun invoke(
         jwsObject: JwsCompact,
         signer: JsonWebKey,
-    ): KmmResult<Verifier.Success>
+    ): KmmResult<SignatureVerifier.Success>
 }
 
 /**
@@ -623,7 +624,7 @@ class VerifyStatusListTokenHAIP @JvmOverloads constructor(
 ) : VerifyJwsObjectFun {
 
     override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
-        val certChain: CertificateChain = jwsObject.jwsHeader.certificateChain
+        val certChain: CertificateChain = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.certificateChain
             ?: throw IllegalArgumentException("Certificate Chain MUST not be empty")
         // HAIP requires the signing certificate to be issued by a trust anchor, so direct trust is not an option
         val signingCert = trustedIssuers
@@ -633,7 +634,7 @@ class VerifyStatusListTokenHAIP @JvmOverloads constructor(
                     "The certificate signing the request MUST NOT be self-signed"
                 }
             }
-        verifyJwsSignature(jwsObject, signingCert.decodedPublicKey.getOrThrow()).getOrThrow()
+        verifyJwsSignature(jwsObject, signingCert.publicKey).getOrThrow()
     }
 }
 
@@ -655,16 +656,16 @@ class VerifyJwsObjectTrustedCertificate @JvmOverloads constructor(
     val trustedIssuers: TrustedCertificates,
 ) : VerifyJwsObjectFun {
     override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
-        val signingCertificate = jwsObject.jwsHeader.certificateChain
+        val signingCertificate = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.certificateChain
             .requireTrustedSigningCertificate(trustedIssuers)
-        verifyJwsSignature(jwsObject, signingCertificate.decodedPublicKey.getOrThrow()).getOrThrow()
+        verifyJwsSignature(jwsObject, signingCertificate.publicKey).getOrThrow()
     }
 }
 
 fun interface VerifyJwsObjectFun {
     suspend operator fun invoke(
         jwsObject: JwsCompact,
-    ): KmmResult<Verifier.Success>
+    ): KmmResult<SignatureVerifier.Success>
 }
 
 /**
@@ -692,18 +693,20 @@ class VerifyJwsObject @JvmOverloads constructor(
         require(jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }) {
             "Invalid Signature"
         }
-        Verifier.Success
+        SignatureVerifier.Success
     }
 
     /**
      * Returns a list of public keys that may have been used to sign this [JwsCompact]
      * by evaluating its header values (see [JwsHeader.jsonWebKey], [JwsHeader.jsonWebKeySetUrl]).
      */
-    private suspend fun JwsCompact.loadPublicKeys(): Set<CryptoPublicKey> =
-        jwsHeader.publicKey?.let { setOf(it) }
-            ?: jwsHeader.jsonWebKeySetUrl?.let {
-                retrieveJwkFromKeySetUrl(it, jwsHeader.keyId)?.let { setOf(it) }
-            } ?: setOf()
+    private suspend fun JwsCompact.loadPublicKeys(): Set<CryptoPublicKey> {
+        val header = JwsHeaderWrapped.fromParts<JwsHeader>(plainProtectedHeader).header
+        return header.publicKey?.let { setOf(it) }
+            ?: header.jsonWebKeySetUrl?.let {
+                retrieveJwkFromKeySetUrl(it, header.keyId)?.let { setOf(it) }
+            } ?: emptySet()
+    }
 
     /**
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
@@ -738,14 +741,14 @@ class VerifyJwsObjectTrusted @JvmOverloads constructor(
             ?.toSet() ?: setOf()
         require(trusted.isNotEmpty()) { "No trusted keys" }
         // If the JWS names its signer, that signer has to be trusted, we don't fall back to the other entries
-        val candidates = jwsObject.jwsHeader.publicKey?.let { headerKey ->
+        val candidates = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.publicKey?.let { headerKey ->
             require(headerKey in trusted) { "Signer asserted in JWS header is not trusted" }
             setOf(headerKey)
         } ?: trusted
         require(candidates.any { verifyJwsSignature(jwsObject, it).isSuccess }) {
             "Invalid Signature"
         }
-        Verifier.Success
+        SignatureVerifier.Success
     }
 }
 
@@ -766,23 +769,23 @@ class VerifyJwsObjectJades @JvmOverloads constructor(
         @SerialName("digVal") val digVal: String
     )
 
-    override suspend operator fun invoke(jwsObject: JwsCompact): KmmResult<Verifier.Success> = catching {
+    override suspend operator fun invoke(jwsObject: JwsCompact): KmmResult<SignatureVerifier.Success> = catching {
         verifyJwsObject(jwsObject).getOrThrow()
         validateX5tO(jwsObject).getOrThrow()
-        Verifier.Success
+        SignatureVerifier.Success
     }
 
     /**
      * Validates the 'x5t#o' parameter against the leaf certificate of the 'x5c' chain.
      * The calculated thumbprint of the leaf certificate must match the value from `x5t#o`
      */
-    private fun validateX5tO(jwsObject: JwsCompact): KmmResult<Unit> = catching {
+    private suspend fun validateX5tO(jwsObject: JwsCompact): KmmResult<Unit> = catching {
         val headerJsonStr = jwsObject.plainProtectedHeader.decodeToString()
         val rawHeaderJson = joseCompliantSerializer.parseToJsonElement(headerJsonStr).jsonObject
         val x5tOElement = rawHeaderJson["x5t#o"] ?: return@catching
         val x5tO = joseCompliantSerializer.decodeFromJsonElement<JadesX5tO>(x5tOElement)
 
-        val certChain = jwsObject.jwsHeader.certificateChain
+        val certChain = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.certificateChain
             ?: throw IllegalArgumentException("JAdES Compliance Failure: 'x5t#o' parameter requires an 'x5c' certificate chain.")
 
         val digestAlgorithm = parseJadesDigestAlgorithm(x5tO.digAlg)

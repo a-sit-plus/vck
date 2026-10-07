@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.etsi
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.etsi.ListOfTrustedEntities
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
@@ -1901,7 +1902,7 @@ private fun certificateOf(
     profile: LoteProfile,
     provider: String,
     kind: ServiceKind = ServiceKind.ISSUANCE,
-): X509Certificate {
+): Certificate {
     val certs = when (kind) {
         ServiceKind.ISSUANCE -> filter.extractIssuanceCertificates(lote, profile)
         ServiceKind.REVOCATION -> filter.extractRevocationCertificates(lote, profile)
@@ -1915,7 +1916,7 @@ private val wrpacOnlyCert = certificateOf(wrpacLote, LoteProfile.WRPAC, "Idakto"
 private val referenceRevocationCert =
     certificateOf(pidLote, LoteProfile.PID, "Reference implementation TEST EU PID Provider", ServiceKind.REVOCATION)
 
-private fun List<X509Certificate>.containsCert(cert: X509Certificate): Boolean {
+private fun List<Certificate>.containsCert(cert: Certificate): Boolean {
     val der = cert.encodeToDer()
     return any { it.encodeToDer().contentEquals(der) }
 }
@@ -1923,7 +1924,7 @@ private fun List<X509Certificate>.containsCert(cert: X509Certificate): Boolean {
 private fun provider(
     lists: Collection<ListOfTrustedEntities> = listOf(pidLote, wrpacLote),
     trustListsFor: (suspend (String) -> Collection<ListOfTrustedEntities>)? = null,
-    additionalAnchors: List<X509Certificate> = emptyList(),
+    additionalAnchors: List<Certificate> = emptyList(),
 ) = trustListsFor?.let { LoTETrustAnchorProvider({ lists }, it, additionalAnchors) }
     ?: LoTETrustAnchorProvider(trustLists = { lists }, additionalAnchors = additionalAnchors)
 

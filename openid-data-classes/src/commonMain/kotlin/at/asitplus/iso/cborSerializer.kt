@@ -1,15 +1,15 @@
 package at.asitplus.iso
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.digest.digest
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.update
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.CompositeEncoder
-import kotlin.concurrent.atomics.AtomicReference
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.concurrent.atomics.update
 
 @OptIn(ExperimentalAtomicApi::class)
 object CborCredentialSerializer {
@@ -91,7 +91,7 @@ private fun cborTagPrefix(tag: Byte): ByteArray {
 
 fun ByteArray.wrapInCborTag(tag: Byte) = cborTagPrefix(tag) + this
 
-fun ByteArray.sha256(): ByteArray = Digest.SHA256.digest(this)
+suspend fun ByteArray.sha256(): ByteArray = Digest.SHA256.digest(this)
 
 
 private typealias ItemValueEncoder

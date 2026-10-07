@@ -1,5 +1,10 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.encodeToDer
+import at.asitplus.signum.indispensable.pki.AlternativeNames
+import at.asitplus.signum.indispensable.pki.GeneralName
+import at.asitplus.awesn1.crypto.pki.X509GeneralName
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.iso.sha256
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -40,7 +45,7 @@ sealed class ClientIdScheme(
      * the public key MUST be obtained from the `client_metadata` parameter.
      */
     class VerifierAttestation(
-        val attestationJwt: JwsCompactTyped<JsonWebToken>,
+        val attestationJwt: JwsCompactTyped<JsonWebToken, JwsHeader>,
         redirectUri: String,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.VerifierAttestation,
@@ -97,14 +102,20 @@ sealed class ClientIdScheme(
      * All Verifier metadata other than the public key MUST be obtained from the `client_metadata` parameter.
      * Example Client Identifier: `x509_hash:Uvo3HtuIxuhC92rShpgqcT3YXwrqRxWEviRiA0OZszk`.
      */
-    class CertificateHash(
+    class CertificateHash private constructor(
         val chain: CertificateChain,
         redirectUri: String,
+        certificateHash: String,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.X509Hash,
-        clientIdWithoutPrefix = chain.first().encodeToDer().sha256().encodeToString(Base64UrlStrict),
+        clientIdWithoutPrefix = certificateHash,
         redirectUri = redirectUri,
-    )
+    ) {
+        companion object {
+            suspend operator fun invoke(chain: CertificateChain, redirectUri: String): CertificateHash =
+                CertificateHash(chain, redirectUri, chain.first().encodeToDer().sha256().encodeToString(Base64UrlStrict))
+        }
+    }
 
     /**
      * This value indicates that the Verifier's Redirect URI (or Response URI when Response Mode `direct_post` is
@@ -160,3 +171,7 @@ sealed class ClientIdScheme(
         }
     }
 }
+
+internal val AlternativeNames.dnsNames: List<String>
+    get() = generalNames.filterIsInstance<GeneralName.X509Representable>()
+        .mapNotNull { (it.asn1Representation as? X509GeneralName.Dns)?.value }

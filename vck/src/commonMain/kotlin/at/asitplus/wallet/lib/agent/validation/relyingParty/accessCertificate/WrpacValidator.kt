@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.sha256
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.leaf
@@ -49,7 +50,7 @@ object WrpacValidator {
         )
     }
 
-    private fun validateX509HashBinding(clientId: String, chain: CertificateChain?) = catching {
+    private suspend fun validateX509HashBinding(clientId: String, chain: CertificateChain?) = catching {
         require(!chain.isNullOrEmpty()) {
             "x509_hash validation failed, request x5c missing."
         }

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -10,7 +11,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlin.time.Instant
 
 data class StatusListJwt(
-    val value: JwsCompactTyped<StatusListTokenPayload>,
+    val value: JwsCompactTyped<StatusListTokenPayload, JwsHeader>,
     override val resolvedAt: Instant?,
 ) : StatusListToken() {
 
@@ -50,7 +51,7 @@ data class StatusListJwt(
         verifyJwsObject(jwsSigned.jws).getOrElse {
             throw IllegalStateException("Invalid signature", it)
         }
-        val type = jwsSigned.jws.jwsHeader.type?.lowercase()
+        val type = jwsSigned.wrappedHeader.header.type?.lowercase()
             ?: throw IllegalArgumentException("Invalid type header")
         if (type != MediaTypes.STATUSLIST_JWT.lowercase()) {
             throw IllegalArgumentException("Invalid type header: $type")

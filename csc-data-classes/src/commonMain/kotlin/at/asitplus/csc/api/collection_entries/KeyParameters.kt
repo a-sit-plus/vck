@@ -1,9 +1,9 @@
 package at.asitplus.csc.api.collection_entries
 
+import at.asitplus.awesn1.ObjectIdentifier
+import at.asitplus.awesn1.ObjectIdentifierStringSerializer
 import at.asitplus.csc.api.CredentialInfo
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
+import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -47,9 +47,9 @@ data class KeyParameters(
         require(
             algo.intersect(
                 listOf(
-                    X509SignatureAlgorithm.ES256.oid,
-                    X509SignatureAlgorithm.ES384.oid,
-                    X509SignatureAlgorithm.ES512.oid
+                    EcdsaAlgorithm.withSHA256.asn1Representation.oid,
+                    EcdsaAlgorithm.withSHA384.asn1Representation.oid,
+                    EcdsaAlgorithm.withSHA512.asn1Representation.oid
                 ).toSet()
             ) != emptySet<ObjectIdentifier>() || curve == null
         ) { "If curve is specified algorithm must be (supported) EC algorithm" }

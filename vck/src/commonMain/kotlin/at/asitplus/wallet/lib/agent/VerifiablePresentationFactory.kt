@@ -14,6 +14,7 @@ package at.asitplus.wallet.lib.agent
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
@@ -29,11 +30,11 @@ import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.truncateToSeconds
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.indispensable.digest.digest
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -288,7 +289,7 @@ class VerifiablePresentationFactory(
         return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
     }
 
-    private fun StoreEntry.SdJwt.loadDisclosures(
+    private suspend fun StoreEntry.SdJwt.loadDisclosures(
         disclosedAttributes: DCQLCredentialQueryMatchingResult
     ): Set<String> = when (disclosedAttributes) {
         AllMandatoryClaimsMatchingResult -> emptySet()
@@ -296,7 +297,7 @@ class VerifiablePresentationFactory(
         is ClaimsQueryResults -> loadDisclosures(disclosedAttributes.toRequestedSdJwtClaims(this))
     }
 
-    private fun StoreEntry.SdJwt.loadDisclosures(
+    private suspend fun StoreEntry.SdJwt.loadDisclosures(
         requestedClaims: Collection<NormalizedJsonPath>
     ): Set<String> {
         val digest = sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
@@ -409,7 +410,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         hashInput: String,
         digest: Digest,
-    ): JwsCompactTyped<KeyBindingJws> = signKeyBinding(
+    ): JwsCompactTyped<KeyBindingJws, JwsHeader> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
             issuedAt = Clock.System.now().truncateToSeconds(),

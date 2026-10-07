@@ -10,7 +10,7 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -22,7 +22,7 @@ import io.ktor.util.*
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
 
-internal fun List<TransactionDataBase64Url>.hash(digest: Digest?): List<ByteArray> =
+internal suspend fun List<TransactionDataBase64Url>.hash(digest: Digest?): List<ByteArray> =
     map { transactionData -> transactionData.digest(digest ?: Digest.SHA256) }
 
 internal fun getCommonHashesAlgorithms(transactionData: List<TransactionDataBase64Url>?): Set<String>? {
@@ -44,7 +44,7 @@ fun Digest.toIanaName(): String =
         Digest.SHA256 -> SdJwtConstants.SHA_256
         Digest.SHA384 -> SdJwtConstants.SHA_384
         Digest.SHA512 -> SdJwtConstants.SHA_512
-        Digest.SHA1 -> throw IllegalArgumentException("SHA1 not supported")
+        else -> throw IllegalArgumentException("Unsupported digest: $this")
     }
 
 // see https://www.iana.org/assignments/named-information/named-information.xhtml
