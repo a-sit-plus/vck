@@ -27,8 +27,12 @@ data class CredentialTrustAnchorSet(
 
 /**
  * Trust anchors per credential type, selected by the identifier signed into the credential, i.e. the SD-JWT `vct`,
- * the mdoc `docType`, or a VC type. Each attestation type is trusted through its own trust source [TS11-4.3.1]: a
- * provider listed for one type is not authorized for another [TS2-2.5].
+ * the mdoc `docType`, or a VC type.
+ *
+ * Each attestation type is trusted through its own trust source, the `trustedAuthorities` of its attestation schema
+ * (EUDI TS11, 4.3.1 *SchemaMeta main class* and 4.3.3 *TrustAuthority sub-class*), and a provider listed for one type
+ * is not authorized for another: e.g. the PID providers list carries the certificates that verify PID (EUDI TS2, 2.5
+ * *PIDProvider*, after CIR (EU) 2024/2980 Annex II 3.(h)).
  *
  * Use [CredentialTrustScopes] for explicitly configured types, or [asCredentialTrustAnchors] to adapt a
  * [TrustAnchorProvider].
@@ -47,8 +51,9 @@ fun interface CredentialTrustAnchors {
  * The trust source of one attestation type, covering its signed identifiers in every format, e.g. `urn:eudi:pid:1`
  * and `eu.europa.ec.eudi.pid.1`.
  *
- * Issuance and status anchors are separate [LoTE-SvcType]: if the trust framework of the type lets the issuer sign
- * its own status lists, pass the same source for [status] explicitly.
+ * Issuance and status anchors are separate, as every List of Trusted Entities separates the services that issue from
+ * those that provide status information (ETSI TS 119 602 V1.1.1, Tables D.3, E.3, F.3, and H.3): if the trust
+ * framework of the type lets the issuer sign its own status lists, pass the same source for [status] explicitly.
  */
 data class CredentialTrustScope(
     /** Matched exactly and case-sensitively; list national extensions, e.g. of a PID `vct`, explicitly. */
@@ -100,7 +105,9 @@ class CredentialTrustScopes(scopes: List<CredentialTrustScope>) : CredentialTrus
 
 /**
  * A [CredentialTrustScope] from the verified [lists] of [profile], e.g. the PID providers list: their issuance
- * services authorize issuers, their revocation services the signers of status list tokens [LoTE-SvcType].
+ * services (`.../SvcType/<list>/Issuance`) authorize issuers, their revocation services
+ * (`.../SvcType/<list>/Revocation`) the signers of status list tokens (ETSI TS 119 602 V1.1.1, e.g. Table D.3 for the
+ * PID providers list).
  *
  * VC-K does not verify the signature of a list: [lists] has to return lists the application has verified.
  */
@@ -152,16 +159,3 @@ internal fun CredentialTrustAnchors.Companion.sameForAllTypes(
         TrustPurpose.STATUS -> status?.let { CredentialTrustAnchorSet(source, it()) }
     }
 }
-
-/*
- * References
- *
- * | Tag           | Source                                                                                      |
- * |---------------|---------------------------------------------------------------------------------------------|
- * | TS11-4.3.1    | EUDI TS11, 4.3.1 SchemaMeta main class and 4.3.3 TrustAuthority sub-class                   |
- * |               | (eudi-doc-standards-and-technical-specifications ee91a294): trustedAuthorities per type     |
- * | TS2-2.5       | EUDI TS2, 2.5 PIDProvider, citing CIR (EU) 2024/2980 Annex II 3.(h): the certificates of    |
- * |               | the PID providers list verify PID                                                           |
- * | LoTE-SvcType  | ETSI TS 119 602 V1.1.1, Annex D Table D.3, Annex E Table E.3, Annex F Table F.3, Annex H    |
- * |               | Table H.3: separate Issuance and Revocation service types per list                          |
- */

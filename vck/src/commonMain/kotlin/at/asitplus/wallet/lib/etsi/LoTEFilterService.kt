@@ -275,8 +275,9 @@ sealed class LoteProfile(
          * list is known for it. Identifiers are case-sensitive: PID identifiers match by their prefix, which covers
          * versions and national extensions, the mDL `docType` matches exactly.
          *
-         * There is no fallback to [EAA]: a Pub-EAA provider is not authorized for a type whose rulebook names
-         * another trust source [TS11-4.3.1], so an unknown type has no list.
+         * There is no fallback to [EAA]: a Pub-EAA provider is not authorized for a type whose attestation schema
+         * names another trust source in its `trustedAuthorities` (EUDI TS11, 4.3.1 *SchemaMeta main class*), so an
+         * unknown type has no list.
          */
         fun fromSchemeIdentifier(identifier: String?): LoteProfile? = when {
             identifier == null -> null
@@ -286,12 +287,3 @@ sealed class LoteProfile(
         }
     }
 }
-
-/*
- * References
- *
- * | Tag        | Source                                                                                         |
- * |------------|------------------------------------------------------------------------------------------------|
- * | TS11-4.3.1 | EUDI TS11, 4.3.1 SchemaMeta main class and 4.3.3 TrustAuthority sub-class                      |
- * |            | (eudi-doc-standards-and-technical-specifications ee91a294): trustedAuthorities per type        |
- */

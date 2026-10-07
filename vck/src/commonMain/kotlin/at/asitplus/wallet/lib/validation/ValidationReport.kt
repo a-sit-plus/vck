@@ -72,7 +72,7 @@ data class TrustValidation(
      * For a credential and its status list tokens, the signed credential identifier the anchors were selected for,
      * if it could be determined. `null` for other artifacts, which are trusted per artifact kind.
      */
-    val credentialIdentifier: String?,
+    val credentialIdentifier: String? = null,
     /** Names the trust source the anchors came from, e.g. the URL of a trust list, but never the certificates. */
     val source: String? = null,
 )
@@ -136,7 +136,7 @@ data class CredentialChecks(
 data class StatusListTokenChecks(
     /** Whether the token could be retrieved, e.g. a status list token resolver is configured and succeeded. */
     val retrieval: CheckOutcome,
-    /** Media type, decoding, list kind matching the reference, and the index or identifier can be looked up. */
+    /** Media type and decoding. Looking up the status belongs to the [StatusMechanismValidation]. */
     val parsing: CheckOutcome,
     val signature: CheckOutcome,
     /** Whether the signer is issued by a status anchor for the referencing artifact, never directly trusted. */
