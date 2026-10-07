@@ -20,6 +20,32 @@ Release 9.0.0 (unreleased):
       `credential_configurations_supported` is REQUIRED in OID4VCI; issuer metadata without it now fails to deserialize
     - Add `WalletService.createCredential(metadata, credentialConfigurationId, ...)` to request exactly one credential
       by its `credential_configuration_id`
+- HTTP error handling:
+    - Add `HttpErrorResponseException` and `ProblemDetails` in `vck-openid` (package `at.asitplus.wallet.lib`), so
+      OAuth 2.0 errors and RFC 9457 problem details of non-success responses are available without a ktor client.
+      The exception carries `status` and `headers` instead of a ktor `HttpResponse`
+    - Add `OAuth2Error?.dpopNonce(Headers)` and `OAuth2Error?.attestationChallenge(Headers)` in `vck-openid`
+    - BREAKING: `HttpErrorResponseException` in `vck-openid-ktor` now extends the new class instead of ktor's
+      `ResponseException`; it keeps its constructor and `response`, and is still an `IllegalStateException`
+    - Deprecate `HttpErrorResponseException` and the typealias `ProblemDetails` in `vck-openid-ktor`, replace with the
+      classes from `vck-openid`
+    - Deprecate `HttpErrorResponseException.dpopNonce()` and `HttpErrorResponseException.attestationChallenge()` in
+      `vck-openid-ktor`, replace with `oauth2Error.dpopNonce(headers)` and `oauth2Error.attestationChallenge(headers)`
+- OAuth 2.0 client:
+    - Add `OAuth2ProtocolClient` in `vck-openid`, implementing the client side of OAuth 2.0 (PAR, JAR, token requests,
+      token introspection, userinfo) including DPoP and attestation-based client authentication, without sending
+      requests itself: each call returns an `HttpExchange`, whose requests (`ProtocolRequest`) callers send with any
+      HTTP stack
+    - `OAuth2KtorClient` sends the requests of `OAuth2ProtocolClient`, keeping its API
+    - Move `TokenResponseWithDpopNonce`, `LoadInstanceAttestationInput` and `OpenUrlForAuthnRequest` to `vck-openid`
+      (`at.asitplus.wallet.lib.oauth2`, the latter two nested in `OAuth2ProtocolClient`), deprecate the typealiases
+      left in `vck-openid-ktor`
+    - Deprecate `OAuth2KtorClient.callTokenIntrospection` with the parameters `token` (never used) and `retryCount`
+      (now ignored), replace with the overload without them
+    - Fix: A retried token introspection request passes `issuerMetadata` to `loadInstanceAttestation`
+    - `RemoteOAuth2AuthorizationServerAdapter` loads the authorization server metadata and the user info through
+      `OAuth2ProtocolClient`; the DPoP proof for the userinfo endpoint uses the latest nonce of that endpoint's origin
+      (RFC 9449 9.) instead of the nonce of the token response
 
 Release 8.0.0:
 
