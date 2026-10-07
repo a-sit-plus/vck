@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.sha256
@@ -15,7 +16,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.signum.indispensable.josef.typed
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
@@ -269,13 +270,11 @@ internal class AuthorizationRequestValidator(
         relyingPartyTrust?.requireTrustedBy<RelyingPartyTrust.Certificates>("trusted relying party certificates") {
             certChain.requireTrustedSigningCertificate(it.certificates)
         }
-        signedRequest.verifyRequestObjectSignature(leaf.decodedPublicKey.getOrElse {
-            throw InvalidRequest("Could not read key from certificate in x5c", it)
-        })
+        signedRequest.verifyRequestObjectSignature(leaf.publicKey)
     }
 
     private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanDns(
-        leaf: X509Certificate,
+        leaf: Certificate,
         responseModeIsDirectPost: Boolean,
         responseModeIsDcApi: Boolean,
     ) {
@@ -298,11 +297,11 @@ internal class AuthorizationRequestValidator(
         }
     }
 
-    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanHash(
-        leaf: X509Certificate,
+    private suspend fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.verifyX509SanHash(
+        leaf: Certificate,
     ) {
         val expectedHash = parameters.clientIdWithoutPrefix
-        val calculatedHash = leaf.encodeToDerSafe()
+        val calculatedHash = catchingUnwrapped { leaf.encodeToDer() }
             .getOrElse { throw InvalidRequest("Could not encode certificate to DER", it) }
             .sha256().encodeToString(Base64UrlStrict)
         if (calculatedHash != expectedHash) {

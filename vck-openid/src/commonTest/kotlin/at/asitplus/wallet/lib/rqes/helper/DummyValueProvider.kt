@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.rqes.helper
 
+import at.asitplus.signum.indispensable.digest.WellKnownDigest
+import at.asitplus.signum.indispensable.sign.RsaAlgorithm
+import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
 import at.asitplus.csc.api.CredentialInfo
 import at.asitplus.csc.api.collection_entries.AuthParameters
 import at.asitplus.csc.api.collection_entries.CertificateParameters
@@ -10,8 +13,7 @@ import at.asitplus.csc.api.collection_entries.KeyParameters.KeyStatusOptions
 import at.asitplus.csc.api.collection_entries.KeyParameters.KeyStatusOptions.ENABLED
 import at.asitplus.csc.api.collection_entries.OAuthDocumentDigest
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
@@ -25,13 +27,13 @@ import kotlin.random.Random
 
 class DummyValueProvider {
 
-    val validSignatureAlgorithms = listOf(
-        X509SignatureAlgorithm.RS256,
-        X509SignatureAlgorithm.RS384,
-        X509SignatureAlgorithm.RS512,
-        X509SignatureAlgorithm.ES256,
-        X509SignatureAlgorithm.ES384,
-        X509SignatureAlgorithm.ES512,
+    val validSignatureAlgorithms: List<SignatureAlgorithm> = listOf(
+        RsaAlgorithm.withSHA256andPKCS1Padding,
+        RsaAlgorithm.withSHA384andPKCS1Padding,
+        RsaAlgorithm.withSHA512andPKCS1Padding,
+        EcdsaAlgorithm.withSHA256,
+        EcdsaAlgorithm.withSHA384,
+        EcdsaAlgorithm.withSHA512,
     )
 
     suspend fun getCredentialInfo(
@@ -58,14 +60,14 @@ class DummyValueProvider {
         subjectDN = uuid4().toString(),
     )
 
-    private fun X509SignatureAlgorithm.toCscKeyParameters(
+    private fun SignatureAlgorithm.toCscKeyParameters(
         keyStatus: KeyStatusOptions,
     ): KeyParameters = KeyParameters(
         status = keyStatus,
-        algo = setOf(oid),
+        algo = setOf(asn1Representation.oid),
         len = digest.outputLength.bits,
-        curve = if (this is X509SignatureAlgorithm.ECDSA)
-            (algorithm.toJwsAlgorithm().getOrThrow() as JwsAlgorithm.Signature.EC).ecCurve.oid
+        curve = if (this is EcdsaAlgorithm)
+            (toJwsAlgorithm().getOrThrow() as JwsAlgorithm.Signature.EC).ecCurve.oid
         else null
     )
 
@@ -77,9 +79,9 @@ class DummyValueProvider {
     }
 }
 
-val X509SignatureAlgorithm.digest: Digest
+val SignatureAlgorithm.digest: WellKnownDigest
     get() = when (this) {
-        is X509SignatureAlgorithm.ECDSA -> digest
-        is X509SignatureAlgorithm.RSAPSS -> digest
-        is X509SignatureAlgorithm.RSAPKCS1 -> digest
+        is EcdsaAlgorithm -> requireNotNull(digest) as WellKnownDigest
+        is RsaAlgorithm -> digest as WellKnownDigest
+        else -> error("Unsupported signature algorithm: $this")
     }

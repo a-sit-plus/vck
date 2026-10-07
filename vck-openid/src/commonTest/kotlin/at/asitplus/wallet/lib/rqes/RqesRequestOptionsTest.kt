@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.signum.indispensable.digest.WellKnownDigest
 import at.asitplus.csc.api.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.csc.api.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
@@ -9,7 +10,6 @@ import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.decodeFromQuery
-import at.asitplus.signum.indispensable.Digest
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
@@ -98,5 +98,5 @@ private fun buildDocumentDigests(): RqesDocumentDigestEntry = RqesDocumentDigest
     documentLocationMethod = DocumentLocationMethod(
         documentAccessMode = DocumentLocationMethod.DocumentAccessMode.OAUTH2
     ),
-    hashAlgorithmOID = Digest.entries.random().oid,
+    hashAlgorithmOID = WellKnownDigest.entries.toList().random().oid,
 ).getOrThrow()

@@ -12,6 +12,7 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.decodeFromPem
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -33,7 +34,7 @@ import at.asitplus.openid.encodeToParameters
 import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.utils.MapStore
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.wallet.lib.NonceService
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -465,9 +466,9 @@ u6S9IqrmGqWJpkkub533uSa6/rVveTz6aq7G
 -----END CERTIFICATE-----
     """
 )
-private fun parsePemCertificateChain(pemChain: List<String>): List<X509Certificate> {
+private fun parsePemCertificateChain(pemChain: List<String>): List<Certificate> {
     require(pemChain.isNotEmpty()) { "No PEM certificates found" }
     return pemChain.map { block ->
-        X509Certificate.decodeFromPem(block).getOrThrow()
+        Certificate.decodeFromPem(block)
     }
 }

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.cbor.CoseHeaderIdentifierFun

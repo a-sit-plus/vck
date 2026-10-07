@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.signum.indispensable.decodeFromPem
+import at.asitplus.signum.indispensable.sign.EcdsaPrivateKey
 import at.asitplus.dcapi.DCAPIHandover.Companion.TYPE_DCAPI
 import at.asitplus.dcapi.DCAPIInfo
 import at.asitplus.dcapi.DCAPIResponse
@@ -94,8 +96,8 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             pt = plaintext,
         )
 
-        val skR = CryptoPrivateKey.decodeFromPem(fixture.verifierKeyPem).getOrThrow()
-            .shouldBeInstanceOf<CryptoPrivateKey.EC.WithPublicKey>()
+        val skR = CryptoPrivateKey.decodeFromPem(fixture.verifierKeyPem)
+            .shouldBeInstanceOf<EcdsaPrivateKey.WithPublicKey>()
 
         hpke.OpenBase(
             enc = sealed.encapsulatedSecret,

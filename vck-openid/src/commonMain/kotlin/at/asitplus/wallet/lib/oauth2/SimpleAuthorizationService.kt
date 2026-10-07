@@ -677,7 +677,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         ResponseWithDpopNonce(response, tokenService.dpopNonce())
     }
 
-    private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
+    private suspend fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
         if (codeVerifier == null) {
             throw InvalidGrant("code verifier invalid: $codeVerifier for $code")
         }

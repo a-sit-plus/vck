@@ -161,16 +161,18 @@ internal class VpTokenValidator(
                 input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
                     .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) },
             ) { challenge ->
-                mdocDeviceSignatureVerifier.verifyDocument(
-                    sessionTranscript = createSessionTranscript(
-                        clientId = clientId,
-                        nonce = challenge,
-                        responseUrl = responseUrl,
-                        clientIdRequired = clientIdRequired,
-                        origin = origin,
-                        recipientKey = recipientKey,
-                    )
-                )
+                { mso, document ->
+                    mdocDeviceSignatureVerifier.verifyDocument(
+                        sessionTranscript = createSessionTranscript(
+                            clientId = clientId,
+                            nonce = challenge,
+                            responseUrl = responseUrl,
+                            clientIdRequired = clientIdRequired,
+                            origin = origin,
+                            recipientKey = recipientKey,
+                        )
+                    )(mso, document)
+                }
             }
 
             else -> throw IllegalArgumentException("descriptor.format: $credentialFormat")

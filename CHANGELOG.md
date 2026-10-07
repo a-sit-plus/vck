@@ -1,6 +1,7 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- `vck-openid`: migrate certificates, signature algorithms, key agreement, and ASN.1 types to the Signum snapshot APIs. Session transcript hashing and `ClientIdScheme.CertificateHash` creation are now suspend operations.
 - Core `vck` JOSE: migrate typed JWS views to explicit `JwsHeader` generics while retaining specific payload types, and read decoded headers and signatures through the new indispensable-josef APIs.
 - Core `vck`: migrate to the Signum 3.26.1 snapshot crypto APIs, using `Certificate` and `SignatureVerifier`. Ephemeral key material now accepts `Signer.WithExportableKey`. Digest-based helpers, certificate verification, and `SdJwtDecoded` creation are now suspend operations.
 - CSC data classes:

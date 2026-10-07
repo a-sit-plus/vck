@@ -19,7 +19,7 @@ import at.asitplus.openid.SupportedAlgorithmsContainerIso
 import at.asitplus.openid.SupportedAlgorithmsContainerJwt
 import at.asitplus.openid.SupportedAlgorithmsContainerSdJwt
 import at.asitplus.openid.VpFormatsSupported
-import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
@@ -29,7 +29,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.signum.supreme.UserInitiatedCancellationReason
+import at.asitplus.signum.indispensable.sign.UserInitiatedCancellation
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
@@ -248,10 +248,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
         }
     }
 
-    private fun Throwable.getUserSignatureCancellationException(): UserInitiatedCancellationReason? {
+    private fun Throwable.getUserSignatureCancellationException(): UserInitiatedCancellation? {
         var current: Throwable? = this
         while (current != null) {
-            if (current is UserInitiatedCancellationReason) {
+            if (current is UserInitiatedCancellation) {
                 return current // DON'T send error response for user cancellation
             }
             current = current.cause
@@ -352,7 +352,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
 
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractLeafCertKey(): JsonWebKey? =
         (this as? RequestParametersFrom.Jws<AuthenticationRequestParameters>)?.jws?.let {
-            (it as? JwsCompact)?.jwsHeader?.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()
+            (it as? JwsCompact)?.jwsHeader?.certificateChain?.firstOrNull()?.publicKey
                 ?.toJsonWebKey()
         }
 

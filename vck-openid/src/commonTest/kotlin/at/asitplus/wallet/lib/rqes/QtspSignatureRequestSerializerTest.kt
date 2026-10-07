@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.signum.indispensable.sign.RsaAlgorithm
+import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
 import at.asitplus.csc.api.QtspSignatureRequest
 import at.asitplus.csc.api.SignDocRequestParameters
 import at.asitplus.csc.api.SignHashRequestParameters
@@ -8,8 +10,7 @@ import at.asitplus.csc.api.collection_entries.DocumentDigest
 import at.asitplus.csc.datamodel.basic.ConformanceLevel
 import at.asitplus.csc.datamodel.basic.SignatureFormat
 import at.asitplus.csc.datamodel.basic.SignedEnvelopeProperty
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -144,7 +145,7 @@ val QtspSignatureRequestSerializerTest by matrixSuite {
                 SignHashRequestParameters(
                     credentialId = "1234",
                     hashes = listOf("abcd".decodeToByteArray(Base64Strict)),
-                    signAlgoOid = X509SignatureAlgorithm.ES256.oid
+                    signAlgoOid = EcdsaAlgorithm.withSHA256.asn1Representation.oid
                 ),
                 SignDocRequestParameters(
                     credentialId = "1234",
@@ -153,7 +154,7 @@ val QtspSignatureRequestSerializerTest by matrixSuite {
                             document = "1234".decodeToByteArray(Base64Strict),
                             signatureFormat = SignatureFormat.JADES,
                             conformanceLevel = ConformanceLevel.ADESBLTA,
-                            signAlgoOid = X509SignatureAlgorithm.ES256.oid,
+                            signAlgoOid = EcdsaAlgorithm.withSHA256.asn1Representation.oid,
                             signAlgoParams = null,
                             signedProps = null,
                             signedEnvelopeProperty = null
@@ -162,7 +163,7 @@ val QtspSignatureRequestSerializerTest by matrixSuite {
                             document = "1234".decodeToByteArray(Base64Strict),
                             signatureFormat = SignatureFormat.CADES,
                             conformanceLevel = ConformanceLevel.ADEST,
-                            signAlgoOid = X509SignatureAlgorithm.RS256.oid,
+                            signAlgoOid = RsaAlgorithm.withSHA256andPKCS1Padding.asn1Representation.oid,
                             signAlgoParams = null,
                             signedProps = null,
                             signedEnvelopeProperty = SignedEnvelopeProperty.PARALLEL
@@ -177,7 +178,7 @@ val QtspSignatureRequestSerializerTest by matrixSuite {
                             hashAlgorithmOid = Digest.SHA256.oid,
                             signatureFormat = SignatureFormat.XADES,
                             conformanceLevel = ConformanceLevel.ADESB,
-                            signAlgoOid = X509SignatureAlgorithm.ES384.oid,
+                            signAlgoOid = EcdsaAlgorithm.withSHA384.asn1Representation.oid,
                             signAlgoParams = null,
                             signedProps = null,
                             signedEnvelopeProperty = SignedEnvelopeProperty.ENVELOPING
@@ -187,7 +188,7 @@ val QtspSignatureRequestSerializerTest by matrixSuite {
                             hashAlgorithmOid = null,
                             signatureFormat = SignatureFormat.PADES,
                             conformanceLevel = ConformanceLevel.ADESLT,
-                            signAlgoOid = X509SignatureAlgorithm.RS512.oid,
+                            signAlgoOid = RsaAlgorithm.withSHA512andPKCS1Padding.asn1Representation.oid,
                             signAlgoParams = null,
                             signedProps = null,
                             signedEnvelopeProperty = SignedEnvelopeProperty.ENVELOPING
