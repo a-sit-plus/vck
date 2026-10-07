@@ -253,7 +253,7 @@ sealed class LoteProfile(
 
     companion object {
         private val PID_IDENTIFIER_PREFIXES = listOf("urn:eudi:pid:", "eu.europa.ec.eudi.pid.")
-        private val MDL_IDENTIFIER_PREFIXES = listOf("org.iso.18013.5.1.mDL")
+        private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
 
         /** All known profiles, i.e. all lists published per [LoTEStage]. */
         val entries: List<LoteProfile> by lazy {
@@ -270,15 +270,20 @@ sealed class LoteProfile(
         /** URLs of all lists published on [stages], in the order the stages are passed. */
         fun fetchUrls(vararg stages: LoTEStage): List<String> = fetchUrls(stages.asIterable())
 
-        fun fromSchemeIdentifier(identifier: String?): LoteProfile {
-            if (identifier.isNullOrBlank()) return EAA
-
-            return when {
-                PID_IDENTIFIER_PREFIXES.any { identifier.startsWith(it, ignoreCase = true) } -> PID
-                MDL_IDENTIFIER_PREFIXES.any { identifier.startsWith(it, ignoreCase = true) } -> mDL
-                else -> EAA
-            }
+        /**
+         * The list that authorizes issuers of the credential type [identifier] (`vct`, `docType`), or `null` if no
+         * list is known for it. Identifiers are case-sensitive: PID identifiers match by their prefix, which covers
+         * versions and national extensions, the mDL `docType` matches exactly.
+         *
+         * There is no fallback to [EAA]: a Pub-EAA provider is not authorized for a type whose attestation schema
+         * names another trust source in its `trustedAuthorities` (EUDI TS11, 4.3.1 *SchemaMeta main class*), so an
+         * unknown type has no list.
+         */
+        fun fromSchemeIdentifier(identifier: String?): LoteProfile? = when {
+            identifier == null -> null
+            PID_IDENTIFIER_PREFIXES.any { identifier.startsWith(it) } -> PID
+            identifier == MDL_DOCTYPE -> mDL
+            else -> null
         }
     }
 }
-

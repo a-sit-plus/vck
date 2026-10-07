@@ -15,6 +15,9 @@ Release 9.0.0 (unreleased):
     - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
 - Status lists:
     - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
+- Trust List filtering:
+    - BREAKING: `LoteProfile.fromSchemeIdentifier()` returns `null` for a credential identifier without a known list, instead of `LoteProfile.EAA`, so that `LoTETrustAnchorProvider` no longer authorizes every Pub-EAA provider for arbitrary credential types. Identifiers match case-sensitively, and the mDL `docType` `org.iso.18013.5.1.mDL` matches exactly instead of by prefix
+    - BREAKING: Remove `additionalAnchors` of `LoTETrustAnchorProvider`, which was added to the anchors of every credential type and every list, and so merged trust sources across types. Trust further sources for a type with a `CredentialTrustScope` instead
 - OpenID for Verifiable Credential Issuance:
     - BREAKING: Make `IssuerMetadata.supportedCredentialConfigurations` non-null without a default, as
       `credential_configurations_supported` is REQUIRED in OID4VCI; issuer metadata without it now fails to deserialize
