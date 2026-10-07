@@ -5,14 +5,8 @@ import at.asitplus.catching
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
-import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.MobileSecurityObject
-import at.asitplus.iso.ValueDigestList
-import at.asitplus.iso.wrapInCborTag
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.cosef.io.Base16Strict
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.wallet.lib.validation.matchesDigest
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessIso
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
@@ -22,8 +16,6 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 
@@ -90,7 +82,7 @@ class ValidatorMdoc @JvmOverloads constructor(
 
         val validItems = issuerSigned.namespaces?.flatMap { (namespace, issuerSignedItems) ->
             issuerSignedItems.entries.map {
-                require(it.verify(mso.valueDigests[namespace], mso.digest)) {
+                require(it.matchesDigest(mso.valueDigests[namespace], mso.digest)) {
                     "IssuerSigned item has invalid digest: ${it.value.elementIdentifier}"
                 }
                 it.value
@@ -103,27 +95,6 @@ class ValidatorMdoc @JvmOverloads constructor(
             freshnessSummary = validator.checkCredentialFreshness(issuerSigned),
             documentErrors = documentErrors,
         )
-    }
-
-    /**
-     * Verify that calculated digests equal the corresponding digest values in the MSO.
-     *
-     * See ISO/IEC 18013-5:2021, 9.3.1 Inspection procedure for issuer data authentication
-     */
-    private fun ByteStringWrapper<IssuerSignedItem>.verify(
-        mdlItems: ValueDigestList?,
-        digest: Digest = Digest.SHA256
-    ): Boolean {
-        val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
-            ?: return false
-        // TODO Only true in AgentIsoMdocTest when we are not deserializing the ByteStringWrappe in the issuerSignedItems
-        val inputToVerifierHash = if (serialized.encodeToString(Base16Strict).uppercase().startsWith("D818"))
-            serialized
-        else coseCompliantSerializer
-            .encodeToByteArray(ByteArraySerializer(), serialized)
-            .wrapInCborTag(24)
-        val verifierHash = digest.digest(inputToVerifierHash)
-        return verifierHash.contentEquals(issuerHash.value)
     }
 
     /**
