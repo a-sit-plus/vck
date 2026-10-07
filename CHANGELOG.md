@@ -154,6 +154,11 @@ Release 9.0.0 (unreleased):
     - Reject authorization error responses violating RFC 6749, 4.1.2.1 (`error` blank or with illegal characters,
       illegal characters in `error_description` or `error_uri`, either of them without `error`), combining `error`
       with `vp_token` or `code`, and responses passing parameters next to an encoded `response`
+    - Fix: `DcApiVerifier` returns the new `Iso180137AnnexCError` with the status of an ISO/IEC 18013-7 Annex C device
+      response with an error status (ISO/IEC 18013-5, 10.3.6), which is the only error Annex C can convey, instead of
+      failing as for a malformed response; a device response with an error status and documents still fails.
+      BREAKING: `Iso180137AnnexCWrapper` and `Iso180137AnnexCError` implement the new sealed `Iso180137AnnexCResult`,
+      a further subtype of `DcApiResponseResult`
     - Add `EphemeralEncryptionKeyService.discardKey(identifier)`, removing a key without decoding it
     - `MapStore.remove` is documented to be atomic: of concurrent calls for one key, at most one returns the value, as
       `DefaultMapStore` does; custom stores passed to the verifiers need to guarantee this, so that a request is
