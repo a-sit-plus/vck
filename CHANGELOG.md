@@ -1,6 +1,8 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
+- Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
 - Add request-side X.509 DCQL support for ETSI TS 119 432 Annex A.6: `CredentialFormatEnum.X509`,
   `DCQLX509CredentialQuery`, and `X509MetadataQuery` implementing `DCQLCredentialMetadataAndValidityConstraints`.
 - Moved `Base64URLTransactionDataSerializer` to openid-data-classes
@@ -11,8 +13,17 @@ Release 9.0.0 (unreleased):
 - CSC data classes:
     - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
     - Implement CSC Data Model 1.0.0
-- Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
-- Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
+- ETSI data classes:
+    - BREAKING: Align LoTE digital-identity JSON member names and representations with TS 119 602 Annex A.1:
+      `PublicKeyValue` is a `JsonWebKey`, while `SubjectKeyIdentifier` and `OtherId` are strings; absent
+      `x509Certificates` is now `null`. Other-list pointers carry `LoTEQualifiers` containing `LoTEQualifier` objects, including a required MIME type
+    - BREAKING: Policy and legal-notice arrays must use one alternative consistently. Open service, trusted-entity and
+      associated-body extensions preserve their JSON `content`
+    - Allow an explicitly null `NextUpdate` for closed lists while keeping that member required; accept optional
+      certificate `encoding` and `specRef` metadata without discarding the certificate
+    - Reject empty required arrays, empty digital identities, null certificate wire entries, missing scheme-operator
+      and associated-body website contacts, and timestamps without a four-digit year. Trusted-entity contacts allow
+      email without a website. Other `ListAndSchemeInformation` requirements remain unchanged
 - Trusted relying parties:
     - Fix JSON serialization of `JsonClaimReference` as `SingleClaimReference`, e.g. in `RequestDataValidity`, which produced invalid JSON since `NormalizedJsonPath` became a list in JsonPath4K 4.0.0. It is now serialized as an object holding `normalizedJsonPath`
     - `WrprcValidator` no longer drops the cause when a registration certificate can not be validated, e.g. for a missing or unparseable certificate chain: `WrprcValidationResult.certificateValidationResults` holds a `KmmResult` for each certificate. Deprecate `WrprcValidationResult.certificateValidation`, which maps such certificates to `null`

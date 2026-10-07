@@ -15,6 +15,10 @@ data class PolicyOrLegalNoticeItem(
     @SerialName(SerialNames.POLICY)
     val policy: MultilingualPointer? = null,
 ) {
+    init {
+        require((legalNotice != null) xor (policy != null)) { "Expected either a legal notice or a policy pointer." }
+    }
+
     object SerialNames {
         /** Wire member name `LoTEPolicy`. */
         const val POLICY = "LoTEPolicy"

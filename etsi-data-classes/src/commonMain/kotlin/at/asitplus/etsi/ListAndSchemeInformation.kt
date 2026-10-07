@@ -17,10 +17,10 @@ data class ListAndSchemeInformation(
     @SerialName(SerialNames.LIST_ISSUE_DATE_TIME)
     @Serializable(with = EtsiInstantSerializer::class)
     val listIssueDateTime: Instant,
-    /** Latest date and time by which an updated list will be available (TS 119 602, 6.3.15). */
+    /** Latest date and time for an updated list, or null for a closed list (TS 119 602, 6.3.15). */
     @SerialName(SerialNames.NEXT_UPDATE)
     @Serializable(with = EtsiInstantSerializer::class)
-    val nextUpdate: Instant,
+    val nextUpdate: Instant?,
     /** Formal name of the entity establishing, publishing, signing and maintaining the list (TS 119 602, 6.3.4). */
     @SerialName(SerialNames.SCHEME_OPERATOR_NAME)
     val schemeOperatorName: SchemeOperatorName,

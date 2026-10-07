@@ -25,5 +25,9 @@ value class SchemeOperatorName(
     /** Localized formal names of the entity responsible for maintaining the list (TS 119 602, 6.3.4). */
     private val list: List<MultilingualCharacterString>
 ): List<MultilingualCharacterString> by list {
+    init {
+        require(list.isNotEmpty()) { "Expected at least one SchemeOperatorName entry." }
+    }
+
     constructor(vararg elements: MultilingualCharacterString): this(elements.toList())
 }

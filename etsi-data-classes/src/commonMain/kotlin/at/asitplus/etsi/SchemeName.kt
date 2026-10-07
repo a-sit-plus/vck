@@ -10,6 +10,7 @@ value class SchemeName(
     private val list: List<MultilingualCharacterString>
 ) : List<MultilingualCharacterString> by list {
     init {
+        require(list.isNotEmpty()) { "Expected at least one SchemeName entry." }
         // TODO: implement proper child validation?
     }
 
