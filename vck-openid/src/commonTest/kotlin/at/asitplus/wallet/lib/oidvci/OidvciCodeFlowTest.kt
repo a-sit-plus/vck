@@ -142,8 +142,7 @@ val OidvciCodeFlowTest by matrixSuite {
         }
     } - {
         test("metadata validation") {
-            val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
-                .shouldNotBeEmpty()
+            val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeEmpty()
             issuerCredentialFormats.forEach { entry: Map.Entry<String, SupportedCredentialFormat> ->
                 entry.key.shouldNotBeEmpty()
                 entry.value.shouldNotBeNull().apply {
@@ -412,8 +411,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                .shouldNotBeNull()[credentialConfigurationId]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialConfigurationId]
                 .shouldNotBeNull()
             val token = it.getToken(authorizationDetails)
 
@@ -435,14 +433,43 @@ val OidvciCodeFlowTest by matrixSuite {
             serializedCredential.assertSdJwtReceived()
         }
 
+        test("request one credential by credential configuration id, using scope") {
+            val credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialConfigurationId]
+                .shouldNotBeNull()
+            val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
+
+            val credential = it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = it.client.createCredential(
+                    metadata = it.issuer.metadata,
+                    credentialConfigurationId = credentialConfigurationId,
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                ).getOrThrow(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .response
+            val serializedCredential = credential.credentials.shouldNotBeEmpty()
+                .first().credentialString.shouldNotBeNull()
+
+            serializedCredential.assertSdJwtReceived()
+        }
+
+        test("request one credential by unknown credential configuration id fails") {
+            it.client.createCredential(
+                metadata = it.issuer.metadata,
+                credentialConfigurationId = "unknown",
+            ).exceptionOrNull().shouldBeInstanceOf<OAuth2Exception.UnknownCredentialConfiguration>()
+        }
+
         test("request credential in SD-JWT, using authorization details only in authnrequest") {
             val credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
             val authorizationDetails = it.client.buildAuthorizationDetails(
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                .shouldNotBeNull()[credentialConfigurationId]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialConfigurationId]
                 .shouldNotBeNull()
             val token = it.getToken(authorizationDetails, false) // do not set authn details in token request
 

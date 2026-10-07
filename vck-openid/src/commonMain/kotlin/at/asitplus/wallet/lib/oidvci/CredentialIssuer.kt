@@ -287,7 +287,7 @@ class CredentialIssuer @JvmOverloads constructor(
                 throw InvalidCredentialRequest("credential_configuration_id expected to be set")
             if (credentialIdentifier != null)
                 throw InvalidCredentialRequest("credential_identifier must not be set when credential_configuration_id is set")
-            val configurationScope = metadata.supportedCredentialConfigurations?.get(credentialConfigurationId!!)?.scope
+            val configurationScope = metadata.supportedCredentialConfigurations[credentialConfigurationId!!]?.scope
                 ?: throw InvalidCredentialRequest("credential_configuration_id $credentialConfigurationId not supported")
             val requested = configurationScope.split(" ").filter(String::isNotBlank).toSet()
             val granted = token.scope.orEmpty().split(" ").filter(String::isNotBlank).toSet()

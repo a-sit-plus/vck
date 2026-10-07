@@ -44,6 +44,7 @@ import at.asitplus.openid.SupportedCredentialFormatW3cVcJsonLd
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.decodeFromQuery
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -67,17 +68,15 @@ import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.CredentialIssuer.CredentialResponse
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidEncryptionParameters
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import io.ktor.util.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
@@ -85,7 +84,6 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
-import at.asitplus.openid.decodeFromQuery
 
 /**
  * Client service to retrieve credentials using OID4VCI
@@ -271,9 +269,9 @@ class WalletService @JvmOverloads constructor(
     fun selectSupportedCredentialFormat(
         requestOptions: RequestOptions,
         metadata: IssuerMetadata,
-    ) = metadata.supportedCredentialConfigurations?.values?.filter {
+    ) = metadata.supportedCredentialConfigurations.values.filter {
         it.format.toRepresentation() == requestOptions.representation
-    }?.firstOrNull {
+    }.firstOrNull {
         when (requestOptions.representation) {
             PLAIN_JWT -> when (it) {
                 is SupportedCredentialFormatW3cVcJwt -> it.credentialDefinition.types
@@ -330,6 +328,36 @@ class WalletService @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Creates the credential request for exactly one credential, to be sent to the credential issuer.
+     * Callers need to send the correct access token and other authentication.
+     * For sample ktor code see `OpenId4VciClient` in `vck-openid-ktor`.
+     *
+     * Only use this when the token response did not contain `credential_identifiers` in its
+     * `authorization_details`, because then `credential_configuration_id` MUST NOT be used (OID4VCI 1.0 Section 8.2),
+     * see [CredentialRequestParameters.credentialConfigurationId].
+     * Otherwise, use the overload accepting [TokenResponseParameters].
+     *
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
+     * @param credentialConfigurationId the exact `credential_configuration_id` to request, one of the keys from
+     * [IssuerMetadata.supportedCredentialConfigurations]
+     * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
+     * the value from there, exactly [ClientNonceResponse.clientNonce]
+     */
+    suspend fun createCredential(
+        metadata: IssuerMetadata,
+        credentialConfigurationId: String,
+        clientNonce: String? = null,
+        clock: Clock = Clock.System,
+    ): KmmResult<CredentialRequest> = catching {
+        val credentialFormat = metadata.supportedCredentialConfigurations[credentialConfigurationId]
+            ?: throw UnknownCredentialConfiguration(credentialConfigurationId)
+        CredentialRequestParameters(credentialConfigurationId = credentialConfigurationId)
+            .withProofAndEncryption(metadata, credentialFormat, clientNonce, clock)
+            .also { Napier.i("createCredentialRequest returns $it") }
+            .let { encryptionService.wrapCredentialRequest(it, metadata).getOrThrow() }
+    }
+
     private suspend fun createCredentialRequestInternal(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
@@ -338,30 +366,38 @@ class WalletService @JvmOverloads constructor(
         previouslyRequestedScope: String? = null,
         clock: Clock = Clock.System,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
-        val requests = if (tokenResponse.authorizationDetails != null) {
-            tokenResponse.authorizationDetails!!.toCredentialRequest()
-        } else if (tokenResponse.scope != null) {
-            fromScopeToCredentialRequest(tokenResponse.scope!!, metadata, credentialFormat)
-        } else if (previouslyRequestedScope != null) {
-            fromScopeToCredentialRequest(previouslyRequestedScope, metadata, credentialFormat)
-        } else {
-            throw InvalidToken("Can't parse token: $tokenResponse")
-        }
-        requests.map {
-            createCredentialRequestProof(
-                metadata = metadata,
-                credentialFormat = credentialFormat,
-                clientNonce = clientNonce,
-                clock = clock
-            ).let { proof ->
-                it.copy(
-                    proofs = proof.takeIf { it.jwt != null || it.attestation != null },
-                    credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
-                )
-            }
-        }.also {
-            Napier.i("createCredentialRequest returns $it")
-        }
+        tokenResponse.toCredentialRequestParameters(metadata, credentialFormat, previouslyRequestedScope)
+            .map { it.withProofAndEncryption(metadata, credentialFormat, clientNonce, clock) }
+            .also { Napier.i("createCredentialRequest returns $it") }
+    }
+
+    private suspend fun CredentialRequestParameters.withProofAndEncryption(
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String?,
+        clock: Clock,
+    ): CredentialRequestParameters = copy(
+        proofs = createCredentialRequestProof(
+            credentialIssuer = metadata.credentialIssuer,
+            credentialFormat = credentialFormat,
+            clientNonce = clientNonce,
+            clock = clock
+        ).takeIf { it.jwt != null || it.attestation != null }, // do not send empty proofs
+        credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
+    )
+
+    private fun TokenResponseParameters.toCredentialRequestParameters(
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        previouslyRequestedScope: String?
+    ): Collection<CredentialRequestParameters> = if (authorizationDetails != null) {
+        authorizationDetails!!.toCredentialRequestParameters()
+    } else if (scope != null) {
+        scope!!.mapScopeToCredentialRequestParameters(metadata, credentialFormat)
+    } else if (previouslyRequestedScope != null) {
+        previouslyRequestedScope.mapScopeToCredentialRequestParameters(metadata, credentialFormat)
+    } else {
+        throw InvalidToken("Can't parse token: $this")
     }
 
     /**
@@ -445,7 +481,7 @@ class WalletService @JvmOverloads constructor(
     private fun String?.shouldBePresent(): String =
         this ?: throw InvalidEncryptionParameters("Credential request contains no response encryption key id")
 
-    private fun Set<AuthorizationDetails>.toCredentialRequest(): List<CredentialRequestParameters> =
+    private fun Set<AuthorizationDetails>.toCredentialRequestParameters(): List<CredentialRequestParameters> =
         filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
             if (it.credentialIdentifiers != null && it.credentialIdentifiers?.isNotEmpty() == true) {
                 it.credentialIdentifiers!!.map { CredentialRequestParameters(credentialIdentifier = it) }
@@ -454,34 +490,40 @@ class WalletService @JvmOverloads constructor(
             } else throw InvalidToken("Invalid authorization details: $it")
         }
 
-    private fun fromScopeToCredentialRequest(
-        scope: String,
+    private fun String.mapScopeToCredentialRequestParameters(
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
-    ): Set<CredentialRequestParameters> {
+    ): Set<CredentialRequestParameters> = mapScopeToCredentialConfigurationIds(metadata, credentialFormat)
+        .map { CredentialRequestParameters(credentialConfigurationId = it) }
+        .toSet()
+
+    private fun String.mapScopeToCredentialConfigurationIds(
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+    ): Set<String> {
         if (credentialFormat.scope == null)
-            throw OAuth2Exception.UnknownCredentialConfiguration("Credential does not support scope: $credentialFormat")
-        if (!scope.trim().contains(credentialFormat.scope!!))
-            throw OAuth2Exception.UnknownCredentialConfiguration(scope)
-        return scope.split(" ").mapNotNull { singleScope ->
-            metadata.supportedCredentialConfigurations
-                ?.entries?.firstOrNull { it.value.scope == singleScope && it.value.format == credentialFormat.format }
+            throw UnknownCredentialConfiguration("Credential does not support scope: $credentialFormat")
+        val scopes = split(" ").filter(String::isNotBlank)
+        if (credentialFormat.scope !in scopes)
+            throw UnknownCredentialConfiguration(this)
+        return scopes.mapNotNull { singleScope ->
+            metadata.supportedCredentialConfigurations.entries
+                .firstOrNull { it.value.scope == singleScope && it.value.format == credentialFormat.format }
                 ?.key
-                ?.let { CredentialRequestParameters(credentialConfigurationId = it) }
         }.toSet().ifEmpty {
-            throw OAuth2Exception.UnknownCredentialConfiguration(scope)
+            throw UnknownCredentialConfiguration(this)
         }
     }
 
     internal suspend fun createCredentialRequestProof(
-        metadata: IssuerMetadata,
+        credentialIssuer: String,
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String?,
         clock: Clock = Clock.System,
     ): CredentialRequestProofContainer = credentialFormat.supportedProofTypes?.get(ProofTypes.JWT)?.let { type ->
         createCredentialRequestProofJwt(
             clientNonce = clientNonce,
-            credentialIssuer = metadata.credentialIssuer,
+            credentialIssuer = credentialIssuer,
             clock = clock,
             keyAttestationRequired = type.keyAttestationRequired,
             supportedAlgorithms = type.supportedSigningAlgorithms,
@@ -489,7 +531,7 @@ class WalletService @JvmOverloads constructor(
     } ?: credentialFormat.supportedProofTypes?.get(ProofTypes.ATTESTATION)?.let { type ->
         createCredentialRequestProofAttestation(
             clientNonce = clientNonce,
-            credentialIssuer = metadata.credentialIssuer,
+            credentialIssuer = credentialIssuer,
             keyAttestationRequired = type.keyAttestationRequired,
             supportedAlgorithms = type.supportedSigningAlgorithms,
         )
@@ -517,45 +559,44 @@ class WalletService @JvmOverloads constructor(
         } else null
         keyAttestation?.requireKeyMaterialAtAttestedKeyIndex0()
 
+        // To be refactored once signJwt is not passed in the constructor but to this function
         return CredentialRequestProofContainer(
             jwt = setOf(
-                SignJwt<JsonWebToken>(
-                    keyMaterial
-                )
-                // To be refactored once signJwt is not passed in the constructor but to this function
-                { header: JwsHeader, key: KeyMaterial ->
-                    val (jsonWebKey, keyId) = this.selectProofJwtKeyBinding.invoke(key)
-
-                    when {
-                        jsonWebKey != null && keyId.isNullOrEmpty() ->
-                            header.copy(jsonWebKey = jsonWebKey, keyAttestation = keyAttestation?.jws)
-
-                        jsonWebKey == null && !keyId.isNullOrEmpty() ->
-                            header.copy(keyId = keyId, keyAttestation = keyAttestation?.jws)
-
-                        jsonWebKey != null && !keyId.isNullOrEmpty() ->
-                            throw IllegalArgumentException(
-                                "Key binding conflict: both 'jwk' and 'kid' are set, only one must be provided as per OID4VCI spec."
-                            )
-
-                        else -> // same as jsonWebKey == null && keyId.isNullOrEmpty()
-                            throw IllegalArgumentException(
-                                "Key binding missing: neither 'jwk' nor 'kid' is set, exactly one must be provided as per OID4VCI spec."
-                            )
-                    }
-
-                }.invoke(
-                    OpenIdConstants.PROOF_JWT_TYPE,
-                    JsonWebToken(
+                SignJwt<JsonWebToken>(keyMaterial, headerModifier(keyAttestation)).invoke(
+                    type = OpenIdConstants.PROOF_JWT_TYPE,
+                    payload = JsonWebToken(
                         issuer = clientId, // omit when token was pre-authn?
                         audience = credentialIssuer,
                         issuedAt = clock.now().truncateToSeconds(),
                         nonce = clientNonce,
                     ),
-                    JsonWebToken.serializer(),
+                    serializer = JsonWebToken.serializer(),
                 ).getOrThrow().jws
             )
         )
+    }
+
+    private fun headerModifier(
+        keyAttestation: JwsCompactTyped<KeyAttestationJwt>?
+    ): JwsHeaderIdentifierFun = { header: JwsHeader, key: KeyMaterial ->
+        val (jsonWebKey, keyId) = selectProofJwtKeyBinding.invoke(key)
+        when {
+            jsonWebKey != null && keyId.isNullOrEmpty() ->
+                header.copy(jsonWebKey = jsonWebKey, keyAttestation = keyAttestation?.jws)
+
+            jsonWebKey == null && !keyId.isNullOrEmpty() ->
+                header.copy(keyId = keyId, keyAttestation = keyAttestation?.jws)
+
+            jsonWebKey != null && !keyId.isNullOrEmpty() ->
+                throw IllegalArgumentException(
+                    "Key binding conflict: both 'jwk' and 'kid' are set, only one must be provided as per OID4VCI spec."
+                )
+
+            else -> // same as jsonWebKey == null && keyId.isNullOrEmpty()
+                throw IllegalArgumentException(
+                    "Key binding missing: neither 'jwk' nor 'kid' is set, exactly one must be provided as per OID4VCI spec."
+                )
+        }
     }
 
     internal suspend fun createCredentialRequestProofAttestation(
