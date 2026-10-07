@@ -98,7 +98,7 @@ data class StatusValidation(
     /** Whether the artifact advertises a status, as far as the policy requires one. */
     val claim: CheckOutcome,
     /** One entry per advertised mechanism, only if [claim] passed. */
-    val mechanisms: List<StatusMechanismValidation>,
+    val mechanisms: List<StatusMechanismValidation> = emptyList(),
     /** Whether all mechanisms yield the same status, see [statusAgreement]. */
     val agreement: CheckOutcome,
 ) {

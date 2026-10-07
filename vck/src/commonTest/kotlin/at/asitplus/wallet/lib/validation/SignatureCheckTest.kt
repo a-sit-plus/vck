@@ -111,10 +111,10 @@ val SignatureCheckTest by matrixSuite {
 
         "a tampered payload fails" {
             val signer = EphemeralKeyWithoutCert()
-            val (header, _, signature) = jws(signer) { it.copy(jsonWebKey = signer.jsonWebKey) }.toString().split(".")
+            val parts = jws(signer) { it.copy(jsonWebKey = signer.jsonWebKey) }.toString().split(".")
             val forgedPayload = JsonObject(mapOf("iss" to JsonPrimitive("https://attacker.example.com"))).toString()
                 .encodeToByteArray().encodeToString(Base64UrlStrict)
-            val tampered = JwsCompact("$header.$forgedPayload.$signature")
+            val tampered = JwsCompact("${parts[0]}.$forgedPayload.${parts[2]}")
 
             check.verify(tampered).outcome.shouldBeInstanceOf<Failed>()
         }

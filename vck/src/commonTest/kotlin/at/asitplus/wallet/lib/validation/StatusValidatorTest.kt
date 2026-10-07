@@ -117,6 +117,8 @@ private suspend fun StatusValidator.check(
     policy: StatusPolicy = requireClaim,
 ) = validate(status, anchors, policy, leeway, Clock.System.now())
 
+private data class TimeCase(val name: String, val expiration: Instant, val resolvedAt: Instant)
+
 private fun StatusValidation.single() = mechanisms.shouldHaveSize(1).single()
 
 private fun ValidationReport.tokenChecks() = checks.shouldBeInstanceOf<StatusListTokenChecks>()
@@ -231,10 +233,10 @@ val StatusValidatorTest by matrixSuite {
         "an invalid signature fails, and blocks every check relying on the claims" {
             val revocation = TestCertificateAuthority()
             val signed = jwt(revocation.issue()) as StatusListJwt
-            val (header, _, signature) = signed.value.jws.toString().split(".")
+            val parts = signed.value.jws.toString().split(".")
             val other = jwt(revocation.issue(), payload(subject = "https://x.example.com")) as StatusListJwt
             val otherPayload = other.value.jws.toString().split(".")[1]
-            val forged = JwsCompact("$header.$otherPayload.$signature")
+            val forged = JwsCompact("${parts[0]}.$otherPayload.${parts[2]}")
             val tampered = signed.copy(value = JwsCompactTyped(forged, signed.value.payload))
             val checks = StatusValidator(resolver(STATUS_LIST_URI to tampered))
                 .check(statusAt(0), revocation.pidStatusAnchors()).single().token.tokenChecks()
@@ -247,13 +249,16 @@ val StatusValidatorTest by matrixSuite {
 
         "time" - {
             listOf(
-                "an expired token fails" to Pair(Clock.System.now() - 1.hours, Clock.System.now()),
-                "a token whose ttl elapsed since it was resolved fails" to
-                        Pair(Clock.System.now() + 1.hours, Clock.System.now() - 2.hours),
-            ).asData(nameFn = { (name, _) -> name }) test { (_, case) ->
-                val (expiration, resolvedAt) = case
+                TimeCase("an expired token fails", Clock.System.now() - 1.hours, Clock.System.now()),
+                TimeCase(
+                    "a token whose ttl elapsed since it was resolved fails",
+                    expiration = Clock.System.now() + 1.hours,
+                    resolvedAt = Clock.System.now() - 2.hours,
+                ),
+            ).asData(nameFn = { it.name }) test { case ->
                 val revocation = TestCertificateAuthority()
-                val token = jwt(revocation.issue(), payload(expiration = expiration), resolvedAt = resolvedAt)
+                val token =
+                    jwt(revocation.issue(), payload(expiration = case.expiration), resolvedAt = case.resolvedAt)
                 val mechanism = StatusValidator(resolver(STATUS_LIST_URI to token))
                     .check(statusAt(0), revocation.pidStatusAnchors()).single()
 
