@@ -55,6 +55,9 @@ data class ServiceInformation(
     val serviceInformationExtensions: ServiceInformationExtensions? = null,
 ) {
     init {
+        require(serviceName.isNotEmpty()) { "Expected non-empty serviceName when present." }
+        require(schemeServiceDefinitionURI?.isNotEmpty() != false) { "Expected non-empty schemeServiceDefinitionURI when present." }
+        require(serviceDefinitionURI?.isNotEmpty() != false) { "Expected non-empty serviceDefinitionURI when present." }
         serviceSupplyPoints?.let {
             require(it.isNotEmpty()) {
                 "Expected a non-empty list of service supply points or null, but got an empty list instead."

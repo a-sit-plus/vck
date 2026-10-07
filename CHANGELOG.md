@@ -1,6 +1,17 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- ETSI data classes:
+    - BREAKING: Align LoTE digital-identity JSON member names and representations with TS 119 602 Annex A.1:
+      `PublicKeyValue` is a `JsonWebKey`, while `SubjectKeyIdentifier` and `OtherId` are strings; absent
+      `x509Certificates` is now `null`. Other-list pointers carry `LoTEQualifiers` containing `LoTEQualifier` objects, including a required MIME type
+    - BREAKING: `PolicyOrLegalNoticeItem.legalNotice` is a plain `String`; policy and legal-notice arrays must use one
+      alternative consistently. Open service, trusted-entity and associated-body extensions preserve their JSON `content`
+    - Allow an explicitly null `NextUpdate` for closed lists while keeping that member required; accept optional
+      certificate `encoding` and `specRef` metadata without discarding the certificate
+    - Reject empty required arrays, empty digital identities, null certificate wire entries, missing scheme-operator
+      and associated-body website contacts, and timestamps without a four-digit year. Trusted-entity contacts allow
+      email without a website. Other `ListAndSchemeInformation` requirements remain unchanged
 - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
 - Trusted relying parties:

@@ -1,6 +1,8 @@
 package at.asitplus.etsi
 
 import at.asitplus.testballoon.matrix.matrixSuite
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
 
 val ListOfTrustedEntitiesDeserializationTest by matrixSuite {
@@ -7022,14 +7024,21 @@ val ListOfTrustedEntitiesDeserializationTest by matrixSuite {
           }
     """.trimIndent()
 
-    testSuite("decode 1") {
+    testSuite("decode valid samples and reject empty service identities") {
         mapOf(
             "pidProviders" to pidProvidersFixed,
             "walletProviders" to walletProvidersFixed,
             "wrpacProviders" to wrpacProvidersFixed,
             "mdlProviders" to mdlProvidersFixed,
-        ).asData(nameFn = { (name, _) -> name }) test { (_, json) ->
-            Json.decodeFromString<ListOfTrustedEntities>(json)
+        ).asData(nameFn = { (name, _) -> name }) test { (name, json) ->
+            if (name == "pidProviders" || name == "mdlProviders") {
+                // The AMA service in these published samples has an empty ServiceDigitalIdentity.
+                shouldThrow<IllegalArgumentException> {
+                    Json.decodeFromString<ListOfTrustedEntities>(json)
+                }.message shouldBe "Expected at least one service digital identifier."
+            } else {
+                Json.decodeFromString<ListOfTrustedEntities>(json)
+            }
         }
     }
 }

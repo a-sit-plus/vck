@@ -21,6 +21,11 @@ data class TrustedEntityInformation(
     @SerialName(SerialNames.TE_INFORMATION_EXTENSIONS)
     val teInformationExtensions: List<TEInformationExtension>? = null,
 ) {
+    init {
+        require(teInformationURI.isNotEmpty()) { "Expected non-empty teInformationURI when present." }
+        require(teInformationExtensions?.isNotEmpty() != false) { "Expected non-empty teInformationExtensions when present." }
+    }
+
     object SerialNames {
         /** Wire member name `TEName`. */
         const val TE_NAME = "TEName"

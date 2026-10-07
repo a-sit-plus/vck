@@ -9,6 +9,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 
 class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
     /** Serializer for the JSON surrogate wrapping a Base64-encoded X.509 certificate. */
@@ -51,6 +52,7 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
     }
 
     @Serializable
+    @JsonIgnoreUnknownKeys
     private data class EtsiX509CertificateSerializationSurrogate(
         /** X.509 certificate represented as a Base64 string in the JSON surrogate (TS 119 602, 6.6.3.1). */
         @SerialName(SerialNames.VALUE)

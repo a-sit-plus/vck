@@ -25,6 +25,12 @@ data class AssociatedBody(
     @SerialName(SerialNames.ASSOCIATED_BODY_INFORMATION_EXTENSION)
     val associatedBodyInformationExtensions: AssociatedBodyInformationExtensions? = null,
 ) {
+    init {
+        require(associatedBodyName.isNotEmpty()) { "Expected non-empty associatedBodyName when present." }
+        require(associatedBodyTradeName?.isNotEmpty() != false) { "Expected non-empty associatedBodyTradeName when present." }
+        require(associatedBodyInformationURI?.isNotEmpty() != false) { "Expected non-empty associatedBodyInformationURI when present." }
+    }
+
     object SerialNames {
         /** Wire member name `AssociatedBodyName`. */
         const val ASSOCIATED_BODY_NAME = "AssociatedBodyName"

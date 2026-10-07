@@ -1,23 +1,24 @@
 package at.asitplus.etsi
 
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * The format of the PublicKeyValue component is left open and is syntax-specific
+ * JSON Web Key representation of a public key (TS 119 602, Annex A.1).
  */
-interface PublicKeyValue
+typealias PublicKeyValue = JsonWebKey
 
 /**
- * The format of the SubjectKeyIdentifier component is left open and is syntax-specific
+ * Base64 string identifying a public key (TS 119 602, Annex A.1).
  */
-interface SubjectKeyIdentifier
+typealias SubjectKeyIdentifier = String
 
 /**
- * The format of the OtherId component is left open
+ * String representation of another service identifier (TS 119 602, Annex A.1).
  */
-interface OtherId
+typealias OtherId = String
 
 @Serializable
 data class ServiceDigitalIdentity(
@@ -26,7 +27,8 @@ data class ServiceDigitalIdentity(
      * 119 602, 6.6.3.1).
      */
     @SerialName(SerialNames.X509_CERTIFICATE)
-    val x509Certificates: List<@Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?> = emptyList(),
+    @Serializable(with = EtsiX509CertificateListSerializer::class)
+    val x509Certificates: List<X509Certificate?>? = null,
     /**
      * X.509 distinguished names identifying the service, preferably encoded according to RFC 4514 (TS 119 602,
      * 6.6.3.2).
@@ -44,30 +46,27 @@ data class ServiceDigitalIdentity(
     val otherIds: List<OtherId>? = null,
 ) {
     init {
-        require( x509Certificates.isNotEmpty() || x509SKIs?.isNotEmpty() != false) {
-            "Expected at least 1 X509Certificate or at least 1 X509SKI, but got 0."
+        require(!x509Certificates.isNullOrEmpty() || !x509SKIs.isNullOrEmpty() ||
+                !x509SubjectNames.isNullOrEmpty() || !publicKeyValues.isNullOrEmpty() || !otherIds.isNullOrEmpty()) {
+            "Expected at least one service digital identifier."
         }
-        require(x509SubjectNames?.isNotEmpty() != false) {
-            "Expected at least 1 X509SubjectName, but got 0."
-        }
-        require(publicKeyValues?.isNotEmpty() != false) {
-            "Expected at least 1 PublicKeyValue, but got 0."
-        }
-        require(otherIds?.isNotEmpty() != false) {
-            "Expected at least 1 other id, but got 0."
-        }
+        require(x509Certificates?.isNotEmpty() != false) { "Expected non-empty X509Certificates when present." }
+        require(x509SubjectNames?.isNotEmpty() != false) { "Expected non-empty X509SubjectNames when present." }
+        require(publicKeyValues?.isNotEmpty() != false) { "Expected non-empty PublicKeyValues when present." }
+        require(x509SKIs?.isNotEmpty() != false) { "Expected non-empty X509SKIs when present." }
+        require(otherIds?.isNotEmpty() != false) { "Expected non-empty OtherIds when present." }
     }
 
     object SerialNames {
-        /** Wire member name `SubjectKeyIdentifier`. */
-        const val SUBJECT_KEY_IDENTIFIER = "SubjectKeyIdentifier"
+        /** Wire member name `X509SKIs`. */
+        const val SUBJECT_KEY_IDENTIFIER = "X509SKIs"
         /** Wire member name `X509Certificates`. */
         const val X509_CERTIFICATE = "X509Certificates"
-        /** Wire member name `PublicKeyValue`. */
-        const val PUBLIC_KEY_VALUE = "PublicKeyValue"
-        /** Wire member name `X509SubjectName`. */
-        const val X509_SUBJECT_NAMES = "X509SubjectName"
-        /** Wire member name `OtherId`. */
-        const val OTHER_ID = "OtherId"
+        /** Wire member name `PublicKeyValues`. */
+        const val PUBLIC_KEY_VALUE = "PublicKeyValues"
+        /** Wire member name `X509SubjectNames`. */
+        const val X509_SUBJECT_NAMES = "X509SubjectNames"
+        /** Wire member name `OtherIds`. */
+        const val OTHER_ID = "OtherIds"
     }
 }

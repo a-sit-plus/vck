@@ -24,9 +24,9 @@ class EtsiInstantSerializer : KSerializer<Instant> {
         require(value.nanosecondsOfSecond == 0) {
             "Expected no second fractions, but got ${value}."
         }
-        encoder.encodeString(
-            value.toString()
-        )
+        val encoded = value.toString()
+        require(FORMAT.matches(encoded)) { "Expected a four-digit year and UTC seconds, but got $encoded." }
+        encoder.encodeString(encoded)
     }
 
     override fun deserialize(decoder: Decoder) = decoder.decodeString().also {
@@ -36,8 +36,13 @@ class EtsiInstantSerializer : KSerializer<Instant> {
         require(it.endsWith("Z")) {
             "Expected a datetime in UTC, but got $it"
         }
-    }.let{
+        require(FORMAT.matches(it)) { "Expected a four-digit year and UTC seconds, but got $it." }
+    }.let {
         Instant.parse(it)
+    }
+
+    private companion object {
+        val FORMAT = Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
     }
 }
 
