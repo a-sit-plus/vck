@@ -102,7 +102,7 @@ suspend fun TokenStatusResolver.resolve(status: TokenStatusInfo): KmmResult<Toke
  * Retrieve the status value of the index specified in the Referenced Token as described in
  * Section 4. Fail if the provided index is out of bound of the Status List
  */
-private fun extractTokenStatus(
+internal fun extractTokenStatus(
     revocationList: RevocationList,
     revocationListInfo: RevocationListInfo,
     zlibService: ZlibService = DefaultZlibService(),
