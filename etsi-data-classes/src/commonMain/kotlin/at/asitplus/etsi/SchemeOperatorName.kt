@@ -22,6 +22,7 @@ import kotlin.jvm.JvmInline
 @Serializable
 @JvmInline
 value class SchemeOperatorName(
+    /** Localized formal names of the entity responsible for maintaining the list (TS 119 602, 6.3.4). */
     private val list: List<MultilingualCharacterString>
 ): List<MultilingualCharacterString> by list {
     constructor(vararg elements: MultilingualCharacterString): this(elements.toList())

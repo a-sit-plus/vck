@@ -10,6 +10,7 @@ import kotlin.jvm.JvmInline
 @Serializable
 @JvmInline
 value class Rfc5646LanguageTag(
+    /** RFC 5646 language tag stored with case-insensitive comparison (TS 119 612, 5.1.4). */
     val caseInsensitiveString: CaseInsensitiveString,
 ) {
     init {
@@ -18,6 +19,7 @@ value class Rfc5646LanguageTag(
 
     constructor(string: String) : this(CaseInsensitiveString(string))
 
+    /** String representation of the language tag; ETSI serialization uses lowercase. */
     val string: String
         get() = caseInsensitiveString.string
 }

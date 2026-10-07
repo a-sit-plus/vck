@@ -9,6 +9,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 class EtsiRfc5646LanguageTagSerializer : KSerializer<Rfc5646LanguageTag> {
+    /** Serialization descriptor for a lowercase RFC 5646 language-tag string (TS 119 612, 5.1.4). */
     override val descriptor: SerialDescriptor
         get() = PrimitiveSerialDescriptor(
             serialName = EtsiRfc5646LanguageTagSerializer::class.qualifiedName!!,

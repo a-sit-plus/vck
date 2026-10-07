@@ -9,9 +9,11 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WrpClaim(
+    /** Path to the claim within the credential (clause B.2.10). */
     @SerialName("path")
     val path: List<String>,
 
+    /** Expected values of the claim, if constrained (clause B.2.10). */
     @SerialName("values")
     val values: List<String>? = null
 )

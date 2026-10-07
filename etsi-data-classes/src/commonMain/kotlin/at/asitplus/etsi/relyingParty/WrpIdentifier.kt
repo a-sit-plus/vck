@@ -8,9 +8,11 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WrpIdentifier(
+    /** URI identifying the identifier scheme, such as LEI, EORI or VATIN (clause B.2.5). */
     @SerialName("type")
     val type: String,
 
+    /** Value identifying the legal entity within the specified scheme (clause B.2.5). */
     @SerialName("identifier")
     val identifier: String,
 )

@@ -7,6 +7,7 @@ import kotlin.jvm.JvmInline
 @Serializable
 @JvmInline
 value class TEElectronicAddress(
+    /** Localized email, website and optional telephone contact URIs of the trusted entity (TS 119 602, 6.5.3.2). */
     private val list: List<MultilingualPointer>
 ) : List<MultilingualPointer> by list {
     init {

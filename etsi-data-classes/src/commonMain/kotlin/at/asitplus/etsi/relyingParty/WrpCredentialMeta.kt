@@ -8,9 +8,11 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WrpCredentialMeta(
+    /** ISO mdoc document type identifying the credential (Annex C). */
     @SerialName("doctype_value")
     val doctypeValue: String? = null,
 
+    /** SD-JWT VC type identifiers identifying the credentials (Annex C). */
     @SerialName("vct_values")
     val vctValues: List<String>? = null
 ) {
@@ -24,10 +26,12 @@ data class WrpCredentialMeta(
 @Serializable
 sealed interface WrpCredentialMetaDomain {
     data class WrpDocTypeDomain(
+        /** ISO mdoc document type identifying the credential (Annex C). */
         @SerialName("doctype_value") val doctypeValue: String,
     ) : WrpCredentialMetaDomain
 
     data class WrpVctTypeDomain(
+        /** SD-JWT VC type identifiers identifying the credentials (Annex C). */
         @SerialName("vct_values") val vctValues: List<String>
     ) : WrpCredentialMetaDomain
 }
