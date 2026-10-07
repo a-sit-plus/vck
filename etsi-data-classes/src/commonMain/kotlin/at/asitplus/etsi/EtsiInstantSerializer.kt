@@ -13,6 +13,7 @@ import kotlin.time.Instant
  * year with four digits, month, day, hour, minute, second (without decimal fraction) and the UTC designator "Z".
  */
 class EtsiInstantSerializer : KSerializer<Instant> {
+    /** Serialization descriptor for a UTC ISO 8601 timestamp without fractional seconds (TS 119 612, 5.1.3). */
     override val descriptor: SerialDescriptor
         get() = PrimitiveSerialDescriptor(
             serialName = EtsiInstantSerializer::class.qualifiedName!!,

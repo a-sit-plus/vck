@@ -8,7 +8,10 @@ import kotlin.jvm.JvmInline
  */
 @Serializable
 @JvmInline
-value class Iso3166Alpha2Code(val string: String) {
+value class Iso3166Alpha2Code(
+    /** Two-letter uppercase ISO 3166-1 alpha-2 country code. */
+    val string: String
+) {
     init {
         require(string.length == 2) {
             "Expected ISO 3166-1 alpha-2 code to consist of exactly 2 characters, but was $string"

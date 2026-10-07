@@ -29,18 +29,25 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class OtherLoTEPointer(
+    /** URI of the machine-processable list being referenced (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.LOTE_LOCATION)
     val loteLocation: Rfc3986UniformResourceIdentifier,
+    /** Digital identities of the referenced list issuer, used to authenticate that list (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.SERVICE_DIGITAL_IDENTITY)
     val serviceDigitalIdentity: List<ServiceDigitalIdentity>,
+    /** Type URI of the referenced list (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.LOTE_TYPE)
     val loteType: Rfc3986UniformResourceIdentifier,
+    /** Name of the scheme operator responsible for the referenced list (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.SCHEME_OPERATOR_NAME)
     val schemeOperatorName: SchemeOperatorName,
+    /** Pointers to the type, community and rules of the referenced list scheme (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.SCHEME_TYPE_COMMUNITY_RULES)
     val schemeTypeCommunityRules: SchemeTypeCommunityRules? = null,
+    /** Territory of the referenced list scheme (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.SCHEME_TERRITORY)
     val schemeTerritory: EtsiCountryCode? = null,
+    /** Media type of the referenced machine-processable list (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.MIME_TYPE)
     val mimeType: Rfc6838MimeType? = null,
 ) {
@@ -51,12 +58,19 @@ data class OtherLoTEPointer(
     }
 
     object SerialNames {
+        /** Wire member name `LoTELocation`. */
         const val LOTE_LOCATION = "LoTELocation"
+        /** Wire member name `ServiceDigitalIdentity`. */
         const val SERVICE_DIGITAL_IDENTITY = "ServiceDigitalIdentity"
+        /** Wire member name `LoTEType`. */
         const val LOTE_TYPE = "LoTEType"
+        /** Wire member name `SchemeOperatorName`. */
         const val SCHEME_OPERATOR_NAME = "SchemeOperatorName"
+        /** Wire member name `SchemeTypeCommunityRules`. */
         const val SCHEME_TYPE_COMMUNITY_RULES = "SchemeTypeCommunityRules"
+        /** Wire member name `SchemeTerritory`. */
         const val SCHEME_TERRITORY = "SchemeTerritory"
+        /** Wire member name `MimeType`. */
         const val MIME_TYPE = "MimeType"
     }
 }

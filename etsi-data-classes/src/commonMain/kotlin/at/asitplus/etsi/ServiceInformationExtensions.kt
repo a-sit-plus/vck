@@ -6,6 +6,7 @@ import kotlin.jvm.JvmInline
 @Serializable
 @JvmInline
 value class ServiceInformationExtensions(
+    /** Additional service-specific information interpreted under the scheme rules (TS 119 602, 6.6.9). */
     private val list: List<ServiceInformationExtension>
 ): List<ServiceInformationExtension> by list {
     constructor(vararg elements: ServiceInformationExtension): this(elements.toList())

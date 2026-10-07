@@ -6,6 +6,10 @@ import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 @Serializable
 @JsonIgnoreUnknownKeys
 data class AssociatedBodyInformationExtension(
+    /**
+     * Implementation placeholder for currently unmodelled associated-body extension content; not an ETSI-defined
+     * field.
+     */
     val dummy: Unit? = null,
 ) {
     object SerialNames {

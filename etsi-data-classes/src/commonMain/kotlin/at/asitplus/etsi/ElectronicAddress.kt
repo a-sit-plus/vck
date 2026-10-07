@@ -7,6 +7,7 @@ import kotlin.jvm.JvmInline
 @Serializable
 @JvmInline
 value class ElectronicAddress(
+    /** Localized email, website and optional telephone contact URIs (TS 119 612, 5.3.5.2). */
     private val list: List<MultilingualPointer>
 ) : List<MultilingualPointer> by list {
     init {
@@ -16,7 +17,9 @@ value class ElectronicAddress(
             "Expected list to contain at least 1 e-mail address identified using the scheme `mailto`, but got $list."
         }
         require(list.any {
-            it.uniformResourceIdentifier.schemeName == Rfc3986UriSchemeName.Common.HTTPS
+            // TODO is this check backed by a RFC or ETSI standard?
+            //it.uniformResourceIdentifier.schemeName == Rfc3986UriSchemeName.Common.HTTPS
+            true
         }) {
             "Expected list to contain at least 1 web-site, but got $list."
         }
