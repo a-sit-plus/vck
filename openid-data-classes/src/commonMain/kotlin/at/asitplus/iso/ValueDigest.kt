@@ -1,8 +1,8 @@
 package at.asitplus.iso
 
-import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.digest.digest
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
@@ -41,7 +41,7 @@ data class ValueDigest(
          *
          * See ISO/IEC 18013-5:2021, 9.1.2.5 Message digest function
          */
-        fun fromIssuerSignedItem(
+        suspend fun fromIssuerSignedItem(
             value: IssuerSignedItem,
             namespace: String,
             digest: Digest = Digest.SHA256,

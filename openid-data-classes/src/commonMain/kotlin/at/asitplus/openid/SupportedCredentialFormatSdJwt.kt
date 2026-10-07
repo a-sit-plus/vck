@@ -1,7 +1,7 @@
 package at.asitplus.openid
 
-import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

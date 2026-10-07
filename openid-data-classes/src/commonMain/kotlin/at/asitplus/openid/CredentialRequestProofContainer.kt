@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.typed
 import kotlinx.serialization.SerialName
@@ -32,15 +33,15 @@ data class CredentialRequestProofContainer(
     val attestation: Set<@Serializable(JwsCompactStringSerializer::class) JwsCompact>? = null,
 ) {
 
-    val jwtParsed: Collection<JwsCompactTyped<JsonWebToken>>? by lazy {
+    val jwtParsed: Collection<JwsCompactTyped<JsonWebToken, JwsHeader>>? by lazy {
         jwt?.mapNotNull {
-            catchingUnwrapped<JwsCompactTyped<JsonWebToken>> { it.typed() }.getOrNull()
+            catchingUnwrapped<JwsCompactTyped<JsonWebToken, JwsHeader>> { it.typed() }.getOrNull()
         }
     }
 
-    val attestationParsed: Collection<JwsCompactTyped<KeyAttestationJwt>>? by lazy {
+    val attestationParsed: Collection<JwsCompactTyped<KeyAttestationJwt, JwsHeader>>? by lazy {
         attestation?.mapNotNull {
-            catchingUnwrapped<JwsCompactTyped<KeyAttestationJwt>> { it.typed() }.getOrNull()
+            catchingUnwrapped<JwsCompactTyped<KeyAttestationJwt, JwsHeader>> { it.typed() }.getOrNull()
         }
     }
 }

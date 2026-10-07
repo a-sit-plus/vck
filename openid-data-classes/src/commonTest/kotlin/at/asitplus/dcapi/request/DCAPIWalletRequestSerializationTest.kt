@@ -8,6 +8,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JwsGeneralTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsFlattened
 import at.asitplus.signum.indispensable.josef.toJwsGeneral
@@ -43,7 +44,7 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
     }
 
     test("openid4vp signed request round-trips") {
-        val request: JwsCompactTyped<AuthenticationRequestParameters> = testSignedOpenId4VpRequest.data.request.typed()
+        val request: JwsCompactTyped<AuthenticationRequestParameters, JwsHeader> = testSignedOpenId4VpRequest.data.request.typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
             jwsTyped = request,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
@@ -63,7 +64,7 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
 
     test("openid4vp multisigned request round-trips") {
         val requestElement: JwsFlattened = testSignedOpenId4VpRequest.data.request.toJwsFlattened()
-        val request: JwsGeneralTyped<AuthenticationRequestParameters> =
+        val request: JwsGeneralTyped<AuthenticationRequestParameters, JwsHeader> =
             (0..5).map { requestElement }.toJwsGeneral().typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
             jwsTyped = request,
@@ -88,7 +89,7 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
 
     test("openid4vp multisigned request can be decoded from external dc api discriminator value") {
         val requestElement: JwsFlattened = testSignedOpenId4VpRequest.data.request.toJwsFlattened()
-        val request: JwsGeneralTyped<AuthenticationRequestParameters> = listOf(requestElement).toJwsGeneral().typed()
+        val request: JwsGeneralTyped<AuthenticationRequestParameters, JwsHeader> = listOf(requestElement).toJwsGeneral().typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
             jwsTyped = request,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),

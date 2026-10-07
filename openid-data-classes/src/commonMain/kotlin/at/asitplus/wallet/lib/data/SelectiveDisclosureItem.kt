@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.digest.digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.supreme.hash.digest
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
@@ -57,7 +57,7 @@ data class SelectiveDisclosureItem(
          * Hashes a disclosure from [SelectiveDisclosureItem.toDisclosure] according to section 4.2.3 of
          * [RFC 9901](https://datatracker.ietf.org/doc/html/rfc9901#name-hashing-disclosures)
          **/
-        fun String.hashDisclosure(digest: Digest = Digest.SHA256) =
+        suspend fun String.hashDisclosure(digest: Digest = Digest.SHA256) =
             digest.digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)
     }
 

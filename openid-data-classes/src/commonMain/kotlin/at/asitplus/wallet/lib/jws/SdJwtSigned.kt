@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.wallet.lib.data.KeyBindingJws
 
 /**
@@ -20,7 +21,7 @@ data class SdJwtSigned(
      */
     val jws: JwsCompact,
     val rawDisclosures: List<String>,
-    val keyBindingJws: JwsCompactTyped<KeyBindingJws>? = null,
+    val keyBindingJws: JwsCompactTyped<KeyBindingJws, JwsHeader>? = null,
     val hashInput: String,
 ) {
     override fun equals(other: Any?): Boolean {
@@ -74,7 +75,7 @@ data class SdJwtSigned(
         fun presented(
             jws: JwsCompact,
             disclosures: Set<String>,
-            keyBinding: JwsCompactTyped<KeyBindingJws>,
+            keyBinding: JwsCompactTyped<KeyBindingJws, JwsHeader>,
         ) = SdJwtSigned(
             jws = jws,
             rawDisclosures = disclosures.toList(),
@@ -93,7 +94,7 @@ data class SdJwtSigned(
                 .filterNot { it.isEmpty() }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString?.takeIf { it.isNotEmpty() }?.let {
-                JwsCompactTyped<KeyBindingJws>(it)
+                JwsCompactTyped<KeyBindingJws, JwsHeader>(it)
             }
             val hashInput = input.substringBeforeLast("~") + "~"
             SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
@@ -106,7 +107,7 @@ data class SdJwtSigned(
         fun serializePresentation(
             jwsFromIssuer: JwsCompact,
             filteredDisclosures: Set<String>,
-            keyBinding: JwsCompactTyped<KeyBindingJws>,
+            keyBinding: JwsCompactTyped<KeyBindingJws, JwsHeader>,
         ) = (listOf(jwsFromIssuer.toString()) + filteredDisclosures + keyBinding.toString()).joinToString("~")
 
     }
