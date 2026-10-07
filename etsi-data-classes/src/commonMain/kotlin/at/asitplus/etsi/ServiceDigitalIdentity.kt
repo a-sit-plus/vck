@@ -1,6 +1,6 @@
 package at.asitplus.etsi
 
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -22,7 +22,7 @@ interface OtherId
 @Serializable
 data class ServiceDigitalIdentity(
     @SerialName(SerialNames.X509_CERTIFICATE)
-    val x509Certificates: List<@Serializable(with = EtsiX509CertificateSerializer::class) X509Certificate?> = emptyList(),
+    val x509Certificates: List<@Serializable(with = EtsiX509CertificateSerializer::class) Certificate?> = emptyList(),
     @SerialName(SerialNames.X509_SUBJECT_NAMES)
     val x509SubjectNames: List<Rfc4514DistinguishedName>? = null,
     @SerialName(SerialNames.PUBLIC_KEY_VALUE)
