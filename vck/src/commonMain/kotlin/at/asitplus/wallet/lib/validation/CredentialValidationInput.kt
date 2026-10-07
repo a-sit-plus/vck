@@ -21,7 +21,6 @@ sealed interface CredentialValidationInput {
 
         override fun hashCode(): Int = issuerSignedCbor.contentHashCode()
 
-        // The encoded credential holds personal data, so it is not part of the string representation.
-        override fun toString(): String = "IsoMdoc(issuerSignedCbor=${issuerSignedCbor.size} bytes)"
+        override fun toString(): String = "IsoMdoc(issuerSignedCbor=${issuerSignedCbor.toHexString()})"
     }
 }

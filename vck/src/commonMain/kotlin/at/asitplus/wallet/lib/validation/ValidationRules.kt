@@ -57,7 +57,7 @@ internal fun credentialChecksWithoutPrerequisites(
         disclosedItems = emptyList(),
         holderBinding = Blocked(),
         timeliness = TimelinessValidation(Blocked(), details = null),
-        status = StatusValidation(claim = Blocked(), mechanisms = emptyList(), agreement = Blocked()),
+        status = StatusValidation(claim = Blocked(), agreement = Blocked()),
     )
 }
 
@@ -191,11 +191,8 @@ internal fun statusMechanismValidation(
     resolved: KmmResult<TokenStatus>,
     policy: StatusPolicy,
 ): StatusMechanismValidation {
-    val (signerTrust, accepted) = when (policy) {
-        StatusPolicy.Skip -> throw IllegalArgumentException("Status mechanisms are not validated when skipping status")
-        is StatusPolicy.ValidateIfPresent -> policy.signerTrust to policy.accepted
-        is StatusPolicy.RequireClaim -> policy.signerTrust to policy.accepted
-    }
+    val signerTrust = requireNotNull(policy.signerTrustOrNull) { "Status is not validated when skipping status" }
+    val accepted = requireNotNull(policy.acceptedOrNull) { "Status is not validated when skipping status" }
     val checks = token.checks as? StatusListTokenChecks
         ?: throw IllegalArgumentException("Token has to be a status list token report")
     require(token.decision == ValidationReport.statusListToken(checks, signerTrust, token.evaluatedAt).decision) {
@@ -233,6 +230,22 @@ internal fun statusAgreement(mechanisms: List<StatusMechanismValidation>): Check
         else -> Passed
     }
 }
+
+/** The trust the signers of status list tokens need under this policy, `null` if the status is skipped. */
+internal val StatusPolicy.signerTrustOrNull: TrustPolicy?
+    get() = when (this) {
+        StatusPolicy.Skip -> null
+        is StatusPolicy.ValidateIfPresent -> signerTrust
+        is StatusPolicy.RequireClaim -> signerTrust
+    }
+
+/** The statuses this policy accepts, `null` if the status is skipped. */
+internal val StatusPolicy.acceptedOrNull: Set<TokenStatus>?
+    get() = when (this) {
+        StatusPolicy.Skip -> null
+        is StatusPolicy.ValidateIfPresent -> accepted
+        is StatusPolicy.RequireClaim -> accepted
+    }
 
 private val TrustPolicy.requirement: Requirement
     get() = when (this) {

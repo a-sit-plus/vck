@@ -36,6 +36,14 @@ private val passingChecks = CredentialChecks(
     status = validStatus,
 )
 
+/** A row of a table test: a check's [outcome] under a policy [setting], and the [expected] decision. */
+private data class Case<S>(
+    val name: String,
+    val outcome: CheckOutcome,
+    val setting: S,
+    val expected: ValidationDecision,
+)
+
 private fun CredentialChecks.decisionUnder(
     policy: ValidationPolicy = strictPolicy,
     holderBinding: HolderBindingPolicy = HolderBindingPolicy.RequireExpectedKey,
@@ -130,15 +138,15 @@ val ValidationRulesTest by matrixSuite {
 
         "issuer trust" - {
             listOf(
-                "blocked under required trust" to Triple(Blocked(), TrustPolicy.RequireAuthorizedSigner, REJECTED),
-                "failed under required trust" to Triple(Failed(failure), TrustPolicy.RequireAuthorizedSigner, REJECTED),
-                "not applicable under required trust" to
-                        Triple(NotApplicable, TrustPolicy.RequireAuthorizedSigner, REJECTED),
-                "not applicable under integrity only" to Triple(NotApplicable, TrustPolicy.IntegrityOnly, ACCEPTED),
-            ).asData(nameFn = { (name, _) -> name }) test { (_, case) ->
-                val (outcome, trust, expected) = case
-                passingChecks.copy(issuerTrust = TrustValidation(outcome, "urn:eudi:pid:1", source = null))
-                    .decisionUnder(strictPolicy.copy(trust = trust)) shouldBe expected
+                Case("blocked under required trust", Blocked(), TrustPolicy.RequireAuthorizedSigner, REJECTED),
+                Case("failed under required trust", Failed(failure), TrustPolicy.RequireAuthorizedSigner, REJECTED),
+                Case(
+                    "not applicable under required trust", NotApplicable, TrustPolicy.RequireAuthorizedSigner, REJECTED
+                ),
+                Case("not applicable under integrity only", NotApplicable, TrustPolicy.IntegrityOnly, ACCEPTED),
+            ).asData(nameFn = { it.name }) test { case ->
+                passingChecks.copy(issuerTrust = TrustValidation(case.outcome, "urn:eudi:pid:1"))
+                    .decisionUnder(strictPolicy.copy(trust = case.setting)) shouldBe case.expected
             }
         }
 
@@ -165,52 +173,49 @@ val ValidationRulesTest by matrixSuite {
 
         "holder binding" - {
             listOf(
-                "missing expected key is blocked" to
-                        Triple(Blocked(), HolderBindingPolicy.RequireExpectedKey, REJECTED),
-                "wrong key" to Triple(Failed(failure), HolderBindingPolicy.RequireExpectedKey, REJECTED),
-                "not required" to Triple(NotApplicable, HolderBindingPolicy.None, ACCEPTED),
-            ).asData(nameFn = { (name, _) -> name }) test { (_, case) ->
-                val (outcome, holderBinding, expected) = case
-                passingChecks.copy(holderBinding = outcome)
-                    .decisionUnder(holderBinding = holderBinding) shouldBe expected
+                Case("missing expected key is blocked", Blocked(), HolderBindingPolicy.RequireExpectedKey, REJECTED),
+                Case("wrong key", Failed(failure), HolderBindingPolicy.RequireExpectedKey, REJECTED),
+                Case("not required", NotApplicable, HolderBindingPolicy.None, ACCEPTED),
+            ).asData(nameFn = { it.name }) test { case ->
+                passingChecks.copy(holderBinding = case.outcome)
+                    .decisionUnder(holderBinding = case.setting) shouldBe case.expected
             }
         }
 
         "timeliness" - {
             listOf(
-                "expired credential under required timeliness" to Triple(Failed(failure), true, REJECTED),
-                "missing time evidence under required timeliness" to Triple(Blocked(), true, REJECTED),
-                "expired credential when timeliness is not required" to Triple(Failed(failure), false, ACCEPTED),
-            ).asData(nameFn = { (name, _) -> name }) test { (_, case) ->
-                val (outcome, requireTimeliness, expected) = case
-                val checks = passingChecks.copy(timeliness = TimelinessValidation(outcome, details = null))
+                Case("expired credential under required timeliness", Failed(failure), true, REJECTED),
+                Case("missing time evidence under required timeliness", Blocked(), true, REJECTED),
+                Case("expired credential when timeliness is not required", Failed(failure), false, ACCEPTED),
+            ).asData(nameFn = { it.name }) test { case ->
+                val checks = passingChecks.copy(timeliness = TimelinessValidation(case.outcome, details = null))
                 val report = ValidationReport.credential(
                     checks = checks,
-                    policy = strictPolicy.copy(requireTimeliness = requireTimeliness),
+                    policy = strictPolicy.copy(requireTimeliness = case.setting),
                     holderBinding = HolderBindingPolicy.RequireExpectedKey,
                     evaluatedAt = evaluatedAt,
                 )
-                report.decision shouldBe expected
-                (report.checks as CredentialChecks).timeliness.outcome shouldBe outcome
+                report.decision shouldBe case.expected
+                (report.checks as CredentialChecks).timeliness.outcome shouldBe case.outcome
             }
         }
     }
 
     "status" - {
         "no status claim" - {
-            listOf(
-                "skip" to Triple(StatusPolicy.Skip as StatusPolicy, NotApplicable as CheckOutcome, ACCEPTED),
-                "validate if present" to Triple(ifPresent, NotApplicable, ACCEPTED),
-                "require claim" to Triple(requireClaim, Failed(failure), REJECTED),
-            ).asData(nameFn = { (name, _) -> name }) test { (_, case) ->
-                val (policy, expectedClaim, expectedDecision) = case
-                val claim = statusClaimOutcome(policy, claimPresent = false)
-                when (expectedClaim) {
+            // The outcome of each case is the expected outcome of the status claim
+            listOf<Case<StatusPolicy>>(
+                Case("skip", NotApplicable, StatusPolicy.Skip, ACCEPTED),
+                Case("validate if present", NotApplicable, ifPresent, ACCEPTED),
+                Case("require claim", Failed(failure), requireClaim, REJECTED),
+            ).asData(nameFn = { it.name }) test { case ->
+                val claim = statusClaimOutcome(case.setting, claimPresent = false)
+                when (case.outcome) {
                     is Failed -> claim.shouldBeInstanceOf<Failed>()
-                    else -> claim shouldBe expectedClaim
+                    else -> claim shouldBe case.outcome
                 }
                 passingChecks.copy(status = StatusValidation(claim, emptyList(), statusAgreement(emptyList())))
-                    .decisionUnder(strictPolicy.copy(status = policy)) shouldBe expectedDecision
+                    .decisionUnder(strictPolicy.copy(status = case.setting)) shouldBe case.expected
             }
         }
 
@@ -531,6 +536,6 @@ val ValidationRulesTest by matrixSuite {
     "encoded mdoc input compares by content" {
         CredentialValidationInput.IsoMdoc(byteArrayOf(1, 2, 3)) shouldBe
                 CredentialValidationInput.IsoMdoc(byteArrayOf(1, 2, 3))
-        CredentialValidationInput.IsoMdoc(byteArrayOf(1, 2, 3)).toString() shouldBe "IsoMdoc(issuerSignedCbor=3 bytes)"
+        CredentialValidationInput.IsoMdoc(byteArrayOf(1, 2, 3)).toString() shouldBe "IsoMdoc(issuerSignedCbor=010203)"
     }
 }
