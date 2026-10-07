@@ -16,7 +16,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.SupportedCredentialFormat
-import at.asitplus.openid.TokenIntrospectionJwtResponse
+import at.asitplus.openid.TokenIntrospectionJwtPayload
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
@@ -36,9 +36,12 @@ import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.data.MediaTypes.Application.TOKEN_INTROSPECTION_JWT
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
@@ -92,8 +95,14 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
     private val dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
     /** Source for random bytes, i.e., nonces for proof-of-possession of key material for sender-constrained tokens. */
     private val randomSource: RandomSource = RandomSource.Secure,
-    /** Verifies signed token introspection responses. By default, every syntactically valid JWS is accepted. */
-    private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+    /**
+     * Verifies the signature of JWT responses of token introspection
+     * ([RFC 9701](https://www.rfc-editor.org/rfc/rfc9701)) against the keys of the authorization server, e.g. with
+     * [at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted]. When set, [callTokenIntrospection] requests JWT responses
+     * and accepts nothing else; when `null`, it requests plain JSON responses
+     * ([RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662)).
+     */
+    private val verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
 ) {
 
     /** Used in [ClientAttestation.loadInstanceAttestation] to provide information about the authorization server. */
@@ -472,7 +481,10 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
     /**
      * Calls the token introspection endpoint ([OAuth2AuthorizationServerMetadata.introspectionEndpoint])
      * to check whether the given token is active, finishes with the response on success, otherwise fails with
-     * [InvalidToken].
+     * [InvalidToken]. With [verifyTokenIntrospectionJwt], it asks for a JWT response
+     * ([RFC 9701 4.](https://www.rfc-editor.org/rfc/rfc9701#section-4)), and accepts it only with `typ`
+     * `token-introspection+jwt`, a verified signature, the authorization server as `iss`, and the `client_id` of
+     * [oAuth2Client] in `aud` ([RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5)).
      *
      * Sends `([AttestationChallenge] TokenIntrospection){1,3}`.
      */
@@ -491,13 +503,13 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             authentication = Authentication.Client(oauthMetadata, popAudience, issuerMetadata),
             maxRetries = MAX_RETRIES_CLIENT_AUTHENTICATION,
             kind = ProtocolRequest::TokenIntrospection,
-            request = formPost(url, request.encodeToParameters()),
+            request = formPost(
+                url = url,
+                parameters = request.encodeToParameters(),
+                accept = verifyTokenIntrospectionJwt?.let { TOKEN_INTROSPECTION_JWT },
+            ),
             parse = { response ->
-                parseTokenIntrospectionResponse(
-                    body = response.body,
-                    verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
-                    requestedResponseFormat = request.responseFormat,
-                ).also {
+                parseTokenIntrospectionResponse(response, oauthMetadata.issuer).also {
                     if (!it.active) {
                         throw InvalidToken("Introspected token is not active")
                     }
@@ -698,12 +710,41 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
 
     private fun get(url: String) = PreparedHttpRequest(url = url, method = HttpMethod.Get)
 
-    private fun formPost(url: String, parameters: FormParameters) = PreparedHttpRequest(
+    private fun formPost(url: String, parameters: FormParameters, accept: String? = null) = PreparedHttpRequest(
         url = url,
         method = HttpMethod.Post,
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded.toString()),
+        headers = headers {
+            append(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded.toString())
+            accept?.let { append(HttpHeaders.Accept, it) }
+        },
         body = parameters.formUrlEncode(),
     )
+
+    /** Parses the JWT response with [verifyTokenIntrospectionJwt], issued by [issuer], else the JSON response. */
+    private suspend fun parseTokenIntrospectionResponse(
+        response: ReceivedHttpResponse,
+        issuer: String,
+    ): TokenIntrospectionResponse = catchingUnwrapped {
+        val verifyJwt = verifyTokenIntrospectionJwt
+        if (verifyJwt == null) {
+            joseCompliantSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), response.body)
+        } else {
+            val contentType = response.headers[HttpHeaders.ContentType]
+            require(contentType != null && ContentType.parse(contentType).match(TOKEN_INTROSPECTION_JWT)) {
+                "Content-Type is not $TOKEN_INTROSPECTION_JWT: $contentType"
+            }
+            val jwt = JwsCompactTyped<TokenIntrospectionJwtPayload>(response.body)
+            // RFC 7515 4.1.9: a typ without "/" has the prefix "application/"
+            val type = jwt.jws.jwsHeader.type?.lowercase()?.removePrefix("application/")
+            require(type == JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT) { "Invalid typ: $type" }
+            verifyJwt(jwt.jws).getOrElse { throw IllegalArgumentException("Signature not verified", it) }
+            require(jwt.payload.issuer == issuer) { "iss is not the authorization server: ${jwt.payload.issuer}" }
+            require(oAuth2Client.clientId in jwt.payload.audience) { "aud is not this client: ${jwt.payload.audience}" }
+            jwt.payload.tokenIntrospection
+        }
+    }.getOrElse {
+        throw InvalidToken("Token introspection response could not be parsed", it)
+    }
 
     private companion object {
         /**
@@ -725,32 +766,3 @@ data class TokenResponseWithDpopNonce(
     /** Value from header `OAuth-Client-Attestation-Challenge` */
     val attestationChallenge: String?,
 )
-
-private suspend fun parseTokenIntrospectionResponse(
-    body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean,
-    requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
-): TokenIntrospectionResponse = catchingUnwrapped {
-    if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
-        parseJwt(body, verifyTokenIntrospectionJwt)
-    } else {
-        catchingUnwrapped {
-            joseCompliantSerializer.decodeFromString(TokenIntrospectionResponse.serializer(), body)
-        }.getOrElse {
-            parseJwt(body, verifyTokenIntrospectionJwt)
-        }
-    }
-}.getOrElse {
-    throw InvalidToken("Token introspection response could not be parsed", it)
-}
-
-private suspend fun parseJwt(
-    body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean
-): TokenIntrospectionResponse =
-    joseCompliantSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
-        JwsCompactTyped<TokenIntrospectionResponse>(jwtResponse.jwt).run {
-            require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
-            payload
-        }
-    }

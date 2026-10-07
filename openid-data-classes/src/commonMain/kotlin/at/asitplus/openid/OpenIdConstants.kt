@@ -31,6 +31,12 @@ object OpenIdConstants {
     /** `refresh_token` */
     const val GRANT_TYPE_REFRESH_TOKEN = "refresh_token"
 
+    /** `access_token`, a `token_type_hint` ([RFC 7009 4.1.2](https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2)) */
+    const val TOKEN_TYPE_HINT_ACCESS_TOKEN = "access_token"
+
+    /** `refresh_token`, a `token_type_hint` ([RFC 7009 4.1.2](https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2)) */
+    const val TOKEN_TYPE_HINT_REFRESH_TOKEN = "refresh_token"
+
     /** `Bearer ` */
     const val TOKEN_PREFIX_BEARER = "Bearer "
 

@@ -193,6 +193,40 @@ Release 9.0.0 (unreleased):
     - Add `directPostHttpResponse(redirectUri)` in `vck-openid` (`at.asitplus.wallet.lib.openid`), the answer of the
       verifier's response endpoint for `direct_post` and `direct_post.jwt`: a JSON object with the optional
       `redirect_uri` (OpenID4VP 1.0, 8.2), with `Cache-Control: no-store`
+- Token introspection with JWT responses (RFC 9701):
+    - BREAKING: Remove `TokenIntrospectionRequest.responseFormat` and `TokenIntrospectionRequest.ResponseFormat`, as
+      no specification defines the form parameter `response_format`: a JWT response is requested with the header
+      `Accept: application/token-introspection+jwt` (RFC 9701, 4)
+    - BREAKING: `TokenIntrospectionJwtResponse` holds the signed JWT (`JwsCompactTyped<TokenIntrospectionJwtPayload>`)
+      and is no longer serialized as `{"jwt": …}`; `toHttpResponse()` sends the JWT itself as body with
+      `Content-Type: application/token-introspection+jwt` (RFC 9701, 5)
+    - Add `TokenIntrospectionJwtPayload`, with the claims `iss`, `aud`, `iat` and `token_introspection` that RFC 9701, 5
+      requires, instead of the members of the introspection response at the top level of the JWT
+    - BREAKING: The constructor parameter `signIntrospectionJwt` of `SimpleAuthorizationService` signs a
+      `TokenIntrospectionJwtPayload`
+    - `SimpleAuthorizationService.tokenIntrospection` answers with a JWT when the `Accept` header of the request asks for
+      `application/token-introspection+jwt`, with the authorization server as `iss` and the authenticated client, i.e.
+      the resource server, as `aud`; without client authentication it refuses such requests with `invalid_client`
+      (status 400, RFC 9701, 5)
+    - BREAKING: `verifyTokenIntrospectionJwt` of `OAuth2ProtocolClient`, `OAuth2KtorClient` and
+      `RemoteOAuth2AuthorizationServerAdapter` is a `VerifyJwsObjectFun?`, `null` by default. When set, token
+      introspection requests JWT responses, and accepts only those with `typ` `token-introspection+jwt`, a verified
+      signature, the authorization server as `iss` and the `client_id` of the client as `aud`; when `null`, it requests
+      JSON responses. Before, a JWT was accepted even when not requested, and by default without verifying it
+    - Add `MediaTypes.Application.TOKEN_INTROSPECTION_JWT`
+    - BREAKING: `TokenIntrospectionResponse.audience` is a `Set<String>?`, as `aud` may be a single string or an array
+      (RFC 7662, 2.2; RFC 7519, 4.1.3): responses with an array failed to parse. `TokenIntrospectionJwtPayload.audience`
+      is a `Set<String>`, and the client accepts JWT responses that list its `client_id` in `aud`. Add
+      `JwtAudienceSerializer`, which decodes both forms and encodes a single audience as string
+    - Fix: `RemoteOAuth2AuthorizationServerAdapter.getTokenInfo` sends `token_type_hint` `access_token`, instead of the
+      scheme of the `Authorization` header (`DPoP`, `Bearer`), or the token itself for a header without scheme, which
+      are no token type hints (RFC 7009, 4.1.2). Add `OpenIdConstants.TOKEN_TYPE_HINT_ACCESS_TOKEN` and
+      `TOKEN_TYPE_HINT_REFRESH_TOKEN`
+    - Add `TokenIntrospectionResponse.confirmationClaim` (`cnf`) and `TokenInfo.confirmationClaim`:
+      `SimpleAuthorizationService.tokenIntrospection` conveys the binding of a DPoP-bound access token as `cnf` with the
+      JWK SHA-256 thumbprint in `jkt`, and `token_type` `DPoP` (RFC 9449, 6.2), and
+      `RemoteOAuth2AuthorizationServerAdapter.getTokenInfo` passes it on, so that a resource server can check that the
+      DPoP proof of a request is signed with that key (RFC 9449, 7.1)
 
 Release 8.0.0:
 

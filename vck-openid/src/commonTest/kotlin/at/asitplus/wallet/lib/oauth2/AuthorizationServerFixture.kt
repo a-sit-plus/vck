@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
@@ -47,6 +48,8 @@ class AuthorizationServerFixture(
     useSingleKey: Boolean = false,
     /** Origin of the credential issuer, which may differ from the one of the authorization server. */
     credentialIssuerPublicContext: String = "https://issuer.example.com",
+    /** Makes [client] request JWT responses of token introspection (RFC 9701), verified with this. */
+    verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
 ) {
     val strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet)
     val requestedScope = strategy.validScopes().split(" ").first()
@@ -112,6 +115,7 @@ class AuthorizationServerFixture(
         },
         dpopKeyMaterial = if (useSingleKey) clientAuthKeyMaterial else EphemeralKeyWithoutCert(),
         randomSource = RandomSource.Default,
+        verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
     )
 
     suspend fun metadata() = authorizationService.metadata()

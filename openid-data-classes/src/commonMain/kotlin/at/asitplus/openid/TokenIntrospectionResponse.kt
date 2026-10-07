@@ -1,6 +1,8 @@
 package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -94,7 +96,8 @@ data class TokenIntrospectionResponse(
      * defined in JWT [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519).
      */
     @SerialName("aud")
-    val audience: String? = null,
+    @Serializable(with = JwtAudienceSerializer::class)
+    val audience: Set<String>? = null,
 
     /**
      * OPTIONAL.  String representing the issuer of this token, as
@@ -113,16 +116,56 @@ data class TokenIntrospectionResponse(
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,
 
+    /**
+     * OPTIONAL. Confirmation of the key the token is bound to
+     * ([RFC 7800 3.1](https://datatracker.ietf.org/doc/html/rfc7800#section-3.1)), for a DPoP-bound token the JWK
+     * SHA-256 thumbprint of the DPoP key in `jkt`
+     * ([RFC 9449 6.2](https://datatracker.ietf.org/doc/html/rfc9449#section-6.2)). A resource server MUST check that
+     * the DPoP proof of the request is signed with that key
+     * ([RFC 9449 7.1](https://datatracker.ietf.org/doc/html/rfc9449#section-7.1)).
+     */
+    @SerialName("cnf")
+    val confirmationClaim: ConfirmationClaim? = null,
+
     ) : TokenIntrospectionResult
 
 /**
- * [RFC 9701: JWT Response for OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/rfc9701/): Response.
+ * [RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5): The JWT response for OAuth 2.0 Token
+ * Introspection, i.e. a JWT with `typ` `token-introspection+jwt`, sent as body with
+ * `Content-Type: application/token-introspection+jwt`.
+ */
+data class TokenIntrospectionJwtResponse(
+    val jwt: JwsCompactTyped<TokenIntrospectionJwtPayload>,
+) : TokenIntrospectionResult
+
+/**
+ * [RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5): Claims of the [TokenIntrospectionJwtResponse].
+ * Leaves out `sub` and `exp`, as the JWT SHOULD NOT include them, so that it can not be misused as an access token.
  */
 @Serializable
-data class TokenIntrospectionJwtResponse(
+data class TokenIntrospectionJwtPayload(
+    /** REQUIRED. The issuer identifier of the authorization server. */
+    @SerialName("iss")
+    val issuer: String,
+
     /**
-     * REQUIRED.  JWT containing the token introspection response claims.
+     * REQUIRED. Identifies the resource server receiving the token introspection response; a single string on the
+     * wire for one audience, else an array ([RFC 7519 4.1.3](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3)).
      */
-    @SerialName("jwt")
-    val jwt: String,
-) : TokenIntrospectionResult
+    @SerialName("aud")
+    @Serializable(with = JwtAudienceSerializer::class)
+    val audience: Set<String>,
+
+    /** REQUIRED. The time when the authorization server created the introspection response. */
+    @SerialName("iat")
+    @Serializable(with = InstantLongSerializer::class)
+    val issuedAt: Instant,
+
+    /**
+     * REQUIRED. The members of the token introspection response ([RFC 7662 2.2](https://datatracker.ietf.org/doc/html/rfc7662#section-2.2)).
+     * For an invalid, expired, revoked token, or a token not intended for the calling resource server, only
+     * `active` with `false`.
+     */
+    @SerialName("token_introspection")
+    val tokenIntrospection: TokenIntrospectionResponse,
+)
