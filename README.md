@@ -53,7 +53,7 @@ VC-K provides full implementations of the OpenID protocol family for credential 
     - Authorization code flow
     - Credential selection with authorization details and scopes
     - Pushed authorization requests
-    - See classes `WalletService` and `CredentialIssuer`
+    - See classes `OpenId4VciClient` and `OpenId4VciServer`
 
 - **OpenID4VP (OpenID for Verifiable Presentations)**: Complete holder and verifier implementation ([OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)), supporting:
     - Same device and cross-device flows
@@ -186,11 +186,11 @@ when (authnResponse) {
 
 ### OpenID4VCI credential issuance
 
-Use `CredentialIssuer` on the issuer service. Your HTTP framework only needs to expose the metadata, nonce, and
+Use `OpenId4VciServer` on the issuer service. Your HTTP framework only needs to expose the metadata, nonce, and
 credential endpoints and forward request data into the protocol object.
 
 ```kotlin
-val credentialIssuer = CredentialIssuer(
+val credentialIssuer = OpenId4VciServer(
     publicContext = "https://issuer.example",
     credentialSchemes = setOf(EuPidSdJwtScheme),
     authorizationService = authorizationServer,
@@ -210,7 +210,7 @@ suspend fun nonce() = credentialIssuer.nonceWithDpopNonce().getOrThrow()
 suspend fun credential(authorizationHeader: String, requestBody: String, requestInfo: RequestInfo) =
     credentialIssuer.credential(
         authorizationHeader = authorizationHeader,
-        params = WalletService.CredentialRequest.parse(requestBody).getOrThrow(),
+        params = OpenId4VciClient.CredentialRequest.parse(requestBody).getOrThrow(),
         request = requestInfo,
         credentialDataProvider = credentialDataProvider,
     ).getOrThrow()
@@ -218,25 +218,24 @@ suspend fun credential(authorizationHeader: String, requestBody: String, request
 // Serialize CredentialResponse.Plain as JSON and CredentialResponse.Encrypted as application/jwt.
 ```
 
-On the wallet side, `WalletService` builds credential requests and parses responses. For a Ktor-based wallet, prefer
-`OpenId4VciClient`; it handles issuer metadata, OAuth2, DPoP, credential requests, and response parsing. Without a
-credential offer, load metadata with `loadCredentialMetadata(issuerUrl)`, let the user pick a credential, and call
-`startProvisioningWithAuthRequestReturningResult`.
+On the wallet side, three layers build on each other:
+
+- `OpenId4VciClient` creates credential requests (proofs, encryption) and parses credential responses.
+- `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` add everything HTTP, i.e. DPoP, client attestation, nonces,
+  and retries, but never send requests themselves: each call returns an `HttpExchange`.
+- `OpenId4VciKtorClient` sends those exchanges with Ktor and runs the complete flows.
+
+With Ktor, load the offer (or, without one, the metadata with `loadCredentialMetadata(issuerUrl)` and start with
+`startProvisioningWithAuthRequestReturningResult`):
 
 ```kotlin
-val walletService = WalletService(
-    clientId = walletClientId,
-    keyMaterial = holderKeyMaterial,
-    remoteResourceRetriever = { request -> httpClient.get(request.url).bodyAsText() },
-)
-
-val client = OpenId4VciClient(
+val client = OpenId4VciKtorClient(
     engine = httpEngine,
     cookiesStorage = cookiesStorage,
-    oid4vciService = walletService,
+    oid4vciService = OpenId4VciClient(clientId = walletClientId, keyMaterial = holderKeyMaterial),
 )
 
-val offer = walletService.parseCredentialOffer(credentialOfferUrl).getOrThrow()
+val offer = client.loadCredentialOffer(credentialOfferUrl).getOrThrow()
 val credentials = client.loadCredentialMetadata(offer.credentialIssuer).getOrThrow()
 val selectedCredential = credentials.first { it.credentialIdentifier in offer.configurationIds }
 
@@ -254,6 +253,25 @@ when (val result = client.loadCredentialWithOfferReturningResult(offer, selected
 // After the browser redirects back to the wallet app in the authorization-code flow:
 val success = client.resumeWithAuthCode(redirectUrl, loadProvisioningContext()).getOrThrow()
 success.credentials.forEach { holderAgent.storeCredential(it, success.refreshToken) }
+```
+
+Without Ktor, send the requests of each exchange with your HTTP stack and pass the responses back; the KDoc of
+`OpenId4VciProtocolClient` lists the order of calls in each flow:
+
+```kotlin
+suspend fun <T> execute(exchange: HttpExchange<T>): T {
+    var step = exchange.next().getOrThrow()
+    // send(): returns the response for every status code, without following redirects
+    while (step is HttpStep.Send) step = exchange.next(send(step.request.http)).getOrThrow()
+    return (step as HttpStep.Done).value
+}
+
+val vci = OpenId4VciProtocolClient(
+    vciClient = OpenId4VciClient(clientId = walletClientId, keyMaterial = holderKeyMaterial),
+    oauth2Client = OAuth2ProtocolClient(oAuth2Client = OAuth2Client(clientId = walletClientId)),
+)
+val offer = execute(vci.loadCredentialOffer(credentialOfferUrl))
+val issuerMetadata = execute(vci.loadIssuerMetadata(offer.credentialIssuer))
 ```
 
 ### Registering credential schemes

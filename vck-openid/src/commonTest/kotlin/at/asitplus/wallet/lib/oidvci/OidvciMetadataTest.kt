@@ -31,7 +31,7 @@ val OidvciMetadataTest by matrixSuite {
             val authorizationService = SimpleAuthorizationService(
                 strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet),
             )
-            val issuer = CredentialIssuer(
+            val issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),

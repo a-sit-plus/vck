@@ -46,7 +46,7 @@ val OidvciPreAuthTest by matrixSuite {
                     mapper = mapper,
                 ),
             )
-            val issuer = CredentialIssuer(
+            val issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -55,7 +55,7 @@ val OidvciPreAuthTest by matrixSuite {
                 credentialSchemes = AttributeIndex.schemeSet,
                 credentialSchemeMapper = mapper,
             )
-            val client = WalletService()
+            val client = OpenId4VciClient()
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 
@@ -106,7 +106,7 @@ val OidvciPreAuthTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
         }
@@ -137,7 +137,7 @@ val OidvciPreAuthTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
@@ -196,7 +196,7 @@ val OidvciPreAuthTest by matrixSuite {
                     ).getOrThrow().first(),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
-                    .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                    .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                     .response
                     .credentials.shouldNotBeEmpty().first()
                     .credentialString.shouldNotBeNull()
@@ -239,7 +239,7 @@ val OidvciPreAuthTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
                 .credentials.shouldNotBeEmpty().first()
                 .credentialString.shouldNotBeNull()
@@ -263,7 +263,7 @@ val OidvciPreAuthTest by matrixSuite {
                 clientNonce = clientNonce,
                 credentialIssuer = it.issuer.metadata.credentialIssuer,
             )
-            val differentProof = WalletService().createCredentialRequestProofJwt(
+            val differentProof = OpenId4VciClient().createCredentialRequestProofJwt(
                 clientNonce = clientNonce,
                 credentialIssuer = it.issuer.metadata.credentialIssuer,
             )
@@ -277,10 +277,10 @@ val OidvciPreAuthTest by matrixSuite {
 
             val credentials = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
-                params = WalletService.CredentialRequest.Plain(credentialRequest),
+                params = OpenId4VciClient.CredentialRequest.Plain(credentialRequest),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
                 .credentials.shouldNotBeEmpty()
                 .shouldHaveSize(2)

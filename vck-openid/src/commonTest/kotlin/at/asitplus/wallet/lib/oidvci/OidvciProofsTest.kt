@@ -33,7 +33,7 @@ val OidvciProofsTest by matrixSuite {
                 strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet),
             )
             val oauth2Client = OAuth2Client()
-            var issuer = CredentialIssuer(
+            var issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -66,11 +66,11 @@ val OidvciProofsTest by matrixSuite {
                 return authorizationService.token(tokenRequest, null).getOrThrow()
             }
 
-            var client = WalletService()
+            var client = OpenId4VciClient()
         }
     } - {
         test("Do not send any proof when Issuer doesn't support any types") {
-            val requestOptions = WalletService.RequestOptions(
+            val requestOptions = OpenId4VciClient.RequestOptions(
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )
@@ -89,14 +89,14 @@ val OidvciProofsTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce
             ).getOrThrow().forEach { request ->
-                request.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>().apply {
+                request.shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>().apply {
                     this.request.proofs.shouldBeNull()
                 }
             }
         }
 
         test("Do send a proof when Issuer supports a type") {
-            val requestOptions = WalletService.RequestOptions(
+            val requestOptions = OpenId4VciClient.RequestOptions(
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )
@@ -113,7 +113,7 @@ val OidvciProofsTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = clientNonce
             ).getOrThrow().forEach { request ->
-                request.shouldBeInstanceOf<WalletService.CredentialRequest.Plain>().apply {
+                request.shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>().apply {
                     this.request.proofs.shouldNotBeNull()
                 }
                 /** Validation of the flow with correct proof happens in [OidvciCodeFlowTest] and others */

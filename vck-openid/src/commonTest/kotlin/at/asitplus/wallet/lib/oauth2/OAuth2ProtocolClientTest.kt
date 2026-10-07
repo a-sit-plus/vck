@@ -327,7 +327,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
 
     test("retried token introspection passes the issuer metadata to the attestation loader") {
         val inputs = mutableListOf<OAuth2ProtocolClient.LoadInstanceAttestationInput>()
-        val issuerMetadata = AuthorizationServerFixture(requirePAR = false).credentialIssuer.metadata
+        val issuerMetadata = AuthorizationServerFixture(requirePAR = false).openId4VciServer.metadata
         val http = FakeHttpStack(
             scripted(
                 challengeResponse("c1"),
@@ -452,14 +452,14 @@ val OAuth2ProtocolClientTest by matrixSuite {
                     oauthMetadata = metadata(),
                     authorizationServer = authorizationService.publicContext,
                     scope = requestedScope,
-                    issuerMetadata = credentialIssuer.metadata,
+                    issuerMetadata = openId4VciServer.metadata,
                 )
             )
 
             attestationInput.shouldNotBeNull().also {
                 it.authorizationServer shouldBe authorizationService.publicContext
-                it.credentialIssuer shouldBe credentialIssuer.metadata.credentialIssuer
-                it.preferredClientStatusPeriod shouldBe credentialIssuer.metadata.preferredClientStatusPeriod
+                it.credentialIssuer shouldBe openId4VciServer.metadata.credentialIssuer
+                it.preferredClientStatusPeriod shouldBe openId4VciServer.metadata.preferredClientStatusPeriod
             }
         }
     }

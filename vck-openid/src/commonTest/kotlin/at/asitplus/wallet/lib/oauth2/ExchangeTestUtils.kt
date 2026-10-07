@@ -55,6 +55,7 @@ fun List<ProtocolRequest>.kinds(): List<String> = map {
             if (it.openidConfiguration) "AuthorizationServerMetadata(openidConfiguration)"
             else "AuthorizationServerMetadata"
 
+        is ProtocolRequest.CredentialOffer -> "CredentialOffer"
         is ProtocolRequest.CredentialIssuerMetadata -> "CredentialIssuerMetadata"
         is ProtocolRequest.AttestationChallenge -> "AttestationChallenge"
         is ProtocolRequest.PushedAuthorization -> "PushedAuthorization(${it.attempt})"

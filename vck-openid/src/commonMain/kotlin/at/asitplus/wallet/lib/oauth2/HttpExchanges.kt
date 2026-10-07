@@ -114,7 +114,10 @@ internal class AuthenticatedExchange<T>(
     }
 
     private suspend fun handleResponse(attempt: Int, response: ReceivedHttpResponse): HttpStep<T> {
-        client.recordNoncesAndChallenges(request.url, response.headers)
+        when (authentication) {
+            is Authentication.Client -> client.recordAuthorizationServerResponse(request.url, response.headers)
+            is Authentication.AccessToken -> client.recordResourceServerResponse(request.url, response.headers)
+        }
         if (response.status.isSuccess()) {
             return HttpStep.Done(parse(response))
         }

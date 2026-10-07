@@ -1,0 +1,429 @@
+package at.asitplus.wallet.lib.oidvci
+
+import at.asitplus.openid.ClientNonceResponse
+import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
+import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.HttpErrorResponseException
+import at.asitplus.wallet.lib.ProtocolRequest
+import at.asitplus.wallet.lib.ReceivedHttpResponse
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.oauth2.AuthorizationServerFixture
+import at.asitplus.wallet.lib.oauth2.DPoPNonce
+import at.asitplus.wallet.lib.oauth2.FakeHttpStack
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
+import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
+import at.asitplus.wallet.lib.oauth2.jsonResponse
+import at.asitplus.wallet.lib.oauth2.kinds
+import at.asitplus.wallet.lib.oauth2.path
+import at.asitplus.wallet.lib.oauth2.scripted
+import at.asitplus.wallet.lib.oauth2.toRequestInfo
+import at.asitplus.wallet.lib.openid.DummyUserProvider
+import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotBeBlank
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.*
+import kotlinx.serialization.SerializationException
+
+val OpenId4VciProtocolClientTest by matrixSuite {
+
+    fun AuthorizationServerFixture.vciClient() = OpenId4VciProtocolClient(
+        vciClient = OpenId4VciClient(clientId = clientId),
+        oauth2Client = client,
+    )
+
+    /** The SD-JWT format of [AtomicAttribute2023], which [at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider] issues. */
+    fun OpenId4VciProtocolClient.selectFormat(fixture: AuthorizationServerFixture): SupportedCredentialFormat =
+        vciClient.selectSupportedCredentialFormat(
+            OpenId4VciClient.RequestOptions(AtomicAttribute2023, SD_JWT),
+            fixture.openId4VciServer.metadata,
+        ).shouldNotBeNull()
+
+    /** Requests a token with a pre-authorized code, as issued by the fixture's authorization server. */
+    suspend fun AuthorizationServerFixture.preAuthorizedToken(
+        format: SupportedCredentialFormat,
+    ): TokenResponseWithDpopNonce = http.execute(
+        client.requestTokenWithPreAuthorizedCode(
+            oauthMetadata = metadata(),
+            authorizationServer = authorizationService.publicContext,
+            preAuthorizedCode = authorizationService.providePreAuthorizedCode(DummyUserProvider.user),
+            transactionCode = null,
+            scope = format.scope,
+            authorizationDetails = setOf(),
+        )
+    )
+
+    /** Requests nonce and credentials with [token], as the last part of every issuance flow. */
+    suspend fun AuthorizationServerFixture.requestCredentials(
+        vci: OpenId4VciProtocolClient,
+        token: TokenResponseWithDpopNonce,
+        format: SupportedCredentialFormat,
+    ): Collection<Holder.StoreCredentialInput> {
+        val issuerMetadata = openId4VciServer.metadata
+        val clientNonce = vci.nonceRequest(issuerMetadata)?.let { http.execute(it) }
+        val scheme = vci.resolveCredentialScheme(format).shouldNotBeNull()
+        return vci.vciClient.createCredential(
+            tokenResponse = token.params,
+            metadata = issuerMetadata,
+            credentialFormat = format,
+            clientNonce = clientNonce,
+            previouslyRequestedScope = format.scope,
+        ).getOrThrow().flatMap {
+            http.execute(vci.credentialRequest(it, issuerMetadata, token.params, format, scheme))
+        }
+    }
+
+    // Step sequences, see the KDoc of the methods of OpenId4VciProtocolClient
+
+    val offer = CredentialOffer(
+        credentialIssuer = "https://issuer.example.org",
+        configurationIds = setOf("example-credential"),
+    )
+    val offerJson = joseCompliantSerializer.encodeToString(offer)
+    val offerByReference = "haip-vci://?credential_offer_uri=https://issuer.example.org/offer"
+
+    fun offerClient() = OpenId4VciProtocolClient(
+        oauth2Client = OAuth2ProtocolClient(oAuth2Client = OAuth2Client()),
+    )
+
+    test("credential offer passed by value sends no request") {
+        val http = FakeHttpStack(scripted())
+        val embedded = URLBuilder("haip-vci://").apply { parameters.append("credential_offer", offerJson) }
+            .buildString()
+
+        http.execute(offerClient().loadCredentialOffer("  $offerJson")) shouldBe offer
+        http.execute(offerClient().loadCredentialOffer(embedded)) shouldBe offer
+        http.sent.shouldBeEmpty()
+    }
+
+    test("credential offer passed by reference is loaded from credential_offer_uri") {
+        val http = FakeHttpStack(scripted(jsonResponse(offer)))
+
+        http.execute(offerClient().loadCredentialOffer(offerByReference)) shouldBe offer
+
+        http.sent.kinds() shouldBe listOf("CredentialOffer")
+        http.sent.single().http.apply {
+            url shouldBe "https://issuer.example.org/offer"
+            method shouldBe HttpMethod.Get
+        }
+    }
+
+    test("credential offer passed by reference must be the JSON-encoded offer") {
+        val nestedReference = ReceivedHttpResponse(
+            status = HttpStatusCode.OK,
+            headers = Headers.Empty,
+            body = "haip-vci://?credential_offer_uri=https://issuer.example.org/second",
+        )
+        val malformed = ReceivedHttpResponse(HttpStatusCode.OK, Headers.Empty, "{\"credential_issuer\":")
+        val http = FakeHttpStack(scripted(nestedReference, malformed))
+
+        // another reference is not followed, so the sequence stays a single request
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            http.execute(offerClient().loadCredentialOffer(offerByReference))
+        }
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            http.execute(offerClient().loadCredentialOffer(offerByReference))
+        }.cause.shouldBeInstanceOf<SerializationException>()
+        http.sent.kinds() shouldBe listOf("CredentialOffer", "CredentialOffer")
+    }
+
+    test("credential offer fails for an error response, or input that is no credential offer") {
+        val http = FakeHttpStack(scripted(ReceivedHttpResponse(HttpStatusCode.NotFound, Headers.Empty, "")))
+
+        shouldThrow<HttpErrorResponseException> {
+            http.execute(offerClient().loadCredentialOffer(offerByReference))
+        }.status shouldBe HttpStatusCode.NotFound
+        shouldThrow<OAuth2Exception.InvalidRequest> {
+            http.execute(offerClient().loadCredentialOffer("haip-vci://?unrelated=value"))
+        }
+        http.sent.kinds() shouldBe listOf("CredentialOffer")
+    }
+
+    test("issuer metadata comes from the well-known path") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val issuerMetadata = http.execute(vciClient().loadIssuerMetadata(openId4VciServer.metadata.credentialIssuer))
+
+            issuerMetadata.credentialEndpointUrl shouldBe openId4VciServer.metadata.credentialEndpointUrl
+            http.sent.kinds() shouldBe listOf("CredentialIssuerMetadata")
+            http.sent.single().http.path shouldBe "/.well-known/openid-credential-issuer"
+        }
+    }
+
+    test("parsed credential metadata lists every credential configuration") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val issuerMetadata = openId4VciServer.metadata
+
+            vciClient().parseCredentialMetadata(issuerMetadata).getOrThrow()
+                .map { it.credentialIdentifier }.toSet() shouldBe issuerMetadata.supportedCredentialConfigurations.keys
+        }
+    }
+
+    test("authorization server is the first one listed, or the credential issuer itself") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val vci = vciClient()
+            val issuerMetadata = openId4VciServer.metadata
+
+            vci.selectAuthorizationServer(
+                issuerMetadata.copy(authorizationServers = setOf("https://as1.example.com", "https://as2.example.com")),
+                "https://issuer.example.com",
+            ) shouldBe "https://as1.example.com"
+            vci.selectAuthorizationServer(issuerMetadata.copy(authorizationServers = null), "https://issuer.example.com")
+                .shouldBe("https://issuer.example.com")
+        }
+    }
+
+    test("nonce request yields a c_nonce, or is absent without a nonce endpoint") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val vci = vciClient()
+
+            http.execute(vci.nonceRequest(openId4VciServer.metadata).shouldNotBeNull()).shouldNotBeBlank()
+            vci.nonceRequest(openId4VciServer.metadata.copy(nonceEndpointUrl = null)).shouldBeNull()
+            http.sent.kinds() shouldBe listOf("Nonce")
+        }
+    }
+
+    test("credential request retries once with the DPoP nonce, then fails") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val vci = vciClient()
+            val format = vci.selectFormat(this)
+            val token = TokenResponseParameters(
+                accessToken = uuid4().toString(),
+                tokenType = TOKEN_TYPE_DPOP,
+                scope = format.scope,
+            )
+            val request = vci.vciClient.createCredential(
+                tokenResponse = token,
+                metadata = openId4VciServer.metadata,
+                credentialFormat = format,
+                clientNonce = uuid4().toString(),
+            ).getOrThrow().shouldBeSingleton().first()
+            val resourceServerNonceError = ReceivedHttpResponse(
+                status = HttpStatusCode.Unauthorized,
+                headers = headers {
+                    append(HttpHeaders.WWWAuthenticate, "DPoP error=\"$USE_DPOP_NONCE\"")
+                    append(HttpHeaders.DPoPNonce, "n1")
+                },
+                body = "",
+            )
+            val scriptedHttp = FakeHttpStack(scripted(resourceServerNonceError, resourceServerNonceError))
+
+            shouldThrow<HttpErrorResponseException> {
+                scriptedHttp.execute(
+                    vci.credentialRequest(
+                        request = request,
+                        issuerMetadata = openId4VciServer.metadata,
+                        tokenResponse = token,
+                        credentialFormat = format,
+                        credentialScheme = vci.resolveCredentialScheme(format).shouldNotBeNull(),
+                    )
+                )
+            }
+
+            scriptedHttp.sent.kinds() shouldBe listOf("Credential(0)", "Credential(1)")
+            scriptedHttp.sent[1].toRequestInfo().dpop.shouldNotBeNull().payload.nonce shouldBe "n1"
+        }
+    }
+
+    // Complete issuance flows, without ktor
+
+    test("pre-authorized code flow with DPoP and client attestation") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val vci = vciClient()
+            val issuerMetadata = http.execute(vci.loadIssuerMetadata(openId4VciServer.metadata.credentialIssuer))
+            val format = vci.selectFormat(this)
+            http.execute(
+                client.loadAuthorizationServerMetadata(
+                    vci.selectAuthorizationServer(issuerMetadata, issuerMetadata.credentialIssuer)
+                )
+            ).issuer shouldBe authorizationService.publicContext
+
+            val credentials = requestCredentials(vci, preAuthorizedToken(format), format)
+
+            credentials.shouldBeSingleton().first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>()
+            // The AS mandates a DPoP nonce (RFC 9449 8.), which the client can only learn from the rejected first
+            // token request; the retry needs a fresh attestation challenge, as challenges are single-use
+            http.sent.kinds() shouldBe listOf(
+                "CredentialIssuerMetadata",
+                "AuthorizationServerMetadata",
+                "AttestationChallenge",
+                "Token(0)",
+                "AttestationChallenge",
+                "Token(1)",
+                "Nonce",
+                "Credential(0)",
+            )
+        }
+    }
+
+    test("authorization code flow with PAR, DPoP and client attestation") {
+        with(AuthorizationServerFixture(requirePAR = true)) {
+            val vci = vciClient()
+            val format = vci.selectFormat(this)
+            val authorization = http.execute(
+                client.startAuthorization(
+                    oauthMetadata = metadata(),
+                    authorizationServer = authorizationService.publicContext,
+                    scope = format.scope,
+                    issuerMetadata = openId4VciServer.metadata,
+                )
+            )
+            val token = http.execute(
+                client.requestTokenWithAuthCode(
+                    oauthMetadata = metadata(),
+                    url = authorize(authorization.url),
+                    authorizationServer = authorizationService.publicContext,
+                    state = authorization.state,
+                    scope = format.scope,
+                    issuerMetadata = openId4VciServer.metadata,
+                )
+            )
+
+            requestCredentials(vci, token, format).shouldNotBeEmpty()
+            http.sent.kinds() shouldBe listOf(
+                "AttestationChallenge",
+                "PushedAuthorization(0)",
+                "AttestationChallenge",
+                "PushedAuthorization(1)",
+                "AttestationChallenge",
+                "Token(0)",
+                "Nonce",
+                "Credential(0)",
+            )
+        }
+    }
+
+    // DPoP nonces belong to the server that issued them
+
+    /**
+     * [RFC 9449 9.](https://datatracker.ietf.org/doc/html/rfc9449#section-9): nonces of an authorization server and a
+     * resource server "are different and should not be confused with one another", even on the same origin.
+     */
+    test("nonces of the authorization server and the credential issuer are kept apart on the same origin") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val oauth2Client = OAuth2ProtocolClient(oAuth2Client = OAuth2Client(clientId = clientId))
+            val vci = OpenId4VciProtocolClient(OpenId4VciClient(clientId = clientId), oauth2Client)
+            val format = vci.selectFormat(this)
+            val issuerMetadata = openId4VciServer.metadata
+            val origin = Url(issuerMetadata.credentialEndpointUrl).let { "${it.protocol.name}://${it.host}" }
+            val oauthMetadata = OAuth2AuthorizationServerMetadata(
+                issuer = origin,
+                tokenEndpoint = "$origin/token",
+                dpopSigningAlgValuesSupportedStrings = setOf(JwsAlgorithm.Signature.ES256.identifier),
+            )
+            val scriptedHttp = FakeHttpStack(
+                scripted(
+                    jsonResponse(
+                        TokenResponseParameters(
+                            accessToken = uuid4().toString(),
+                            tokenType = TOKEN_TYPE_DPOP,
+                            refreshToken = uuid4().toString(),
+                            scope = format.scope,
+                        )
+                    ) { append(HttpHeaders.DPoPNonce, "as-nonce") },
+                    jsonResponse(ClientNonceResponse(clientNonce = uuid4().toString())) {
+                        append(HttpHeaders.DPoPNonce, "rs-nonce")
+                    },
+                )
+            )
+            val token = scriptedHttp.execute(
+                oauth2Client.requestTokenWithPreAuthorizedCode(
+                    oauthMetadata = oauthMetadata,
+                    authorizationServer = origin,
+                    preAuthorizedCode = uuid4().toString(),
+                    transactionCode = null,
+                    scope = format.scope,
+                    authorizationDetails = setOf(),
+                )
+            )
+            val clientNonce = scriptedHttp.execute(vci.nonceRequest(issuerMetadata).shouldNotBeNull())
+            val request = vci.vciClient.createCredential(
+                token.params, issuerMetadata, format, clientNonce, previouslyRequestedScope = format.scope,
+            ).getOrThrow().first()
+
+            val credentialRequest = scriptedHttp.firstRequest<ProtocolRequest.Credential>(
+                vci.credentialRequest(
+                    request, issuerMetadata, token.params, format, vci.resolveCredentialScheme(format).shouldNotBeNull()
+                )
+            )
+            val refreshTokenRequest = scriptedHttp.firstRequest<ProtocolRequest.Token>(
+                oauth2Client.requestTokenWithRefreshToken(
+                    oauthMetadata = oauthMetadata,
+                    credentialIssuer = issuerMetadata.credentialIssuer,
+                    refreshToken = token.params.refreshToken.shouldNotBeNull(),
+                    scope = format.scope,
+                    authorizationDetails = setOf(),
+                )
+            )
+
+            credentialRequest.toRequestInfo().dpop.shouldNotBeNull().payload.nonce shouldBe "rs-nonce"
+            refreshTokenRequest.toRequestInfo().dpop.shouldNotBeNull().payload.nonce shouldBe "as-nonce"
+        }
+    }
+
+    /** [RFC 9449 9.](https://datatracker.ietf.org/doc/html/rfc9449#section-9): nonces are only accepted by the server that issued them. */
+    test("credential request does not use the DPoP nonce of the authorization server") {
+        with(
+            AuthorizationServerFixture(
+                requirePAR = false,
+                credentialIssuerPublicContext = "https://credentials.example.com",
+            )
+        ) {
+            val vci = vciClient()
+            val format = vci.selectFormat(this)
+            val token = preAuthorizedToken(format)
+            token.dpopNonce.shouldNotBeNull()
+            // a nonce endpoint would supply the credential issuer's own DPoP nonce
+            val issuerMetadata = openId4VciServer.metadata.copy(nonceEndpointUrl = null)
+            val request = vci.vciClient.createCredential(
+                token.params, issuerMetadata, format, previouslyRequestedScope = format.scope,
+            ).getOrThrow().first()
+
+            val credentialRequest = http.firstRequest<ProtocolRequest.Credential>(
+                vci.credentialRequest(request, issuerMetadata, token.params, format, vci.resolveCredentialScheme(format).shouldNotBeNull())
+            )
+
+            credentialRequest.http.url shouldBe "https://credentials.example.com/credential"
+            credentialRequest.toRequestInfo().dpop.shouldNotBeNull().payload.nonce.shouldBeNull()
+        }
+    }
+
+    // Persisted by wallets, e.g. in the provisioning context kept during the browser round trip
+
+    test("credential identifier info keeps its serialized form") {
+        val json = """
+            {
+              "issuerMetadata": {
+                "credential_issuer": "https://issuer.example.com",
+                "credential_endpoint": "https://issuer.example.com/credential",
+                "credential_configurations_supported": {
+                  "pid": { "format": "dc+sd-jwt", "vct": "urn:eudi:pid:1" }
+                }
+              },
+              "credentialIdentifier": "pid",
+              "supportedCredentialFormat": { "format": "dc+sd-jwt", "vct": "urn:eudi:pid:1" }
+            }
+        """.trimIndent()
+
+        joseCompliantSerializer.decodeFromString<CredentialIdentifierInfo>(json).apply {
+            credentialIdentifier shouldBe "pid"
+            issuerMetadata.credentialIssuer shouldBe "https://issuer.example.com"
+            supportedCredentialFormat shouldBe issuerMetadata.supportedCredentialConfigurations["pid"]
+        }
+    }
+}
