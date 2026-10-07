@@ -8,9 +8,8 @@ data class CreatedRequest(
     val url: String,
     /**
      *  Optional content that needs to be served under the previously passed in `requestUrl`
-     *  (see [CreationOptions.SignedRequestByReference.requestUrl] in call to [OpenId4VpVerifier.createAuthnRequest])
-     *  with content type `application/oauth-authz-req+jwt` (see
-     *  [at.asitplus.wallet.lib.data.MediaTypes.Application.AUTHZ_REQ_JWT]).
+     *  (see [CreationOptions.SignedRequestByReference.requestUrl] in call to [OpenId4VpVerifier.createAuthnRequest]);
+     *  serve it with [loadRequestObjectHttpResponse], which sets the content type.
      *
      *  Pass in the [at.asitplus.openid.RequestObjectParameters] that the Wallet may have sent when requesting the request object.
      */

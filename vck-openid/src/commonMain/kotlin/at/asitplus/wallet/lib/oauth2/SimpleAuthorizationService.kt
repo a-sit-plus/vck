@@ -216,17 +216,17 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     /**
-     * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
+     * Serve this result under `/.well-known/openid-configuration`,
      * see [OpenIdConstants.WellKnownPaths.OpenidConfiguration],
      * and under `/.well-known/oauth-authorization-server`,
-     * see [OpenIdConstants.WellKnownPaths.OauthAuthorizationServer].
+     * see [OpenIdConstants.WellKnownPaths.OauthAuthorizationServer], converted with
+     * [OAuth2AuthorizationServerMetadata.toHttpResponse].
      */
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata
 
     /**
-     * MUST be delivered with HTTP header `Cache-Control: no-store` (see [io.ktor.http.HttpHeaders.CacheControl]).
-     * Serialize the body as JSON.
-     * See
+     * Provides a challenge for the challenge endpoint, send it converted with
+     * [AttestationChallengeResponse.toHttpResponse]. See
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-challenges)
      */
     suspend fun attestationChallenge(): KmmResult<AttestationChallengeResponse?> = catching {
@@ -332,7 +332,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
-     * Responses have to be sent with HTTP status code `201`.
+     * Responses have to be sent with HTTP status code `201`, as `toHttpResponse()` of the result of
+     * [parWithDpopNonce] does.
      *
      * @param input as sent from the client as `POST` body
      * @param httpRequest information about the HTTP request from the client to validate authentication
@@ -350,7 +351,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
-     * Responses have to be sent with HTTP status code `201`.
+     * Responses have to be sent with HTTP status code `201`, as `toHttpResponse()` of the result of
+     * [parWithDpopNonce] does.
      *
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client to validate authentication
@@ -385,15 +387,17 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     /**
-     * Like [par], but also provides a fresh DPoP nonce for the success response header.
-     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8)
+     * Like [par], but also provides a fresh DPoP nonce and, with attestation-based client authentication, a fresh
+     * attestation challenge for the success response headers; send it converted with `toHttpResponse()`.
+     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8),
+     * [OA-ABCA 6.2](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#challenge-in-response)
      */
     suspend fun parWithDpopNonce(
         request: RequestParameters,
         httpRequest: RequestInfo? = null,
     ): KmmResult<ResponseWithDpopNonce<PushedAuthenticationResponseParameters>> = catching {
         val response = par(request, httpRequest).getOrThrow()
-        ResponseWithDpopNonce(response, tokenService.dpopNonce())
+        ResponseWithDpopNonce(response, tokenService.dpopNonce(), clientAuthenticationService.getAttestationChallenge())
     }
 
     private suspend fun RequestParameters.extractPushedRequestParams() = when (this) {
@@ -409,7 +413,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
     /**
      * Builds the authentication response for this specific user from [loadUserFun].
-     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * Send this result converted with [AuthenticationResponseResult.Redirect.toHttpResponse].
      * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
      */
     override suspend fun authorize(
@@ -542,7 +546,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
     /**
      * Verifies the authorization code sent by the client and issues an access token, uses [tokenService].
-     * Send this value JSON-serialized back to the client.
+     * Send the result of [tokenWithDpopNonce] converted with `toHttpResponse()`, which sets the headers the token
+     * response needs.
 
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client, to validate authentication
@@ -666,15 +671,17 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     /**
-     * Like [token], but also provides a fresh DPoP nonce for the success response header.
-     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8)
+     * Like [token], but also provides a fresh DPoP nonce and, with attestation-based client authentication, a fresh
+     * attestation challenge for the success response headers; send it converted with `toHttpResponse()`.
+     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8),
+     * [OA-ABCA 6.2](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#challenge-in-response)
      */
     suspend fun tokenWithDpopNonce(
         request: TokenRequestParameters,
         httpRequest: RequestInfo? = null,
     ): KmmResult<ResponseWithDpopNonce<TokenResponseParameters>> = catching {
         val response = token(request, httpRequest).getOrThrow()
-        ResponseWithDpopNonce(response, tokenService.dpopNonce())
+        ResponseWithDpopNonce(response, tokenService.dpopNonce(), clientAuthenticationService.getAttestationChallenge())
     }
 
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
@@ -783,7 +790,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     /**
-     * Like [userInfo], but also provides a fresh DPoP nonce for the success response header.
+     * Like [userInfo], but also provides a fresh DPoP nonce for the success response header; send it converted with
+     * `toHttpResponse()`.
      * See [RFC 9449 9. Resource Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-9)
      */
     suspend fun userInfoWithDpopNonce(
@@ -870,12 +878,18 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
 /**
  * Implements [RFC 9449 8.2.](https://datatracker.ietf.org/doc/html/rfc9449#name-providing-a-new-nonce-value):
- * Authorization servers may include a fresh DPoP nonce by including values in HTTP 200 responses
+ * Authorization servers may include a fresh DPoP nonce by including values in HTTP 200 responses, and
+ * [OA-ABCA 6.2](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#challenge-in-response)
+ * likewise for attestation challenges.
+ *
+ * Send it converted with `toHttpResponse()`, which sets the headers.
  */
 data class ResponseWithDpopNonce<T>(
     val response: T,
-    /** Set as HTTP header `DPoP-Nonce` in the response, see [HttpHeaders.DPoPNonce] */
+    /** Sent as HTTP header `DPoP-Nonce`, see [HttpHeaders.DPoPNonce] */
     val dpopNonce: String?,
+    /** Sent as HTTP header `OAuth-Client-Attestation-Challenge`, see [HttpHeaders.OAuthClientAttestationChallenge] */
+    val attestationChallenge: String? = null,
 )
 
 /**

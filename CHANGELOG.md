@@ -117,6 +117,36 @@ Release 9.0.0 (unreleased):
       instead of `holderAgent: HolderAgent`. Deprecate the constructor taking `engine` and `httpClientConfig`
     - The deprecated `OpenId4VpHolder` methods of `OpenId4VpKtorHolder.openId4VpHolder` fetch request objects as
       `OpenId4VpProtocolClient` does, i.e. the form posted to `request_uri` has no `charset` either
+- Server-side HTTP responses:
+    - Add `PreparedHttpResponse` in `vck-openid` (package `at.asitplus.wallet.lib`), a response with status, headers and
+      encoded body, to be written out unchanged with any HTTP server stack
+    - Add `OAuth2Exception.toHttpResponse()` for errors of authorization server endpoints: status 400, with `DPoP-Nonce`
+      for `use_dpop_nonce` and `OAuth-Client-Attestation-Challenge` for `use_attestation_challenge`
+    - Add `OAuth2Exception.toResourceServerHttpResponse(authorizationHeader)` for errors of endpoints accessed with an
+      access token (credential, userinfo): status 401 with `WWW-Authenticate` for `invalid_token`, `invalid_dpop_proof`
+      and `use_dpop_nonce` (the latter with `DPoP-Nonce`), as RFC 6750 3. and RFC 9449 7.1 and 9. require, else 400;
+      `use_attestation_challenge` comes with `OAuth-Client-Attestation-Challenge` here, too
+    - Add `toHttpResponse()` for the results of the authorization server: `OAuth2AuthorizationServerMetadata`,
+      `AttestationChallengeResponse` (with `Cache-Control: no-store`), `ResponseWithDpopNonce` of PAR (status 201),
+      token (with `Cache-Control: no-store` and `Pragma: no-cache`) and userinfo (each with `DPoP-Nonce`),
+      `AuthenticationResponseResult.Redirect` (302 with `Location`) and `TokenIntrospectionResult`
+    - Add `ResponseWithDpopNonce.attestationChallenge`: `SimpleAuthorizationService.parWithDpopNonce` and
+      `tokenWithDpopNonce` provide a fresh attestation challenge with attestation-based client authentication, which
+      `toHttpResponse()` sends as `OAuth-Client-Attestation-Challenge` (attestation-based client authentication,
+      draft 10, 6.2); `OAuth2ProtocolClient` uses it for the next request, instead of fetching one from the challenge
+      endpoint
+    - Add `OpenId4VciServer.metadataHttpResponse(acceptHeader)`, serving `signedMetadata()` as `application/jwt` when
+      the `Accept` header lists `application/jwt` with a quality not below the one of `application/json`, else
+      `metadata` as `application/json` (OID4VCI 1.0, 12.2.2), with `Vary: Accept`
+    - Add `toHttpResponse()` for `OpenId4VciServer.Nonce` (with `Cache-Control: no-store` and `DPoP-Nonce`) and
+      `OpenId4VciServer.CredentialResponse` (`application/json`, or `application/jwt` when encrypted, each with
+      `Cache-Control: no-store`); errors of the credential endpoint convert with
+      `toResourceServerHttpResponse(authorizationHeader)`
+    - Add `CreatedRequest.loadRequestObjectHttpResponse(params)` in `vck-openid`, serving the request object at the
+      verifier's `request_uri` as `application/oauth-authz-req+jwt` (OpenID4VP 1.0, 5.10.1)
+    - Add `directPostHttpResponse(redirectUri)` in `vck-openid` (`at.asitplus.wallet.lib.openid`), the answer of the
+      verifier's response endpoint for `direct_post` and `direct_post.jwt`: a JSON object with the optional
+      `redirect_uri` (OpenID4VP 1.0, 8.2), with `Cache-Control: no-store`
 
 Release 8.0.0:
 
