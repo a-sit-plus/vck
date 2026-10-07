@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
+import at.asitplus.signum.indispensable.decodeFromDer
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceRequest
@@ -9,7 +11,7 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 
@@ -50,11 +52,11 @@ class ReaderAuthenticationVerifier(
             ?: throw IllegalArgumentException("Reader authentication has no x5chain")
         require(encodedChain.isNotEmpty()) { "Reader authentication has an empty x5chain" }
         val chain = encodedChain.map { bytes ->
-            X509Certificate.decodeFromDerSafe(bytes).getOrElse { cause ->
+            catching { Certificate.decodeFromDer(bytes) }.getOrElse { cause ->
                 throw IllegalArgumentException("Invalid reader authentication certificate", cause)
             }
         }
-        val signer = chain.first().decodedPublicKey.getOrThrow().toCoseKey().getOrThrow()
+        val signer = chain.first().publicKey.toCoseKey().getOrThrow()
         verifySignature(signature, signer, byteArrayOf(), detachedPayload).getOrThrow()
         chain
     }

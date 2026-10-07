@@ -1,5 +1,6 @@
 import at.asitplus.gradle.VcLibVersions
 import at.asitplus.gradle.commonImplementationAndApiDependencies
+import at.asitplus.gradle.datetime
 import at.asitplus.gradle.envExtra
 import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.setupDokka
@@ -30,6 +31,7 @@ kotlin {
                 api(project(":openid-data-classes"))
                 api(project(":etsi-data-classes"))
                 api(project(":sd-jwt-type-metadata"))
+                api(project.datetime())
                 api("io.github.z4kn4fein:semver:${VcLibVersions.semver}")
                 commonImplementationAndApiDependencies()
             }

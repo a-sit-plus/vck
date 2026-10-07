@@ -1,6 +1,7 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- Core `vck`: migrate to the Signum 3.26.1 snapshot crypto APIs, using `Certificate` and `SignatureVerifier`. Ephemeral key material now accepts `Signer.WithExportableKey`. Digest-based helpers, certificate verification, and `SdJwtDecoded` creation are now suspend operations.
 - CSC data classes:
     - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
     - Implement CSC Data Model 1.0.0

@@ -4,7 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.jws.SdJwtSigned
-import at.asitplus.signum.supreme.sign.Verifier as SignumVerifier
+import at.asitplus.signum.indispensable.sign.SignatureVerifier as SignumVerifier
 
 data class SdJwtInputValidationResult(
     val input: SdJwtSigned,

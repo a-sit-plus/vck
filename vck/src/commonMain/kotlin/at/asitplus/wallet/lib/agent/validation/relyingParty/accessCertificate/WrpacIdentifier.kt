@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate
 
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.asn1.Asn1Primitive
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.awesn1.Asn1Primitive
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator.Constants.OID_ORGANIZATION_IDENTIFIER
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator.Constants.OID_SERIAL_NUMBER
 import kotlinx.serialization.Serializable
@@ -25,16 +25,16 @@ sealed interface WrpacIdentifier {
  * Extension function to extract access certificate identifier
  * See: ETSI TS 119 475 V1.2.1 - 5.1.2 and 5.1.4
  */
-fun X509Certificate.getWrpIdentifier() = catching {
-    this.tbsCertificate.subjectName.firstOrNull { it.attrsAndValues.any { it.oid == OID_ORGANIZATION_IDENTIFIER } }
-        ?.attrsAndValues?.first { it.oid == OID_ORGANIZATION_IDENTIFIER }?.value.let {
+fun Certificate.getWrpIdentifier() = catching {
+    this.tbsCertificate.subjectName.relativeDistinguishedNames.firstOrNull { it.attrsAndValues.any { it.oid == OID_ORGANIZATION_IDENTIFIER } }
+        ?.attrsAndValues?.first { it.oid == OID_ORGANIZATION_IDENTIFIER }?.let { (it as? at.asitplus.signum.indispensable.pki.AttributeTypeAndValue.X509Representable)?.asn1Representation?.value }.let {
             (it as? Asn1Primitive)?.content?.decodeToString()
         }?.let {
             return@catching WrpacIdentifier.WrpacLegalIdentifier(it)
         }
 
-    this.tbsCertificate.subjectName.firstOrNull { it.attrsAndValues.any { it.oid == OID_SERIAL_NUMBER } }
-        ?.attrsAndValues?.first { it.oid == OID_SERIAL_NUMBER }?.value.let {
+    this.tbsCertificate.subjectName.relativeDistinguishedNames.firstOrNull { it.attrsAndValues.any { it.oid == OID_SERIAL_NUMBER } }
+        ?.attrsAndValues?.first { it.oid == OID_SERIAL_NUMBER }?.let { (it as? at.asitplus.signum.indispensable.pki.AttributeTypeAndValue.X509Representable)?.asn1Representation?.value }.let {
             (it as? Asn1Primitive)?.content?.decodeToString()
         }?.let {
             return@catching WrpacIdentifier.WrpacNaturalIdentifier(it)

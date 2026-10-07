@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -13,8 +14,8 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.signum.supreme.hash.digest
-import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.signum.indispensable.digest.digest
+import at.asitplus.signum.indispensable.sign.SignatureVerifier
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -154,7 +155,7 @@ val JwsServiceTest by matrixSuite {
                 .payload shouldBe it.randomPayload
         }
 
-        val dummyVerifier = VerifyJwsObjectFun { catching { Verifier.Success } }
+        val dummyVerifier = VerifyJwsObjectFun { catching { SignatureVerifier.Success } }
         val jadesVerifier = VerifyJwsObjectJades(verifyJwsObject = dummyVerifier)
 
         test("JAdES verification passes with valid x5t#o parameter (SHA-384)") {

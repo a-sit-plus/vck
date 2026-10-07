@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate
 
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 
 data class WrpacValidationResult(
-    val chain: List<X509Certificate>,
+    val chain: List<Certificate>,
     val identifierResult: WrpacIdentifier?,
     val validLinkage: Boolean
 )

@@ -1,12 +1,14 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.decodeFromPem
 import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.SecretExposure
-import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.asn1.encodeToPEM
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.supreme.sign.Signer
-import at.asitplus.signum.supreme.sign.signerFor
+import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
+import at.asitplus.signum.indispensable.encodeToPem
+import at.asitplus.signum.indispensable.sign.EcdsaPrivateKey
+import at.asitplus.signum.indispensable.pki.Certificate
+import at.asitplus.signum.indispensable.sign.Signer
+import at.asitplus.signum.indispensable.sign.signerFor
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import kotlin.coroutines.cancellation.CancellationException
@@ -42,7 +44,7 @@ class EphemeralEncryptionKeyService(
         (identifier?.let { EphemeralKeyWithoutCert(customKeyId = it) } ?: EphemeralKeyWithoutCert()).also {
             identifierToPrivateKeyPem.put(
                 it.identifier,
-                it.key.exportPrivateKey().getOrThrow().encodeToPEM().getOrThrow()
+                it.key.exportPrivateKey().encodeToPem()
             )
         }
 
@@ -55,10 +57,10 @@ class EphemeralEncryptionKeyService(
         identifierToPrivateKeyPem.remove(identifier)?.toKeyMaterial(identifier)
 
     private fun String.toKeyMaterial(identifier: String): KeyMaterial {
-        val privateKey = CryptoPrivateKey.decodeFromPem(this).getOrThrow()
-        require(privateKey is CryptoPrivateKey.EC.WithPublicKey) { "Not an EC private key: $identifier" }
+        val privateKey = CryptoPrivateKey.decodeFromPem(this)
+        require(privateKey is EcdsaPrivateKey.WithPublicKey) { "Not an EC private key: $identifier" }
         return EphemeralEncryptionKey(
-            signer = SignatureAlgorithm.ECDSAwithSHA256.signerFor(privateKey).getOrThrow(),
+            signer = SignatureAlgorithm.ECDSAwithSHA256.signerFor(privateKey),
             identifier = identifier,
         )
     }
@@ -66,6 +68,6 @@ class EphemeralEncryptionKeyService(
 
 /** Key material recovered from [EphemeralEncryptionKeyService], used for key agreement only. */
 private class EphemeralEncryptionKey(signer: Signer, identifier: String) : SignerBasedKeyMaterial(signer, identifier) {
-    override suspend fun getCertificate(): X509Certificate? = null
+    override suspend fun getCertificate(): Certificate? = null
 }
 

@@ -6,8 +6,8 @@ import at.asitplus.csc.api.contentEquals
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.indispensable.digest.Digest
+import at.asitplus.signum.indispensable.digest.digest
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator

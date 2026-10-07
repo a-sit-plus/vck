@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
+import at.asitplus.signum.indispensable.encodeToDer
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.request.IsoMdocRequest

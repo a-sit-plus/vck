@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.etsi
 
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.decodeFromPem
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 
@@ -51,8 +52,8 @@ val TrustListValidatorTest by matrixSuite {
                 "QYw2jOvpKcKtWCSAnegEbgsGYzATKjmPJPJ0npHFqzM=\n" +
                 "-----END CERTIFICATE-----\n"
 
-        val trustList = listOf(X509Certificate.decodeFromPem(trustAnchorPem).getOrThrow())
-        val leaf = X509Certificate.decodeFromPem(testCertPem).getOrThrow()
+        val trustList = listOf(Certificate.decodeFromPem(trustAnchorPem))
+        val leaf = Certificate.decodeFromPem(testCertPem)
 
         leaf.isTrustedBy(trustList).isSuccess shouldBe true
     }
@@ -80,8 +81,8 @@ val TrustListValidatorTest by matrixSuite {
                 "iqEDzQlzqYwtPjIntlbAkwC4KM1pFaMwZU+WJ79rrPJGMGWFF3Y=\n" +
                 "-----END CERTIFICATE-----\n"
 
-        val trustList = listOf(X509Certificate.decodeFromPem(trustAnchorPem).getOrThrow())
-        val leaf = X509Certificate.decodeFromPem(testCertPem).getOrThrow()
+        val trustList = listOf(Certificate.decodeFromPem(trustAnchorPem))
+        val leaf = Certificate.decodeFromPem(testCertPem)
 
         leaf.isTrustedBy(trustList).isSuccess shouldBe false
     }
@@ -109,8 +110,8 @@ val TrustListValidatorTest by matrixSuite {
                 "jVCxa181mRD3+OiQw9SDtTZXEwPQmp0jj7B5bLGSKK477cAIX1uqxE7jyO8t2g==\n" +
                 "-----END CERTIFICATE-----\n"
 
-        val trustList = listOf(X509Certificate.decodeFromPem(trustAnchorPem).getOrThrow())
-        val leaf = X509Certificate.decodeFromPem(testCertPem).getOrThrow()
+        val trustList = listOf(Certificate.decodeFromPem(trustAnchorPem))
+        val leaf = Certificate.decodeFromPem(testCertPem)
 
         leaf.isTrustedBy(trustList).isSuccess shouldBe false
     }
@@ -162,10 +163,10 @@ val TrustListValidatorTest by matrixSuite {
                 "-----END CERTIFICATE-----"
 
         val trustList = listOf(
-            X509Certificate.decodeFromPem(trustAnchorPem).getOrThrow(),
-            X509Certificate.decodeFromPem(taPem).getOrThrow()
+            Certificate.decodeFromPem(trustAnchorPem),
+            Certificate.decodeFromPem(taPem)
         )
-        val leaf = X509Certificate.decodeFromPem(testCertPem).getOrThrow()
+        val leaf = Certificate.decodeFromPem(testCertPem)
 
         val result = leaf.isTrustedBy(trustList)
         result.isSuccess shouldBe false

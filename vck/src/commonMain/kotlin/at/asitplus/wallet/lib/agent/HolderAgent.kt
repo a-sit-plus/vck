@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.decodeFromDer
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
@@ -117,7 +118,7 @@ class HolderAgent @JvmOverloads constructor(
                     scheme = credential.scheme,
                     renewalInfo = renewalInfo,
                     issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)
-                        ?.let { X509Certificate.decodeFromDer(it) }
+                        ?.let { Certificate.decodeFromDer(it) }
                 )
             }
         }

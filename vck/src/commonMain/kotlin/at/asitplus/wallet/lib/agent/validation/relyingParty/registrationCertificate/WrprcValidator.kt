@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
+import at.asitplus.signum.indispensable.decodeFromDer
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
@@ -10,7 +11,7 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.TimeScope
@@ -127,7 +128,7 @@ class WrprcValidator(
             ?: certificate.cose.unprotectedHeader?.certificateChain
             ?: throw Throwable("${certificate.cose} has no certificate chain in COSE header.")
         val chain = certificateChainBytes.map {
-            X509Certificate.decodeFromDerSafe(it).getOrElse { throwable ->
+            catching { Certificate.decodeFromDer(it) }.getOrElse { throwable ->
                 throw IllegalArgumentException("Could not parse certificate from euWrprc COSE header", throwable)
             }
         }
@@ -207,22 +208,22 @@ class WrprcValidator(
     }
 
     private suspend fun validateSignature(
-        jwsTyped: JwsCompactTyped<WrpPayload>, leafCertificate: X509Certificate
+        jwsTyped: JwsCompactTyped<WrpPayload>, leafCertificate: Certificate
     ) = run {
         require(jwsTyped.jws.jwsHeader.algorithm is JwsAlgorithm.Signature) {
             "$jwsTyped uses unsupported JWS algorithm: ${jwsTyped.jws.jwsHeader.algorithm}"
         }
-        VerifyJwsSignature().invoke(jwsTyped.jws, leafCertificate.decodedPublicKey.getOrThrow()).getOrThrow()
+        VerifyJwsSignature().invoke(jwsTyped.jws, leafCertificate.publicKey).getOrThrow()
         true
     }
 
     private suspend fun validateSignature(
-        cose: CoseSigned<ByteArray>, leafCertificate: X509Certificate
+        cose: CoseSigned<ByteArray>, leafCertificate: Certificate
     ) = run {
         require(cose.protectedHeader.algorithm is CoseAlgorithm.Signature) {
             "unsupported Cose algorithm: ${cose.protectedHeader.algorithm}"
         }
-        val leafKey = leafCertificate.decodedPublicKey.getOrThrow().toCoseKey().getOrThrow()
+        val leafKey = leafCertificate.publicKey.toCoseKey().getOrThrow()
         VerifyCoseSignatureWithKey<ByteArray>().invoke(cose, leafKey, byteArrayOf(), null).getOrThrow()
         true
     }

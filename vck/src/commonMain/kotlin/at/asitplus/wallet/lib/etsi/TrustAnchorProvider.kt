@@ -1,26 +1,26 @@
 package at.asitplus.wallet.lib.etsi
 
 import at.asitplus.etsi.ListOfTrustedEntities
-import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.Certificate
 
 interface TrustAnchorProvider {
     /** Issuer anchors for a credential type (vct / doctype), e.g. "urn:eudi:pid:1". */
-    suspend fun issuanceAnchors(credentialIdentifier: String): List<X509Certificate>
+    suspend fun issuanceAnchors(credentialIdentifier: String): List<Certificate>
 
 
 
     /** Issuer anchors for a fixed list type, e.g. LoteProfile.WRPAC. */
-    suspend fun issuanceAnchors(profile: LoteProfile): List<X509Certificate>
+    suspend fun issuanceAnchors(profile: LoteProfile): List<Certificate>
 
 
 
     /** Status list signer anchors for a credential type, JWT and CWT alike (PID -> PID revocation only). */
-    suspend fun revocationAnchors(credentialIdentifier: String): List<X509Certificate>
+    suspend fun revocationAnchors(credentialIdentifier: String): List<Certificate>
 
 
 
     /** Status list signer anchors for a fixed list type, e.g. LoteProfile.WRPAC. */
-    suspend fun revocationAnchors(profile: LoteProfile): List<X509Certificate>
+    suspend fun revocationAnchors(profile: LoteProfile): List<Certificate>
 }
 
 
@@ -33,7 +33,7 @@ class LoTETrustAnchorProvider(
         val profile = LoteProfile.fromSchemeIdentifier(id)
         trustLists().filter { LoTEFilterService().profileOf(it) == profile }
     },
-    private val additionalAnchors: List<X509Certificate> = emptyList(),
+    private val additionalAnchors: List<Certificate> = emptyList(),
     private val filter: LoTEFilterService = LoTEFilterService(),
 ) : TrustAnchorProvider {
 

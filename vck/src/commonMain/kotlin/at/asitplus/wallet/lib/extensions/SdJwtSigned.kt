@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.extensions
 
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 

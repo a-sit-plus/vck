@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.etsi
 
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.basicConstraints_2_5_29_19
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.awesn1.Asn1EncapsulatingOctetString
+import at.asitplus.awesn1.KnownOIDs
+import at.asitplus.awesn1.basicConstraints_2_5_29_19
+import at.asitplus.awesn1.encoding.Asn1
+import at.asitplus.signum.indispensable.pki.CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
@@ -54,7 +54,7 @@ val BasicConstraintsTest by matrixSuite {
     "a malformed BasicConstraints extension is rejected rather than ignored" {
         val malformed = TestCertificateAuthority().issue(
             extensions = listOf(
-                X509CertificateExtension(
+                CertificateExtension(
                     oid = KnownOIDs.basicConstraints_2_5_29_19,
                     critical = true,
                     value = Asn1EncapsulatingOctetString(listOf(Asn1.Bool(true))),

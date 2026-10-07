@@ -29,11 +29,11 @@ import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.truncateToSeconds
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.indispensable.digest.digest
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -288,7 +288,7 @@ class VerifiablePresentationFactory(
         return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
     }
 
-    private fun StoreEntry.SdJwt.loadDisclosures(
+    private suspend fun StoreEntry.SdJwt.loadDisclosures(
         disclosedAttributes: DCQLCredentialQueryMatchingResult
     ): Set<String> = when (disclosedAttributes) {
         AllMandatoryClaimsMatchingResult -> emptySet()
@@ -296,7 +296,7 @@ class VerifiablePresentationFactory(
         is ClaimsQueryResults -> loadDisclosures(disclosedAttributes.toRequestedSdJwtClaims(this))
     }
 
-    private fun StoreEntry.SdJwt.loadDisclosures(
+    private suspend fun StoreEntry.SdJwt.loadDisclosures(
         requestedClaims: Collection<NormalizedJsonPath>
     ): Set<String> {
         val digest = sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256

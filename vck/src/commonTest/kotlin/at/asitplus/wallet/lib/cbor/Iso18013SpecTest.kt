@@ -8,7 +8,7 @@ import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.toIsoString
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite

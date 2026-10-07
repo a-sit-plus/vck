@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.signum.indispensable.sign.SignatureVerifier
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.StatusListAgent
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -16,7 +16,7 @@ val StatusListTokenTypeValidationTest by matrixSuite {
             val statusListToken = StatusListJwt(issued, resolvedAt = null)
 
             statusListToken.validate(
-                verifyJwsObject = { KmmResult.success(Verifier.Success) },
+                verifyJwsObject = { KmmResult.success(SignatureVerifier.Success) },
                 revocationListInfo = StatusListInfo(index = 0u, uri = issued.payload.subject),
                 isInstantInThePast = { false },
             ).isSuccess shouldBe true
@@ -36,7 +36,7 @@ val StatusListTokenTypeValidationTest by matrixSuite {
             )
 
             statusListToken.validate(
-                verifyJwsObject = { KmmResult.success(Verifier.Success) },
+                verifyJwsObject = { KmmResult.success(SignatureVerifier.Success) },
                 revocationListInfo = StatusListInfo(index = 0u, uri = issued.payload.subject),
                 isInstantInThePast = { false },
             ).exceptionOrNull().toString().shouldContain("Invalid type header")

@@ -16,7 +16,10 @@ import at.asitplus.signum.indispensable.symmetric.SymmetricKey
 import at.asitplus.signum.indispensable.symmetric.randomKey
 import at.asitplus.signum.indispensable.toJcaPublicKey
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
-import at.asitplus.signum.supreme.sign.EphemeralKey
+import at.asitplus.signum.indispensable.sign.Signer
+import at.asitplus.signum.dsl.ec
+import kotlinx.coroutines.runBlocking
+import at.asitplus.signum.supreme.Supreme
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.benasher44.uuid.uuid4
@@ -47,15 +50,15 @@ val JweServiceJvmTest by matrixSuite {
     )
 
     data(ecdhesConfiguration) - { config ->
-        val ephemeralKey = EphemeralKey {
+        val ephemeralKey = kotlinx.coroutines.runBlocking { Supreme.init(); Signer.Ephemeral {
             ec {
                 curve = config.curve
-                digests = setOf(curve.nativeDigest)
+                digest = curve.nativeDigest
             }
-        }.getOrThrow()
+        } }
 
         val jweAlgorithm = JweAlgorithm.ECDH_ES
-        val jvmEncrypter = ECDHEncrypter(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as ECPublicKey)
+        val jvmEncrypter = ECDHEncrypter(ephemeralKey.publicKey.toJcaPublicKey() as ECPublicKey)
         val jvmDecrypter = ECDHDecrypter(ephemeralKey.jcaPrivateKey as ECPrivateKey)
 
         val keyMaterial = EphemeralKeyWithoutCert(ephemeralKey)
@@ -109,8 +112,8 @@ val JweServiceJvmTest by matrixSuite {
     )
 
     data(symmetricConfiguration) - { config ->
-        val ephemeralKey = runBlocking { (config.algorithm as JweAlgorithm.Symmetric).algorithm.randomKey() }
-        require(ephemeralKey is SymmetricKey.Integrated)
+        val ephemeralKey = kotlinx.coroutines.runBlocking { (config.algorithm as JweAlgorithm.Symmetric).algorithm.randomKey() }
+        require(ephemeralKey is SymmetricKey.Integrated<*, *>)
 
         val jvmEncrypter = AESEncrypter(ephemeralKey.secretKey.getOrThrow())
         val jvmDecrypter = AESDecrypter(ephemeralKey.secretKey.getOrThrow())
