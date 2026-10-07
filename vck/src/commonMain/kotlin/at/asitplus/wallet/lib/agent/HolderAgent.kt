@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.josef.typed
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.decodeFromDer
 import at.asitplus.KmmResult
 import at.asitplus.catching
@@ -92,7 +95,7 @@ class HolderAgent @JvmOverloads constructor(
                     vcSerialized = credential.vcJws,
                     scheme = credential.scheme,
                     renewalInfo = renewalInfo,
-                    issuer = credential.signedVcJws.jws.jwsHeader.certificateChain?.leaf
+                    issuer = credential.signedVcJws.wrappedHeader.header.certificateChain?.leaf
                 )
             }
 
@@ -107,7 +110,7 @@ class HolderAgent @JvmOverloads constructor(
                     disclosures = validated.disclosures,
                     scheme = credential.scheme,
                     renewalInfo = renewalInfo,
-                    issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf
+                    issuer = credential.signedSdJwtVc.jws.typed<JsonWebToken, JwsHeader>().wrappedHeader.header.certificateChain?.leaf
                 )
             }
 

@@ -58,7 +58,7 @@ val JwsServiceTest by matrixSuite {
             val signed =
                 it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow().toString()
 
-            val parsed = JwsCompactTyped<ByteArray>(signed)
+            val parsed = JwsCompactTyped<ByteArray, JwsHeader>(signed)
             parsed.toString() shouldBe signed
             parsed.payload shouldBe payload
             it.verifierJwsService(parsed.jws).getOrThrow()
@@ -170,7 +170,7 @@ val JwsServiceTest by matrixSuite {
             val baseJws = signed.jws
 
             val validB64Url = Digest.SHA384
-                .digest(baseJws.jwsHeader.certificateChain!!.leaf.encodeToDer())
+                .digest(signed.wrappedHeader.header.certificateChain!!.leaf.encodeToDer())
                 .encodeToString(Base64UrlStrict)
 
             val patchedJws = baseJws.patchHeader {

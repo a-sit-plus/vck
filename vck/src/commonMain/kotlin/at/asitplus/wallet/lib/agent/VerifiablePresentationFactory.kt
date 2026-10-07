@@ -14,6 +14,7 @@ package at.asitplus.wallet.lib.agent
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
@@ -409,7 +410,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         hashInput: String,
         digest: Digest,
-    ): JwsCompactTyped<KeyBindingJws> = signKeyBinding(
+    ): JwsCompactTyped<KeyBindingJws, JwsHeader> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
             issuedAt = Clock.System.now().truncateToSeconds(),

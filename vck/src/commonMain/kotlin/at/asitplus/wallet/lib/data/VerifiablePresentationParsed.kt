@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import kotlin.jvm.JvmOverloads
 
@@ -9,7 +10,7 @@ import kotlin.jvm.JvmOverloads
  * presentation, and also by [at.asitplus.wallet.lib.agent.VerifierAgent.verifyPresentationVcJwt].
  */
 data class VerifiablePresentationParsed @JvmOverloads constructor(
-    val jws: JwsCompactTyped<VerifiablePresentationJws>,
+    val jws: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>,
     val id: String,
     val type: String,
     val freshVerifiableCredentials: Collection<VcJwsVerificationResultWrapper> = listOf(),

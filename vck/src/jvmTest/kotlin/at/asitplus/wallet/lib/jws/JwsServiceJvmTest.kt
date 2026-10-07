@@ -147,7 +147,7 @@ val JwsServiceJvmTest by matrixSuite {
                     val parsedJwsSigned = JwsCompact(signedLibObject)
                     parsedJwsSigned.getPayload<JsonElement>()
                         .getOrThrow().jsonPrimitive.content shouldBe randomPayload.content
-                    val parsedSig = parsedJwsSigned.signature.rawByteArray.encodeToString(Base64UrlStrict)
+                    val parsedSig = parsedJwsSigned.plainSignature.encodeToString(Base64UrlStrict)
 
                     withClue(
                         "$algo: \nSignatures should match\n" +
@@ -159,7 +159,7 @@ val JwsServiceJvmTest by matrixSuite {
                         parsedSig shouldBe libObject.signature.toString()
                     }
 
-                    withClue("$algo: Signature: ${parsedJwsSigned.signature.encodeToTlv().toDerHexString()}") {
+                    withClue("$algo: Signature: ${parsedJwsSigned.plainSignature.toHexString()}") {
                         verifyJwsSignatureObject(parsedJwsSigned).getOrThrow()
                     }
                 }

@@ -63,7 +63,7 @@ val WrpAuthenticationRequestValidatorTest by matrixSuite {
         ).getOrThrow()
 
         data.clientId shouldBe fixture.clientId
-        data.accessCertificate.certificateChain shouldBe signedRequest.jws.jwsHeader.certificateChain
+        data.accessCertificate.certificateChain shouldBe signedRequest.wrappedHeader.header.certificateChain
         val (certificate, requests) = data.registrationCertificate.entries.single()
         certificate.shouldBeInstanceOf<WrpRegistrationCertificate.WrpJwtRegistrationCertificate>()
             .payload shouldBe wrprcPayload

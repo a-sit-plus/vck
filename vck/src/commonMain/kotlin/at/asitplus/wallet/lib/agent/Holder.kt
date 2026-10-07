@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -25,7 +26,7 @@ interface Holder {
 
     sealed class StoreCredentialInput {
         data class Vc(
-            val signedVcJws: JwsCompactTyped<VerifiableCredentialJws>,
+            val signedVcJws: JwsCompactTyped<VerifiableCredentialJws, JwsHeader>,
             val vcJws: String,
             val scheme: VcJwtCredentialScheme,
         ) : StoreCredentialInput()

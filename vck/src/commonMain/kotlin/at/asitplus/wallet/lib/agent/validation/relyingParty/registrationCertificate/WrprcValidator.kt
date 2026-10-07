@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
 import at.asitplus.signum.indispensable.decodeFromDer
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
@@ -159,7 +160,7 @@ class WrprcValidator(
         tokenStatusResolver: TokenStatusResolver,
     ) = run {
         val jwsTyped = certificate.jwsTyped
-        val certificateChain = requireNotNull(jwsTyped.jws.jwsHeader.certificateChain) {
+        val certificateChain = requireNotNull(jwsTyped.wrappedHeader.header.certificateChain) {
             "Certificate chain is empty."
         }
         val validHeader = catchingUnwrapped { validateHeader(jwsTyped) }.getOrElse { false }
@@ -184,12 +185,12 @@ class WrprcValidator(
         )
     }
 
-    private fun validateHeader(jwsTyped: JwsCompactTyped<WrpPayload>) = run {
-        require(jwsTyped.jws.jwsHeader.type == WRPRC_JWS_HEADER) {
-            "invalid typ in JWS header expected='$WRPRC_JWS_HEADER', actual='${jwsTyped.jws.jwsHeader.type}'"
+    private fun validateHeader(jwsTyped: JwsCompactTyped<WrpPayload, JwsHeader>) = run {
+        require(jwsTyped.wrappedHeader.header.type == WRPRC_JWS_HEADER) {
+            "invalid typ in JWS header expected='$WRPRC_JWS_HEADER', actual='${jwsTyped.wrappedHeader.header.type}'"
         }
-        require(jwsTyped.jws.jwsHeader.algorithm == JwsAlgorithm.Signature.ES256) {
-            "invalid alg in JWS header: expected='${JwsAlgorithm.Signature.ES256}', actual='${jwsTyped.jws.jwsHeader.algorithm}'"
+        require(jwsTyped.wrappedHeader.header.algorithm == JwsAlgorithm.Signature.ES256) {
+            "invalid alg in JWS header: expected='${JwsAlgorithm.Signature.ES256}', actual='${jwsTyped.wrappedHeader.header.algorithm}'"
         }
         true
     }
@@ -208,10 +209,10 @@ class WrprcValidator(
     }
 
     private suspend fun validateSignature(
-        jwsTyped: JwsCompactTyped<WrpPayload>, leafCertificate: Certificate
+        jwsTyped: JwsCompactTyped<WrpPayload, JwsHeader>, leafCertificate: Certificate
     ) = run {
-        require(jwsTyped.jws.jwsHeader.algorithm is JwsAlgorithm.Signature) {
-            "$jwsTyped uses unsupported JWS algorithm: ${jwsTyped.jws.jwsHeader.algorithm}"
+        require(jwsTyped.wrappedHeader.header.algorithm is JwsAlgorithm.Signature) {
+            "$jwsTyped uses unsupported JWS algorithm: ${jwsTyped.wrappedHeader.header.algorithm}"
         }
         VerifyJwsSignature().invoke(jwsTyped.jws, leafCertificate.publicKey).getOrThrow()
         true

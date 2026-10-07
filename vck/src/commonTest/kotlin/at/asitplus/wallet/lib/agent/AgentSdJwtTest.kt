@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.sha256
@@ -463,7 +464,7 @@ private suspend fun createKeyBindingJws(
     audienceId: String,
     challenge: String,
     issuerJwtPlusDisclosures: String,
-): JwsCompactTyped<KeyBindingJws> = signKeyBindingJws(
+): JwsCompactTyped<KeyBindingJws, JwsHeader> = signKeyBindingJws(
     JwsContentTypeConstants.KB_JWT,
     KeyBindingJws(
         issuedAt = Clock.System.now(),

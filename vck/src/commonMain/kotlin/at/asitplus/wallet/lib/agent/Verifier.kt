@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
@@ -50,7 +51,7 @@ interface Verifier {
      * that shall include the [challenge] (sent by this verifier).
      */
     suspend fun verifyPresentationVcJwt(
-        input: JwsCompactTyped<VerifiablePresentationJws>,
+        input: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>,
         challenge: String,
     ): KmmResult<VerifyPresentationResult.Success>
 

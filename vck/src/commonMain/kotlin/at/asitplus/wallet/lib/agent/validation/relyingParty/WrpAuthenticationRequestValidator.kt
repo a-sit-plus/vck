@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
@@ -11,9 +12,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate.WrpCwtRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate.WrpJwtRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
@@ -31,8 +30,8 @@ object WrpAuthenticationRequestValidator {
     ): KmmResult<WrpRequestData> = catching {
         when (request) {
             is RequestParametersFrom.Jws<*> -> {
-                val request = request.jwsTyped as? JwsTyped<JwsCompact, AuthenticationRequestParameters>
-                    ?: throw UnsupportedWrpRequestException("Unable to cast request as JwsTyped<JwsCompact, AuthenticationRequestParameters>")
+                val request = request.jwsTyped as? JwsCompactTyped< AuthenticationRequestParameters, JwsHeader>
+                    ?: throw UnsupportedWrpRequestException("Unable to cast request as JwsCompactTyped< AuthenticationRequestParameters, JwsHeader>")
                 val clientId = requireNotNull(request.payload.clientId) { "No client_id in request" }
                 val verifierInfo = request.payload.verifierInfo
                     ?: throw MissingRegistrationCertificateException("No verifier_info in request")
@@ -40,7 +39,7 @@ object WrpAuthenticationRequestValidator {
                 val registrationCertificate = WrpJwtRegistrationCertificate(jwsTyped = jwsTyped)
                 val dcqlQuery = requireNotNull(request.payload.dcqlQuery) { "No DCQL query in request" }
                 val wrpCredentialRequest = dcqlQuery.credentials.map { WrpDcqlCredentialQuery(it) }
-                val accessCertificate = WrpAccessCertificate(request.jws.jwsHeader.certificateChain)
+                val accessCertificate = WrpAccessCertificate(request.wrappedHeader.header.certificateChain)
 
                 WrpRequestData(
                     clientId = clientId,
@@ -57,7 +56,7 @@ object WrpAuthenticationRequestValidator {
                 val jwsTyped = verifierInfo.parseSingleRegistrationCertificate()
                 val registrationCertificate = WrpJwtRegistrationCertificate(jwsTyped = jwsTyped)
                 val wrpCredentialRequest = dcqlQuery.credentials.map { WrpDcqlCredentialQuery(it) }
-                val accessCertificate = WrpAccessCertificate(request.jwsTyped.jws.jwsHeader.certificateChain)
+                val accessCertificate = WrpAccessCertificate(request.jwsTyped.wrappedHeader.header.certificateChain)
 
                 WrpRequestData(
                     clientId = request.parameters.clientId,
@@ -109,7 +108,7 @@ object WrpAuthenticationRequestValidator {
     /**
      * Parses the only registration certificate in [this], keeping the cause in the exception if it can not be parsed.
      */
-    private fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsCompactTyped<WrpPayload> {
+    private fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsCompactTyped<WrpPayload, JwsHeader> {
         val registrationCertificates = filter { it.format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true) }
         if (registrationCertificates.isEmpty()) {
             throw MissingRegistrationCertificateException("No WRPRC in verifier_info")
@@ -118,14 +117,14 @@ object WrpAuthenticationRequestValidator {
             ?: throw InvalidRegistrationCertificateException(
                 "Request must contain exactly one WRPRC, but contains ${registrationCertificates.size}"
             )
-        return catchingUnwrapped { JwsCompactTyped<WrpPayload>(registrationCertificate.data) }.getOrElse {
+        return catchingUnwrapped { JwsCompactTyped<WrpPayload, JwsHeader>(registrationCertificate.data) }.getOrElse {
             throw InvalidRegistrationCertificateException("Could not parse WRPRC", it)
         }
     }
 
     fun VerifierInfo.parseJws() = catchingUnwrapped {
         require(format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true))
-        JwsCompactTyped<WrpPayload>(data)
+        JwsCompactTyped<WrpPayload, JwsHeader>(data)
     }.onFailure { Napier.w("Failed to parse JWS data for $this (${REGISTRATION_CERT_FORMAT}).", it) }
         .getOrNull()
 

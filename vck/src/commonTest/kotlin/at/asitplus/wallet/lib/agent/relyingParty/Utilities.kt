@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.pki.X500Name
 import at.asitplus.awesn1.Asn1Integer
 import at.asitplus.signum.indispensable.sign.sign
 import at.asitplus.signum.indispensable.encodeToDer
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
@@ -323,7 +324,7 @@ suspend fun WrpFixture.validateWrprc(
 ) = catching {
     val wrprcJws = signWrprc(signingKeyMaterial, payload, type = jwsType)
     val registrationCertificate: WrpRegistrationCertificate =
-        WrpRegistrationCertificate.WrpJwtRegistrationCertificate(jwsTyped = JwsCompactTyped<WrpPayload>(wrprcJws))
+        WrpRegistrationCertificate.WrpJwtRegistrationCertificate(jwsTyped = JwsCompactTyped<WrpPayload, JwsHeader>(wrprcJws))
     val credentialRequests = request?.toWrpCredentialRequest() ?: emptyList()
     val validationData = WrpRequestData(
         clientId = clientId,

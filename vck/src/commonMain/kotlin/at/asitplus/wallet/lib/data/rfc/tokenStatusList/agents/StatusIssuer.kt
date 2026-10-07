@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
@@ -18,7 +19,7 @@ interface StatusIssuer {
     suspend fun issueStatusListJwt(
         time: Instant? = null,
         kind: RevocationList.Kind = STATUS_LIST
-    ): JwsCompactTyped<StatusListTokenPayload>
+    ): JwsCompactTyped<StatusListTokenPayload, JwsHeader>
 
     /**
      * @return a status list jwt for the given [timePeriod].
@@ -26,7 +27,7 @@ interface StatusIssuer {
     suspend fun issueStatusListJwt(
         timePeriod: Int,
         kind: RevocationList.Kind = STATUS_LIST
-    ): JwsCompactTyped<StatusListTokenPayload>
+    ): JwsCompactTyped<StatusListTokenPayload, JwsHeader>
 
     /**
      * @return a status list cwt.

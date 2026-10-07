@@ -12,6 +12,7 @@ package at.asitplus.wallet.lib.agent
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -65,7 +66,7 @@ class ValidatorVcJws @JvmOverloads constructor(
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun verifyVpJws(
-        input: JwsCompactTyped<VerifiablePresentationJws>,
+        input: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>,
         challenge: String,
         clientId: String,
     ): KmmResult<VerifyPresentationResult.Success> = catching {
@@ -73,7 +74,7 @@ class ValidatorVcJws @JvmOverloads constructor(
         verifyJwsObject(input.jws).getOrThrow()
         val vpJws = input.payload.validate(challenge, clientId)
         val vcValidationResults = vpJws.vp.verifiableCredential
-            .map { it to verifyVcJws(it, input.jws.jwsHeader.publicKey, input) }
+            .map { it to verifyVcJws(it, input.wrappedHeader.header.publicKey, input) }
 
         val invalidVcList = vcValidationResults.filter {
             it.second.isFailure
@@ -130,9 +131,9 @@ class ValidatorVcJws @JvmOverloads constructor(
      * @param vpJws Optionally, the VP enclosing the VC
      */
     suspend fun verifyVcJws(
-        input: JwsCompactTyped<VerifiableCredentialJws>,
+        input: JwsCompactTyped<VerifiableCredentialJws, JwsHeader>,
         publicKey: CryptoPublicKey,
-        vpJws: JwsCompactTyped<VerifiablePresentationJws>? = null,
+        vpJws: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>? = null,
     ) = verifyVcJws(input.toString(), publicKey, vpJws)
 
     /**
@@ -145,7 +146,7 @@ class ValidatorVcJws @JvmOverloads constructor(
     suspend fun verifyVcJws(
         input: String,
         publicKey: CryptoPublicKey?,
-        vpJws: JwsCompactTyped<VerifiablePresentationJws>? = null,
+        vpJws: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>? = null,
     ): KmmResult<VerifyCredentialResult.SuccessJwt> = catching {
         when (val result = vcJwsInputValidator(input, publicKey, vpJws)) {
             is ParsingError -> throw result.throwable

@@ -45,6 +45,8 @@ import at.asitplus.signum.indispensable.symmetric.requiresNonce
 import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.indispensable.agree.keyAgreement
 import at.asitplus.signum.indispensable.sign.signature
+import at.asitplus.signum.indispensable.josef.JwsHeaderWrapped
+import at.asitplus.signum.indispensable.josef.JWS
 import at.asitplus.signum.indispensable.digest.digest
 import at.asitplus.signum.indispensable.sign.Signer
 import at.asitplus.signum.indispensable.sign.SignatureVerifier
@@ -115,7 +117,7 @@ fun interface SignJwtFun<P : Any> {
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
-    ): KmmResult<JwsCompactTyped<P>>
+    ): KmmResult<JwsCompactTyped<P, JwsHeader>>
 }
 
 /** Create a [JwsCompact], setting [JwsHeader.type] to the specified value, applying the header modifier. */
@@ -125,7 +127,7 @@ fun interface SignJwtExtFun<P : Any> {
         payload: P,
         serializer: SerializationStrategy<P>,
         additionalHeaderModifier: JwsHeaderModifierFun,
-    ): KmmResult<JwsCompactTyped<P>>
+    ): KmmResult<JwsCompactTyped<P, JwsHeader>>
 }
 
 /** Create a [JwsCompact], setting [JwsHeader.type] to the specified value and applying [JwsHeaderIdentifierFun]. */
@@ -137,21 +139,20 @@ class SignJwt<P : Any>(
         type: String?,
         payload: P,
         serializer: SerializationStrategy<P>,
-    ): KmmResult<JwsCompactTyped<P>> = catching {
+    ): KmmResult<JwsCompactTyped<P, JwsHeader>> = catching {
         val header = JwsHeader(
             algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             type = type,
         ).let {
             headerModifier(it, keyMaterial)
         }
-        JwsCompactTyped(
-            JwsCompact(
-                protectedHeader = header,
-                payload = joseCompliantSerializer.encodeToString(serializer, payload).encodeToByteArray(),
-                signer = { keyMaterial.sign(it).signature.joseBytes }
-            ),
-            payload
+        val jws = JwsCompact(
+            protectedHeader = header,
+            payload = joseCompliantSerializer.encodeToString(serializer, payload).encodeToByteArray(),
+            signer = { keyMaterial.sign(it).signature.joseBytes }
         )
+        val wrapped = JwsHeaderWrapped.fromParts(JwsHeader.serializer(), jws.plainProtectedHeader)
+        JwsCompactTyped(jws, payload, wrapped, JWS.getSignature(header.algorithm, jws.plainSignature))
     }
 }
 
@@ -165,7 +166,7 @@ class SignJwtExt<P : Any>(
         payload: P,
         serializer: SerializationStrategy<P>,
         additionalHeaderModifier: JwsHeaderModifierFun,
-    ): KmmResult<JwsCompactTyped<P>> = catching {
+    ): KmmResult<JwsCompactTyped<P, JwsHeader>> = catching {
         val header = JwsHeader(
             algorithm = keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             type = type,
@@ -174,14 +175,13 @@ class SignJwtExt<P : Any>(
         }.let {
             additionalHeaderModifier(it)
         }
-        JwsCompactTyped(
-            JwsCompact(
-                protectedHeader = header,
-                payload = joseCompliantSerializer.encodeToString(serializer, payload).encodeToByteArray(),
-                signer = { keyMaterial.sign(it).signature.joseBytes }
-            ),
-            payload
+        val jws = JwsCompact(
+            protectedHeader = header,
+            payload = joseCompliantSerializer.encodeToString(serializer, payload).encodeToByteArray(),
+            signer = { keyMaterial.sign(it).signature.joseBytes }
         )
+        val wrapped = JwsHeaderWrapped.fromParts(JwsHeader.serializer(), jws.plainProtectedHeader)
+        JwsCompactTyped(jws, payload, wrapped, JWS.getSignature(header.algorithm, jws.plainSignature))
     }
 }
 
@@ -534,11 +534,11 @@ class VerifyJwsSignature @JvmOverloads constructor(
         jwsObject: JwsCompact,
         publicKey: CryptoPublicKey,
     ) = catching {
-        val jwsAlgorithm = jwsObject.jwsHeader.algorithm
+        val jwsAlgorithm = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.algorithm
         require(jwsAlgorithm is JwsAlgorithm.Signature) { "Algorithm not supported: $jwsAlgorithm" }
         verifySignature(
             jwsObject.signatureInput,
-            jwsObject.signature,
+            JWS.getSignature(jwsAlgorithm, jwsObject.plainSignature),
             jwsAlgorithm.algorithm,
             publicKey,
         ).getOrThrow()
@@ -624,7 +624,7 @@ class VerifyStatusListTokenHAIP @JvmOverloads constructor(
 ) : VerifyJwsObjectFun {
 
     override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
-        val certChain: CertificateChain = jwsObject.jwsHeader.certificateChain
+        val certChain: CertificateChain = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.certificateChain
             ?: throw IllegalArgumentException("Certificate Chain MUST not be empty")
         // HAIP requires the signing certificate to be issued by a trust anchor, so direct trust is not an option
         val signingCert = trustedIssuers
@@ -656,7 +656,7 @@ class VerifyJwsObjectTrustedCertificate @JvmOverloads constructor(
     val trustedIssuers: TrustedCertificates,
 ) : VerifyJwsObjectFun {
     override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
-        val signingCertificate = jwsObject.jwsHeader.certificateChain
+        val signingCertificate = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.certificateChain
             .requireTrustedSigningCertificate(trustedIssuers)
         verifyJwsSignature(jwsObject, signingCertificate.publicKey).getOrThrow()
     }
@@ -700,11 +700,13 @@ class VerifyJwsObject @JvmOverloads constructor(
      * Returns a list of public keys that may have been used to sign this [JwsCompact]
      * by evaluating its header values (see [JwsHeader.jsonWebKey], [JwsHeader.jsonWebKeySetUrl]).
      */
-    private suspend fun JwsCompact.loadPublicKeys(): Set<CryptoPublicKey> =
-        jwsHeader.publicKey?.let { setOf(it) }
-            ?: jwsHeader.jsonWebKeySetUrl?.let {
-                retrieveJwkFromKeySetUrl(it, jwsHeader.keyId)?.let { setOf(it) }
-            } ?: setOf()
+    private suspend fun JwsCompact.loadPublicKeys(): Set<CryptoPublicKey> {
+        val header = JwsHeaderWrapped.fromParts<JwsHeader>(plainProtectedHeader).header
+        return header.publicKey?.let { setOf(it) }
+            ?: header.jsonWebKeySetUrl?.let {
+                retrieveJwkFromKeySetUrl(it, header.keyId)?.let { setOf(it) }
+            } ?: emptySet()
+    }
 
     /**
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
@@ -739,7 +741,7 @@ class VerifyJwsObjectTrusted @JvmOverloads constructor(
             ?.toSet() ?: setOf()
         require(trusted.isNotEmpty()) { "No trusted keys" }
         // If the JWS names its signer, that signer has to be trusted, we don't fall back to the other entries
-        val candidates = jwsObject.jwsHeader.publicKey?.let { headerKey ->
+        val candidates = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.publicKey?.let { headerKey ->
             require(headerKey in trusted) { "Signer asserted in JWS header is not trusted" }
             setOf(headerKey)
         } ?: trusted
@@ -783,7 +785,7 @@ class VerifyJwsObjectJades @JvmOverloads constructor(
         val x5tOElement = rawHeaderJson["x5t#o"] ?: return@catching
         val x5tO = joseCompliantSerializer.decodeFromJsonElement<JadesX5tO>(x5tOElement)
 
-        val certChain = jwsObject.jwsHeader.certificateChain
+        val certChain = JwsHeaderWrapped.fromParts<JwsHeader>(jwsObject.plainProtectedHeader).header.certificateChain
             ?: throw IllegalArgumentException("JAdES Compliance Failure: 'x5t#o' parameter requires an 'x5c' certificate chain.")
 
         val digestAlgorithm = parseJadesDigestAlgorithm(x5tO.digAlg)
