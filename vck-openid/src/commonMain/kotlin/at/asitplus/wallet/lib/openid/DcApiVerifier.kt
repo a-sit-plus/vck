@@ -29,7 +29,6 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.openid.dcql.toIso180137AnnexCDeviceRequest
-import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -67,7 +66,6 @@ import io.ktor.utils.io.core.*
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 
 /**
@@ -142,6 +140,7 @@ class DcApiVerifier @JvmOverloads constructor(
         stateToAuthnRequestStore = stateToAuthnRequestStore,
         supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
     )
+    private val responseProcessor = AuthnResponseProcessor(requestFactory, nonceAwareVerifier)
     private val vpTokenValidator = VpTokenValidator(
         mdocDeviceSignatureVerifier = mdocDeviceSignatureVerifier,
         createSessionTranscript = DcApiSessionTranscriptCalculator(),
@@ -277,6 +276,13 @@ class DcApiVerifier @JvmOverloads constructor(
      * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.
      *
      * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store.
+     *
+     * For OpenID4VP, succeeds with an [AuthnResponseResult] if the response has been processed: a presentation
+     * ([AuthnResponseResult.Success], valid or not) or an authorization error response of the wallet
+     * ([AuthnResponseResult.Error], carrying only `error`, see OpenID4VP 1.0, A.4). Either one ends the request, so a
+     * second response to it fails. Fails if the response has not been processed, i.e. it is malformed, can't be
+     * correlated with a request, comes from an origin not in the `expected_origins` of a signed request, or violates
+     * the protection its request requires.
      */
     suspend fun validateAuthnResponse(
         input: String,
@@ -294,6 +300,13 @@ class DcApiVerifier @JvmOverloads constructor(
      * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.
      *
      * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store.
+     *
+     * For OpenID4VP, succeeds with an [AuthnResponseResult] if the response has been processed: a presentation
+     * ([AuthnResponseResult.Success], valid or not) or an authorization error response of the wallet
+     * ([AuthnResponseResult.Error], carrying only `error`, see OpenID4VP 1.0, A.4). Either one ends the request, so a
+     * second response to it fails. Fails if the response has not been processed, i.e. it is malformed, can't be
+     * correlated with a request, comes from an origin not in the `expected_origins` of a signed request, or violates
+     * the protection its request requires.
      */
     suspend fun validateAuthnResponse(
         input: DigitalCredentialInterface,
@@ -332,26 +345,14 @@ class DcApiVerifier @JvmOverloads constructor(
         expectedOrigin: String,
     ): KmmResult<AuthnResponseResult> = catching {
         Napier.d("validateAuthnResponse: $input")
-        val authnRequest = requestFactory.loadAuthnRequest(input, externalId)
-
-        // the request has been consumed above, and an authentication response is not retryable,
-        // so end the challenge's lifecycle here, no matter how validating the response turns out
-        val session = nonceAwareVerifier.consumeChallenge(
-            authnRequest.nonce ?: throw IllegalArgumentException("nonce not present in $authnRequest")
-        )
-
-        val responseType = authnRequest.responseType?.let { ResponseType(it) }
-        require(responseType != null) {
-            "No response type was specified in the original authentication request."
+        with(responseProcessor.consume(input, externalId)) {
+            // the request has been consumed, so a response over the wrong transport or origin ends it, too
+            validateTransport(request, input, expectedOrigin)
+            error?.let { AuthnResponseResult.Error(it, request) } ?: AuthnResponseResult.Success(
+                vpTokenResult = validateVpToken(request, input, expectedOrigin, session),
+                request = request,
+            )
         }
-        require(OpenIdConstants.VP_TOKEN in responseType) {
-            "Unsupported response type: $responseType"
-        }
-
-        AuthnResponseResult(
-            vpTokenValidationResult = validateVpToken(authnRequest, input, expectedOrigin, session),
-            request = authnRequest,
-        )
     }
 
     internal suspend fun validateIsoResponse(
@@ -402,16 +403,15 @@ class DcApiVerifier @JvmOverloads constructor(
     }
 
     /**
-     * Validates the `vp_token` of the response with the shared [VpTokenValidator],
-     * enforcing this verifier's transport: the Digital Credentials API.
+     * Enforces this verifier's transport: the Digital Credentials API, and for signed requests, a calling origin
+     * listed in the request's `expected_origins`.
      */
-    @Throws(IllegalArgumentException::class, CancellationException::class)
-    private suspend fun validateVpToken(
+    @Throws(IllegalArgumentException::class)
+    private fun validateTransport(
         authnRequest: AuthenticationRequestParameters,
         responseParameters: ResponseParametersFrom,
         expectedOrigin: String,
-        session: ChallengeSession,
-    ): KmmResult<VpTokenValidationResult> = catching {
+    ) {
         val originalResponseParameters = responseParameters.originalResponseParameters
         require(originalResponseParameters is ResponseParametersFrom.DcApi) {
             "Unsupported response parameters: $originalResponseParameters"
@@ -422,6 +422,15 @@ class DcApiVerifier @JvmOverloads constructor(
                 "expected origin '$expectedOrigin' does not match expected_origins"
             }
         }
+    }
+
+    /** Validates the `vp_token` of the response with the shared [VpTokenValidator]. */
+    private suspend fun validateVpToken(
+        authnRequest: AuthenticationRequestParameters,
+        responseParameters: ResponseParametersFrom,
+        expectedOrigin: String,
+        session: ChallengeSession,
+    ): KmmResult<VpTokenValidationResult> = catching {
         vpTokenValidator.validateVpToken(
             authnRequest = authnRequest,
             responseParameters = responseParameters,

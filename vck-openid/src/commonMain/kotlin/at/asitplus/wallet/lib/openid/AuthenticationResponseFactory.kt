@@ -63,6 +63,13 @@ internal class AuthenticationResponseFactory(
         }
     )
 
+    /**
+     * Encrypts [response] into the `response` parameter. An error that can't be encrypted, e.g. as the verifier passed
+     * no suitable key, is sent without encryption as for `direct_post`, as
+     * [OpenID4VP 1.0, 8.3.1](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-8.3.1)
+     * allows: "If a Wallet is unable to generate an encrypted response, it MAY send an error response without
+     * encryption as per Section 8.2." A presentation is never sent without encryption.
+     */
     @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun authnResponseDirectPostJwt(
         state: AuthorizationResponsePreparationState,
@@ -71,9 +78,14 @@ internal class AuthenticationResponseFactory(
         url = state.request.parameters.responseUrl
             ?: state.request.parameters.redirectUrlExtracted
             ?: throw InvalidRequest("no response_uri or redirect_uri"),
-        params = AuthenticationResponseParameters(
-            response = buildResponse(state, response),
-        ).encodeToParameters()
+        params = catchingUnwrapped {
+            AuthenticationResponseParameters(response = buildResponse(state, response)).encodeToParameters()
+        }.getOrElse {
+            when (response) {
+                is AuthenticationResponse.Error -> response.error.encodeToParameters<OAuth2Error>()
+                is AuthenticationResponse.Success -> throw it
+            }
+        }
     )
 
     @Throws(OAuth2Exception::class)
@@ -158,18 +170,21 @@ internal class AuthenticationResponseFactory(
         }
     }
 
+    /**
+     * Over the DC API, an error is an object with the single property `error`, never encrypted, also for `dc_api.jwt`
+     * ([OpenID4VP 1.0, A.4](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.4)),
+     * since any further detail might reveal information about the user's credentials (15.9.2).
+     */
     @Throws(OAuth2Exception::class, CancellationException::class)
     private suspend fun buildResponseParametersDcApi(
         state: AuthorizationResponsePreparationState,
         response: AuthenticationResponse,
-    ) = if (state.responseRequiresEncryption) {
-        AuthenticationResponseParameters(response = encrypt(state, response))
-    } else {
-        when (response) {
-            is AuthenticationResponse.Error ->
-                AuthenticationResponseParameters(response = joseCompliantSerializer.encodeToString(response.error))
-
-            is AuthenticationResponse.Success -> response.params
+    ) = when (response) {
+        is AuthenticationResponse.Error -> AuthenticationResponseParameters(error = response.error.error)
+        is AuthenticationResponse.Success -> if (state.responseRequiresEncryption) {
+            AuthenticationResponseParameters(response = encrypt(state, response))
+        } else {
+            response.params
         }
     }
 

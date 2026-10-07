@@ -26,6 +26,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.truncateToSeconds
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -43,8 +44,10 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -63,11 +66,13 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
+import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
@@ -115,6 +120,8 @@ val OpenId4VpKtorHolderTest by matrixSuite {
             lateinit var mockEngine: HttpClientEngine
             /** Content types of the authorization responses posted to the mock RP. */
             val postedContentTypes = mutableListOf<ContentType?>()
+            /** Status codes the mock RP answered posted authorization responses with. */
+            val answeredStatuses = mutableListOf<HttpStatusCode>()
 
             suspend fun setup(
                 scheme: CredentialScheme,
@@ -152,11 +159,13 @@ val OpenId4VpKtorHolderTest by matrixSuite {
             fun setupWallet(
                 httpClient: HttpClient,
                 ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+                lookupJsonWebKeysForClient: (OpenId4VpHolder.JsonWebKeyLookupInput) -> JsonWebKeySet? = { null },
             ) = OpenId4VpKtorHolder(
                 httpClient = httpClient,
                 keyMaterial = keyMaterial,
                 holder = holderAgent,
                 ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+                lookupJsonWebKeysForClient = lookupJsonWebKeysForClient,
             ).also { this.wallet = it }
 
             fun verifyReceivedAttributes(
@@ -213,8 +222,39 @@ val OpenId4VpKtorHolderTest by matrixSuite {
             }
 
             /**
-             * Setup the mock relying party service, for getting requests (referenced by `request_uri`) and to decode posted
-             * authentication responses, answering posted ones with [redirectUriAfterPost], if set
+             * Lets the wallet decline the request with an error response in [responseMode], as in a-sit-plus/vck#474,
+             * returning what the mock RP made of the responses posted to it.
+             */
+            suspend fun sendErrorResponse(responseMode: ResponseMode): List<KmmResult<AuthnResponseResult>> {
+                // PreRegistered conveys no client metadata, so the wallet learns the verifier's key out-of-band
+                val decryptionKeyMaterial = EphemeralKeyWithoutCert()
+                val results = mutableListOf<KmmResult<AuthnResponseResult>>()
+                val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+                setupRelyingPartyService(
+                    clientId = uuid4().toString(),
+                    requestOptions = OpenId4VpRequestOptions(
+                        presentationRequest = CredentialPresentationRequestBuilder(
+                            RequestOptionsCredential(scheme, SD_JWT)
+                        ).toDCQLRequest(),
+                        responseMode = responseMode,
+                    ),
+                    redirectUriAfterPost = "https://rp.example.com/declined",
+                    decryptionKeyMaterial = decryptionKeyMaterial,
+                ) { results += it }
+                setupWallet(HttpClient(mockEngine)) {
+                    JsonWebKeySet(listOf(decryptionKeyMaterial.toEncryptionJsonWebKey()))
+                }
+                val state = wallet.startAuthorizationResponsePreparation(url).getOrThrow()
+                wallet.sendAuthnErrorResponse(OAuth2Exception.AccessDenied("user declined"), state)
+                return results
+            }
+
+            /**
+             * Setup the mock relying party service, for getting requests (referenced by `request_uri`) and to decode
+             * posted authentication responses. Answers posted ones that have been processed, i.e. presentations and
+             * errors, with [directPostHttpResponse] carrying [redirectUriAfterPost], if set (OpenID4VP 1.0, 8.2), all
+             * others with 400.
+             * [decryptionKeyMaterial] is the verifier's key distributed out-of-band, for `direct_post.jwt`.
              */
             suspend fun setupRelyingPartyService(
                 clientId: String,
@@ -222,12 +262,14 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 requestUriMethod: JarRequestParameters.RequestUriMethod =
                     JarRequestParameters.RequestUriMethod.GET,
                 redirectUriAfterPost: String? = null,
+                decryptionKeyMaterial: KeyMaterial? = null,
                 validate: (KmmResult<AuthnResponseResult>) -> Unit,
             ) {
                 val requestEndpointPath = "/request/${uuid4()}"
                 val redirectUri = "http://rp.example.com/cb"
                 val verifier = OpenId4VpVerifier(
                     clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUri),
+                    decryptionKeyMaterial = decryptionKeyMaterial,
                 )
                 val responseEndpointPath = "/response"
                 val createdRequest = verifier.createAuthnRequest(
@@ -260,8 +302,10 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                             val requestBody = request.body.toByteArray().decodeToString()
                             if (requestBody.isNotEmpty()) {
                                 postedContentTypes += request.body.contentType
-                                validate(verifier.validateAuthnResponse(requestBody))
-                                respond(directPostHttpResponse(redirectUriAfterPost))
+                                verifier.validateAuthnResponse(requestBody).also(validate).fold(
+                                    onSuccess = { respond(directPostHttpResponse(redirectUriAfterPost)) },
+                                    onFailure = { respondError(HttpStatusCode.BadRequest) },
+                                ).also { answeredStatuses += it.statusCode }
                             } else {
                                 validate(verifier.validateAuthnResponse(request.url.toString()))
                                 respondOk()
@@ -646,6 +690,42 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 }
         }
 
+        test("an error response for direct_post is answered with directPostHttpResponse") {
+            it.sendErrorResponse(ResponseMode.DirectPost).shouldBeProcessedAccessDenied()
+            it.answeredStatuses shouldBe listOf(HttpStatusCode.OK)
+        }
+
+        test("an error response for direct_post.jwt is answered with directPostHttpResponse") {
+            it.sendErrorResponse(ResponseMode.DirectPostJwt).shouldBeProcessedAccessDenied()
+            it.answeredStatuses shouldBe listOf(HttpStatusCode.OK)
+        }
+
+        test("a presentation that can't be encrypted for direct_post.jwt fails, and its error is sent unencrypted") {
+            val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            val attributes = mapOf(DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString())
+            it.storeMockCredentials(scheme, SD_JWT, attributes)
+            val results = mutableListOf<KmmResult<AuthnResponseResult>>()
+            // a pre-registered client conveys no key in the request, and the wallet knows none out-of-band
+            it.setupRelyingPartyService(
+                clientId = uuid4().toString(),
+                requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestOptionsCredential(scheme, SD_JWT, attributePaths = attributes.keys)
+                    ).toDCQLRequest(),
+                    responseMode = ResponseMode.DirectPostJwt,
+                ),
+            ) { result -> results += result }
+            it.setupWallet(HttpClient(it.mockEngine))
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+
+            it.wallet.finalizeAuthorizationResponse(state).isFailure shouldBe true
+
+            // OpenID4VP 1.0, 8.3.1: the wallet may send an error without encryption, which the verifier processes
+            results.single().getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Error>()
+                .error.error shouldBe "invalid_request"
+            it.answeredStatuses shouldBe listOf(HttpStatusCode.OK)
+        }
+
         test("No matching credential test") {
             val euPidScheme = AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
             it.setup(
@@ -674,6 +754,14 @@ val OpenId4VpKtorHolderTest by matrixSuite {
     }
 }
 
+/** The verifier has processed the single error response posted, see a-sit-plus/vck#474. */
+private fun List<KmmResult<AuthnResponseResult>>.shouldBeProcessedAccessDenied() {
+    single().getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Error>().error.apply {
+        error shouldBe "access_denied"
+        errorDescription shouldBe "user declined"
+    }
+}
+
 // TODO: ClaimToBeIssued with DCQLClaimsPathPointer!
 private fun Map.Entry<DCQLClaimsPathPointer, Any>.toClaimToBeIssued(): ClaimToBeIssued =
     ClaimToBeIssued(key.getFirstName(), value)
@@ -684,7 +772,8 @@ private fun Map.Entry<DCQLClaimsPathPointer, Any>.toIssuerSignedItem(): IssuerSi
 
 private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean =
     catching {
-        when (val vpTokenValidationResult = this.vpTokenValidationResult.shouldNotBeNull().getOrThrow()) {
+        val vpTokenValidationResult = shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.getOrThrow()
+        when (vpTokenValidationResult) {
             is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
                 .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
                 .containsAllAttributes(expectedAttributes)

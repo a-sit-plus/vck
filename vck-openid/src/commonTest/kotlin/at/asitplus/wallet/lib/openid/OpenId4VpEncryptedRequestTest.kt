@@ -106,7 +106,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
             holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
 
             // five parts, i.e. a JWE, not the three parts of the signed request object
@@ -127,7 +127,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
             holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
 
             f.served.shouldNotBeNull().count { it == '.' } shouldBe 2
         }
@@ -149,7 +149,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
             holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
         }
 
         "request object encrypted to a key we never advertised is rejected" { f ->
@@ -241,7 +241,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
             holder.createAuthorizationResponse(url, endpoint).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { verifier.validateAuthnResponse(it.url).getOrThrow() }
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
 
             // no common algorithm, so the verifier serves the plain signed request object
             f.served.shouldNotBeNull().count { it == '.' } shouldBe 2
@@ -282,7 +282,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
             holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
 
             params shouldBe null
         }
@@ -321,7 +321,7 @@ val OpenId4VpEncryptedRequestTest by matrixSuite {
             holder.createAuthorizationResponse(url).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .let { f.verifierOid4vp.validateAuthnResponse(it.url).getOrThrow() }
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
         }
 
         "requiring encryption needs a key service to advertise a key with" { f ->

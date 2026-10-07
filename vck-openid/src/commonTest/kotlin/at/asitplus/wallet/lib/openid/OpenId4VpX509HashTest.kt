@@ -76,7 +76,7 @@ val OpenId4VpX509HashTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -110,7 +110,7 @@ val OpenId4VpX509HashTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()

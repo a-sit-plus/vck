@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dcapi.DCAPIHandover
+import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.OpenId4VpResponseMultiSigned
 import at.asitplus.dcapi.OpenId4VpResponseSigned
 import at.asitplus.dcapi.OpenId4VpResponseUnsigned
@@ -8,9 +9,13 @@ import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsTyped
@@ -34,10 +39,14 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
+import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import com.benasher44.uuid.uuid4
@@ -409,7 +418,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val validation = f.dcApiVerifier.validateAuthnResponse(response, transactionId, rpOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenValidationResult!!.getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.single().single()
 
@@ -431,7 +440,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             f.dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.single().single().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
@@ -457,7 +466,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             // the origin is hashed into the session transcript, so claiming another one does not verify
             f.dcApiVerifier.validateAuthnResponse(response, transactionId, "https://evil.example.com").getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.single().single()
                 .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain
@@ -490,7 +499,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             // even though origin, client and credential are the same
             f.dcApiVerifier.validateAuthnResponse(response, otherId, callingOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.single().single()
                 .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain
@@ -526,13 +535,187 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.single().single().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
                 .documents.single().validItems
                 .firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
                 .shouldNotBeNull().elementValue shouldBe "Susanne"
+        }
+
+        test("DC API unsigned: an error response without state is processed via externalId (A.4)") { f ->
+            val transactionId = uuid4().toString()
+            val authnRequest = f.createUnsignedAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = dcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                )
+            )
+            val response = """{"protocol":"openid4vp-v1-unsigned","data":{"error":"access_denied"}}"""
+
+            f.dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow() shouldBe
+                    AuthnResponseResult.Error(OAuth2Error(error = "access_denied"), authnRequest)
+
+            // the error has ended the request
+            f.dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).isFailure shouldBe true
+        }
+
+        test("DC API unsigned: a plaintext error response for dc_api.jwt is processed (A.4)") { f ->
+            // the fixture verifier uses ClientIdScheme.PreRegistered, which populates no client metadata,
+            // so encryption needs a scheme that conveys the encryption key in the request
+            val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            val dcApiVerifier = DcApiVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.CertificateHash(
+                    chain = listOf(verifierKeyMaterial.getCertificate()!!),
+                    redirectUri = "https://example.com/callback",
+                ),
+            )
+            val transactionId = uuid4().toString()
+            dcApiVerifier.createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = dcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApiJwt,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                ),
+                DcApiCreationOptions.OpenId4VpUnsigned,
+            ).getOrThrow()
+            val response = """{"protocol":"openid4vp-v1-unsigned","data":{"error":"access_denied"}}"""
+
+            dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult.Error>().error shouldBe OAuth2Error(error = "access_denied")
+        }
+
+        test("DC API unsigned: an encrypted error response for dc_api.jwt needs the kid of the request's key") {
+            // OpenID4VP 1.0, 5.1: every key in `jwks` has a `kid`, which 8.3 requires in the header of the JWE
+            val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            val dcApiVerifier = DcApiVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.CertificateHash(
+                    chain = listOf(verifierKeyMaterial.getCertificate()!!),
+                    redirectUri = "https://example.com/callback",
+                ),
+            )
+            val transactionId = uuid4().toString()
+            val authnRequest = dcApiVerifier.createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = dcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApiJwt,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                ),
+                DcApiCreationOptions.OpenId4VpUnsigned,
+            ).getOrThrow().singleRequest<DigitalCredentialGetRequest.OpenId4VpUnsigned>().data
+            val recipientKey = authnRequest.clientMetadata.shouldNotBeNull().jsonWebKeySet.shouldNotBeNull()
+                .keys.getEncryptionTargetKey().shouldNotBeNull()
+            suspend fun encryptedError(keyId: String?) = EncryptJwe()(
+                header = JweHeader(algorithm = JweAlgorithm.ECDH_ES, encryption = JweEncryption.A128GCM, keyId = keyId),
+                payload = """{"error":"access_denied"}""",
+                recipientKey = recipientKey,
+            ).getOrThrow().serialize()
+                .let { OpenId4VpResponseUnsigned(AuthenticationResponseParameters(response = it)) }
+
+            // without `kid`, there is no key to decrypt with, so the response is not processed at all
+            dcApiVerifier.validateAuthnResponse(encryptedError(null), transactionId, callingOrigin)
+                .isFailure shouldBe true
+
+            dcApiVerifier.validateAuthnResponse(encryptedError(recipientKey.keyId), transactionId, callingOrigin)
+                .getOrThrow() shouldBe AuthnResponseResult.Error(OAuth2Error(error = "access_denied"), authnRequest)
+        }
+
+        "DC API: an error response of the holder carries error only, never encrypted (A.4)" - { f ->
+            // the protocol identifier on the wire, whether the request is signed, and its response mode
+            mapOf(
+                "unsigned, dc_api" to Triple("openid4vp-v1-unsigned", false, OpenIdConstants.ResponseMode.DcApi),
+                "unsigned, dc_api.jwt" to Triple("openid4vp-v1-unsigned", false, OpenIdConstants.ResponseMode.DcApiJwt),
+                "signed, dc_api" to Triple("openid4vp-v1-signed", true, OpenIdConstants.ResponseMode.DcApi),
+                "signed, dc_api.jwt" to Triple("openid4vp-v1-signed", true, OpenIdConstants.ResponseMode.DcApiJwt),
+            ).asData() test { (_, case) ->
+                val (protocol, signed, responseMode) = case
+                // a scheme that conveys the encryption key in the request, as required for `dc_api.jwt`
+                val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
+                val dcApiVerifier = DcApiVerifier(
+                    keyMaterial = verifierKeyMaterial,
+                    clientIdScheme = ClientIdScheme.CertificateHash(
+                        chain = listOf(verifierKeyMaterial.getCertificate()!!),
+                        redirectUri = "https://example.com/callback",
+                    ),
+                )
+                val transactionId = uuid4().toString()
+                val reqOptions = OpenId4VpRequestOptions(
+                    presentationRequest = dcqlRequest,
+                    responseMode = responseMode,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                )
+                val dcApiRequest = if (signed) RequestParametersFrom.OpenId4VpDcApiSigned(
+                    jwsTyped = dcApiVerifier.createAuthnRequest(reqOptions, DcApiCreationOptions.OpenId4VpSigned)
+                        .getOrThrow().singleRequest<DigitalCredentialGetRequest.OpenId4VpSigned>()
+                        .data.request.typed<AuthenticationRequestParameters, JwsCompact>(),
+                    credentialIds = listOf(credentialId),
+                    callingPackageName = callingPackageName,
+                    callingOrigin = callingOrigin,
+                ) else dcApiVerifier.createAuthnRequest(reqOptions, DcApiCreationOptions.OpenId4VpUnsigned)
+                    .getOrThrow().singleRequest<DigitalCredentialGetRequest.OpenId4VpUnsigned>().data
+                    .let { authnRequest ->
+                        RequestParametersFrom.OpenId4VpDcApiUnsigned(
+                            parameters = authnRequest,
+                            jsonString = joseCompliantSerializer.encodeToString(authnRequest),
+                            credentialIds = listOf(credentialId),
+                            callingPackageName = callingPackageName,
+                            callingOrigin = callingOrigin,
+                        )
+                    }
+                val preparationState = f.holderOid4vp.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
+
+                val response = f.holderOid4vp.createAuthnErrorResponse(
+                    OAuth2Exception.AccessDenied("user declined"),
+                    preparationState,
+                ).getOrThrow().shouldBeInstanceOf<AuthenticationResponseResult.DcApi>()
+                    .params.shouldBeInstanceOf<DigitalCredentialInterface>()
+
+                // neither `state` nor the description, and no encryption
+                joseCompliantSerializer.encodeToString<DigitalCredentialInterface>(response) shouldBe
+                        """{"protocol":"$protocol","data":{"error":"access_denied"}}"""
+                dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
+                    .shouldBeInstanceOf<AuthnResponseResult.Error>().error shouldBe OAuth2Error(error = "access_denied")
+            }
+        }
+
+        test("DC API signed: an error response from an expected origin is processed") { f ->
+            val transactionId = uuid4().toString()
+            f.createSignedAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = dcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                )
+            )
+            val response = """{"protocol":"openid4vp-v1-signed","data":{"error":"access_denied"}}"""
+
+            f.dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult.Error>().error shouldBe OAuth2Error(error = "access_denied")
+        }
+
+        test("DC API signed: an error response from an unexpected origin is not processed") { f ->
+            val transactionId = uuid4().toString()
+            f.createSignedAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = dcqlRequest,
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                    expectedOrigins = listOf(callingOrigin),
+                    state = transactionId,
+                )
+            )
+            val response = """{"protocol":"openid4vp-v1-signed","data":{"error":"access_denied"}}"""
+
+            f.dcApiVerifier.validateAuthnResponse(response, transactionId, "https://evil.example.com")
+                .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "expected_origins"
         }
 
         test("DC API signed: parsed as DcApiSigned, validates and responds with OpenId4VpResponseSigned") { f ->
@@ -584,7 +767,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             f.dcApiVerifier.validateAuthnResponse(response, transactionId, androidCallingOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenValidationResult!!.getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.single().single().getOrThrow()
         }

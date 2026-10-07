@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters.RequestUriMethod
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
@@ -27,6 +28,7 @@ import at.asitplus.wallet.lib.oauth2.received
 import at.asitplus.wallet.lib.oauth2.scripted
 import at.asitplus.wallet.lib.oauth2.toErrorResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -235,6 +237,35 @@ val OpenId4VpProtocolClientTest by matrixSuite {
             headers.getAll(HttpHeaders.ContentType) shouldBe listOf("application/x-www-form-urlencoded")
             formParameters() shouldBe response.params
         }
+    }
+
+    test("authorization error response is posted, and the verifier's answer to it returns its redirect_uri") {
+        val redirectUri = "https://verifier.example.com/cb#response_code=declined"
+        val createdRequest = verifier.createAuthnRequest(
+            requestOptions.copy(
+                responseMode = OpenIdConstants.ResponseMode.DirectPost,
+                responseUrl = "https://verifier.example.com/response",
+                state = uuid4().toString(),
+            ),
+            CreationOptions.SignedRequestByValue(walletUrl),
+        ).getOrThrow()
+        val holder = OpenId4VpHolder()
+        val errorResponse = holder.createAuthnErrorResponse(
+            OAuth2Exception.AccessDenied("user declined"),
+            holder.prepareAuthorizationResponse(createdRequest.url).getOrThrow(),
+        ).getOrThrow().shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+        // the verifier's response endpoint, answering processed responses as OpenID4VP 1.0, 8.2 requires
+        val processed = mutableListOf<AuthnResponseResult>()
+        val http = FakeHttpStack { request ->
+            verifier.validateAuthnResponse(request.body.shouldNotBeNull()).fold(
+                onSuccess = { processed += it; directPostHttpResponse(redirectUri).received() },
+                onFailure = { OAuth2Exception.InvalidRequest(it.message).toErrorResponse() },
+            )
+        }
+
+        http.execute(client(holder).sendAuthorizationResponse(errorResponse)) shouldBe redirectUri
+
+        processed.single().shouldBeInstanceOf<AuthnResponseResult.Error>().error.error shouldBe "access_denied"
     }
 
     test("redirect_uri of the verifier's answer is returned for an absolute https URI on any host") {

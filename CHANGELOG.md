@@ -117,6 +117,47 @@ Release 9.0.0 (unreleased):
       instead of `holderAgent: HolderAgent`. Deprecate the constructor taking `engine` and `httpClientConfig`
     - The deprecated `OpenId4VpHolder` methods of `OpenId4VpKtorHolder.openId4VpHolder` fetch request objects as
       `OpenId4VpProtocolClient` does, i.e. the form posted to `request_uri` has no `charset` either
+    - For `direct_post.jwt`, an error response that can't be encrypted, e.g. as the verifier passed no suitable key,
+      is sent without encryption, as OpenID4VP 1.0, 8.3.1 allows; before, creating it failed, so that
+      `OpenId4VpKtorHolder` sent nothing at all. A presentation is never sent without encryption
+    - Fix: Error responses over the Digital Credentials API follow OpenID4VP 1.0, A.4: `data` is an object with the
+      single property `error`, never encrypted, also for `dc_api.jwt`; before, the whole error including `state` and
+      description was passed in `response`, encrypted for `dc_api.jwt`, which verifiers could not process
+- OpenID for Verifiable Presentations verifier:
+    - Add `error`, `errorDescription` and `errorUri` to `AuthenticationResponseParameters`, so that authorization error
+      responses keep their parameters when decoded from a form post (OpenID4VP 1.0, 8.2), the payload of an encrypted
+      response (8.3.1), or the `data` of a Digital Credentials API response (A.4)
+    - BREAKING (binary): The constructor and `copy` of `AuthenticationResponseParameters` gain these trailing
+      parameters; calls with named or leading positional arguments still compile
+    - Fix: A response violating the encryption its request requires (`direct_post.jwt`, `dc_api.jwt`) consumes the
+      request's nonce and ephemeral encryption key along with the request; before, the nonce stayed valid and the key
+      stayed stored until evicted
+    - `OpenId4VpVerifier` and `DcApiVerifier` share one lifecycle for responses: request, nonce and ephemeral
+      encryption key are consumed before any validation that can fail, and the key is removed also for responses that
+      were not encrypted
+    - A Digital Credentials API response to `OpenId4VpVerifier`, or a response to a signed DC API request from an
+      origin not in its `expected_origins`, now fails `validateAuthnResponse` instead of only its
+      `vpTokenValidationResult`; the request is consumed either way
+    - BREAKING: `AuthnResponseResult` is a sealed interface with the subtypes `Success` (with the non-null
+      `vpTokenResult`, formerly `vpTokenValidationResult`, and `request`) and `Error` (with the wallet's `error` as
+      `OAuth2Error`, and `request`); `request` is non-null. Migrate
+      `result.vpTokenValidationResult?.getOrThrow()` to a `when` over both subtypes, e.g.
+      `is AuthnResponseResult.Success -> result.vpTokenResult.getOrThrow()` and
+      `is AuthnResponseResult.Error -> showError(result.error)`
+    - Fix: `OpenId4VpVerifier` and `DcApiVerifier` process authorization error responses of the wallet (OpenID4VP 1.0,
+      8.2, A.4) as `AuthnResponseResult.Error`, ending the request like a presentation, instead of reporting them as
+      invalid presentations (`direct_post`, DC API) or failing (`direct_post.jwt`). Answer them with
+      `directPostHttpResponse()` like presentations
+    - Accept plaintext authorization error responses for `direct_post.jwt` (OpenID4VP 1.0, 8.3.1) and `dc_api.jwt`
+      (A.4), as OpenID4VP allows them although OpenID4VC HAIP requires encrypted responses; an error carries no
+      credential, and a plaintext `vp_token` is still rejected
+    - Reject authorization error responses violating RFC 6749, 4.1.2.1 (`error` blank or with illegal characters,
+      illegal characters in `error_description` or `error_uri`, either of them without `error`), combining `error`
+      with `vp_token` or `code`, and responses passing parameters next to an encoded `response`
+    - Add `EphemeralEncryptionKeyService.discardKey(identifier)`, removing a key without decoding it
+    - `MapStore.remove` is documented to be atomic: of concurrent calls for one key, at most one returns the value, as
+      `DefaultMapStore` does; custom stores passed to the verifiers need to guarantee this, so that a request is
+      answered at most once
 - Server-side HTTP responses:
     - Add `PreparedHttpResponse` in `vck-openid` (package `at.asitplus.wallet.lib`), a response with status, headers and
       encoded body, to be written out unchanged with any HTTP server stack

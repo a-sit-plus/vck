@@ -87,7 +87,7 @@ private suspend fun present(holder: HolderAgent, verifierOid4vp: OpenId4VpVerifi
             .createAuthorizationResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-            .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+            .vpTokenOrThrow()
             .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
             .credentialQueryResponseValidations.values
             .shouldBeSingleton().first().shouldBeSingleton().first()
