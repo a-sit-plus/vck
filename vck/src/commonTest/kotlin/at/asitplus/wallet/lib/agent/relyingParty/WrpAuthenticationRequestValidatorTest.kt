@@ -39,6 +39,8 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 val WrpAuthenticationRequestValidatorTest by matrixSuite {
     "signed request is parsed into WRP validation data" {
@@ -77,6 +79,21 @@ val WrpAuthenticationRequestValidatorTest by matrixSuite {
             verifierInfo = nonEmptyListOf(
                 VerifierInfo("other-format", "ignored"),
                 VerifierInfo(REGISTRATION_CERT_FORMAT, "not-a-jws"),
+            ),
+            dcqlQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery,
+        )
+
+        val failure = WrpAuthenticationRequestValidator(fixture.signedRequest(parameters)).exceptionOrNull()
+
+        failure.shouldBeInstanceOf<InvalidRegistrationCertificateException>().cause.shouldNotBeNull()
+    }
+
+    "signed request with a WRPRC given as a JSON object fails as invalid" {
+        val fixture = buildWrpFixture()
+        val parameters = AuthenticationRequestParameters(
+            clientId = fixture.clientId,
+            verifierInfo = nonEmptyListOf(
+                VerifierInfo(REGISTRATION_CERT_FORMAT, buildJsonObject { put("jwt", "not-a-string-wrprc") }),
             ),
             dcqlQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery,
         )
