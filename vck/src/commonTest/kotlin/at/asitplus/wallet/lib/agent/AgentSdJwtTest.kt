@@ -73,11 +73,7 @@ val AgentSdJwtTest by matrixSuite {
             val validator = ValidatorSdJwt(
                 validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
             )
-            val holder = HolderAgent(
-                holderKeyMaterial,
-                holderCredentialStore,
-                validatorSdJwt = validator,
-            ).also {
+            val holder = HolderAgent(holderKeyMaterial, holderCredentialStore).also {
                 it.storeCredential(
                     issuer.issueCredential(
                         DummyCredentialDataProvider.getCredential(

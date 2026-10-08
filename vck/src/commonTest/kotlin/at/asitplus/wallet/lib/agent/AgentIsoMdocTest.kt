@@ -180,11 +180,6 @@ val AgentIsoMdocTest by matrixSuite {
                     val secondHolder = HolderAgent(
                         secondHolderKeyMaterial,
                         InMemorySubjectCredentialStore(),
-                        validatorMdoc = ValidatorMdoc(
-                            validator = Validator(
-                                tokenStatusResolver = identifierListResolver(it.statusListIssuer)
-                            )
-                        ),
                     ).also { holder ->
                         holder.storeCredential(
                             it.issuer.issueIdentifierListIsoMdoc(secondHolderKeyMaterial.publicKey)
@@ -305,11 +300,7 @@ private suspend fun createIsoMdocFixture(mode: IsoRevocationMode): IsoMdocFixtur
             }
         )
     )
-    val holder = HolderAgent(
-        holderKeyMaterial,
-        holderCredentialStore,
-        validatorMdoc = validator,
-    ).also {
+    val holder = HolderAgent(holderKeyMaterial, holderCredentialStore).also {
         issueAndStoreIsoMdoc(it, holderKeyMaterial, issuer, mode.revocationKind)
     }
     val verifierId = "urn:${uuid4()}"

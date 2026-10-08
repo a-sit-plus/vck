@@ -89,7 +89,6 @@ val ValidatorVpTest by matrixSuite {
             val holder = HolderAgent(
                 keyMaterial = holderKeyMaterial,
                 subjectCredentialStore = holderCredentialStore,
-                validatorVcJws = validator,
             ).also {
                 issueAndStorePlainJwt(it, holderKeyMaterial, issuer)
             }

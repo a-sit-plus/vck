@@ -27,6 +27,10 @@ class CredentialValidator @JvmOverloads constructor(
     private val clock: Clock = Clock.System,
 ) {
 
+    /** Whether issuer trust can be decided, i.e. whether [TrustPolicy.RequireAuthorizedSigner] can accept anything. */
+    internal val hasTrustAnchors: Boolean
+        get() = trustAnchors != null
+
     /**
      * Validates [input] under [policy]; [holderBinding] decides whether it has to be bound to
      * [CredentialValidationContext.expectedHolderKey]. The clock is read once, all checks use that time.

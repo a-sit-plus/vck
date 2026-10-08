@@ -170,6 +170,8 @@ val TrustedIssuerTest by matrixSuite {
         }
     }
 
+    // The deprecated trustedIssuers of HolderAgent, see HolderAgentValidatedStoreTest for the credential validator
+    @Suppress("DEPRECATION")
     "HolderAgent stores an SD-JWT of a trusted issuer only" {
         val ca = TestCertificateAuthority()
         val holderKey = EphemeralKeyWithoutCert()

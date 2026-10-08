@@ -66,12 +66,7 @@ val OpenId4VpInteropTest by matrixSuite {
                 randomSource = RandomSource.Default
             )
             val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val holderAgent = HolderAgent(
-                holderKeyMaterial,
-                validatorSdJwt = ValidatorSdJwt(
-                    verifyJwsObject = VerifyJwsObjectTrusted(trustedKeys = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
-                )
-            ).also {
+            val holderAgent = HolderAgent(holderKeyMaterial).also {
                 it.storeCredential(
                     issuerAgent.issueCredential(
                         DummyCredentialDataProvider.getCredential(
