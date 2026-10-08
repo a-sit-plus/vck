@@ -118,16 +118,22 @@ object WrpAuthenticationRequestValidator {
             ?: throw InvalidRegistrationCertificateException(
                 "Request must contain exactly one WRPRC, but contains ${registrationCertificates.size}"
             )
-        return catchingUnwrapped { JwsCompactTyped<WrpPayload>(registrationCertificate.data) }.getOrElse {
+        return catchingUnwrapped { JwsCompactTyped<WrpPayload>(registrationCertificate.stringData()) }.getOrElse {
             throw InvalidRegistrationCertificateException("Could not parse WRPRC", it)
         }
     }
 
     fun VerifierInfo.parseJws() = catchingUnwrapped {
         require(format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true))
-        JwsCompactTyped<WrpPayload>(data)
+        JwsCompactTyped<WrpPayload>(stringData())
     }.onFailure { Napier.w("Failed to parse JWS data for $this (${REGISTRATION_CERT_FORMAT}).", it) }
         .getOrNull()
+
+    /** ETSI TS 119 472-2 V1.3.1 OIDFVP-HAIP-COMMON-REQ-RO-16: the registration certificate is given as a string. */
+    private fun VerifierInfo.stringData(): String = when (val data = data) {
+        is VerifierInfo.Data.StringData -> data.value
+        is VerifierInfo.Data.ObjectData -> throw IllegalArgumentException("$format data must be a string, but is an object")
+    }
 
     fun parseCose(euWrprc: CoseSigned<ByteArray>): WrpPayload {
         val type = euWrprc.protectedHeader.type ?: throw IllegalArgumentException("Missing typ header in euWrprc.")
