@@ -230,14 +230,16 @@ data class ValidationReport private constructor(
 
         /**
          * Report of a presentation of one or more [credentials], accepted if no check of [checks] failed or was
-         * blocked, and every credential is accepted.
+         * blocked, and every credential is accepted. A presentation that could not be parsed may have no credentials.
          */
         fun presentation(
             checks: PresentationChecks,
             credentials: List<ValidationReport>,
             evaluatedAt: Instant,
         ): ValidationReport {
-            require(credentials.isNotEmpty()) { "A presentation contains at least one credential" }
+            require(credentials.isNotEmpty() || checks.parsing != CheckOutcome.Passed) {
+                "A presentation that could be parsed contains at least one credential"
+            }
             credentials.requireChecks<CredentialChecks>()
             return parent(checks, credentials, checks.satisfied(), evaluatedAt)
         }

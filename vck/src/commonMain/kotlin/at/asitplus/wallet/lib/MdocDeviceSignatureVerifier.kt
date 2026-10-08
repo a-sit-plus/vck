@@ -28,12 +28,7 @@ class MdocDeviceSignatureVerifier @JvmOverloads constructor(
         val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
             ?: throw IllegalArgumentException("deviceSignature is null")
 
-        val expectedDetachedPayload = DeviceAuthentication(
-            type = DeviceAuthentication.TYPE,
-            sessionTranscript = sessionTranscript,
-            docType = document.docType,
-            namespaces = document.deviceSigned.namespaces
-        ).wrapAsExpectedPayload()
+        val expectedDetachedPayload = document.deviceAuthenticationBytes(sessionTranscript)
 
         verifyCoseSignature(
             coseSigned = deviceSignature,
@@ -49,9 +44,20 @@ class MdocDeviceSignatureVerifier @JvmOverloads constructor(
         true
     }
 
-    private fun DeviceAuthentication.wrapAsExpectedPayload(): ByteArray = coseCompliantSerializer
-        .encodeToByteArray(coseCompliantSerializer.encodeToByteArray(this))
-        .wrapInCborTag(24)
-
-
 }
+
+/**
+ * The detached payload the device signature of this document signs, `DeviceAuthenticationBytes`, i.e. the
+ * `DeviceAuthentication` over [sessionTranscript], wrapped in CBOR tag 24 (ISO/IEC 18013-5:2021, 9.1.3.4).
+ */
+internal fun Document.deviceAuthenticationBytes(sessionTranscript: SessionTranscript): ByteArray =
+    coseCompliantSerializer.encodeToByteArray(
+        coseCompliantSerializer.encodeToByteArray(
+            DeviceAuthentication(
+                type = DeviceAuthentication.TYPE,
+                sessionTranscript = sessionTranscript,
+                docType = docType,
+                namespaces = deviceSigned.namespaces,
+            )
+        )
+    ).wrapInCborTag(24)

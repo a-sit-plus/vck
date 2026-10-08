@@ -38,20 +38,65 @@ class CredentialValidator @JvmOverloads constructor(
         holderBinding: HolderBindingPolicy,
         context: CredentialValidationContext = CredentialValidationContext(),
     ): CredentialValidationResult {
-        val evaluatedAt = clock.now()
-        val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
+        val timeScope = TimeScope(clock.now(), policy.timeLeeway)
         val evaluation = when (input) {
             is VcJwt -> evaluateVcJwt(input, signatureCheck, holderBinding, context, timeScope)
             is SdJwtVc -> evaluateSdJwtVc(input, signatureCheck, holderBinding, context, timeScope)
             is IsoMdoc -> evaluateIsoMdoc(input, signatureCheck, holderBinding, context, timeScope)
         }
+        return complete(evaluation, policy, holderBinding, timeScope)
+    }
+
+    /**
+     * Validates the presentation [input] against the request it answers, see [PresentationContext], under [policy]:
+     * the holder's proof (key binding JWT, VP-JWT, or mdoc device authentication), and every credential it contains.
+     * The clock is read once, all checks use that time.
+     */
+    suspend fun validate(
+        input: PresentationValidationInput,
+        context: PresentationContext,
+        policy: ValidationPolicy,
+    ): PresentationValidationResult {
+        val timeScope = TimeScope(clock.now(), policy.timeLeeway)
+        val complete = CredentialValidationCompletion { evaluation, holderBinding ->
+            complete(evaluation, policy, holderBinding, timeScope)
+        }
+        val evaluation = when (input) {
+            is PresentationValidationInput.SdJwt ->
+                evaluateSdJwtPresentation(input, context, signatureCheck, timeScope, complete)
+
+            is PresentationValidationInput.VpJwt ->
+                evaluateVpJwtPresentation(input, context, signatureCheck, timeScope, complete)
+
+            is PresentationValidationInput.VcJwt ->
+                evaluateVcJwtPresentation(input, context, signatureCheck, timeScope, complete)
+
+            is PresentationValidationInput.MdocDocument ->
+                evaluateMdocPresentation(input, context, signatureCheck, timeScope, complete)
+        }
+        val report = ValidationReport.presentation(
+            checks = evaluation.checks,
+            credentials = evaluation.credentials.map { it.report },
+            evaluatedAt = timeScope.now,
+        )
+        val presentation = evaluation.presentation?.takeIf { report.decision == ValidationDecision.ACCEPTED }
+        return PresentationValidationResult(report, presentation)
+    }
+
+    /** Adds trust and status to a format [evaluation], and reports it. */
+    private suspend fun complete(
+        evaluation: FormatEvaluation,
+        policy: ValidationPolicy,
+        holderBinding: HolderBindingPolicy,
+        timeScope: TimeScope,
+    ): CredentialValidationResult {
         val checks = when (evaluation) {
             is WithoutPrerequisites ->
                 credentialChecksWithoutPrerequisites(evaluation.parsing, evaluation.issuerSignature)
 
             is Evaluated -> checks(evaluation, policy, holderBinding, timeScope)
         }
-        val report = ValidationReport.credential(checks, policy, holderBinding, evaluatedAt)
+        val report = ValidationReport.credential(checks, policy, holderBinding, timeScope.now)
         val credential = (evaluation as? Evaluated)?.credential
             ?.takeIf { report.decision == ValidationDecision.ACCEPTED }
         return CredentialValidationResult(report, credential)

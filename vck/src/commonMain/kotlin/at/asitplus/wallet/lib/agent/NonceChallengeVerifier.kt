@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.validation.PresentationContext
 import at.asitplus.KmmResult
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
@@ -68,6 +69,28 @@ class NonceChallengeVerifier @JvmOverloads constructor(
      * so it is verified and consumed once, in [consumeChallenge], and not per presentation.
      */
     inner class ChallengeSession internal constructor(internal val challenge: String) {
+
+        /**
+         * The context of a presentation answering this challenge, for
+         * [at.asitplus.wallet.lib.validation.CredentialValidator.validate]: the challenge always is the consumed one.
+         *
+         * @param audience the client identifier, or `origin:<origin>` over the Digital Credentials API
+         * @param sessionTranscript the transport-specific session transcript, required for mdoc device authentication
+         * @param requireHolderBinding DCQL `require_cryptographic_holder_binding` of the credential query
+         */
+        @JvmOverloads
+        fun context(
+            audience: String,
+            sessionTranscript: SessionTranscript? = null,
+            transactionData: List<TransactionDataBase64Url>? = null,
+            requireHolderBinding: Boolean = true,
+        ) = PresentationContext(
+            challenge = challenge,
+            audience = audience,
+            sessionTranscript = sessionTranscript,
+            transactionData = transactionData,
+            requireHolderBinding = requireHolderBinding,
+        )
 
         /** @see Verifier.verifyPresentationSdJwt */
         suspend fun verifyPresentationSdJwt(
