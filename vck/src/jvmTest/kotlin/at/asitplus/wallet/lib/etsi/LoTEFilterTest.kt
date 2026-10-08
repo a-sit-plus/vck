@@ -3522,6 +3522,7 @@ val LoTEFilterTest by matrixSuite {
           }
     """.trimIndent()
 
+    // Omit the AMA entry with an empty ServiceDigitalIdentity from this corrected filtering fixture.
     val pidProvidersFixed = """
           {
             "ListAndSchemeInformation": {
@@ -4127,69 +4128,6 @@ val LoTEFilterTest by matrixSuite {
                             "val": "MIICwjCCAmigAwIBAgIJAPm2yYm712+4MAoGCCqGSM49BAMDMGMxGDAWBgNVBGETD05UUk5PLTk5MTgyNTgyNzELMAkGA1UEBhMCbm8xDzANBgNVBAsTBkRpZ2RpcjEpMCcGA1UEAxMgZWlkYXMyc2FuZGthc3NlLm5ldCByb290IENBIHRlc3QwHhcNMjUwNzE0MDk1MDUxWhcNMjkxMjE2MDk1MDUxWjBrMRgwFgYDVQRhEw9OVFJOTy05OTE4MjU4MjcxCzAJBgNVBAYTAm5vMQ8wDQYDVQQLEwZEaWdkaXIxMTAvBgNVBAMTKGVpZGFzMnNhbmRrYXNzZSBQdWIgRUFBIFByb3ZpZGVyIENBIHRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS+7CQFU3oWwu9dxauSvk5Xc7AeDhDtLb/x8WcUWFvlG4ekHKlqvW9gxe+W4KJrfn95UZ/0fOfm+znsha/zpiMKo4H8MIH5MFEGCCsGAQUFBwEBBEUwQzBBBggrBgEFBQcwAoY1aHR0cHM6Ly9jYS50ZXN0LmVpZGFzMnNhbmRrYXNzZS5uZXQvdjEvY2VydHMvcm9vdC5jZXIwHQYDVR0OBBYEFD/oYNwZ6+S0FLt9IQvCHPFK6ktiMA4GA1UdDwEB/wQEAwIBBjAMBgNVHRMEBTADAQH/MEYGA1UdHwQ/MD0wO6A5oDeGNWh0dHBzOi8vY2EudGVzdC5laWRhczJzYW5ka2Fzc2UubmV0L3YxL2NlcnRzL3Jvb3QuY3JsMB8GA1UdIwQYMBaAFAovxv8fWdbiQFZRag96JzV3JazxMAoGCCqGSM49BAMDA0gAMEUCIHcgPyDKaizjJPpyztDqUwVqDabzOBVSQwgFIAFT+aV+AiEA8sFi8APxqLmwmCjd5EOd2WhGXSWRksIcCW+aS8kpPmU="
                           }
                         ]
-                      },
-                      "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/PID/Issuance"
-                    }
-                  }
-                ]
-              },
-              {
-                "TrustedEntityInformation": {
-                  "TEName": [
-                    {
-                      "lang": "en",
-                      "value": "AMA - Agência para a Modernização Administrativa"
-                    }
-                  ],
-                  "TETradeName": [
-                    {
-                      "lang": "en",
-                      "value": "VATPT-98765"
-                    }
-                  ],
-                  "TEAddress": {
-                    "TEPostalAddress": [
-                      {
-                        "lang": "en",
-                        "StreetAddress": "Rue test",
-                        "Locality": "test",
-                        "StateOrProvince": "test",
-                        "PostalCode": "2345",
-                        "Country": "PT"
-                      }
-                    ],
-                    "TEElectronicAddress": [
-                      {
-                        "lang": "en",
-                        "uriValue": "mailto:test@domain.pt"
-                      },
-                      {
-                        "lang": "en",
-                        "uriValue": "tel:+35134567"
-                      }
-                    ]
-                  },
-                  "TEInformationURI": [
-                    {
-                      "lang": "en",
-                      "uriValue": "https://test.pt"
-                    },
-                    {
-                      "lang": "en",
-                      "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/PIDProvider/PT"
-                    }
-                  ]
-                },
-                "TrustedEntityServices": [
-                  {
-                    "ServiceInformation": {
-                      "ServiceName": [
-                        {
-                          "lang": "en",
-                          "value": "name_pid_solution_pt"
-                        }
-                      ],
-                      "ServiceDigitalIdentity": {
                       },
                       "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/PID/Issuance"
                     }
@@ -5780,6 +5718,7 @@ val LoTEFilterTest by matrixSuite {
             ]
           }
     """.trimIndent()
+    // Omit the AMA entry with an empty ServiceDigitalIdentity from this corrected filtering fixture.
     val mdlProvidersFixed = """
           {
             "ListAndSchemeInformation": {
@@ -6385,69 +6324,6 @@ val LoTEFilterTest by matrixSuite {
                             "val": "MIICwjCCAmigAwIBAgIJAPm2yYm712+4MAoGCCqGSM49BAMDMGMxGDAWBgNVBGETD05UUk5PLTk5MTgyNTgyNzELMAkGA1UEBhMCbm8xDzANBgNVBAsTBkRpZ2RpcjEpMCcGA1UEAxMgZWlkYXMyc2FuZGthc3NlLm5ldCByb290IENBIHRlc3QwHhcNMjUwNzE0MDk1MDUxWhcNMjkxMjE2MDk1MDUxWjBrMRgwFgYDVQRhEw9OVFJOTy05OTE4MjU4MjcxCzAJBgNVBAYTAm5vMQ8wDQYDVQQLEwZEaWdkaXIxMTAvBgNVBAMTKGVpZGFzMnNhbmRrYXNzZSBQdWIgRUFBIFByb3ZpZGVyIENBIHRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS+7CQFU3oWwu9dxauSvk5Xc7AeDhDtLb/x8WcUWFvlG4ekHKlqvW9gxe+W4KJrfn95UZ/0fOfm+znsha/zpiMKo4H8MIH5MFEGCCsGAQUFBwEBBEUwQzBBBggrBgEFBQcwAoY1aHR0cHM6Ly9jYS50ZXN0LmVpZGFzMnNhbmRrYXNzZS5uZXQvdjEvY2VydHMvcm9vdC5jZXIwHQYDVR0OBBYEFD/oYNwZ6+S0FLt9IQvCHPFK6ktiMA4GA1UdDwEB/wQEAwIBBjAMBgNVHRMEBTADAQH/MEYGA1UdHwQ/MD0wO6A5oDeGNWh0dHBzOi8vY2EudGVzdC5laWRhczJzYW5ka2Fzc2UubmV0L3YxL2NlcnRzL3Jvb3QuY3JsMB8GA1UdIwQYMBaAFAovxv8fWdbiQFZRag96JzV3JazxMAoGCCqGSM49BAMDA0gAMEUCIHcgPyDKaizjJPpyztDqUwVqDabzOBVSQwgFIAFT+aV+AiEA8sFi8APxqLmwmCjd5EOd2WhGXSWRksIcCW+aS8kpPmU="
                           }
                         ]
-                      },
-                      "ServiceTypeIdentifier": "http://trust.ec.europa.eu/lists/mDL/SvcType/Issuance"
-                    }
-                  }
-                ]
-              },
-              {
-                "TrustedEntityInformation": {
-                  "TEName": [
-                    {
-                      "lang": "en",
-                      "value": "AMA - Agência para a Modernização Administrativa"
-                    }
-                  ],
-                  "TETradeName": [
-                    {
-                      "lang": "en",
-                      "value": "VATPT-27373"
-                    }
-                  ],
-                  "TEAddress": {
-                    "TEPostalAddress": [
-                      {
-                        "lang": "en",
-                        "StreetAddress": "Rue test",
-                        "Locality": "test",
-                        "StateOrProvince": "test",
-                        "PostalCode": "23451",
-                        "Country": "PT"
-                      }
-                    ],
-                    "TEElectronicAddress": [
-                      {
-                        "lang": "en",
-                        "uriValue": "mailto:test@domain.pt"
-                      },
-                      {
-                        "lang": "en",
-                        "uriValue": "tel:+35198765"
-                      }
-                    ]
-                  },
-                  "TEInformationURI": [
-                    {
-                      "lang": "en",
-                      "uriValue": "https://test.pt"
-                    },
-                    {
-                      "lang": "en",
-                      "uriValue": "http://trust.ec.europa.eu/lists/mDL/mDLProvider/PT"
-                    }
-                  ]
-                },
-                "TrustedEntityServices": [
-                  {
-                    "ServiceInformation": {
-                      "ServiceName": [
-                        {
-                          "lang": "en",
-                          "value": "name_mdl_solution_pt"
-                        }
-                      ],
-                      "ServiceDigitalIdentity": {
                       },
                       "ServiceTypeIdentifier": "http://trust.ec.europa.eu/lists/mDL/SvcType/Issuance"
                     }
