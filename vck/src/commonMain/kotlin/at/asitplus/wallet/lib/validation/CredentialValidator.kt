@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.validation
 
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
+import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
 import at.asitplus.wallet.lib.validation.CredentialValidationInput.*
 import at.asitplus.wallet.lib.validation.FormatEvaluation.Evaluated
@@ -86,6 +87,46 @@ class CredentialValidator @JvmOverloads constructor(
         val presentation = evaluation.presentation?.takeIf { report.decision == ValidationDecision.ACCEPTED }
         return PresentationValidationResult(report, presentation)
     }
+
+    /**
+     * The result of a credential the protocol layer could not decode from its transfer encoding, e.g. the base64url
+     * encoding of an mdoc in an OpenID4VCI credential response: it is rejected like one that can not be parsed.
+     */
+    fun rejectUndecodable(
+        cause: Throwable,
+        policy: ValidationPolicy,
+        holderBinding: HolderBindingPolicy,
+    ): CredentialValidationResult = CredentialValidationResult(
+        report = ValidationReport.credential(
+            checks = credentialChecksWithoutPrerequisites(parsing = Failed(cause), issuerSignature = Blocked()),
+            policy = policy,
+            holderBinding = holderBinding,
+            evaluatedAt = clock.now(),
+        ),
+        credential = null,
+    )
+
+    /**
+     * The result of a presentation the protocol layer could not decode, e.g. an mdoc `DeviceResponse` that is no
+     * valid CBOR: it is rejected like one that can not be parsed, without credentials.
+     */
+    fun rejectUndecodable(cause: Throwable): PresentationValidationResult = PresentationValidationResult(
+        report = ValidationReport.presentation(
+            checks = blockedPresentationChecks(Failed(cause)),
+            credentials = emptyList(),
+            evaluatedAt = clock.now(),
+        ),
+        presentation = null,
+    )
+
+    /**
+     * Reports a protocol response with its [checks], made by the protocol layer, and the reports of the
+     * [presentations] it contains, at the time of this validator's clock, see [ValidationReport.protocolResponse].
+     */
+    fun reportResponse(
+        checks: ProtocolResponseChecks,
+        presentations: List<ValidationReport>,
+    ): ValidationReport = ValidationReport.protocolResponse(checks, presentations, clock.now())
 
     /** Adds trust and status to a format [evaluation], and reports it. */
     private suspend fun complete(
