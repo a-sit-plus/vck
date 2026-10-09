@@ -68,6 +68,8 @@ val VerifierAttestationTest by matrixSuite {
                 requestOptionsAtomicAttribute(), CreationOptions.SignedRequestByValue(it.walletUrl)
             ).getOrThrow().url
 
+            // Trust in verifier attesters is only configurable with the deprecated relyingPartyTrust
+            @Suppress("DEPRECATION")
             val holderOid4vp = OpenId4VpHolder(
                 holder = it.holderAgent,
                 relyingPartyTrust = setOf(

@@ -98,7 +98,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             object {
                 val allowedOriginSchemes = OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES.toMutableSet()
                 val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
-                    keyMaterial = holderKeyMaterial,
                     holder = holderAgent,
                     randomSource = RandomSource.Default,
                     allowedDcApiOriginSchemes = { allowedOriginSchemes },

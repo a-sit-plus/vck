@@ -62,7 +62,6 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 )
                 val holderOid4vp = OpenId4VpHolder(
                     holder = holderAgent,
-                    keyMaterial = holderKeyMaterial,
                     randomSource = RandomSource.Default,
                 )
             }

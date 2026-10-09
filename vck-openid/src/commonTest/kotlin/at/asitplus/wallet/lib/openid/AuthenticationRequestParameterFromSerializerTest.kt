@@ -33,7 +33,6 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
     val walletUrl = "https://example.com/wallet/${uuid4()}"
     val holderKeyMaterial = EphemeralKeyWithoutCert()
     val holderOid4vp = OpenId4VpHolder(
-        keyMaterial = holderKeyMaterial,
         holder = HolderAgent(holderKeyMaterial),
         randomSource = RandomSource.Default,
     )

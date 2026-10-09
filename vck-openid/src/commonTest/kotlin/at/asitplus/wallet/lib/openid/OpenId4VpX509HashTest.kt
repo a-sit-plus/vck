@@ -43,7 +43,6 @@ val OpenId4VpX509HashTest by matrixSuite {
                 val holderKeyMaterial = holderKeyMaterial
                 val holderAgent = holderAgent
                 var holderOid4vp = OpenId4VpHolder(
-                    keyMaterial = holderKeyMaterial,
                     holder = holderAgent,
                     randomSource = RandomSource.Default,
                 )

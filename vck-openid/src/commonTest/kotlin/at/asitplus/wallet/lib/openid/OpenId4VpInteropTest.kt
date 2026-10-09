@@ -84,7 +84,7 @@ val OpenId4VpInteropTest by matrixSuite {
                 val sdAlgorithm = sdAlgorithm!!
                 val issuerKeyId = issuerKeyId
                 val issuerIdentifier = issuerIdentifier
-                var holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
+                var holderOid4vp = OpenId4VpHolder(holder = holderAgent, randomSource = RandomSource.Default)
 
                 val verifierKeyId = uuid4().toString()
                 val verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"

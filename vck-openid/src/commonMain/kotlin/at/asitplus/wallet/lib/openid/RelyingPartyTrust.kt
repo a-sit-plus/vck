@@ -2,8 +2,14 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.agent.TrustedCertificates
+import at.asitplus.wallet.lib.validation.ClientIdentifierTrust
+import at.asitplus.wallet.lib.validation.PreRegisteredClients
+import at.asitplus.wallet.lib.validation.RelyingPartyTrustAnchors
+import at.asitplus.wallet.lib.validation.RelyingPartyValidator
+import at.asitplus.wallet.lib.validation.VerifierAttesters
 
 /**
  * A single source of trust in the relying party sending an authorization request, for one client identifier
@@ -13,7 +19,9 @@ import at.asitplus.wallet.lib.agent.TrustedCertificates
  * accepted when *any* source applicable to its client identifier scheme establishes trust. Several sources of the
  * same kind are fine, e.g. a trust list plus a locally pinned certificate.
  *
- * Passing `null` instead of a set means trust is not evaluated at all, i.e. every relying party is trusted.
+ * Passing `null` instead of a set means trust is not evaluated at all, i.e. every relying party is trusted. The
+ * signature of a signed request is still verified, with the key the request asserts itself (the leaf of `x5c`, a
+ * `jwk`, or a `did:key`), so a signed request without one is rejected.
  * Passing an empty set, or a set with no source for the scheme a request uses, rejects that request: Configuring
  * this at all means trust has to be established, and there is no way to do that without trust material. This
  * includes `entity_id` (OpenID Federation) and `did`, for which a [Custom] source is the only way to establish
@@ -23,6 +31,11 @@ import at.asitplus.wallet.lib.agent.TrustedCertificates
  * Only `redirect_uri` is not covered, as it forbids signed requests anyway, and neither is a request carrying no
  * `client_id` at all, which the DC API authenticates through the platform-provided calling origin instead.
  */
+@Deprecated(
+    "Configure RelyingPartyValidator with the anchors of the access certificate providers, which establish trust for " +
+            "the client identifier prefixes x509_hash and x509_san_dns; trust for other prefixes is not established"
+)
+@Suppress("DEPRECATION") // its sources refer to it
 sealed interface RelyingPartyTrust {
 
     /**
@@ -59,9 +72,47 @@ sealed interface RelyingPartyTrust {
 
     /**
      * Consulted for client identifier schemes this library does not evaluate natively, i.e. `entity_id`
-     * (OpenID Federation), `did`, and anything unrecognised. Throw to reject the request, stating why.
+     * (OpenID Federation), `did`, and anything unrecognised. Verify the signature of a signed request with the key
+     * the scheme establishes, e.g. from the DID document, and establish trust in the relying party; throw to reject
+     * the request, stating why.
      */
     class Custom(
         val evaluate: suspend (RequestParametersFrom<AuthenticationRequestParameters>) -> Unit,
     ) : RelyingPartyTrust
 }
+
+/**
+ * The [RelyingPartyValidator] establishing the trust these sources established, to migrate from `relyingPartyTrust`:
+ * [RelyingPartyTrust.Certificates] become the anchors of the access certificate providers, also if there are none,
+ * so that configured trust stays required; [RelyingPartyTrust.PreRegisteredClients] and the verifier attester
+ * sources map to theirs. [RelyingPartyTrust.Custom] no longer takes effect, as it decides opaquely instead of
+ * returning the keys of the relying party, see [ClientIdentifierTrust].
+ */
+@Deprecated("Configure RelyingPartyTrustAnchors of a RelyingPartyValidator directly")
+@Suppress("DEPRECATION")
+fun Set<RelyingPartyTrust>?.toRelyingPartyValidator(): RelyingPartyValidator {
+    if (this == null) return RelyingPartyValidator()
+    val certificates = filterIsInstance<RelyingPartyTrust.Certificates>()
+    val preRegistered = filterIsInstance<RelyingPartyTrust.PreRegisteredClients>()
+    val attesterCertificates = filterIsInstance<RelyingPartyTrust.VerifierAttesterCertificates>()
+    val attesterKeys = filterIsInstance<RelyingPartyTrust.VerifierAttesterKeys>()
+    return RelyingPartyValidator(
+        trust = RelyingPartyTrustAnchors(
+            accessCertificates = TrustedCertificates { certificates.flatMap { it.certificates() }.toSet() },
+            preRegisteredClients = preRegistered.takeIf { it.isNotEmpty() }?.let { sources ->
+                PreRegisteredClients { clientId ->
+                    sources.flatMap { it.lookup(clientId).orEmpty() }.toCryptoPublicKeys()
+                }
+            },
+            verifierAttesters = VerifierAttesters(
+                certificates = attesterCertificates.takeIf { it.isNotEmpty() }
+                    ?.let { sources -> TrustedCertificates { sources.flatMap { it.certificates() }.toSet() } },
+                keys = attesterKeys.takeIf { it.isNotEmpty() }
+                    ?.let { sources -> { sources.flatMap { it.keys() }.toCryptoPublicKeys() } },
+            ).takeIf { attesterCertificates.isNotEmpty() || attesterKeys.isNotEmpty() },
+        )
+    )
+}
+
+private fun Collection<JsonWebKey>.toCryptoPublicKeys(): Set<CryptoPublicKey> =
+    mapNotNull { it.toCryptoPublicKey().getOrNull() }.toSet()
