@@ -159,19 +159,6 @@ class WalletEncryptionService @JvmOverloads constructor(
 
     /** Decrypts encrypted credential response from the issuer. */
     internal suspend fun decryptToCredentialResponse(
-        input: String,
-        expectedKeyId: String,
-    ): KmmResult<CredentialResponseParameters> = catching {
-        if (input.count { it == '.' } != 4)
-            throw InvalidEncryptionParameters("Parsing of JWE failed, not five parts")
-        val jwe = JweEncrypted.deserialize(input).getOrElse {
-            throw InvalidEncryptionParameters("Parsing of JWE failed", it)
-        }
-        decryptToCredentialResponse(jwe, expectedKeyId).getOrThrow()
-    }
-
-    /** Decrypts encrypted credential response from the issuer. */
-    internal suspend fun decryptToCredentialResponse(
         input: JweEncrypted,
         expectedKeyId: String,
     ): KmmResult<CredentialResponseParameters> = catching {

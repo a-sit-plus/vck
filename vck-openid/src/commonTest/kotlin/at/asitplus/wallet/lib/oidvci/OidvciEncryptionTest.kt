@@ -40,6 +40,12 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.validation.CredentialValidationResult
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidatedCredential
+import at.asitplus.wallet.lib.validation.ValidationDecision
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
@@ -51,6 +57,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonElement
+import kotlin.time.Duration.Companion.minutes
 
 val OidvciEncryptionTest by matrixSuite {
 
@@ -132,6 +139,51 @@ val OidvciEncryptionTest by matrixSuite {
                                 }
                             }
                     }
+            }
+        }
+
+        test("wallet validates every credential of the decrypted credential response") { f ->
+            // The response is decrypted with an ephemeral key of its request, so each validation needs an issuance
+            suspend fun issueAndValidate(policy: ValidationPolicy): CredentialValidationResult {
+                val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+                val credentialFormat = f.client.selectSupportedCredentialFormat(requestOptions, f.issuer.metadata)
+                    .shouldNotBeNull()
+                val token = f.getToken(credentialFormat.scope.shouldNotBeNull())
+                val request = f.client.createCredential(
+                    tokenResponse = token,
+                    metadata = f.issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientNonce = f.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                ).getOrThrow().shouldBeSingleton().first()
+                val response = f.issuer.credential(
+                    authorizationHeader = token.toHttpHeaderValue(),
+                    params = request,
+                    credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                ).getOrThrow()
+                return f.client.validateCredentialResponse(
+                    response = response,
+                    request = request,
+                    representation = PLAIN_JWT,
+                    scheme = ConstantIndex.AtomicAttribute2023,
+                    policy = policy,
+                ).getOrThrow().shouldBeSingleton().first()
+            }
+            // The issuer has no certificate, and its status list is not published in this test
+            val integrityOnly = ValidationPolicy(
+                trust = TrustPolicy.IntegrityOnly,
+                status = StatusPolicy.Skip,
+                timeLeeway = 5.minutes,
+                requireTimeliness = true,
+            )
+
+            issueAndValidate(integrityOnly).apply {
+                report.decision shouldBe ValidationDecision.ACCEPTED
+                credential.shouldBeInstanceOf<ValidatedCredential.VcJwt>()
+            }
+            // Without trust anchors, the issuer can not be authorized
+            issueAndValidate(integrityOnly.copy(trust = TrustPolicy.RequireAuthorizedSigner)).apply {
+                report.decision shouldBe ValidationDecision.REJECTED
+                credential.shouldBeNull()
             }
         }
 
