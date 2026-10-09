@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
+import at.asitplus.wallet.lib.validation.ProtocolResponseChecks
+import at.asitplus.wallet.lib.validation.ValidationReport
 
 /**
  * An authorization response of the wallet, processed by [OpenId4VpVerifier.validateAuthnResponse] or
@@ -23,10 +25,15 @@ sealed interface AuthnResponseResult : DcApiResponseResult {
     val state: String?
         get() = request.state
 
-    /** The wallet presented: [vpTokenResult] tells whether the presentation is valid. */
+    /**
+     * The wallet presented: [vpTokenResult] tells whether the presentation is valid, and [validationReport] whether the
+     * response is accepted under the policy of the verifier, with every check of every presentation.
+     */
     data class Success(
         val vpTokenResult: KmmResult<VpTokenValidationResult>,
         override val request: AuthenticationRequestParameters,
+        /** Report of the response, see [ProtocolResponseChecks]. */
+        val validationReport: ValidationReport,
     ) : AuthnResponseResult
 
     /**

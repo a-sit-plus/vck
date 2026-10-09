@@ -181,6 +181,13 @@ Release 9.0.0 (unreleased):
       BREAKING: `Iso180137AnnexCWrapper` and `Iso180137AnnexCError` implement the new sealed `Iso180137AnnexCResult`,
       a further subtype of `DcApiResponseResult`
     - Add `EphemeralEncryptionKeyService.discardKey(identifier)`, removing a key without decoding it
+    - `OpenId4VpVerifier` and `DcApiVerifier` validate every presentation with a `CredentialValidator` and report the
+      whole response as a `ValidationReport`, configured with the new constructor parameters `credentialValidator`
+      and `presentationPolicy`; the default policy requires authorized issuers, so without trust anchors every
+      presentation is rejected in the report. `VpTokenValidationResultDCQL.presentationValidations` holds the
+      validated presentations by credential query
+    - BREAKING: `AuthnResponseResult.Success` and `Iso180137AnnexCWrapper` have the non-null `validationReport`, and
+      `Iso180137AnnexCWrapper` the validated `presentationValidations`, both without defaults in their constructors
     - `MapStore.remove` is documented to be atomic: of concurrent calls for one key, at most one returns the value, as
       `DefaultMapStore` does; custom stores passed to the verifiers need to guarantee this, so that a request is
       answered at most once
