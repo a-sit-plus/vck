@@ -29,6 +29,7 @@ import at.asitplus.wallet.lib.validation.AccessCertificateChecks
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.RegistrationCertificateChecks
 import at.asitplus.wallet.lib.validation.RelyingPartyChecks
+import at.asitplus.wallet.lib.validation.RelyingPartyTrustAnchors
 import at.asitplus.wallet.lib.validation.RelyingPartyValidationResult
 import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import at.asitplus.wallet.lib.validation.StatusPolicy
@@ -197,8 +198,7 @@ private fun WrpFixture.statusValidator() =
     StatusValidator(StatusListTokenResolver { buildStatusListToken(it, revokedIndex = 1) })
 
 private fun WrpFixture.validator(clock: Clock = Clock.System) = RelyingPartyValidator(
-    accessCertificateAnchors = trustAnchors,
-    registrationCertificateAnchors = trustAnchors,
+    trust = RelyingPartyTrustAnchors(accessCertificates = trustAnchors, registrationCertificates = trustAnchors),
     statusValidator = statusValidator(),
     clock = clock,
 )

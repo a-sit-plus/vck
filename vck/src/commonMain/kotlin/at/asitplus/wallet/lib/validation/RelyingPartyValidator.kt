@@ -5,12 +5,14 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsGeneral
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.relyingParty.InvalidRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
@@ -27,6 +29,7 @@ import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 
 /**
  * Validates the wallet-relying party behind a request, as a wallet: its access certificate (WRPAC), which has
@@ -35,15 +38,8 @@ import kotlin.time.Duration.Companion.days
  * Replaces `WrpAuthenticationRequestValidator`, `WrpacValidator`, and `WrprcValidator` with one report.
  */
 class RelyingPartyValidator @JvmOverloads constructor(
-    /**
-     * Anchors of the WRPAC providers, e.g. the issuance anchors of the WRPAC providers list
-     * (`LoteProfile.WRPAC`). Without them, trust in access certificates is blocked.
-     */
-    private val accessCertificateAnchors: TrustedCertificates? = null,
-    /** Anchors of the WRPRC providers. Without them, trust in registration certificates is blocked. */
-    private val registrationCertificateAnchors: TrustedCertificates? = null,
-    /** Anchors of the signers of the status lists of WRPRCs. Without them, their signers can not be authorized. */
-    private val registrationStatusAnchors: TrustedCertificates? = null,
+    /** The sources of trust in relying parties. A source that is not configured blocks trust for what it covers. */
+    private val trust: RelyingPartyTrustAnchors = RelyingPartyTrustAnchors(),
     /** Resolves and validates the status of WRPRCs. Without a resolver, their status is blocked. */
     private val statusValidator: StatusValidator = StatusValidator(),
     private val signatureCheck: SignatureCheck = SignatureCheck(),
@@ -90,6 +86,121 @@ class RelyingPartyValidator @JvmOverloads constructor(
         policy: ValidationPolicy,
     ): RelyingPartyValidationResult = validate(extractMdoc(request, sessionTranscript), policy)
 
+    /**
+     * Whether trust in the client identifier of a request can be decided for any client identifier prefix, see
+     * [clientTrust].
+     */
+    val hasClientIdentifierTrust: Boolean
+        get() = trust.coversClientIdentifiers
+
+    /**
+     * Whether the relying party of [request] is trusted for its client identifier prefix at [at], as a wallet must
+     * establish before answering (OpenID4VP 1.0, 5.9.3), from the source in [RelyingPartyTrustAnchors] that covers
+     * the prefix. Only trust, the signature of the request and the binding of the client identifier are validated
+     * by the caller, e.g. with the [ClientTrust.keys].
+     */
+    suspend fun clientTrust(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        at: Instant,
+    ): ClientTrust {
+        val signed = request as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
+        return when (val prefix = request.parameters.clientIdSchemeExtracted) {
+            ClientIdScheme.X509SanDns, ClientIdScheme.X509Hash -> ClientTrust(
+                TrustValidation(
+                    outcome = checkTrust(
+                        chain = signed?.firstHeader()?.certificateChain,
+                        anchors = trust.accessCertificates?.invoke(),
+                        at = at,
+                        rule = TrustRule.CHAIN_TO_ANCHOR,
+                    ),
+                    source = ACCESS_CERTIFICATE_PROVIDERS,
+                )
+            )
+
+            is ClientIdScheme.VerifierAttestation -> ClientTrust(verifierAttesterTrust(signed, at))
+            // The wallet authenticates an unsigned DC API client through the platform-provided calling origin, and any
+            // client_id it carries is ignored (OpenID4VP 1.0, A.3.1)
+            is ClientIdScheme.PreRegistered if request is RequestParametersFrom.OpenId4VpDcApiUnsigned ->
+                ClientTrust(TrustValidation(NotApplicable))
+
+            is ClientIdScheme.PreRegistered -> preRegisteredTrust(request.parameters.clientIdWithoutPrefix)
+            // There is no method to obtain a trusted key for this prefix (OpenID4VP 1.0, 5.9.3), and no request
+            // without client_id, i.e. an unsigned DC API request, can be trusted beyond its calling origin
+            is ClientIdScheme.RedirectUri, null -> ClientTrust(
+                TrustValidation(
+                    if (signed == null) NotApplicable
+                    else Blocked(IllegalArgumentException("The client identifier prefix establishes no trusted key"))
+                )
+            )
+
+            else -> customTrust(request, prefix)
+        }
+    }
+
+    /**
+     * The verifier attestation in the `jwt` header has to be issued by a party the wallet trusts: one of
+     * [VerifierAttesters.certificates] issued its signing certificate, or one of [VerifierAttesters.keys] signed it
+     * (OpenID4VP 1.0, 12). Its signature with its own key and its claims are validated by the caller.
+     */
+    private suspend fun verifierAttesterTrust(
+        signed: RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>?,
+        at: Instant,
+    ): TrustValidation {
+        val attestation = (signed?.jwsTyped?.jws as? JwsCompact)?.jwsHeader?.attestationJwt
+            ?: return TrustValidation(Blocked(IllegalArgumentException("The request has no verifier attestation")))
+        val attesters = trust.verifierAttesters
+            ?: return TrustValidation(Blocked(IllegalStateException("No verifier attesters configured")))
+        val chain = attestation.jwsHeader.certificateChain
+        val outcome = if (chain != null) {
+            checkTrust(chain, attesters.certificates?.invoke(), at, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
+        } else {
+            val keys = attesters.keys?.invoke()
+                ?: return TrustValidation(Blocked(IllegalStateException("No keys of verifier attesters configured")))
+            if (keys.any { signatureCheck.verify(attestation, it).outcome == Passed }) Passed
+            else Failed(IllegalArgumentException("The verifier attestation is not signed by a trusted attester"))
+        }
+        return TrustValidation(outcome, source = VERIFIER_ATTESTERS)
+    }
+
+    /** The client identifier has to be known in advance, with the keys requests of it are signed with. */
+    private suspend fun preRegisteredTrust(clientId: String?): ClientTrust {
+        val clients = trust.preRegisteredClients
+            ?: return ClientTrust(
+                TrustValidation(Blocked(IllegalStateException("No pre-registered clients configured")))
+            )
+        val keys = clientId?.let { clients.keys(it) }?.takeIf { it.isNotEmpty() }
+            ?: return ClientTrust(
+                TrustValidation(
+                    Failed(IllegalArgumentException("client_id $clientId is not a pre-registered relying party")),
+                    source = PRE_REGISTERED_CLIENTS,
+                )
+            )
+        return ClientTrust(TrustValidation(Passed, source = PRE_REGISTERED_CLIENTS), keys)
+    }
+
+    private suspend fun customTrust(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        prefix: ClientIdScheme,
+    ): ClientTrust {
+        val custom = trust.clientIdentifierPrefixes
+            ?: return ClientTrust(
+                TrustValidation(
+                    Blocked(IllegalStateException("No trust source for the client identifier prefix of $prefix"))
+                )
+            )
+        return catching { custom.keys(request) }.fold(
+            onSuccess = { ClientTrust(TrustValidation(Passed, source = CLIENT_IDENTIFIER_PREFIXES), it) },
+            onFailure = { ClientTrust(TrustValidation(Failed(it), source = CLIENT_IDENTIFIER_PREFIXES)) },
+        )
+    }
+
+    private fun RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>.firstHeader():
+            JwsHeader? = when (val jws = jwsTyped.jws) {
+        is JwsCompact -> jws.jwsHeader
+        is JwsGeneral -> jws.jwsHeaders.firstOrNull()
+        else -> null
+    }
+
     private suspend fun validate(
         request: ExtractedRequest,
         policy: ValidationPolicy,
@@ -99,7 +210,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
             chain = request.accessCertificateChain,
             signature = request.signature,
             clientId = request.clientId,
-            anchors = accessCertificateAnchors,
+            anchors = trust.accessCertificates,
             source = ACCESS_CERTIFICATE_PROVIDERS,
             now = timeScope.now,
         )
@@ -108,7 +219,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
                 certificate = certificate,
                 accessIdentifier = access.identifier,
                 requests = requests,
-                anchors = registrationCertificateAnchors,
+                anchors = trust.registrationCertificates,
                 source = REGISTRATION_CERTIFICATE_PROVIDERS,
                 signatureCheck = signatureCheck,
                 maxValidity = maxRegistrationValidity,
@@ -135,7 +246,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
 
     /**
      * The status is only resolved for a WRPRC that is valid otherwise, as for credentials (draft-ietf-oauth-status-
-     * list-21, 8.3); its signer has to be authorized by [registrationStatusAnchors] (ETSI TS 119 475 V1.2.1, 6.2.6.2).
+     * list-21, 8.3); its signer has to be authorized by [RelyingPartyTrustAnchors.registrationStatus] (ETSI TS 119 475
+     * V1.2.1, 6.2.6.2).
      */
     private suspend fun status(
         evaluation: RegistrationCertificateEvaluation,
@@ -151,7 +263,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         }
         return statusValidator.validate(
             status = evaluation.status,
-            signerAnchors = StatusSignerAnchors.OfArtifactKind(registrationStatusAnchors, REGISTRATION_STATUS_SIGNERS),
+            signerAnchors = StatusSignerAnchors.OfArtifactKind(trust.registrationStatus, REGISTRATION_STATUS_SIGNERS),
             policy = policy.status,
             timeLeeway = policy.timeLeeway,
             evaluatedAt = timeScope.now,
@@ -248,6 +360,9 @@ class RelyingPartyValidator @JvmOverloads constructor(
         const val ACCESS_CERTIFICATE_PROVIDERS = "WRPAC providers"
         const val REGISTRATION_CERTIFICATE_PROVIDERS = "WRPRC providers"
         const val REGISTRATION_STATUS_SIGNERS = "WRPRC status list signers"
+        const val VERIFIER_ATTESTERS = "verifier attesters"
+        const val PRE_REGISTERED_CLIENTS = "pre-registered clients"
+        const val CLIENT_IDENTIFIER_PREFIXES = "client identifier prefixes"
     }
 }
 
