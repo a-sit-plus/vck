@@ -1,0 +1,278 @@
+package at.asitplus.wallet.lib.validation
+
+import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
+import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.iso.SessionTranscript
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.pki.CertificateChain
+import at.asitplus.wallet.lib.agent.TrustedCertificates
+import at.asitplus.wallet.lib.agent.validation.TimeScope
+import at.asitplus.wallet.lib.agent.validation.relyingParty.InvalidRegistrationCertificateException
+import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
+import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
+import at.asitplus.wallet.lib.agent.validation.relyingParty.UnsupportedWrpRequestException
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator.parseSingleRegistrationCertificate
+import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
+import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
+import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
+import at.asitplus.wallet.lib.validation.CheckOutcome.*
+import kotlinx.serialization.decodeFromByteArray
+import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+
+/**
+ * Validates the wallet-relying party behind a request, as a wallet: its access certificate (WRPAC), which has
+ * signed the request, and every registration certificate (WRPRC) in it, with the credentials it requests.
+ *
+ * Replaces `WrpAuthenticationRequestValidator`, `WrpacValidator`, and `WrprcValidator` with one report.
+ */
+class RelyingPartyValidator @JvmOverloads constructor(
+    /**
+     * Anchors of the WRPAC providers, e.g. the issuance anchors of the WRPAC providers list
+     * (`LoteProfile.WRPAC`). Without them, trust in access certificates is blocked.
+     */
+    private val accessCertificateAnchors: TrustedCertificates? = null,
+    /** Anchors of the WRPRC providers. Without them, trust in registration certificates is blocked. */
+    private val registrationCertificateAnchors: TrustedCertificates? = null,
+    /** Anchors of the signers of the status lists of WRPRCs. Without them, their signers can not be authorized. */
+    private val registrationStatusAnchors: TrustedCertificates? = null,
+    /** Resolves and validates the status of WRPRCs. Without a resolver, their status is blocked. */
+    private val statusValidator: StatusValidator = StatusValidator(),
+    private val signatureCheck: SignatureCheck = SignatureCheck(),
+    /** A WRPRC expires not later than 12 months after its issuance (ETSI TS 119 475 V1.2.1, GEN-5.2.4-08). */
+    private val maxRegistrationValidity: Duration = 365.days,
+    private val clock: Clock = Clock.System,
+) {
+
+    /**
+     * Validates the relying party of the signed OpenID4VP [request] under [policy]: the request is signed with the
+     * WRPAC in its `x5c`, and carries one WRPRC in `verifier_info` for its DCQL query. The clock is read once, all
+     * checks use that time.
+     *
+     * An ISO mdoc request over the Digital Credentials API needs its session transcript, see the overload [validate].
+     */
+    suspend fun validate(
+        request: RequestParametersFrom<*>,
+        policy: ValidationPolicy,
+    ): RelyingPartyValidationResult = when (request) {
+        is RequestParametersFrom.Jws<*> -> extractSigned(
+            jws = request.jws as? JwsCompact,
+            parameters = request.parameters as? AuthenticationRequestParameters,
+        )
+
+        is RequestParametersFrom.OpenId4VpDcApiSigned -> extractSigned(
+            jws = request.jwsTyped.jws,
+            parameters = request.parameters
+        )
+
+        is RequestParametersFrom.IsoMdocDcApi ->
+            unsupported("The session transcript is required for ISO mdoc reader authentication")
+
+        else -> unsupported("The request is not signed by a wallet-relying party")
+    }.let { validate(it, policy) }
+
+    /**
+     * Validates the relying party of the ISO mdoc [request] under [policy]: every document request is
+     * authenticated by one WRPAC over [sessionTranscript] (ISO/IEC 18013-5:2021, 9.1.4), and carries the WRPRC for
+     * it in `euWrprc`. The clock is read once, all checks use that time.
+     */
+    suspend fun validate(
+        request: RequestParametersFrom.IsoMdocDcApi,
+        sessionTranscript: SessionTranscript,
+        policy: ValidationPolicy,
+    ): RelyingPartyValidationResult = validate(extractMdoc(request, sessionTranscript), policy)
+
+    private suspend fun validate(
+        request: ExtractedRequest,
+        policy: ValidationPolicy,
+    ): RelyingPartyValidationResult {
+        val timeScope = TimeScope(clock.now(), policy.timeLeeway)
+        val access = evaluateAccessCertificate(
+            chain = request.accessCertificateChain,
+            signature = request.signature,
+            clientId = request.clientId,
+            anchors = accessCertificateAnchors,
+            source = ACCESS_CERTIFICATE_PROVIDERS,
+            now = timeScope.now,
+        )
+        val registrations = request.registrationCertificates.map { (certificate, requests) ->
+            val evaluation = evaluateRegistrationCertificate(
+                certificate = certificate,
+                accessIdentifier = access.identifier,
+                requests = requests,
+                anchors = registrationCertificateAnchors,
+                source = REGISTRATION_CERTIFICATE_PROVIDERS,
+                signatureCheck = signatureCheck,
+                maxValidity = maxRegistrationValidity,
+                timeScope = timeScope,
+            )
+            val checks = evaluation.checks(status(evaluation, policy, timeScope))
+            certificate to ValidationReport.registrationCertificate(checks, policy, timeScope.now)
+        }
+        val report = ValidationReport.relyingParty(
+            checks = RelyingPartyChecks(requestData = request.requestData),
+            accessCertificate = ValidationReport.accessCertificate(access.checks, policy, timeScope.now),
+            registrationCertificates = registrations.map { it.second },
+            evaluatedAt = timeScope.now,
+        )
+        val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
+            ValidatedRelyingParty(
+                accessCertificateChain = requireNotNull(request.accessCertificateChain),
+                identifier = requireNotNull(access.identifier),
+                registrationCertificates = registrations.map { it.first.payload },
+            )
+        } else null
+        return RelyingPartyValidationResult(report, relyingParty)
+    }
+
+    /**
+     * The status is only resolved for a WRPRC that is valid otherwise, as for credentials (draft-ietf-oauth-status-
+     * list-21, 8.3); its signer has to be authorized by [registrationStatusAnchors] (ETSI TS 119 475 V1.2.1, 6.2.6.2).
+     */
+    private suspend fun status(
+        evaluation: RegistrationCertificateEvaluation,
+        policy: ValidationPolicy,
+        timeScope: TimeScope,
+    ): StatusValidation {
+        val withoutStatus = evaluation.checks(StatusValidation(NotApplicable, emptyList(), NotApplicable))
+        if (policy.status != StatusPolicy.Skip && !withoutStatus.meets(policy.copy(status = StatusPolicy.Skip))) {
+            return StatusValidation(
+                claim = Blocked(IllegalStateException("The status of an invalid WRPRC is not resolved")),
+                agreement = NotApplicable,
+            )
+        }
+        return statusValidator.validate(
+            status = evaluation.status,
+            signerAnchors = StatusSignerAnchors.OfArtifactKind(registrationStatusAnchors, REGISTRATION_STATUS_SIGNERS),
+            policy = policy.status,
+            timeLeeway = policy.timeLeeway,
+            evaluatedAt = timeScope.now,
+        )
+    }
+
+    /** A JAR, signed with the leaf of its `x5c`, with one WRPRC in `verifier_info` for its DCQL query. */
+    private suspend fun extractSigned(
+        jws: JwsCompact?,
+        parameters: AuthenticationRequestParameters?,
+    ): ExtractedRequest {
+        if (jws == null || parameters == null)
+            return unsupported("The request is no signed authorization request")
+        val chain = jws.jwsHeader.certificateChain?.takeIf { it.isNotEmpty() }
+        val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
+            requireNotNull(parameters.clientId) { "The request has no client_id" }
+            val dcqlQuery = requireNotNull(parameters.dcqlQuery) { "The request has no DCQL query" }
+            val verifierInfo = parameters.verifierInfo
+                ?: throw MissingRegistrationCertificateException("The request has no verifier_info")
+            val certificate = WrpRegistrationCertificate.WrpJwtRegistrationCertificate(
+                verifierInfo.parseSingleRegistrationCertificate()
+            )
+            mapOf(certificate to dcqlQuery.credentials.map { WrpCredentialRequest.WrpDcqlCredentialQuery(it) })
+        }
+        return ExtractedRequest(
+            accessCertificateChain = chain,
+            signature = chain?.let { signatureCheck.verify(jws).outcome }
+                ?: Blocked(IllegalArgumentException("The request transports no certificate chain")),
+            clientId = parameters.clientId.orEmpty(),
+            requestData = registrationCertificates.toOutcome(),
+            registrationCertificates = registrationCertificates.getOrElse { emptyMap() },
+        )
+    }
+
+    /**
+     * An ISO mdoc request, every document request authenticated by one WRPAC over [sessionTranscript], each with
+     * the WRPRC for it in `euWrprc`.
+     */
+    private suspend fun extractMdoc(
+        request: RequestParametersFrom.IsoMdocDcApi,
+        sessionTranscript: SessionTranscript,
+    ): ExtractedRequest {
+        val deviceRequest = request.parameters.isoMdocRequest.deviceRequest
+        val chain = ReaderAuthenticationVerifier()(deviceRequest, sessionTranscript)
+        val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
+            if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
+                throw MissingRegistrationCertificateException("No DocRequest contains a registration certificate")
+            }
+            deviceRequest.docRequests.map { docRequest ->
+                val encoded = docRequest.itemsRequest.value.requestInfo?.euWrprc
+                    ?: throw InvalidRegistrationCertificateException(
+                        "A DocRequest has no registration certificate, while others have one"
+                    )
+                val certificate = catchingUnwrapped {
+                    val cose = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(encoded)
+                    WrpRegistrationCertificate.WrpCwtRegistrationCertificate(
+                        cose = cose,
+                        payload = WrpAuthenticationRequestValidator.parseCose(cose),
+                    )
+                }.getOrElse { throw InvalidRegistrationCertificateException("A WRPRC can not be parsed", it) }
+                certificate to WrpCredentialRequest.WrpDocRequest(docRequest)
+            }.groupBy({ it.first }, { it.second })
+        }
+        return ExtractedRequest(
+            accessCertificateChain = chain.getOrNull(),
+            signature = chain.toOutcome(),
+            clientId = null,
+            requestData = registrationCertificates.toOutcome(),
+            registrationCertificates = registrationCertificates.getOrElse { emptyMap() },
+        )
+    }
+
+    private fun unsupported(message: String) = ExtractedRequest(
+        accessCertificateChain = null,
+        signature = Blocked(),
+        clientId = null,
+        requestData = Failed(UnsupportedWrpRequestException(message)),
+        registrationCertificates = emptyMap(),
+    )
+
+    /** What a request transports of its relying party. */
+    private class ExtractedRequest(
+        val accessCertificateChain: CertificateChain?,
+        /** Whether the request is signed by the leaf of [accessCertificateChain]. */
+        val signature: CheckOutcome,
+        /** The client identifier of a JAR, `null` for mdoc reader authentication. */
+        val clientId: String?,
+        /** Whether the WRPRCs and the credential requests could be extracted. */
+        val requestData: CheckOutcome,
+        val registrationCertificates: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>,
+    )
+
+    private companion object {
+        const val ACCESS_CERTIFICATE_PROVIDERS = "WRPAC providers"
+        const val REGISTRATION_CERTIFICATE_PROVIDERS = "WRPRC providers"
+        const val REGISTRATION_STATUS_SIGNERS = "WRPRC status list signers"
+    }
+}
+
+/**
+ * The [report] of validating the relying party of a request, see [RelyingPartyChecks], and the [relyingParty] if it
+ * has been accepted. A failed `requestAuthorization` of a WRPRC carries an [UnregisteredRequestException], which
+ * tells which credentials or claims are not registered.
+ */
+data class RelyingPartyValidationResult(
+    val report: ValidationReport,
+    val relyingParty: ValidatedRelyingParty?,
+) {
+    init {
+        require(report.checks is RelyingPartyChecks) { "Report has to be a relying party report" }
+        require((relyingParty != null) == (report.decision == ValidationDecision.ACCEPTED)) {
+            "A relying party is present if and only if the report is accepted"
+        }
+    }
+}
+
+/** A wallet-relying party that passed every required check. */
+data class ValidatedRelyingParty(
+    val accessCertificateChain: CertificateChain,
+    /** The identifier of the relying party in its WRPAC, which every WRPRC is issued to. */
+    val identifier: WrpacIdentifier,
+    /** What the relying party is registered for, e.g. to show its name and its purposes to the user. */
+    val registrationCertificates: List<WrpPayload>,
+)

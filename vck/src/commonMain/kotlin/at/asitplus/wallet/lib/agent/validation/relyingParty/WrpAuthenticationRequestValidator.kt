@@ -109,7 +109,7 @@ object WrpAuthenticationRequestValidator {
     /**
      * Parses the only registration certificate in [this], keeping the cause in the exception if it can not be parsed.
      */
-    private fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsCompactTyped<WrpPayload> {
+    internal fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsCompactTyped<WrpPayload> {
         val registrationCertificates = filter { it.format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true) }
         if (registrationCertificates.isEmpty()) {
             throw MissingRegistrationCertificateException("No WRPRC in verifier_info")

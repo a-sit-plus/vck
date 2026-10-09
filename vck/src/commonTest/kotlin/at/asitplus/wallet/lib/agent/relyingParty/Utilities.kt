@@ -18,6 +18,8 @@ import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.sha256
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
@@ -139,6 +141,8 @@ data class WrpFixture(
     val wrpacChain: List<X509Certificate>,
     val clientId: String,
     val wrprcSigningKeyMaterial: KeyMaterial,
+    /** The key of the WRPAC leaf, to sign requests with. */
+    val wrpKey: KeyMaterial,
 )
 
 suspend fun buildWrpFixture(
@@ -183,7 +187,7 @@ suspend fun buildWrpFixture(
         key = wrprcProviderKey,
     )
 
-    return WrpFixture(trustAnchors, wrpIdentifier, wrpacChain, clientId, wrprcSigningKeyMaterial)
+    return WrpFixture(trustAnchors, wrpIdentifier, wrpacChain, clientId, wrprcSigningKeyMaterial, wrpKey)
 }
 
 suspend fun WrpFixture.validateWrpac() = WrpacValidator(
@@ -424,3 +428,11 @@ suspend fun buildStatusListToken(
     ).getOrThrow(),
     resolvedAt = System.now(),
 )
+
+/** [parameters] as a JAR, signed with the WRPAC leaf key, transporting the WRPAC chain in `x5c`. */
+suspend fun WrpFixture.signedByWrp(parameters: AuthenticationRequestParameters) =
+    SignJwt<AuthenticationRequestParameters>(wrpKey, { header, _ -> header.copy(certificateChain = wrpacChain) })(
+        type = "oauth-authz-req+jwt",
+        payload = parameters,
+        serializer = AuthenticationRequestParameters.serializer(),
+    ).getOrThrow().let { RequestParametersFrom.Jws(jws = it.jws, parameters = parameters) }
