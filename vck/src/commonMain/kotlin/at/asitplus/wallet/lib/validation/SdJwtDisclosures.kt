@@ -7,9 +7,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
-import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
-import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
-import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
+import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -94,7 +92,8 @@ private class DisclosureProcessor(
         val item = parsed[index]
         val reference = DisclosedItemReference.SdJwt(index, item.getOrNull()?.claimName)
         val parsing = item.fold(onSuccess = { Passed }, onFailure = { Failed(it) })
-        if (parsing != Passed) return DisclosedItemValidation(reference, parsing, Blocked(), Blocked())
+        if (parsing != Passed)
+            return DisclosedItemValidation(reference, parsing, Blocked(), Blocked())
         val isReferenced = index in referenced
         return DisclosedItemValidation(
             reference = reference,

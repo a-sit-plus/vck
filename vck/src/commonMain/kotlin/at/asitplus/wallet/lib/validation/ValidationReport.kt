@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.validation
 
+import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -368,3 +369,6 @@ data class ValidationReport private constructor(
         private fun Boolean.toDecision() = if (this) ValidationDecision.ACCEPTED else ValidationDecision.REJECTED
     }
 }
+
+fun <T> KmmResult<T>.toOutcome(): CheckOutcome =
+    fold(onSuccess = { CheckOutcome.Passed }, onFailure = { CheckOutcome.Failed(it) })
