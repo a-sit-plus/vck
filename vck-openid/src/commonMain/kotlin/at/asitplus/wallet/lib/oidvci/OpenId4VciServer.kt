@@ -7,6 +7,7 @@ import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.DisplayProperties
+import at.asitplus.openid.IssuerInfo
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
@@ -94,6 +95,12 @@ class OpenId4VciServer @JvmOverloads constructor(
     private val displayProperties: Set<DisplayProperties>? = null,
     /** Used for [IssuerMetadata.issuedAt] in [signedMetadata]. */
     private val clock: Clock = Clock.System,
+    /**
+     * Used for [IssuerMetadata.issuerInfo] in [signedMetadata]: the registration information of this provider from
+     * its registrar, and possibly its registration certificate (ETSI TS 119 472-3 V1.1.1, 4.2.3), which
+     * [signMetadata] has to sign with the access certificate of this provider (4.2.1).
+     */
+    private val issuerInfo: List<IssuerInfo>? = null,
 ) {
 
     /** Send it converted with [toHttpResponse]. */
@@ -147,11 +154,12 @@ class OpenId4VciServer @JvmOverloads constructor(
      * this and [metadata].
      *
      * Implements OID4VCI 1.0, Section 12.2.3, i.e. sets `typ` to [OpenIdConstants.ISSUER_METADATA_JWT_TYPE] and adds
-     * the claims `sub` and `iat` to [metadata].
+     * the claims `sub` and `iat` to [metadata], and `issuer_info` at the top level of the payload (ETSI TS 119 472-3
+     * V1.1.1, ISS-MDATA-REG_CERT-4.2.3-02).
      */
     suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata>> = signMetadata(
         OpenIdConstants.ISSUER_METADATA_JWT_TYPE,
-        metadata.copy(subject = metadata.credentialIssuer, issuedAt = clock.now()),
+        metadata.copy(subject = metadata.credentialIssuer, issuedAt = clock.now(), issuerInfo = issuerInfo),
         IssuerMetadata.serializer(),
     )
 
