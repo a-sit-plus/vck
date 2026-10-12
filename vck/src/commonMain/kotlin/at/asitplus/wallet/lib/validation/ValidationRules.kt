@@ -40,6 +40,13 @@ internal inline fun CheckOutcome.ifPassed(check: () -> CheckOutcome): CheckOutco
     if (this == Passed) check() else Blocked()
 
 /**
+ * This outcome if it failed or is blocked, otherwise [next]: one check made of several parts, e.g. of an artifact and
+ * of its certificate, reports the first part that does not pass.
+ */
+internal inline fun CheckOutcome.andThen(next: () -> CheckOutcome): CheckOutcome =
+    if (this is Failed || this is Blocked) this else next()
+
+/**
  * Checks of a credential whose [parsing] or [issuerSignature] did not pass: no claim of it can be relied upon, so
  * every other check is blocked. Trust anchors are selected by the signed credential type, so issuer trust is blocked
  * too, and so are the supplied disclosed items, which are not listed.

@@ -128,7 +128,7 @@ internal class RegistrationCertificateEvaluation(
 ) {
     /** The checks, with the [status] that has been validated. */
     fun checks(status: StatusValidation) = RegistrationCertificateChecks(
-        parsing = header.ifPassed { claims },
+        parsing = header.andThen { claims },
         signature = signature,
         trust = trust,
         timeliness = timeliness,
