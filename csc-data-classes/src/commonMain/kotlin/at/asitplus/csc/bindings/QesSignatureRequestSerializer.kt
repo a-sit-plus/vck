@@ -30,6 +30,7 @@ object QesSignatureRequestSerializer :
                 QesSignatureRequest::signingAlgorithm.name -> if (component !is JsonNull) {
                     component.jsonObject.forEach { (key, value) -> put(key, value) }
                 }
+
                 QesSignatureRequest::document.name,
                 QesSignatureRequest::adesParameters.name,
                     -> component.jsonObject.forEach { (key, value) -> put(key, value) }
@@ -41,14 +42,9 @@ object QesSignatureRequestSerializer :
 
     override fun transformDeserialize(element: JsonElement): JsonElement = buildJsonObject {
         val properties = element.jsonObject
-        val document = properties.filterKeys(documentKeys::contains).toMutableMap()
-        (document[QesSignatureRequest::checksum.name] as? JsonObject)?.let {
-            document.remove(QesSignatureRequest::checksum.name)
-            put(QesSignatureRequest::checksum.name, it)
-        }
         put(
             QesSignatureRequest::document.name,
-            JsonObject(document),
+            JsonObject(properties.filterKeys(documentKeys::contains)),
         )
         put(
             QesSignatureRequest::adesParameters.name,

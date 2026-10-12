@@ -102,6 +102,10 @@ val QesTransactionDataBindingsTest by matrixSuite {
                         label = "Example Contract",
                         access = AccessControlMethod.OTP("51623"),
                         href = "https://protected.rp.example/contract-01.pdf?token=HS9naJKWwp901hBkC34BIUHuH8374",
+                        checksum = Hash(
+                            value = Base64.decode("sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="),
+                            algorithmOid = Digest.SHA256.oid,
+                        ),
                     ),
                     adesParameters = AdesParameters(
                         signatureFormat = SignatureFormat.PADES,
@@ -109,10 +113,6 @@ val QesTransactionDataBindingsTest by matrixSuite {
                         signedEnvelopeProperty = SignedEnvelopeProperty.CERTIFICATION,
                     ),
                     signingAlgorithm = signatureAlgorithm,
-                    checksum = Hash(
-                        value = Base64.decode("sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="),
-                        algorithmOid = Digest.SHA256.oid,
-                    ),
                     signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
                 ),
                 QesSignatureRequest(
@@ -120,6 +120,10 @@ val QesTransactionDataBindingsTest by matrixSuite {
                         label = "Example Terms of Service",
                         access = AccessControlMethod.Public,
                         href = "https://public.rp-cdn.example/terms-and-conditions.pdf",
+                        checksum = Hash(
+                            value = Base64.decode("HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0="),
+                            algorithmOid = Digest.SHA256.oid,
+                        ),
                     ),
                     adesParameters = AdesParameters(
                         signatureFormat = SignatureFormat.PADES,
@@ -127,10 +131,6 @@ val QesTransactionDataBindingsTest by matrixSuite {
                         signedEnvelopeProperty = SignedEnvelopeProperty.CERTIFICATION,
                     ),
                     signingAlgorithm = signatureAlgorithm,
-                    checksum = Hash(
-                        value = Base64.decode("HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0="),
-                        algorithmOid = Digest.SHA256.oid,
-                    ),
                     signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
                 ),
                 QesSignatureRequest(
@@ -161,15 +161,15 @@ val QesTransactionDataBindingsTest by matrixSuite {
         val contract = decoded.signatureRequests[0].document
             .shouldBeInstanceOf<DocumentReference>()
 
-        decoded.signatureRequests[0].checksum?.digest shouldBe Digest.SHA256
-        decoded.signatureRequests[0].checksum?.value?.size shouldBe 32
+        contract.checksum?.digest shouldBe Digest.SHA256
+        contract.checksum?.value?.size shouldBe 32
         contract.access shouldBe AccessControlMethod.OTP("51623")
 
         val terms = decoded.signatureRequests[1].document
             .shouldBeInstanceOf<DocumentReference>()
 
-        decoded.signatureRequests[1].checksum?.digest shouldBe Digest.SHA256
-        decoded.signatureRequests[1].checksum?.value?.size shouldBe 32
+        terms.checksum?.digest shouldBe Digest.SHA256
+        terms.checksum?.value?.size shouldBe 32
         terms.access shouldBe AccessControlMethod.Public
     }
 

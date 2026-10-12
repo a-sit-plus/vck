@@ -1,9 +1,9 @@
 package at.asitplus.csc.bindings
 
 import at.asitplus.csc.datamodel.basic.AdesParameters
-import at.asitplus.csc.datamodel.basic.Hash
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.csc.datamodel.basic.SigningAlgorithm
+import at.asitplus.csc.datamodel.documents.DocumentReference
 import at.asitplus.csc.datamodel.documents.SignatureRequestContent
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -20,6 +20,8 @@ data class QesSignatureRequest(
     /**
      * CSC Data Model 1.0.0 sections 8.1 and 8.3: REQUIRED
      * Document data or reference to be signed.
+     * For a document reference, [DocumentReference.checksum] holds the integrity checksum and is flattened into
+     * the request's top-level `checksum` field on the wire.
      */
     val document: SignatureRequestContent,
     /**
@@ -38,12 +40,6 @@ data class QesSignatureRequest(
      */
     @SerialName("responseURI")
     val responseUri: String? = null,
-    /**
-     * ETSI TS 119 432 Annex A.6.4: OPTIONAL
-     * Structured checksum. CSC Data Model Bindings 1.0.0 normatively specifies an SRI string for this field; VC-K
-     * follows ETSI TS 119 432 where the definitions conflict and uses the structured [Hash] form throughout.
-     */
-    val checksum: Hash? = null,
     /**
      * ETSI TS 119 432 Annex A.6.4: REQUIRED for each signature request.
      * The enclosing QES transaction may also carry its CSC-level qualifier.

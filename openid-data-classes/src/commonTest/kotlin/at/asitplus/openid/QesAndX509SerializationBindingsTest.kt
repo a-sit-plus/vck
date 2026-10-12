@@ -6,6 +6,7 @@ import at.asitplus.csc.bindings.X509MetadataQuery
 import at.asitplus.csc.bindings.X509PresentationResponse
 import at.asitplus.csc.datamodel.basic.Hash
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
+import at.asitplus.csc.datamodel.documents.DocumentReference
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
@@ -52,7 +53,8 @@ val QesAndX509SerializationBindingsTest by matrixSuite {
             SignatureQualifier.EU_EIDAS_QES,
             SignatureQualifier.EU_EIDAS_QES,
         )
-        request.signatureRequests.first().checksum?.digest shouldBe Digest.SHA256
+        request.signatureRequests.first().document.shouldBeInstanceOf<DocumentReference>()
+            .checksum?.digest shouldBe Digest.SHA256
         Json.parseToJsonElement(Json.encodeToString<TransactionData>(request)) shouldBe
                 Json.parseToJsonElement(annexARequest)
 
