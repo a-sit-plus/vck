@@ -4,6 +4,8 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.csc.bindings.QesApprovalBinding
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -11,11 +13,13 @@ import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
@@ -73,6 +77,7 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
             ).getOrThrow()
 
             object {
+                val holder = holder
                 val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
                 val sdJwtCredential = sdJwtCredential
             }
@@ -133,14 +138,83 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
          */
         "QES SD-JWT approval digest" - { fixture ->
             // Synthetic input retains whitespace, field order and non-ASCII UTF-8 bytes to detect reserialization.
-            fun approvalJson(hashAlgorithmOid: String) = """{
+            fun approvalJson(hashAlgorithmOid: String, queryId: String = "approval-credential") = """{
                 "type": "https://cloudsignatureconsortium.org/2025/qes-approval",
-                "credential_ids": ["approval-credential"],
+                "credential_ids": ["$queryId"],
                 "signatureQualifier": "eu_eidas_qes",
                 "numSignatures": 1,
                 "documentDigests": [{ "label": "Conträct", "hash": "AQID" }],
                 "hashAlgorithmOID": "$hashAlgorithmOid"
             }""".trimIndent()
+
+            suspend fun createMultiQueryPresentation(transactionData: List<JsonPrimitive>) =
+                fixture.holder.createDefaultPresentation(
+                    request = PresentationRequestParameters(
+                        nonce = uuid4().toString(),
+                        audience = "https://verifier.example.org",
+                        transactionData = transactionData,
+                    ),
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        Json.decodeFromString<DCQLQuery>(
+                            """{
+                                "credentials": [
+                                    {
+                                        "id": "approval-credential",
+                                        "format": "dc+sd-jwt",
+                                        "meta": { "vct_values": ["${ConstantIndex.AtomicAttribute2023.sdJwtType}"] }
+                                    },
+                                    {
+                                        "id": "identity-credential",
+                                        "format": "dc+sd-jwt",
+                                        "meta": { "vct_values": ["${ConstantIndex.AtomicAttribute2023.sdJwtType}"] },
+                                        "claims": [{ "path": ["name"] }]
+                                    }
+                                ]
+                            }""".trimIndent()
+                        )
+                    ),
+                ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.DCQLParameters>()
+                    .verifiablePresentations.also {
+                        it.keys shouldBe setOf(
+                            DCQLCredentialQueryIdentifier("approval-credential"),
+                            DCQLCredentialQueryIdentifier("identity-credential"),
+                        )
+                    }
+
+            test("DCQL binds QES approval only to the referenced query") {
+                val encoded = approvalJson(Digest.SHA256.oid.toString())
+                    .encodeToByteArray().encodeToString(Base64UrlStrict)
+                val presentations = createMultiQueryPresentation(listOf(JsonPrimitive(encoded)))
+
+                val approval = presentations.getValue(DCQLCredentialQueryIdentifier("approval-credential"))
+                    .single().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+                approval.sdJwt.keyBindingJws.shouldNotBeNull().payload.qesApproval.shouldNotBeNull()
+                    .contentEquals(Digest.SHA256.digest(encoded.encodeToByteArray())) shouldBe true
+
+                val identity = presentations.getValue(DCQLCredentialQueryIdentifier("identity-credential"))
+                    .single().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+                identity.sdJwt.keyBindingJws.shouldNotBeNull().payload.qesApproval.shouldBeNull()
+            }
+
+            test("DCQL permits separate QES approvals for distinct queries") {
+                val approvalData = approvalJson(Digest.SHA256.oid.toString())
+                    .encodeToByteArray().encodeToString(Base64UrlStrict)
+                val identityData = approvalJson(Digest.SHA384.oid.toString(), "identity-credential")
+                    .encodeToByteArray().encodeToString(Base64UrlStrict)
+                val presentations = createMultiQueryPresentation(
+                    listOf(JsonPrimitive(approvalData), JsonPrimitive(identityData))
+                )
+
+                val approval = presentations.getValue(DCQLCredentialQueryIdentifier("approval-credential"))
+                    .single().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+                approval.sdJwt.keyBindingJws.shouldNotBeNull().payload.qesApproval.shouldNotBeNull()
+                    .contentEquals(Digest.SHA256.digest(approvalData.encodeToByteArray())) shouldBe true
+
+                val identity = presentations.getValue(DCQLCredentialQueryIdentifier("identity-credential"))
+                    .single().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+                identity.sdJwt.keyBindingJws.shouldNotBeNull().payload.qesApproval.shouldNotBeNull()
+                    .contentEquals(Digest.SHA384.digest(identityData.encodeToByteArray())) shouldBe true
+            }
 
             listOf(Digest.SHA256, Digest.SHA384, Digest.SHA512).asData(
                 nameFn = { digest -> "SD-JWT uses requested $digest over original base64url text" },
