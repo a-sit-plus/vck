@@ -14,10 +14,11 @@ import at.asitplus.openid.OpenIdConstants.Errors.INVALID_PROOF
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_SCOPE
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TRANSACTION_DATA
 import at.asitplus.openid.OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTED
 import at.asitplus.openid.OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_CONFIGURATION
-import at.asitplus.openid.OpenIdConstants.Errors.UNSUPPORTED_GRANT_TYPE
 import at.asitplus.openid.OpenIdConstants.Errors.UNKNOWN_CREDENTIAL_IDENTIFIER
+import at.asitplus.openid.OpenIdConstants.Errors.UNSUPPORTED_GRANT_TYPE
 import at.asitplus.openid.OpenIdConstants.Errors.USER_CANCELLED
 import at.asitplus.openid.OpenIdConstants.Errors.USE_ATTESTATION_CHALLENGE
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
@@ -52,6 +53,13 @@ sealed class OAuth2Exception(
         @Transient val description: String? = null,
         @Transient override val cause: Throwable? = null
     ) : OAuth2Exception(INVALID_REQUEST, description)
+
+    /** OpenID4VP 1.0 section 8.5: invalid transaction data, including missing or unmatched credential_ids. */
+    @Serializable
+    class InvalidTransactionData(
+        @Transient val description: String? = null,
+        @Transient override val cause: Throwable? = null
+    ) : OAuth2Exception(INVALID_TRANSACTION_DATA, description)
 
     @Serializable
     class InvalidClient(
