@@ -7,7 +7,6 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod.AttestationPopJwt
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod.DpopCombined
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -15,21 +14,37 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService.Companion.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidClient
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UseAttestationChallenge
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UseFreshAttestation
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
+import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
+import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
+import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
+import at.asitplus.wallet.lib.validation.ClientAttestationChecks
+import at.asitplus.wallet.lib.validation.ClientAttestationPossession
+import at.asitplus.wallet.lib.validation.ClientAttestationValidator
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidationPolicy
+import at.asitplus.wallet.lib.validation.ValidationReport
+import at.asitplus.wallet.lib.validation.toOutcome
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 
 /**
- * Client authentication service for an OAuth2.0 AS, based on Attestation-Based Client Authentication.
+ * Client authentication service for an OAuth2.0 AS, based on Attestation-Based Client Authentication, see
+ * [validate].
  *
  * Implemented from:
  * * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
@@ -39,13 +54,12 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
     private val acceptedPopMethods: Set<ClientAttestationPopMethod> =
         setOf(AttestationPopJwt),
     /**
-     * Used to verify client attestation JWTs. Client attestations are required to carry an `x5c`, so pass
-     * [at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate] with the certificates of the trusted wallet
-     * providers to establish trust in the attestation. The default only verifies the attestation against the
-     * certificate it carries itself, i.e. it makes no trust decision.
+     * Validates client attestations: configure it with the anchors of the wallet providers, e.g. from the wallet
+     * providers list, and a status list token resolver for `client_status`. Without anchors, client attestations
+     * are rejected.
      */
-    private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-    /** Used to verify client attestation JWTs */
+    private val clientAttestationValidator: ClientAttestationValidator = ClientAttestationValidator(),
+    /** Used to verify client attestation PoP JWTs with the `cnf` of the client attestation. */
     private val verifyJwsSignatureWithCnf: VerifyJwsSignatureWithCnfFun = VerifyJwsSignatureWithCnf(),
     /** Clock used to verify WIA and WIA PoP timestamps. */
     private val clock: Clock = Clock.System,
@@ -73,6 +87,18 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
         }
     }
 
+    /**
+     * The checks [authenticateClient] has always made: the wallet provider has to be trusted, and the status of
+     * wallet instances is only checked if it can be resolved.
+     */
+    private val compatibilityPolicy = ValidationPolicy(
+        trust = TrustPolicy.RequireAuthorizedSigner,
+        status = if (!clientAttestationValidator.resolvesStatus) StatusPolicy.Skip
+        else StatusPolicy.ValidateIfPresent(TrustPolicy.IntegrityOnly),
+        timeLeeway = timeLeeway,
+        requireTimeliness = true,
+    )
+
     override val supportedAuthMethods: Set<String>
         get() = acceptedPopMethods.mapNotNull { it.clientAuthMethod }.toSet()
 
@@ -88,146 +114,220 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
     override suspend fun getAttestationChallenge(): String = nonceService.provideNonce()
 
     /**
-     * Authenticates the client as defined from a client attestation JWT.
+     * Authenticates the client as defined from a client attestation JWT, with [validate] under the checks it has
+     * always been authenticated with, failing with the first rejection.
      */
     override suspend fun authenticateClient(
         httpRequest: RequestInfo?,
         clientId: String?,
         validatedClientKey: JsonWebKey?,
     ): KmmResult<AuthenticatedClient> = catching {
-        val instanceAttestation = httpRequest?.clientAttestation
+        val validation = validate(httpRequest, clientId, validatedClientKey, compatibilityPolicy)
+        validation.client ?: throw validation.report.rejection()
+    }
+
+    /**
+     * Validates the client attestation and its proof of possession in [httpRequest] under [policy], see
+     * [ClientAttestationValidator.validate] and [ClientAttestationChecks]: with a client attestation PoP JWT
+     * (draft-ietf-oauth-attestation-based-client-auth-10, 5.2), or, if [DpopCombined] is accepted, with the DPoP proof
+     * whose key is [validatedClientKey] (6). The challenge is consumed only if the client attestation is accepted, so
+     * it is not usable again. The clock is read once, all checks use that time.
+     *
+     * Fails if [httpRequest] contains no client attestation, or the challenge has been used concurrently.
+     */
+    @Throws(OAuth2Exception::class, CancellationException::class)
+    suspend fun validate(
+        httpRequest: RequestInfo?,
+        clientId: String?,
+        validatedClientKey: JsonWebKey?,
+        policy: ValidationPolicy,
+    ): ClientAttestationValidation {
+        val evaluatedAt = clock.now()
+        val attestation = httpRequest?.clientAttestation
             ?: throw InvalidClient("client attestation header missing")
-
-        instanceAttestation.validateWalletInstanceAttestation(clientId)
-        verifyJwsObject(instanceAttestation.jws).getOrElse {
-            throw InvalidClient("client attestation JWT not verified", it)
+        val pop = httpRequest.clientAttestationPop
+        val possession = possession(pop, attestation.payload, validatedClientKey, policy, evaluatedAt)
+        val result = clientAttestationValidator.validate(
+            attestation = attestation,
+            clientId = clientId,
+            possession = possession,
+            policy = policy,
+            evaluatedAt = evaluatedAt,
+            supportedAlgorithms = supportedSigningAlgorithms,
+        )
+        val confirmationKey = result.confirmationKey
+            ?: return ClientAttestationValidation(result.report, client = null)
+        pop?.payload?.attestationChallenge?.let {
+            if (!nonceService.verifyAndRemoveNonce(it)) {
+                throw useAttestationChallenge("client attestation PoP challenge invalid")
+            }
         }
+        val client = AuthenticatedClient(clientId = attestation.payload.subject!!, publicKey = confirmationKey)
+        return ClientAttestationValidation(result.report, client)
+    }
 
-        val cnf = instanceAttestation.payload.confirmationClaim
-            ?: throw InvalidClient("client attestation has no cnf")
-        val cnfPublicKey = cnf.jsonWebKey?.toCryptoPublicKey()?.getOrThrow()
-        val validatedClientId = (instanceAttestation.payload.subject
-            ?: clientId // validation above should have caught that, but the compiler did not
-            ?: throw InvalidClient("No client_id given"))
+    /**
+     * The checks of the proof of possession: a client attestation PoP JWT, or the DPoP proof in [DpopCombined].
+     */
+    private suspend fun possession(
+        pop: JwsCompactTyped<JsonWebToken>?,
+        attestation: JsonWebToken,
+        validatedClientKey: JsonWebKey?,
+        policy: ValidationPolicy,
+        evaluatedAt: Instant,
+    ): ClientAttestationPossession = when {
+        pop != null && acceptedPopMethods.singleOrNull() == DpopCombined ->
+            missingPossession(InvalidClient("client attestation PoP header not allowed in combined-only mode"))
 
-        val acceptsCombined = acceptedPopMethods.contains(DpopCombined)
-        val instanceAttestationPopJwt = httpRequest.clientAttestationPop
-        if (instanceAttestationPopJwt != null) {
-            if (acceptedPopMethods.singleOrNull() == DpopCombined)
-                throw InvalidClient("client attestation PoP header not allowed in combined-only mode")
-            if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt.jws, cnf))
-                throw InvalidClient("client attestation PoP JWT not verified")
-            instanceAttestationPopJwt.validateWalletInstanceAttestationPop(instanceAttestation.payload.subject)
-        } else if (acceptsCombined) {
-            val dpopPublicKey = validatedClientKey?.toCryptoPublicKey()?.getOrNull()
-                ?: throw InvalidClient("DPoP header missing")
-            if (dpopPublicKey != cnfPublicKey)
-                throw InvalidClient("DPoP key does not match client attestation key")
-        } else {
-            throw InvalidClient("client attestation pop header missing")
-        }
+        pop != null -> popJwtPossession(pop, attestation, policy, evaluatedAt)
+        DpopCombined in acceptedPopMethods -> ClientAttestationPossession(
+            parsing = Passed,
+            signature = dpopKeyMatches(validatedClientKey, attestation),
+            time = NotApplicable,
+            audience = NotApplicable,
+            challenge = NotApplicable,
+        )
 
-        AuthenticatedClient(
-            clientId = validatedClientId,
-            publicKey = cnfPublicKey
+        else -> missingPossession(InvalidClient("client attestation pop header missing"))
+    }
+
+    /** "The public key from the DPoP proof's jwk header [...] MUST match the cnf key" (6) */
+    private fun dpopKeyMatches(validatedClientKey: JsonWebKey?, attestation: JsonWebToken): CheckOutcome {
+        val dpopPublicKey = validatedClientKey?.toCryptoPublicKey()?.getOrNull()
+            ?: return Failed(InvalidClient("DPoP header missing"))
+        val cnfPublicKey = attestation.confirmationClaim?.jsonWebKey?.toCryptoPublicKey()?.getOrNull()
+            ?: return Blocked()
+        return if (dpopPublicKey == cnfPublicKey) Passed
+        else Failed(InvalidClient("DPoP key does not match client attestation key"))
+    }
+
+    /**
+     * A client attestation PoP JWT (draft-ietf-oauth-attestation-based-client-auth-10, 5.2): `typ`, `alg`, `aud`,
+     * `jti`, and `iat` present, signed with the `cnf` key of the attestation, created recently, for this server, with
+     * a challenge of this server. `iss` and `exp` are no longer defined, but checked if present, and the challenge is
+     * also accepted as `nonce`, as in earlier drafts.
+     */
+    private suspend fun popJwtPossession(
+        pop: JwsCompactTyped<JsonWebToken>,
+        attestation: JsonWebToken,
+        policy: ValidationPolicy,
+        evaluatedAt: Instant,
+    ): ClientAttestationPossession {
+        val payload = pop.payload
+        val cnf = attestation.confirmationClaim
+        return ClientAttestationPossession(
+            parsing = catching {
+                if (pop.jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
+                    throw InvalidClient("invalid client attestation PoP typ: ${pop.jws.jwsHeader.type}")
+                }
+                if (pop.jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
+                    pop.jws.jwsHeader.algorithm !in supportedSigningAlgorithms
+                ) {
+                    throw InvalidClient("unsupported client attestation PoP alg: ${pop.jws.jwsHeader.algorithm}")
+                }
+                if (payload.audience == null) throw InvalidClient("client attestation PoP has no aud")
+                if (payload.jwtId == null) throw InvalidClient("client attestation PoP has no jti")
+                if (payload.issuedAt == null) throw InvalidClient("client attestation PoP has no iat")
+            }.toOutcome(),
+            signature = when {
+                cnf == null -> Blocked()
+                !verifyJwsSignatureWithCnf(pop.jws, cnf) ->
+                    Failed(InvalidClient("client attestation PoP JWT not verified"))
+
+                payload.issuer != null && attestation.subject != null && payload.issuer != attestation.subject ->
+                    Failed(InvalidClient("client attestation PoP issuer not equal to attestation subject"))
+
+                else -> Passed
+            },
+            time = popTime(payload, policy, evaluatedAt),
+            audience = when {
+                issuerIdentifier == null -> NotApplicable
+                payload.audience == issuerIdentifier -> Passed
+                else -> Failed(
+                    InvalidClient(
+                        "client attestation PoP aud '${payload.audience}' does not match issuer '$issuerIdentifier'"
+                    )
+                )
+            },
+            challenge = when (val challenge = payload.attestationChallenge) {
+                null -> Failed(useAttestationChallenge("client attestation PoP missing challenge/nonce"))
+                else -> if (nonceService.verifyNonce(challenge)) Passed
+                else Failed(useAttestationChallenge("client attestation PoP challenge invalid"))
+            },
         )
     }
 
-    private fun JwsCompactTyped<JsonWebToken>.validateWalletInstanceAttestation(clientId: String?) {
-        if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
-            throw InvalidClient("invalid client attestation typ: ${jws.jwsHeader.type}")
-        }
-        if (jws.jwsHeader.certificateChain.isNullOrEmpty()) {
-            throw InvalidClient("client attestation has no x5c")
-        }
-        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            jws.jwsHeader.algorithm !in supportedSigningAlgorithms
-        ) {
-            throw InvalidClient("unsupported client attestation alg: ${jws.jwsHeader.algorithm}")
-        }
-        if (payload.subject == null) {
-            throw InvalidClient("client attestation has no sub")
-        }
-        if (clientId != null && payload.subject != clientId) {
-            throw InvalidClient("subject not equal to client_id")
-        }
-        val issuedAt = payload.issuedAt ?: throw InvalidClient("client attestation has no iat")
-        val expiration = payload.expiration ?: throw InvalidClient("client attestation has no exp")
-        if (issuedAt > (clock.now() + timeLeeway)) {
-            throw UseFreshAttestation("client attestation iat in future: $issuedAt")
-        }
-        if (expiration < (clock.now() - timeLeeway)) {
-            throw UseFreshAttestation("client attestation expired: $expiration")
-        }
-        if (expiration - issuedAt >= 24.hours) {
-            throw UseFreshAttestation("client attestation lifetime must be less than 24 hours")
-        }
-        if (payload.walletName.isNullOrBlank()) {
-            throw InvalidClient("client attestation has no wallet_name")
-        }
-        if (payload.walletVersion.isNullOrBlank()) {
-            throw InvalidClient("client attestation has no wallet_version")
-        }
-        if (payload.walletSolutionCertificationInformation.isNullOrBlank()) {
-            throw InvalidClient("client attestation has no wallet_solution_certification_information")
-        }
-        val clientStatus = payload.clientStatus ?: throw InvalidClient("client attestation has no client_status")
-        if (clientStatus.expiration < (clock.now() - timeLeeway)) {
-            throw InvalidClient("client_status expiration in past: ${clientStatus.expiration}")
-        }
-        val confirmationKey = payload.confirmationClaim?.jsonWebKey?.toCryptoPublicKey()?.getOrNull()
-            ?: throw InvalidClient("client attestation has no cnf")
-        if (confirmationKey !is CryptoPublicKey.EC && confirmationKey !is CryptoPublicKey.RSA) {
-            throw InvalidClient("client attestation confirmation key is not asymmetric")
+    /** "the creation time of the JWT [...] is within an acceptable window" (5.2), never relaxed by [policy]. */
+    private fun popTime(payload: JsonWebToken, policy: ValidationPolicy, evaluatedAt: Instant): CheckOutcome {
+        val issuedAt = payload.issuedAt ?: return Blocked()
+        val expiration = payload.expiration
+        return when {
+            issuedAt > evaluatedAt + policy.timeLeeway ->
+                Failed(InvalidClient("client attestation PoP iat in future: $issuedAt"))
+
+            issuedAt < evaluatedAt - maxAgePoP - policy.timeLeeway ->
+                Failed(InvalidClient("client attestation PoP issued too long ago: $issuedAt"))
+
+            expiration != null && expiration < evaluatedAt - policy.timeLeeway ->
+                Failed(InvalidClient("client attestation PoP expired: $expiration"))
+
+            else -> Passed
         }
     }
 
-    private suspend fun JwsCompactTyped<JsonWebToken>.validateWalletInstanceAttestationPop(
-        attestationSubject: String?
-    ) {
-        if (jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
-            throw InvalidClient("invalid client attestation PoP typ: ${jws.jwsHeader.type}")
-        }
-        if (jws.jwsHeader.algorithm !is JwsAlgorithm.Signature ||
-            jws.jwsHeader.algorithm !in supportedSigningAlgorithms
-        ) {
-            throw InvalidClient("unsupported client attestation PoP alg: ${jws.jwsHeader.algorithm}")
-        }
-        if (issuerIdentifier != null && payload.audience != issuerIdentifier) {
-            throw InvalidClient(
-                "client attestation PoP aud '${payload.audience}' does not match issuer '$issuerIdentifier'"
-            )
-        }
-        val issuedAt = payload.issuedAt
-            ?: throw InvalidClient("client attestation PoP has no iat")
-        val expiration = payload.expiration // not required!
-        if (issuedAt > (clock.now() + timeLeeway)) {
-            throw InvalidClient("client attestation PoP iat in future: $issuedAt")
-        }
-        if (issuedAt < (clock.now() - maxAgePoP - timeLeeway)) {
-            throw InvalidClient("client attestation PoP issued too long ago: $issuedAt")
-        }
-        if (expiration != null && expiration < (clock.now() - timeLeeway)) {
-            throw InvalidClient("client attestation PoP expired: $expiration")
-        }
-        if (payload.jwtId == null) {
-            throw InvalidClient("client attestation PoP has no jti")
-        }
-        if (payload.issuer != null && attestationSubject != null && payload.issuer != attestationSubject) {
-            throw InvalidClient("client attestation PoP issuer not equal to attestation subject")
-        }
-        if (payload.nonce == null && payload.challenge == null) {
-            throw UseAttestationChallenge(nonceService.provideNonce(), "client attestation PoP missing challenge/nonce")
-        }
-        payload.nonce?.let { nonce ->
-            if (!nonceService.verifyAndRemoveNonce(nonce)) {
-                throw UseAttestationChallenge(nonceService.provideNonce(), "client attestation PoP nonce invalid")
-            }
-        } ?: payload.challenge?.let { challenge ->
-            if (!nonceService.verifyAndRemoveNonce(challenge)) {
-                throw UseAttestationChallenge(nonceService.provideNonce(), "client attestation PoP challenge invalid")
-            }
-        } ?: throw UseAttestationChallenge(nonceService.provideNonce(), "client attestation PoP challenge missing")
-    }
+    /** "use_attestation_challenge", with a fresh challenge (7) */
+    private suspend fun useAttestationChallenge(description: String) =
+        UseAttestationChallenge(nonceService.provideNonce(), description)
 
+    private fun missingPossession(cause: OAuth2Exception) =
+        ClientAttestationPossession(Passed, Failed(cause), Blocked(), Blocked(), Blocked())
+
+    /** The challenge in `challenge`, or in `nonce` as in earlier drafts. */
+    private val JsonWebToken.attestationChallenge: String?
+        get() = challenge ?: nonce
+}
+
+/**
+ * The [report] of a client attestation and its proof of possession, see [ClientAttestationChecks], and the
+ * authenticated [client], if it has been accepted.
+ */
+data class ClientAttestationValidation(
+    val report: ValidationReport,
+    val client: AuthenticatedClient?,
+)
+
+/**
+ * Why a client attestation is rejected, as [OAuth2Exception]: the cause of the first check that does not pass, an
+ * attestation that is not timely as [UseFreshAttestation], an invalid challenge as [UseAttestationChallenge]
+ * (draft-ietf-oauth-attestation-based-client-auth-10, 7), anything else as [InvalidClient].
+ */
+private fun ValidationReport.rejection(): OAuth2Exception {
+    val checks = checks as? ClientAttestationChecks ?: return InvalidClient("client attestation not accepted")
+    fun CheckOutcome.wrap(wrap: (String?, Throwable?) -> OAuth2Exception) = when (this) {
+        is Failed -> Failed(throwable as? OAuth2Exception ?: wrap(throwable.message, throwable))
+        else -> this
+    }
+    fun CheckOutcome.notVerified() = when (this) {
+        is Failed -> Failed(InvalidClient("client attestation JWT not verified", throwable))
+        is Blocked -> Blocked(InvalidClient("client attestation JWT not verified", cause))
+        else -> this
+    }
+    val outcomes = listOf(
+        checks.parsing.wrap(::InvalidClient),
+        checks.clientId.wrap(::InvalidClient),
+        checks.timeliness.wrap(::UseFreshAttestation),
+        checks.signature.notVerified(),
+        checks.trust.outcome.notVerified(),
+        checks.popSignature,
+        checks.popTime,
+        checks.audience,
+        checks.challenge,
+        checks.status.claim,
+    ) + checks.status.mechanisms.map { mechanism ->
+        mechanism.outcome.wrap { _, cause -> InvalidClient("client_status invalid", cause) }
+    }
+    val cause = outcomes.filterIsInstance<Failed>().firstOrNull()?.throwable
+        ?: outcomes.filterIsInstance<Blocked>().firstOrNull()?.cause
+        ?: return InvalidClient("client attestation not accepted")
+    return cause as? OAuth2Exception ?: InvalidClient(cause.message, cause)
 }

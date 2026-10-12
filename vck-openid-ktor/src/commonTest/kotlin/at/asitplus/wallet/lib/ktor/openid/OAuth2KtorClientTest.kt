@@ -11,15 +11,12 @@ import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultNonceService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
@@ -36,6 +33,7 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import io.github.aakira.napier.Napier
+import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -61,6 +59,7 @@ val OAuth2KtorClientTest by matrixSuite {
         requirePAR: Boolean,
         verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
     ): Context {
+        val walletProvider = runBlocking { TestWalletProvider() }
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
@@ -76,6 +75,7 @@ val OAuth2KtorClientTest by matrixSuite {
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
             clientAuthenticationService = AttestationBasedClientAuthenticationService(
+                clientAttestationValidator = walletProvider.clientAttestationValidator,
                 acceptedPopMethods = setOf(ClientAttestationPopMethod.AttestationPopJwt),
                 nonceService = proofNonceService,
             ),
@@ -159,7 +159,7 @@ val OAuth2KtorClientTest by matrixSuite {
                 clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
-                            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                            walletProvider.signJwt,
                             clientId = clientId,
                             clientKey = clientAuthKeyMaterial.jsonWebKey
                         )

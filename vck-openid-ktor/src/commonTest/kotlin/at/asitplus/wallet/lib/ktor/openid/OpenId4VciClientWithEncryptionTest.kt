@@ -28,8 +28,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.credentialDataProviderFun
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
@@ -51,6 +49,7 @@ import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
@@ -78,6 +77,7 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
         representation: CredentialRepresentation,
         attributes: Map<String, String>,
     ): Context {
+        val walletProvider = runBlocking { TestWalletProvider() }
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val credentialSchemes = setOf(scheme)
@@ -95,7 +95,9 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
             challengeEndpointPath = challengeEndpointPath,
-            clientAuthenticationService = AttestationBasedClientAuthenticationService(),
+            clientAuthenticationService = AttestationBasedClientAuthenticationService(
+                clientAttestationValidator = walletProvider.clientAttestationValidator,
+            ),
             tokenService = TokenService.jwt(
                 issueRefreshTokens = true
             ),
@@ -208,7 +210,7 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
                 clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
-                            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                            walletProvider.signJwt,
                             clientId = clientId,
                             clientKey = clientAuthKeyMaterial.jsonWebKey
                         )

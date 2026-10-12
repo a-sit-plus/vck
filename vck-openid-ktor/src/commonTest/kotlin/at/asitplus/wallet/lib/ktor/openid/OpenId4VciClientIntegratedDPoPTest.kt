@@ -21,8 +21,6 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
@@ -67,6 +65,7 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
 
     fixture {
         runBlocking {
+            val walletProvider = TestWalletProvider()
             val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
 
             val representation = SD_JWT
@@ -88,7 +87,9 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
                 tokenEndpointPath = tokenEndpointPath,
                 pushedAuthorizationRequestEndpointPath = parEndpointPath,
                 challengeEndpointPath = challengeEndpointPath,
-                clientAuthenticationService = AttestationBasedClientAuthenticationService(),
+                clientAuthenticationService = AttestationBasedClientAuthenticationService(
+                    clientAttestationValidator = walletProvider.clientAttestationValidator,
+                ),
                 tokenService = TokenService.jwt(
                     issueRefreshTokens = true
                 ),
@@ -192,7 +193,7 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
                     clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
                         catching {
                             BuildClientAttestationJwt(
-                                SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                                walletProvider.signJwt,
                                 clientId = clientId,
                                 clientKey = clientAuthKeyMaterial.jsonWebKey
                             )

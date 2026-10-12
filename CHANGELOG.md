@@ -49,6 +49,18 @@ Release 9.0.0 (unreleased):
       `validateProofExtractSubjectPublicKeys` delegates to it. A key attestation embedded in a `jwt` proof needs a
       server-provided `c_nonce` and `exp` (OpenID4VCI 1.0, F.1, D.1), a `jwt` proof at most one of `kid`, `jwk`, and
       `x5c`; a key attestation no longer needs `user_authentication`, and may contain `iss` (EUDI TS3, 2.3.2)
+- OAuth 2.0 authorization server:
+    - BREAKING: `AttestationBasedClientAuthenticationService` takes a `ClientAttestationValidator` (in `vck`) instead
+      of `verifyJwsObject`: configure it with the anchors of the wallet providers, which have to issue the
+      certificate in `x5c` signing client attestations (EUDI TS3, 2.2.1.2), and a status list token resolver for
+      `client_status`. Without anchors, client attestations are rejected; before, the default accepted any client
+      attestation verifying with the key it carried
+    - Add `AttestationBasedClientAuthenticationService.validate(httpRequest, clientId, validatedClientKey, policy)`,
+      reporting the client attestation with its proof of possession; `authenticateClient` delegates to it. The
+      challenge is consumed only if the client attestation is accepted, `client_status.status` is resolved if a
+      status list token resolver is configured, and an expired `client_status` fails with `use_fresh_attestation`
+      instead of `invalid_client`. A client attestation no longer needs `iat`, a client attestation PoP needs `aud`
+      also without `issuerIdentifier` (draft-ietf-oauth-attestation-based-client-auth-10, 5.1, 5.2)
 - HTTP error handling:
     - Add `HttpErrorResponseException` and `ProblemDetails` in `vck-openid` (package `at.asitplus.wallet.lib`), so
       OAuth 2.0 errors and RFC 9457 problem details of non-success responses are available without a ktor client.

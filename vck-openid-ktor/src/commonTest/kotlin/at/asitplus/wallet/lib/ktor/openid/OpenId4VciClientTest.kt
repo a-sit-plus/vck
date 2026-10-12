@@ -34,8 +34,6 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.credentialDataProviderFun
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
@@ -57,6 +55,7 @@ import at.asitplus.wallet.lib.oidvci.ProofValidator
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -87,6 +86,7 @@ val OpenId4VciKtorClientTest by matrixSuite {
         attributes: Map<String, String>,
         revocationKind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
     ): Context {
+        val walletProvider = runBlocking { TestWalletProvider() }
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
         val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val credentialSchemes = setOf(scheme)
@@ -104,7 +104,9 @@ val OpenId4VciKtorClientTest by matrixSuite {
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
             challengeEndpointPath = challengeEndpointPath,
-            clientAuthenticationService = AttestationBasedClientAuthenticationService(),
+            clientAuthenticationService = AttestationBasedClientAuthenticationService(
+                clientAttestationValidator = walletProvider.clientAttestationValidator,
+            ),
             tokenService = TokenService.jwt(
                 issueRefreshTokens = true
             ),
@@ -216,7 +218,7 @@ val OpenId4VciKtorClientTest by matrixSuite {
                 clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
-                            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                            walletProvider.signJwt,
                             clientId = clientId,
                             clientKey = clientAuthKeyMaterial.jsonWebKey
                         )
