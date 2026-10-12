@@ -20,6 +20,7 @@ import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
+import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
@@ -27,6 +28,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsSignature
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidTransactionData
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.ktor.http.*
@@ -51,6 +53,8 @@ internal class AuthorizationRequestValidator(
                 throw InvalidRequest("invalid response_type: $it")
             }
         } ?: throw InvalidRequest("response_type is null")
+
+        request.parameters.validateTransactionData()
 
         if (request.parameters.responseMode.isAnyDcApi()) {
             request.validateDcApi()
@@ -79,6 +83,26 @@ internal class AuthorizationRequestValidator(
                     throw InvalidRequest("wallet_nonce from request not known to us: $it")
                 }
             }
+        }
+    }
+
+    /**
+     * OpenID4VP 1.0 sections 5.1 and 8.5 require non-empty DCQL credential_ids. CSC's conditional omission
+     * of this field applies to other transaction protocols, not to an OpenID4VP authorization request.
+     */
+    private fun AuthenticationRequestParameters.validateTransactionData() {
+        transactionData?.let { entries ->
+            catchingUnwrapped {
+                require(entries.isNotEmpty()) { "transaction_data must be non-empty" }
+                val queryIds = dcqlQuery?.credentials?.map { it.id.string }?.toSet()
+                entries.forEach { encoded ->
+                    val data = encoded.toTransactionData()
+                    require(data.credentialIds.isNotEmpty()) { "credential_ids must be present and non-empty" }
+                    require(queryIds == null || queryIds.containsAll(data.credentialIds)) {
+                        "credential_ids references an unknown DCQL query"
+                    }
+                }
+            }.getOrElse { throw InvalidTransactionData("Invalid transaction_data", it) }
         }
     }
 

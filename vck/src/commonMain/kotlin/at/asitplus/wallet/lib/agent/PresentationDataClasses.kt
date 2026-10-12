@@ -18,6 +18,7 @@ import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.putJsonArray
+import kotlin.jvm.JvmOverloads
 
 /**
  * Input to create a verifiable presentation of credentials, i.e. contains input required to fill fields in the VP,
@@ -42,7 +43,23 @@ data class PresentationRequestParameters(
      */
     val calcIsoSessionTranscript: (suspend () -> SessionTranscript?) = { null },
 
-    ) {
+    /**
+     * Approval transaction data selected for this credential submission. DCQL response creation sets this to
+     * at most one original transaction-data string; an empty list means this submission does not authorize QES.
+     * When null, direct, non-DCQL callers use [transactionData] to compute the approval.
+     * This does not change the general SD-JWT transaction-data integrity hashes.
+     */
+    val qesApprovalTransactionData: List<TransactionDataBase64Url>? = null,
+) {
+    /** Retains the original positional constructor and trailing session-transcript callback. */
+    @JvmOverloads
+    constructor(
+        nonce: String,
+        audience: String,
+        transactionData: List<TransactionDataBase64Url>? = null,
+        calcIsoSessionTranscript: suspend () -> SessionTranscript?,
+    ) : this(nonce, audience, transactionData, calcIsoSessionTranscript, qesApprovalTransactionData = null)
+
     /**
      * According to OID4VP 1.0 B3.3.1 every TransactionData entry may define different Digest algorithms
      * however in the [at.asitplus.wallet.lib.data.KeyBindingJws] we are only allowed to specify one.
