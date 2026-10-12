@@ -6,11 +6,9 @@ import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.JsonResult
-import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemSpec
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemType
-import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.supreme.hash.digest
@@ -18,12 +16,13 @@ import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreSdJwt
+import at.asitplus.wallet.lib.agent.QesApprovalTestData.approvalJson
+import at.asitplus.wallet.lib.agent.QesApprovalTestData.encodeTransactionData
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -39,14 +38,12 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotContain
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
@@ -305,73 +302,20 @@ val VerifiablePresentationFactoryTest by matrixSuite {
          * These tests verify the request-selected algorithm and hashing of the original decoded UTF-8 JSON bytes.
          */
         "QES mdoc approval digest" - { fixture ->
-            "DCQL binds mdoc QES approval only to the referenced query" {
-                val raw = approvalJson(Digest.SHA256.oid.toString())
-                val presentations = fixture.holder.createMultiQueryPresentation(
-                    listOf(JsonPrimitive(raw.encodeToByteArray().encodeToString(Base64UrlStrict)))
-                )
-                presentations.getValue(DCQLCredentialQueryIdentifier("approval-credential"))
-                    .approvalDigest().shouldNotBeNull()
-                    .contentEquals(Digest.SHA256.digest(raw.encodeToByteArray())) shouldBe true
-                presentations.getValue(DCQLCredentialQueryIdentifier("identity-credential"))
-                    .approvalDigest().shouldBeNull()
-            }
-
-            "DCQL permits separate mdoc QES approvals for distinct queries" {
-                val first = approvalJson(Digest.SHA256.oid.toString())
-                val second = approvalJson(Digest.SHA384.oid.toString(), listOf("identity-credential"))
-                val presentations = fixture.holder.createMultiQueryPresentation(
-                    listOf(
-                        JsonPrimitive(first.encodeToByteArray().encodeToString(Base64UrlStrict)),
-                        JsonPrimitive(second.encodeToByteArray().encodeToString(Base64UrlStrict)),
-                    )
-                )
-                presentations.getValue(DCQLCredentialQueryIdentifier("approval-credential"))
-                    .approvalDigest().shouldNotBeNull()
-                    .contentEquals(Digest.SHA256.digest(first.encodeToByteArray())) shouldBe true
-                presentations.getValue(DCQLCredentialQueryIdentifier("identity-credential"))
-                    .approvalDigest().shouldNotBeNull()
-                    .contentEquals(Digest.SHA384.digest(second.encodeToByteArray())) shouldBe true
-            }
-
-            // OpenID4VP 1.0 section 5.1 requires choosing one authorizing credential from the alternatives.
-            "DCQL binds an mdoc approval with alternative query IDs to only one presentation" {
-                val raw = approvalJson(
-                    Digest.SHA256.oid.toString(), listOf("identity-credential", "approval-credential")
-                )
-                val presentations = fixture.holder.createMultiQueryPresentation(
-                    listOf(JsonPrimitive(raw.encodeToByteArray().encodeToString(Base64UrlStrict)))
-                )
-                val approvals = presentations.values.mapNotNull { it.approvalDigest() }
-                approvals.size shouldBe 1
-                approvals.single().contentEquals(Digest.SHA256.digest(raw.encodeToByteArray())) shouldBe true
-            }
-
-            listOf(null, emptyList(), listOf("unknown-query")).asData(
-                nameFn = { ids -> "DCQL rejects invalid mdoc approval credential_ids: $ids" },
-            ) test { ids ->
-                val raw = approvalJson(Digest.SHA256.oid.toString(), ids)
-                shouldThrow<PresentationException> {
-                    fixture.holder.createMultiQueryPresentation(
-                        listOf(JsonPrimitive(raw.encodeToByteArray().encodeToString(Base64UrlStrict)))
-                    )
-                }
-            }
-
             "direct mdoc approval creation permits omitted protocol-specific credential_ids" {
-                val raw = approvalJson(Digest.SHA256.oid.toString(), queryIds = null)
+                val raw = approvalJson(Digest.SHA256.oid.toString(), credentialIds = null)
                 val result = fixture.verifiablePresentationFactory.createVerifiablePresentation(
                     request = presentationRequest().copy(
                         transactionData = listOf(
                             JsonPrimitive(
-                                raw.encodeToByteArray().encodeToString(Base64UrlStrict)
+                                encodeTransactionData(raw)
                             )
                         ),
                     ),
                     credential = fixture.isoCredential,
                     disclosedAttributes = emptyList(),
                 ).getOrThrow()
-                listOf(result).approvalDigest().shouldNotBeNull()
+                result.qesApprovalDigest().shouldNotBeNull()
                     .contentEquals(Digest.SHA256.digest(raw.encodeToByteArray())) shouldBe true
             }
 
@@ -379,7 +323,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 nameFn = { digest -> "mdoc uses requested $digest over original decoded UTF-8 JSON" },
             ) test { digest ->
                 val rawApprovalJson = approvalJson(digest.oid.toString())
-                val encodedTransactionData = rawApprovalJson.encodeToByteArray().encodeToString(Base64UrlStrict)
+                val encodedTransactionData = encodeTransactionData(rawApprovalJson)
                 val request = presentationRequest().copy(
                     transactionData = listOf(JsonPrimitive(encodedTransactionData)),
                 )
@@ -400,8 +344,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
 
             "mdoc rejects an unsupported approval hash algorithm" {
                 val unsupportedOid = "1.2.3.4"
-                val encodedTransactionData =
-                    approvalJson(unsupportedOid).encodeToByteArray().encodeToString(Base64UrlStrict)
+                val encodedTransactionData = encodeTransactionData(approvalJson(unsupportedOid))
                 val request = presentationRequest().copy(
                     transactionData = listOf(JsonPrimitive(encodedTransactionData)),
                 )
@@ -486,53 +429,3 @@ private fun invalidIsoZkMetaData(zkRequired: Boolean) = ZkMetadata.IsoMdocZk(
         ),
     ).also { it.validate() }.toZkRequest()
 )
-
-// Synthetic input retains whitespace, field order and non-ASCII UTF-8 bytes to detect reserialization.
-private fun approvalJson(
-    hashAlgorithmOid: String,
-    queryIds: List<String>? = listOf("approval-credential"),
-) = """{
-    "type": "https://cloudsignatureconsortium.org/2025/qes-approval",
-    ${queryIds?.let { "\"credential_ids\": ${Json.encodeToString(it)}," }.orEmpty()}
-    "signatureQualifier": "eu_eidas_qes",
-    "numSignatures": 1,
-    "documentDigests": [{ "label": "Conträct", "hash": "AQID" }],
-    "hashAlgorithmOID": "$hashAlgorithmOid"
-}""".trimIndent()
-
-private suspend fun Holder.createMultiQueryPresentation(transactionData: List<JsonPrimitive>) =
-    createDefaultPresentation(
-        request = presentationRequest().copy(transactionData = transactionData),
-        credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-            Json.decodeFromString<DCQLQuery>(
-                """{
-                    "credentials": [
-                        {
-                            "id": "approval-credential", "format": "mso_mdoc",
-                            "meta": { "doctype_value": "${ConstantIndex.AtomicAttribute2023.isoDocType}" }
-                        },
-                        {
-                            "id": "identity-credential", "format": "mso_mdoc",
-                            "meta": { "doctype_value": "${ConstantIndex.AtomicAttribute2023.isoDocType}" },
-                            "claims": [{ "path": [
-                                "${ConstantIndex.AtomicAttribute2023.isoNamespace}", "$CLAIM_GIVEN_NAME"
-                            ] }]
-                        }
-                    ]
-                }""".trimIndent()
-            )
-        ),
-    ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.DCQLParameters>()
-        .verifiablePresentations.also {
-            it.keys shouldBe setOf(
-                DCQLCredentialQueryIdentifier("approval-credential"),
-                DCQLCredentialQueryIdentifier("identity-credential"),
-            )
-        }
-
-private fun List<CreatePresentationResult>.approvalDigest(): ByteArray? =
-    single().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
-        .deviceResponse.documents.shouldNotBeNull().single().deviceSigned.namespaces.value
-        .entries[QesApprovalBinding.NAMESPACE]?.entries
-        ?.single { it.key == QesApprovalBinding.DATA_ELEMENT_IDENTIFIER }?.value
-        ?.shouldBeInstanceOf<ByteArray>()
