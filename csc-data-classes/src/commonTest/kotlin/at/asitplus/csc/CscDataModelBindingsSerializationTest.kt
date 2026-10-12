@@ -18,6 +18,7 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 
 private val bindingJson = Json {
     encodeDefaults = false
@@ -31,7 +32,7 @@ private inline fun <reified T> T.shouldRoundTripAs(expected: String) {
 }
 
 val CscDataModelBindingsSerializationTest by matrixSuite {
-    test("qes signature request flattens document reference and AdES fields") {
+    "qes signature request flattens document reference and AdES fields" {
         QesSignatureRequest(
             document = DocumentReference(
                 label = "Contract",
@@ -46,20 +47,51 @@ val CscDataModelBindingsSerializationTest by matrixSuite {
         )
     }
 
-    test("qes signature request flattens inline document data") {
+    "qes signature request preserves checksum supplied through document reference" - {
+        listOf(false, true).asData(nameFn = { "encodeDefaults=$it" }) test { encodeDefaults ->
+            val json = Json {
+                this.encodeDefaults = encodeDefaults
+                explicitNulls = true
+            }
+            val document = DocumentReference(
+                href = "https://example.test/a.pdf",
+                checksum = Hash(byteArrayOf(7, 8, 9), ObjectIdentifier("2.16.840.1.101.3.4.2.1")),
+            )
+            val request = QesSignatureRequest(
+                document = document,
+                signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+            )
+
+            val encoded = json.encodeToString(request)
+            Json.parseToJsonElement(encoded).jsonObject["checksum"] shouldBe
+                    Json.parseToJsonElement("""{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"}""")
+
+            val decoded = json.decodeFromString<QesSignatureRequest>(encoded)
+            decoded.document shouldBe document
+            decoded shouldBe request
+        }
+    }
+
+    "qes signature request flattens inline document data" {
         QesSignatureRequest(
             document = DocumentData(label = "Inline", document = byteArrayOf(1, 2, 3)),
             signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
         ).shouldRoundTripAs("""{"label":"Inline","document":"AQID","signatureQualifier":"eu_eidas_qes"}""")
     }
 
-    test("qes approval document flattens both documentInfo and documentReference forms") {
+    "qes approval document flattens both documentInfo and documentReference forms" {
         val infoForm = QesApprovalDocument(documentInfo = DocumentInfo(label = "Contract", hash = byteArrayOf(1, 2, 3)))
         val encodedInfo = bindingJson.encodeToString(infoForm)
         Json.parseToJsonElement(encodedInfo) shouldBe Json.parseToJsonElement("""{"label":"Contract","hash":"AQID"}""")
-        bindingJson.decodeFromString<QesApprovalDocument>(encodedInfo).documentInfo?.hash?.contentEquals(byteArrayOf(1, 2, 3)) shouldBe true
+        bindingJson.decodeFromString<QesApprovalDocument>(encodedInfo).documentInfo?.hash
+            ?.contentEquals(byteArrayOf(1, 2, 3)) shouldBe true
 
-        val referenceForm = QesApprovalDocument(documentReference = DocumentReference(label = "Terms", href = "https://example.test/terms.pdf"))
+        val referenceForm = QesApprovalDocument(
+            documentReference = DocumentReference(
+                label = "Terms",
+                href = "https://example.test/terms.pdf"
+            )
+        )
         val encodedReference = bindingJson.encodeToString(referenceForm)
         Json.parseToJsonElement(encodedReference) shouldBe
                 Json.parseToJsonElement("""{"label":"Terms","href":"https://example.test/terms.pdf"}""")
@@ -67,20 +99,20 @@ val CscDataModelBindingsSerializationTest by matrixSuite {
                 "https://example.test/terms.pdf"
     }
 
-    test("qes response uses CSC Base64 encoding inside the X.509 response") {
+    "qes response uses CSC Base64 encoding inside the X.509 response" {
         X509PresentationResponse(
             qes = QesResponse(documentWithSignature = listOf(byteArrayOf(1, 2, 3))),
         ).shouldRoundTripAs("""{"qes":{"documentWithSignature":["AQID"]}}""")
     }
 
-    test("qes response supports detached inline signatures and an empty out-of-band body") {
+    "qes response supports detached inline signatures and an empty out-of-band body" {
         QesResponse(signatureObject = listOf(byteArrayOf(4, 5, 6))).shouldRoundTripAs(
             """{"signatureObject":["BAUG"]}""",
         )
         QesResponse().shouldRoundTripAs("{}")
     }
 
-    test("X.509 metadata query serializes fingerprints, policies, and key constraints") {
+    "X.509 metadata query serializes fingerprints, policies, and key constraints" {
         X509MetadataQuery(
             certificateFingerprints = listOf(Hash(byteArrayOf(4, 5), ObjectIdentifier("2.16.840.1.101.3.4.2.1"))),
             certificatePolicies = listOf("1.2.3.4"),
@@ -90,7 +122,7 @@ val CscDataModelBindingsSerializationTest by matrixSuite {
         )
     }
 
-    test("qesApproval identifiers match the credential-format binding") {
+    "qesApproval identifiers match the credential-format binding" {
         QesApprovalBinding.NAMESPACE shouldBe "org.cloudsignatureconsortium.dm.1"
         QesApprovalBinding.DATA_ELEMENT_IDENTIFIER shouldBe "qesApproval"
         QesApprovalBinding.SD_JWT_CLAIM shouldBe "org.cloudsignatureconsortium.dm.1.qesApproval"
