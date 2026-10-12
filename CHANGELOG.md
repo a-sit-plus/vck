@@ -107,6 +107,15 @@ Release 9.0.0 (unreleased):
       (ETSI TS 119 472-3 V1.1.1, 4.2), whose chain leads to an anchor of the WRPAC providers. It returns a report, and
       the metadata with the signing WRPAC if accepted; a policy not requiring trust lets a wallet warn about an
       untrusted provider instead of rejecting it
+    - The metadata have to carry `issuer_info` with the registration information of the provider
+      (`registrar_dataset`), and may carry its registration certificate (`registration_cert`), which is validated as
+      for relying parties, has to be issued to the identifier of the WRPAC, and has to register the provider with an
+      entitlement of attestation providers (ETSI TS 119 472-3 V1.1.1, 4.2.3; ETSI TS 119 475 V1.2.1, A.2). Accepted
+      metadata come with a `ValidatedCredentialIssuer`
+    - Add `IssuerMetadata.issuerInfo` with `IssuerInfo`, whose `data` is a JSON element, and
+      `OpenIdConstants.IssuerInfo`; add `WrpRegistrarDataset`, `WrpMultiLangString`, and the entitlements of
+      attestation providers in `WrpConstants` to `etsi-data-classes`
+    - Add `OpenId4VciServer.issuerInfo`, served in the signed metadata
     - Renamed `WalletService` (in `vck-openid`) to `OpenId4VciClient`
     - Renamed `OpenId4VciClient` (in `vck-openid-ktor`) to `OpenId4VciKtorClient`
     - Renamed `CredentialIssuer` (in `vck-openid`) to `OpenId4VciServer`

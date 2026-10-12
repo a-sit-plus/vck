@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.Wr
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.RegistrationPurpose
 import at.asitplus.wallet.lib.validation.SignatureCheck
 import at.asitplus.wallet.lib.validation.WRPRC_CWT_TYPE
 import at.asitplus.wallet.lib.validation.WRPRC_JWT_TYPE
@@ -114,7 +115,7 @@ class WrprcValidator(
         val evaluation = evaluateRegistrationCertificate(
             certificate = certificate,
             accessIdentifier = identifierResult,
-            requests = emptyList(),
+            purpose = RegistrationPurpose.Presentation(emptyList()),
             anchors = certificateTrustAnchors,
             source = "certificateTrustAnchors",
             signatureCheck = SignatureCheck(),

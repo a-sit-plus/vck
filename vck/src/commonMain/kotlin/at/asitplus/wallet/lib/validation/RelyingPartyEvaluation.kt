@@ -138,9 +138,17 @@ internal class RegistrationCertificateEvaluation(
     )
 }
 
+/** What a WRPRC has to register the wallet-relying party for. */
+internal sealed interface RegistrationPurpose {
+    /** Requesting the credential [requests] from a wallet, as a relying party. */
+    class Presentation(val requests: List<WrpCredentialRequest>) : RegistrationPurpose
+
+    /** Issuing attestations to a wallet, as a PID or attestation provider (ETSI TS 119 472-3 V1.1.1, 4.2.3). */
+    data object Issuance : RegistrationPurpose
+}
+
 /**
- * Evaluates a WRPRC of a request by the wallet-relying party with the WRPAC [accessIdentifier], for the credential
- * [requests] it covers:
+ * Evaluates a WRPRC of the wallet-relying party with the WRPAC [accessIdentifier], for its [purpose]:
  *  - `parsing`: `typ` is `rc-wrp+jwt` or `rc-wrp+cwt`, and the certificate chain is in `x5c` or `x5chain`
  *    (ETSI TS 119 475 V1.2.1, 5.2.2, 5.2.3); the payload has the claims the registry provides, see
  *    [requireClaims];
@@ -149,13 +157,15 @@ internal class RegistrationCertificateEvaluation(
  *  - `timeliness`: `iat` is not in the future, `exp` is not in the past, and the WRPRC is valid for at most
  *    [maxValidity] (GEN-5.2.4-08: not later than 12 months after `iat`);
  *  - `linkage`: `sub` is the identifier of the WRPAC (GEN-5.2.4-02);
- *  - `requestAuthorization`: every requested credential type and claim is registered, else failed with an
- *    [UnregisteredRequestException].
+ *  - `requestAuthorization`: for [RegistrationPurpose.Presentation], every requested credential type and claim is
+ *    registered, else failed with an [UnregisteredRequestException]; for [RegistrationPurpose.Issuance], one of
+ *    the entitlements of attestation providers is registered (ETSI TS 119 475 V1.2.1, 4.2, A.2), as
+ *    `provides_attestations` is only present for them (B.2.1).
  */
 internal suspend fun evaluateRegistrationCertificate(
     certificate: WrpRegistrationCertificate,
     accessIdentifier: WrpacIdentifier?,
-    requests: List<WrpCredentialRequest>,
+    purpose: RegistrationPurpose,
     anchors: TrustedCertificates?,
     source: String,
     signatureCheck: SignatureCheck,
@@ -182,7 +192,7 @@ internal suspend fun evaluateRegistrationCertificate(
     }.toOutcome()
     return RegistrationCertificateEvaluation(
         header = header,
-        claims = catching { payload.requireClaims() }.toOutcome(),
+        claims = catching { payload.requireClaims(purpose) }.toOutcome(),
         signature = verification.outcome,
         trust = TrustValidation(
             outcome = checkTrust(chain, anchors?.invoke(), timeScope.now, TrustRule.CHAIN_TO_ANCHOR),
@@ -194,12 +204,49 @@ internal suspend fun evaluateRegistrationCertificate(
             accessIdentifier.identifier == payload.subjectIdentifier -> Passed
             else -> Failed(IllegalArgumentException("The sub of the WRPRC is not the identifier of the WRPAC"))
         },
-        requestAuthorization = catching { requireRegistered(requests, payload) }.toOutcome(),
+        requestAuthorization = catching {
+            when (purpose) {
+                is RegistrationPurpose.Presentation -> requireRegistered(purpose.requests, payload)
+                RegistrationPurpose.Issuance -> require(
+                    payload.entitlements.any { it in WrpConstants.ATTESTATION_PROVIDER_ENTITLEMENTS }
+                ) { "The WRPRC does not entitle the provider to issue attestations" }
+            }
+        }.toOutcome(),
         status = TokenStatusInfo.from(
             payload.status.statusList.let { StatusListInfo(it.idx, UniformResourceIdentifier(it.uri)) }
         ),
     )
 }
+
+/**
+ * The status of the WRPRC of [evaluation], only resolved for a WRPRC that is valid otherwise, as for credentials
+ * (draft-ietf-oauth-status-list-21, 8.3); its signer has to be authorized by [anchors] (ETSI TS 119 475 V1.2.1,
+ * 6.2.6.2).
+ */
+internal suspend fun registrationStatus(
+    evaluation: RegistrationCertificateEvaluation,
+    policy: ValidationPolicy,
+    now: Instant,
+    statusValidator: StatusValidator,
+    anchors: TrustedCertificates?,
+): StatusValidation {
+    val withoutStatus = evaluation.checks(StatusValidation(NotApplicable, emptyList(), NotApplicable))
+    if (policy.status != StatusPolicy.Skip && !withoutStatus.meets(policy.copy(status = StatusPolicy.Skip))) {
+        return StatusValidation(
+            claim = Blocked(IllegalStateException("The status of an invalid WRPRC is not resolved")),
+            agreement = NotApplicable,
+        )
+    }
+    return statusValidator.validate(
+        status = evaluation.status,
+        signerAnchors = StatusSignerAnchors.OfArtifactKind(anchors, REGISTRATION_STATUS_SIGNERS),
+        policy = policy.status,
+        timeLeeway = policy.timeLeeway,
+        evaluatedAt = now,
+    )
+}
+
+private const val REGISTRATION_STATUS_SIGNERS = "WRPRC status list signers"
 
 internal const val WRPRC_JWT_TYPE = "rc-wrp+jwt"
 internal const val WRPRC_CWT_TYPE = "rc-wrp+cwt"
@@ -207,15 +254,18 @@ internal const val WRPRC_CWT_TYPE = "rc-wrp+cwt"
 /**
  * The payload includes the fields the registry provides (ETSI TS 119 475 V1.2.1, 5.2.4, GEN-5.2.4-01, Table 7),
  * as far as they can be missing in [WrpPayload]: `name`, `srv_description`, and the `policy_id` of a WRPRC
- * (6.1.3), and the credentials it is registered for (EUDI TS5). Value constraints of claims are not evaluated, so a
- * WRPRC with them is not supported: authorizing its paths would widen a value-restricted registration.
+ * (6.1.3), and, for [RegistrationPurpose.Presentation], the credentials it is registered for (EUDI TS5). Value
+ * constraints of claims are not evaluated, so a WRPRC with them is not supported for presentation: authorizing its
+ * paths would widen a value-restricted registration.
  */
-private fun WrpPayload.requireClaims() {
+private fun WrpPayload.requireClaims(purpose: RegistrationPurpose) {
     requireNotNull(name) { "The WRPRC has no name" }
     require(srvDescription.isNotEmpty()) { "The WRPRC has no srv_description" }
-    require(credentials.isNotEmpty()) { "The WRPRC has no credentials" }
-    require(credentials.none { credential -> credential.claim.any { it.values != null } }) {
-        "WRPRC claim values are not supported for authorization"
+    if (purpose is RegistrationPurpose.Presentation) {
+        require(credentials.isNotEmpty()) { "The WRPRC has no credentials" }
+        require(credentials.none { credential -> credential.claim.any { it.values != null } }) {
+            "WRPRC claim values are not supported for authorization"
+        }
     }
     require(policyId.contains(WrpConstants.POLICY_IDENTIFIER)) {
         "The WRPRC lacks the policy identifier ${WrpConstants.POLICY_IDENTIFIER}"

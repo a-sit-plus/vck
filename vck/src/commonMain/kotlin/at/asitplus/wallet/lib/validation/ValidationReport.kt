@@ -342,12 +342,19 @@ data class ValidationReport private constructor(
             evaluatedAt: Instant,
         ) = leaf(checks, checks.meets(policy), evaluatedAt)
 
-        /** Report of signed credential issuer metadata, as received by a wallet. */
+        /**
+         * Report of signed credential issuer metadata, as received by a wallet, accepted if every check [policy]
+         * requires passed, and the [registrationCertificate] of the issuer, if any, is accepted.
+         */
         fun issuerMetadata(
             checks: IssuerMetadataChecks,
             policy: ValidationPolicy,
             evaluatedAt: Instant,
-        ) = leaf(checks, checks.meets(policy), evaluatedAt)
+            registrationCertificate: ValidationReport? = null,
+        ): ValidationReport {
+            val children = listOfNotNull(registrationCertificate).requireChecks<RegistrationCertificateChecks>()
+            return parent(checks, children, checks.meets(policy), evaluatedAt)
+        }
 
         private fun leaf(checks: ValidationChecks, accepted: Boolean, evaluatedAt: Instant) =
             ValidationReport(checks, emptyList(), accepted.toDecision(), evaluatedAt)
