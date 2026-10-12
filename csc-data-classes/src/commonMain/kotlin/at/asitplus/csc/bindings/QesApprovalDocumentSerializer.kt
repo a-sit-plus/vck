@@ -5,6 +5,7 @@ import at.asitplus.csc.datamodel.documents.DocumentReference
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.elementNames
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonTransformingSerializer
 import kotlinx.serialization.json.buildJsonObject
@@ -19,16 +20,18 @@ object QesApprovalDocumentSerializer :
 
     override fun transformSerialize(element: JsonElement): JsonElement = buildJsonObject {
         element.jsonObject.values.forEach { component ->
-            component.jsonObject.forEach { (key, value) -> put(key, value) }
+            if (component !is JsonNull) {
+                component.jsonObject.forEach { (key, value) -> put(key, value) }
+            }
         }
     }
 
     override fun transformDeserialize(element: JsonElement): JsonElement = buildJsonObject {
         val properties = element.jsonObject
         if ("hash" in properties) put(
-                QesApprovalDocument::documentInfo.name,
-                JsonObject(properties.filterKeys(documentInfoKeys::contains)),
-            )
+            QesApprovalDocument::documentInfo.name,
+            JsonObject(properties.filterKeys(documentInfoKeys::contains)),
+        )
         if ("href" in properties) {
             val reference = properties.filterKeys(documentReferenceKeys::contains)
             put(
