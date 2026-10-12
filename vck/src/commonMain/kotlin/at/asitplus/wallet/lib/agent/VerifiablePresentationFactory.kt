@@ -18,23 +18,23 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
-import at.asitplus.iso.DeviceSignedItem
-import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.DeviceSignedItem
+import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.ZkDocument
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.openid.QesApprovalRequest
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
-import at.asitplus.openid.QesApprovalRequest
 import at.asitplus.openid.truncateToSeconds
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.supreme.hash.digest
@@ -58,14 +58,14 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import io.github.aakira.napier.Napier
 import io.github.z4kn4fein.semver.Version
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlin.time.Clock
 
 class VerifiablePresentationFactory(
@@ -237,9 +237,13 @@ class VerifiablePresentationFactory(
     ): KmmResult<Document> = catching {
         // grouping by namespace and all requested claims for that namespace
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
-            .mapNotNull { path -> path.toIsoNamespaceAttribute().also { if (it == null) {
-                Napier.w { "Ignoring requested claim '$path': does not follow namespaced path format (expected 2 segments)." }
-            } } }
+            .mapNotNull { path ->
+                path.toIsoNamespaceAttribute().also {
+                    if (it == null) {
+                        Napier.w { "Ignoring requested claim '$path': does not follow namespaced path format (expected 2 segments)." }
+                    }
+                }
+            }
             .groupBy { it.first }
             .mapValues { it.value.map { it.second } }
         val disclosedItems = namespaceToAttributesMap.mapValues { entry ->
@@ -450,6 +454,10 @@ class VerifiablePresentationFactory(
      * Computes qesApproval when a qesApprovalRequest is present, following the approved decisions in
      * csc-data-classes/STANDARDS_CONFLICTS.md.
      *
+     * DCQL response creation supplies the approval selected for this submission in qesApprovalTransactionData,
+     * or an empty list when the submission does not authorize QES. Direct callers default to transactionData.
+     * The single-approval limit applies to this presentation, not to the complete DCQL request.
+     *
      * For mdoc, use the supported algorithm identified by the request's hashAlgorithmOID, following ETSI TS 119 432
      * V1.3.1 B.6.3. This intentionally differs from CSC Data Model Bindings 1.0.0 section 7.2.1.1's fixed SHA-256.
      *
@@ -459,7 +467,7 @@ class VerifiablePresentationFactory(
      * Parsing is only used to identify the request and its algorithm; never reserialize JSON before hashing.
      */
     private fun PresentationRequestParameters.qesApprovalDigest(encodedTransactionData: Boolean): ByteArray? {
-        val matching = transactionData.orEmpty().mapNotNull { transactionData ->
+        val matching = (qesApprovalTransactionData ?: transactionData).orEmpty().mapNotNull { transactionData ->
             val decoded = transactionData.content.decodeToByteArray(Base64UrlStrict)
             val json = Json.parseToJsonElement(decoded.decodeToString()).jsonObject
             if (json["type"]?.jsonPrimitive?.content != QesApprovalRequest.TYPE) {
