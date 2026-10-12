@@ -147,13 +147,18 @@ internal fun KeyAttestationChecks.meets(policy: ValidationPolicy): Boolean =
             && status.meets(policy.status)
             && nonce.satisfies(REQUIRED_IF_APPLICABLE)
 
+/**
+ * The proof of possession can not be relaxed; with DPoP, its time and challenge are checks of the DPoP proof
+ * (draft-ietf-oauth-attestation-based-client-auth-10, 6).
+ */
 internal fun ClientAttestationChecks.meets(policy: ValidationPolicy): Boolean =
     parsing.satisfies(REQUIRED)
             && signature.satisfies(REQUIRED)
             && trust.outcome.satisfies(policy.trust.requirement)
             && timeliness.satisfies(policy.timelinessRequirement)
             && status.meets(policy.status)
-            && listOf(clientId, popSignature, popTime, audience, challenge).all { it.satisfies(REQUIRED) }
+            && popSignature.satisfies(REQUIRED)
+            && listOf(clientId, popTime, audience, challenge).all { it.satisfies(REQUIRED_IF_APPLICABLE) }
 
 /**
  * An unsigned request, e.g. with the `redirect_uri` prefix, has neither a signature nor a signer to trust; a signed

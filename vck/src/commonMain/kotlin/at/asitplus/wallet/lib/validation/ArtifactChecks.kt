@@ -56,15 +56,24 @@ data class ClientAttestationChecks(
     val timeliness: CheckOutcome,
     /** The status of `client_status`. */
     val status: StatusValidation,
-    /** `sub` of the attestation is the client identifier. */
+    /** `sub` of the attestation is the client identifier of the request, not applicable without one. */
     val clientId: CheckOutcome,
-    /** The proof of possession is signed with the attestation's `cnf` key, and its `iss` is the attestation's `sub`. */
+    /**
+     * The proof of possession is signed with the attestation's `cnf` key, and its `iss`, if any, is the
+     * attestation's `sub`; or, with DPoP, the key of the DPoP proof is the `cnf` key.
+     */
     val popSignature: CheckOutcome,
-    /** `iat` and `exp` of the proof of possession. Never relaxed by the policy. */
+    /**
+     * `iat` and `exp` of the proof of possession. Never relaxed by the policy. Not applicable to a DPoP proof, which
+     * is validated with the DPoP proof of the request.
+     */
     val popTime: CheckOutcome,
-    /** `aud` of the proof of possession is this server. */
+    /** `aud` of the proof of possession is this server, not applicable where its identifier is not known. */
     val audience: CheckOutcome,
-    /** The challenge is valid and consumed. */
+    /**
+     * The challenge is valid; it is consumed only once the attestation is accepted. Not applicable to a DPoP proof,
+     * whose `nonce` is validated with the DPoP proof of the request.
+     */
     val challenge: CheckOutcome,
 ) : ValidationChecks
 
