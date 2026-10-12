@@ -41,6 +41,14 @@ Release 9.0.0 (unreleased):
       `credential_configurations_supported` is REQUIRED in OID4VCI; issuer metadata without it now fails to deserialize
     - Add `WalletService.createCredential(metadata, credentialConfigurationId, ...)` to request exactly one credential
       by its `credential_configuration_id`
+    - BREAKING: `ProofValidator` takes a `KeyAttestationValidator` (in `vck`) instead of `verifyKeyAttestationSignature`
+      and `statusListTokenResolver`: configure it with the anchors of the wallet providers, whose certificate in
+      `x5c` has to sign key attestations (EUDI TS3, 2.2.2.2), and a status list token resolver for
+      `key_storage_status`. Without anchors, key attestations are rejected, as before
+    - Add `ProofValidator.validateProofs(params, policy)`, reporting every proof with its key attestation;
+      `validateProofExtractSubjectPublicKeys` delegates to it. A key attestation embedded in a `jwt` proof needs a
+      server-provided `c_nonce` and `exp` (OpenID4VCI 1.0, F.1, D.1), a `jwt` proof at most one of `kid`, `jwk`, and
+      `x5c`; a key attestation no longer needs `user_authentication`, and may contain `iss` (EUDI TS3, 2.3.2)
 - HTTP error handling:
     - Add `HttpErrorResponseException` and `ProblemDetails` in `vck-openid` (package `at.asitplus.wallet.lib`), so
       OAuth 2.0 errors and RFC 9457 problem details of non-success responses are available without a ktor client.
