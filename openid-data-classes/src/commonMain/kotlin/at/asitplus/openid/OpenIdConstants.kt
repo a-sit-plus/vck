@@ -409,6 +409,17 @@ object OpenIdConstants {
         const val REGISTRATION_CERT_FORMAT = "registration_cert"
     }
 
+    /**
+     * Formats of [at.asitplus.openid.IssuerInfo], see ETSI TS 119 472-3 V1.1.1, 4.2.3.
+     */
+    object IssuerInfo {
+        /** The registration certificate (WRPRC) of the provider (ISS-MDATA-REG_CERT-4.2.3-05). */
+        const val REGISTRATION_CERT_FORMAT = "registration_cert"
+
+        /** The registration information of the provider, provided by its registrar (ISS-MDATA-REG_CERT-4.2.3-08). */
+        const val REGISTRAR_DATASET_FORMAT = "registrar_dataset"
+    }
+
 
     /**
      * See
