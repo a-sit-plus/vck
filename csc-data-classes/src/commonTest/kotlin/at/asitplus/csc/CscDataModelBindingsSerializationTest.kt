@@ -108,6 +108,25 @@ val CscDataModelBindingsSerializationTest by matrixSuite {
                 "https://example.test/terms.pdf"
     }
 
+    "qes approval document flattens single-component forms with defaults enabled" - {
+        listOf(
+            QesApprovalDocument(
+                documentInfo = DocumentInfo(label = "Contract", hash = byteArrayOf(1, 2, 3)),
+            ) to """{"label":"Contract","hash":"AQID","hashType":null,"signed_props":null,"circumstantialData":null}""",
+            QesApprovalDocument(
+                documentReference = DocumentReference(label = "Terms", href = "https://example.test/terms.pdf"),
+            ) to """{"label":"Terms","access":null,"href":"https://example.test/terms.pdf","checksum":null,"circumstantialData":null}""",
+        ).asData(nameFn = { (document, _) ->
+            if (document.documentInfo != null) "documentInfo only" else "documentReference only"
+        }) test { (document, expected) ->
+            val json = Json { encodeDefaults = true }
+
+            val encoded = json.encodeToString(document)
+            Json.parseToJsonElement(encoded) shouldBe Json.parseToJsonElement(expected)
+            json.decodeFromString<QesApprovalDocument>(encoded) shouldBe document
+        }
+    }
+
     "qes response uses CSC Base64 encoding inside the X.509 response" {
         X509PresentationResponse(
             qes = QesResponse(documentWithSignature = listOf(byteArrayOf(1, 2, 3))),
