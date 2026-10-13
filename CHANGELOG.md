@@ -175,6 +175,9 @@ Release 9.0.0 (unreleased):
       (`application/jwt`) over unsigned ones (OpenID4VCI 1.0, 12.2.2), and returning `LoadedIssuerMetadata`: `Signed`
       with the `IssuerMetadataValidation` of the new constructor parameter `issuerMetadataValidator`, also if
       rejected, or `Unsigned`, which the wallet may reject, e.g. as the EUDI Wallet ecosystem requires signed metadata
+    - Add `CredentialIdentifierInfo.issuer`, the `ValidatedCredentialIssuer` of signed metadata, which is now
+      serializable, so that it is kept in `ProvisioningContext` during the authorization in the browser; add
+      `parseCredentialMetadata(loaded: LoadedIssuerMetadata)`, setting it, and failing for rejected signed metadata
     - `loadIssuerMetadata(credentialIssuer)` and `loadCredentialMetadata(host)` ask for `application/json`, and fail
       for metadata whose `credential_issuer` is not the requested identifier, whose data "MUST NOT be used"
       (OpenID4VCI 1.0, 12.2.4)

@@ -33,6 +33,7 @@ import at.asitplus.wallet.lib.oauth2.PlainExchange
 import at.asitplus.wallet.lib.oauth2.ValueExchange
 import at.asitplus.wallet.lib.validation.IssuerMetadataValidation
 import at.asitplus.wallet.lib.validation.IssuerMetadataValidator
+import at.asitplus.wallet.lib.validation.ValidatedCredentialIssuer
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -169,20 +170,38 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         }
 
     /**
-     * Parses [issuerMetadata] and returns a list of [CredentialIdentifierInfo].
+     * Parses [issuerMetadata] and returns a list of [CredentialIdentifierInfo], with the [issuer] validated from
+     * signed metadata, if any.
      */
+    @JvmOverloads
     fun parseCredentialMetadata(
-        issuerMetadata: IssuerMetadata
+        issuerMetadata: IssuerMetadata,
+        issuer: ValidatedCredentialIssuer? = null,
     ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
         issuerMetadata.supportedCredentialConfigurations.map {
             CredentialIdentifierInfo(
                 issuerMetadata = issuerMetadata,
                 credentialIdentifier = it.key,
-                supportedCredentialFormat = it.value
+                supportedCredentialFormat = it.value,
+                issuer = issuer,
             )
         }.also {
             Napier.i("parseCredentialMetadata returns $it")
         }
+    }
+
+    /**
+     * Parses the metadata of [loaded] and returns a list of [CredentialIdentifierInfo], each with the credential issuer
+     * validated from signed metadata, see [LoadedIssuerMetadata.Signed]. Fails for signed metadata that have been
+     * rejected, see their report.
+     */
+    fun parseCredentialMetadata(
+        loaded: LoadedIssuerMetadata,
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
+        val metadata = loaded.metadata
+            ?: throw IllegalArgumentException("The signed metadata have been rejected, see their report")
+        val issuer = (loaded as? LoadedIssuerMetadata.Signed)?.validation?.issuer
+        parseCredentialMetadata(metadata, issuer).getOrThrow()
     }
 
     /**
@@ -353,4 +372,9 @@ data class CredentialIdentifierInfo(
     val issuerMetadata: IssuerMetadata,
     val credentialIdentifier: String,
     val supportedCredentialFormat: SupportedCredentialFormat,
+    /**
+     * The credential issuer, as validated from its signed metadata, e.g. to show it to the user during the issuance;
+     * `null` for unsigned metadata.
+     */
+    val issuer: ValidatedCredentialIssuer? = null,
 )

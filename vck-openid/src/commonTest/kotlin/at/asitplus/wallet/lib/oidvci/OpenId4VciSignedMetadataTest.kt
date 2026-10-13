@@ -70,6 +70,31 @@ val OpenId4VciSignedMetadataTest by matrixSuite {
         loaded.metadata.shouldNotBeNull().credentialIssuer shouldBe ISSUER
     }
 
+    "credential configurations of signed metadata carry the validated issuer, also when serialized" {
+        val signing = SigningIssuer()
+        val client = signing.client()
+        val loaded = signing.metadataEndpoint().execute(client.loadIssuerMetadata(ISSUER, strictPolicy))
+
+        val info = client.parseCredentialMetadata(loaded).getOrThrow().first()
+
+        info.issuer.shouldNotBeNull().registrarDataset.registryURI shouldBe REGISTRY
+        val serialized = joseCompliantSerializer.encodeToString(CredentialIdentifierInfo.serializer(), info)
+        joseCompliantSerializer.decodeFromString(CredentialIdentifierInfo.serializer(), serialized) shouldBe info
+    }
+
+    "credential configurations of unsigned metadata carry no issuer, rejected signed metadata none at all" {
+        val signing = SigningIssuer()
+        val unsigned = FakeHttpStack(scripted(jsonResponse(signing.server.metadata)))
+            .execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+        val untrusting = OpenId4VciProtocolClient(
+            issuerMetadataValidator = IssuerMetadataValidator(accessCertificates = { emptySet() }),
+        )
+        val rejected = signing.metadataEndpoint().execute(untrusting.loadIssuerMetadata(ISSUER, strictPolicy))
+
+        signing.client().parseCredentialMetadata(unsigned).getOrThrow().first().issuer.shouldBeNull()
+        untrusting.parseCredentialMetadata(rejected).isFailure shouldBe true
+    }
+
     "signed metadata of an untrusted issuer are rejected, or reported for a warning" {
         val signing = SigningIssuer()
         val http = signing.metadataEndpoint()

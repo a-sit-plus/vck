@@ -155,8 +155,8 @@ class OpenId4VciKtorClient private constructor(
 
     /**
      * Loads the metadata of [credentialIssuer], preferring signed metadata, which are validated under [policy], see
-     * [OpenId4VciProtocolClient.loadIssuerMetadata]. Use [LoadedIssuerMetadata.metadata] with
-     * [parseCredentialMetadata], if the wallet accepts them.
+     * [OpenId4VciProtocolClient.loadIssuerMetadata]. Pass them to [parseCredentialMetadata], if the wallet accepts
+     * them, so that every [CredentialIdentifierInfo] carries the validated credential issuer.
      */
     suspend fun loadIssuerMetadata(
         credentialIssuer: String,
@@ -171,6 +171,14 @@ class OpenId4VciKtorClient private constructor(
     fun parseCredentialMetadata(
         issuerMetadata: IssuerMetadata
     ): KmmResult<Collection<CredentialIdentifierInfo>> = vci.parseCredentialMetadata(issuerMetadata)
+
+    /**
+     * Parses the metadata of [loaded], see [loadIssuerMetadata], and returns a list of [CredentialIdentifierInfo], each
+     * with the credential issuer validated from signed metadata. Fails for signed metadata that have been rejected.
+     */
+    fun parseCredentialMetadata(
+        loaded: LoadedIssuerMetadata,
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = vci.parseCredentialMetadata(loaded)
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
