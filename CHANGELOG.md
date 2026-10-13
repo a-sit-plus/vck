@@ -170,6 +170,14 @@ Release 9.0.0 (unreleased):
     - Form-encoded requests (PAR, token, token introspection) are sent as `application/x-www-form-urlencoded` without
       `charset` in the `Content-Type`, as the media type defines no such parameter
 - OpenID for Verifiable Credential Issuance client:
+    - Add `OpenId4VciProtocolClient.loadIssuerMetadata(credentialIssuer, policy)` and
+      `OpenId4VciKtorClient.loadIssuerMetadata(credentialIssuer, policy)`, asking for signed metadata
+      (`application/jwt`) over unsigned ones (OpenID4VCI 1.0, 12.2.2), and returning `LoadedIssuerMetadata`: `Signed`
+      with the `IssuerMetadataValidation` of the new constructor parameter `issuerMetadataValidator`, also if
+      rejected, or `Unsigned`, which the wallet may reject, e.g. as the EUDI Wallet ecosystem requires signed metadata
+    - `loadIssuerMetadata(credentialIssuer)` and `loadCredentialMetadata(host)` ask for `application/json`, and fail
+      for metadata whose `credential_issuer` is not the requested identifier, whose data "MUST NOT be used"
+      (OpenID4VCI 1.0, 12.2.4)
     - Add `IssuerMetadataValidator` in `vck`, validating signed credential issuer metadata (OpenID4VCI 1.0, 12.2.3)
       for the identifier it was requested for, signed with the access certificate (WRPAC) of the provider in `x5c`
       (ETSI TS 119 472-3 V1.1.1, 4.2), whose chain leads to an anchor of the WRPAC providers. It returns a report, and
