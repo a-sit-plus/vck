@@ -47,7 +47,10 @@ Release 9.0.0 (unreleased):
       validates the reader of a proximity presentation, e.g. over BLE or NFC (ISO/IEC 18013-5:2021, 9.1.4)
     - Add `AuthorizationRequestValidator.validate(request, policy)`, and
       `OpenId4VpHolder.startAuthorizationResponsePreparation(input, policy)` and its `DcApiHolder` overload,
-      returning the report of the request next to the preparation state, also for a rejected request.
+      returning the report of the request next to the preparation state, also for a rejected request; also
+      `OpenId4VpProtocolClient.prepareAuthorizationResponse(input, policy)`, loading a request object by reference,
+      and in `OpenId4VpKtorHolder` `startAuthorizationResponsePreparation(input, policy)`, its overload for parsed
+      requests, and `prepareDcApiRequest(request, policy)`.
       `OpenId4VpHolder`, `OpenId4VpKtorHolder`, and `DcApiHolder` take a `relyingPartyValidator`; deprecate
       `RelyingPartyTrust` and the constructors taking `relyingPartyTrust` (mapped by `toRelyingPartyValidator()`;
       `RelyingPartyTrust.Custom` no longer takes effect) or the unused `keyMaterial`

@@ -43,9 +43,14 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.RelyingPartyChecks
+import at.asitplus.wallet.lib.validation.ValidationDecision
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.encodeToByteArray
@@ -300,6 +305,33 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
         ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>()
             .documents.shouldNotBeEmpty()
     }
+
+    test("DC API holder reports no relying party for an Annex C request without registration certificates") {
+        val fixture = dcapiFixture()
+        val holderKey = EphemeralKeyWithoutCert()
+
+        DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
+            .startAuthorizationResponsePreparation(fixture.walletRequest, testPresentationPolicy).getOrThrow().apply {
+                validationReport.shouldBeNull()
+                preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()
+            }
+    }
+
+    test("DC API holder reports the relying party of an Annex C request with a registration certificate") {
+        val fixture = dcapiFixture(euWrprc = "not a registration certificate".encodeToByteArray())
+        val holderKey = EphemeralKeyWithoutCert()
+
+        DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
+            .startAuthorizationResponsePreparation(fixture.walletRequest, testPresentationPolicy).getOrThrow().apply {
+                validationReport.shouldNotBeNull().apply {
+                    decision shouldBe ValidationDecision.REJECTED
+                    checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                        .shouldBeInstanceOf<CheckOutcome.Failed>()
+                }
+                // the wallet may continue after the user decided to
+                preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()
+            }
+    }
 }
 
 private suspend fun dcapiFixture(
@@ -309,7 +341,8 @@ private suspend fun dcapiFixture(
             representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             attributePaths = setOf(DCQLClaimsPathPointer(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME)),
         )
-    )
+    ),
+    euWrprc: ByteArray? = null,
 ): DcapiFixture {
     val ephemeralKeyStore = DefaultMapStore<String, String>()
     val verifier = DcApiVerifier(
@@ -327,6 +360,7 @@ private suspend fun dcapiFixture(
             responseMode = OpenIdConstants.ResponseMode.DcApi,
             expectedOrigins = listOf(ORIGIN),
             state = STATE,
+            euWrprc = euWrprc,
         ),
         DcApiCreationOptions.Iso180137AnnexC,
     ).getOrThrow().digital.requests.single()

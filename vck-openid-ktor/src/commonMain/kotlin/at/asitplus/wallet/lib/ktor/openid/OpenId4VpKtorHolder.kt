@@ -22,9 +22,11 @@ import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthorizationRequestValidation
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.openid.DcApiHolder
 import at.asitplus.wallet.lib.openid.DcApiPreparationState
+import at.asitplus.wallet.lib.openid.DcApiRequestValidation
 import at.asitplus.wallet.lib.openid.Iso180137AnnexCHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient
@@ -33,6 +35,7 @@ import at.asitplus.wallet.lib.openid.toRelyingPartyValidator
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.validation.RelyingPartyValidator
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -290,6 +293,43 @@ class OpenId4VpKtorHolder(
         request: RequestParametersFrom.DcApiRequest,
     ): KmmResult<DcApiPreparationState> =
         dcApiHolder.startAuthorizationResponsePreparation(request)
+
+    /**
+     * Validates [request] under [policy], returning its report next to the state, see
+     * [OpenId4VpHolder.startAuthorizationResponsePreparation]. A rejected request is a successful result with its
+     * report and state, so the wallet can show why, answer with [sendAuthnErrorResponse], or continue after the user
+     * decided to. Its `wallet_nonce` is consumed, so validate a request once, with this method or the one without a
+     * policy, never with both.
+     */
+    suspend fun startAuthorizationResponsePreparation(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        policy: ValidationPolicy,
+    ): KmmResult<AuthorizationRequestValidation> =
+        openId4VpHolder.startAuthorizationResponsePreparation(request, policy)
+
+    /**
+     * Parses [input], loads the request object, and validates the request under [policy], returning its report next
+     * to the state, see [OpenId4VpProtocolClient.prepareAuthorizationResponse]. A rejected request is a successful
+     * result with its report and state; the result fails only for transport errors and input that can not be parsed.
+     * The `wallet_nonce` is consumed, so validate a request once, with this method or the one without a policy.
+     */
+    suspend fun startAuthorizationResponsePreparation(
+        input: String,
+        policy: ValidationPolicy,
+    ): KmmResult<AuthorizationRequestValidation> = catching {
+        client.execute(protocolClient.prepareAuthorizationResponse(input, policy))
+    }
+
+    /**
+     * Prepares either an OpenID4VP or Annex C request received through the Digital Credentials API under [policy],
+     * returning its report next to the state, see [DcApiHolder.startAuthorizationResponsePreparation]: `null` only for
+     * an Annex C request without registration certificates. A rejected request is a successful result.
+     */
+    suspend fun prepareDcApiRequest(
+        request: RequestParametersFrom.DcApiRequest,
+        policy: ValidationPolicy,
+    ): KmmResult<DcApiRequestValidation> =
+        dcApiHolder.startAuthorizationResponsePreparation(request, policy)
 
     /**
      * Calls [openId4VpHolder] to finalize the authentication response.
