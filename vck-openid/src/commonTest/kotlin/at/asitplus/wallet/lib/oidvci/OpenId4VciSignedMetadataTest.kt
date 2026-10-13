@@ -95,6 +95,30 @@ val OpenId4VciSignedMetadataTest by matrixSuite {
         untrusting.parseCredentialMetadata(rejected).isFailure shouldBe true
     }
 
+    "rejected signed metadata can be parsed ignoring trust, without an issuer, if signed for the credential issuer" {
+        val signing = SigningIssuer()
+        val untrusting = OpenId4VciProtocolClient(
+            issuerMetadataValidator = IssuerMetadataValidator(accessCertificates = { emptySet() }),
+        )
+        val rejected = signing.metadataEndpoint().execute(untrusting.loadIssuerMetadata(ISSUER, strictPolicy))
+        val accepted = signing.metadataEndpoint().execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+        val unsigned = FakeHttpStack(scripted(jsonResponse(signing.server.metadata)))
+            .execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+        // the endpoint serves the metadata of ISSUER, so their subject is not the one requested
+        val otherIssuer = signing.metadataEndpoint()
+            .execute(untrusting.loadIssuerMetadata("https://other.example.com", strictPolicy))
+
+        rejected.shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().untrustedMetadata.shouldNotBeNull()
+        untrusting.parseCredentialMetadataIgnoringTrust(rejected).getOrThrow().first().apply {
+            issuerMetadata.credentialIssuer shouldBe ISSUER
+            issuer.shouldBeNull()
+        }
+        signing.client().parseCredentialMetadataIgnoringTrust(accepted).getOrThrow().first().issuer.shouldNotBeNull()
+        signing.client().parseCredentialMetadataIgnoringTrust(unsigned).getOrThrow().first().issuer.shouldBeNull()
+        otherIssuer.shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().untrustedMetadata.shouldBeNull()
+        untrusting.parseCredentialMetadataIgnoringTrust(otherIssuer).isFailure shouldBe true
+    }
+
     "signed metadata of an untrusted issuer are rejected, or reported for a warning" {
         val signing = SigningIssuer()
         val http = signing.metadataEndpoint()

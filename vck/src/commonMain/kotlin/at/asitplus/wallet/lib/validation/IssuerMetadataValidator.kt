@@ -127,10 +127,12 @@ class IssuerMetadataValidator @JvmOverloads constructor(
             }.toOutcome(),
         )
         val report = ValidationReport.issuerMetadata(checks, policy, evaluatedAt, registrationCertificate)
+        val untrustedMetadata = metadata.takeIf { checks.signature == Passed && checks.subject == Passed }
         return if (report.decision == ValidationDecision.ACCEPTED) {
             IssuerMetadataValidation(
                 report = report,
                 metadata = metadata,
+                untrustedMetadata = untrustedMetadata,
                 issuer = ValidatedCredentialIssuer(
                     accessCertificateChain = chain!!,
                     identifier = accessCertificate.identifier!!,
@@ -138,7 +140,7 @@ class IssuerMetadataValidator @JvmOverloads constructor(
                     registrationCertificate = registration.getOrThrow().certificate?.payload,
                 ),
             )
-        } else IssuerMetadataValidation(report)
+        } else IssuerMetadataValidation(report, untrustedMetadata = untrustedMetadata)
     }
 
     private suspend fun validateRegistrationCertificate(
@@ -220,11 +222,21 @@ data class IssuerMetadataValidation(
     val report: ValidationReport,
     val metadata: IssuerMetadata? = null,
     val issuer: ValidatedCredentialIssuer? = null,
+    /**
+     * The metadata, whatever the decision of [report], if their `signature` and `subject` passed: they are signed
+     * with the certificate in `x5c`, and are the ones of the requested credential issuer, but this signer may not be
+     * trusted, nor be a registered provider. So they are no more trustworthy than unsigned metadata: use them only to
+     * continue after showing the report to the user, never as an accepted credential issuer.
+     */
+    val untrustedMetadata: IssuerMetadata? = null,
 ) {
     init {
         require(report.checks is IssuerMetadataChecks) { "Report has to be an issuer metadata report" }
         require((metadata != null) == (report.decision == ValidationDecision.ACCEPTED)) {
             "The metadata is present if and only if the report is accepted"
+        }
+        require(metadata == null || metadata == untrustedMetadata) {
+            "Accepted metadata are the untrusted metadata too"
         }
     }
 }
