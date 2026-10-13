@@ -37,12 +37,14 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalMatchingResult
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.validation.relyingParty.UnsupportedWrpRequestException
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.validation.AccessCertificateChecks
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.RelyingPartyChecks
 import at.asitplus.wallet.lib.validation.ValidationDecision
@@ -336,6 +338,35 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
                     untrustedRegistrations.shouldBeEmpty()
                 }
                 // the wallet may continue after the user decided to
+                preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()
+            }
+    }
+
+    test("DC API holder reports an Annex C request with a registration certificate but no reader authentication") {
+        val fixture = dcapiFixture(euWrprc = "a registration certificate".encodeToByteArray())
+        val holderKey = EphemeralKeyWithoutCert()
+        val deviceRequest = fixture.walletRequest.parameters.isoMdocRequest.deviceRequest
+        val unauthenticated = deviceRequest.copy(
+            readerAuthAll = null,
+            docRequests = deviceRequest.docRequests.map { it.copy(readerAuth = null) }.toTypedArray(),
+        )
+        val request = fixture.walletRequest.copy(
+            parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(
+                fixture.walletRequest.parameters.isoMdocRequest.copy(deviceRequest = unauthenticated)
+            )
+        )
+
+        DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
+            .startAuthorizationResponsePreparation(request, testPresentationPolicy).getOrThrow().apply {
+                validationReport.shouldNotBeNull().apply {
+                    decision shouldBe ValidationDecision.REJECTED
+                    checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                        .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                        .shouldBeInstanceOf<UnsupportedWrpRequestException>()
+                    // unsigned, not forged
+                    children.first().checks.shouldBeInstanceOf<AccessCertificateChecks>().signature shouldBe
+                            CheckOutcome.NotApplicable
+                }
                 preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()
             }
     }

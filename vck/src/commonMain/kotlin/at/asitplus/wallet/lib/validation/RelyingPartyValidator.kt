@@ -71,7 +71,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         is RequestParametersFrom.IsoMdocDcApi ->
             unsupported("The session transcript is required for ISO mdoc reader authentication")
 
-        else -> unsupported("The request is not signed by a wallet-relying party")
+        else -> unsigned("The request is not signed by a wallet-relying party")
     }.let { validate(it, policy) }
 
     /**
@@ -91,6 +91,11 @@ class RelyingPartyValidator @JvmOverloads constructor(
      * over BLE or NFC: every document request is authenticated by one WRPAC over [sessionTranscript] (ISO/IEC
      * 18013-5:2021, 9.1.4), and carries the WRPRC for it in `euWrprc`. The clock is read once, all checks use that
      * time.
+     *
+     * Reader authentication is optional (9.1.4): a request without any is reported as unsigned, like an unsigned
+     * authorization request, with the `signature` of the WRPAC not applicable and `requestData` failing with an
+     * [UnsupportedWrpRequestException], so that a wallet can tell an unauthenticated reader from one whose reader
+     * authentication does not verify, whose `signature` fails.
      */
     suspend fun validate(
         deviceRequest: DeviceRequest,
@@ -271,8 +276,10 @@ class RelyingPartyValidator @JvmOverloads constructor(
         jws: JwsCompact?,
         parameters: AuthenticationRequestParameters?,
     ): ExtractedRequest {
-        if (jws == null || parameters == null)
-            return unsupported("The request is no signed authorization request")
+        if (jws == null)
+            return unsigned("The request is no signed authorization request")
+        if (parameters == null)
+            return unsupported("The request is no authorization request")
         val chain = jws.jwsHeader.certificateChain?.takeIf { it.isNotEmpty() }
         val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
             requireNotNull(parameters.clientId) { "The request has no client_id" }
@@ -302,6 +309,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
         deviceRequest: DeviceRequest,
         sessionTranscript: SessionTranscript,
     ): ExtractedRequest {
+        if (deviceRequest.readerAuthAll.isNullOrEmpty() && deviceRequest.docRequests.all { it.readerAuth == null })
+            return unsigned("The request has no reader authentication")
         val chain = ReaderAuthenticationVerifier()(deviceRequest, sessionTranscript)
         val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
             if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
@@ -330,6 +339,18 @@ class RelyingPartyValidator @JvmOverloads constructor(
             registrationCertificates = registrationCertificates.getOrElse { emptyMap() },
         )
     }
+
+    /**
+     * A request that is not signed, so there is no WRPAC whose signature could be verified, and no WRPRC is bound to
+     * the request: its WRPRCs are not extracted, as anyone can copy them into a request.
+     */
+    private fun unsigned(message: String) = ExtractedRequest(
+        accessCertificateChain = null,
+        signature = NotApplicable,
+        clientId = null,
+        requestData = Failed(UnsupportedWrpRequestException(message)),
+        registrationCertificates = emptyMap(),
+    )
 
     private fun unsupported(message: String) = ExtractedRequest(
         accessCertificateChain = null,

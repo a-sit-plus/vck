@@ -77,6 +77,10 @@ Release 9.0.0 (unreleased):
           chains; a WRPRC no longer needs `alg` ES256 or to lack `kid`, which ETSI TS 119 475 does not require
         - A signed authorization request whose signature can not be verified, as no key is established for its
           client identifier prefix and it asserts none, is rejected (OpenID4VP 1.0, 5.9.3)
+        - An ISO mdoc request without any reader authentication, and an unsigned request, are reported as unsigned:
+          the `signature` and `parsing` of the WRPAC are not applicable, `requestData` fails with an
+          `UnsupportedWrpRequestException`, and their WRPRCs are not evaluated, while a reader authentication that does
+          not verify fails the `signature`, so that a wallet can tell an unauthenticated reader from a forged one
     - Deprecate the superseded validation API, to be removed in the next major release: `Validator`,
       `ValidatorVcJws`, `ValidatorSdJwt`, `ValidatorMdoc`, `VerifierAgent`, and the presentation methods of `Verifier`
       (use `CredentialValidator`); `VcJwsInputValidator`, `SdJwtInputValidator`, `MdocInputValidator` and their

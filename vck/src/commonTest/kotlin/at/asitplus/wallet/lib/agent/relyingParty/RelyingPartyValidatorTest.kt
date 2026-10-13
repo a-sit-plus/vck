@@ -21,6 +21,8 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.UnsupportedWrpRequestException
@@ -28,6 +30,7 @@ import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.validation.AccessCertificateChecks
 import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.NamedCheck
 import at.asitplus.wallet.lib.validation.RegistrationCertificateChecks
 import at.asitplus.wallet.lib.validation.RelyingPartyChecks
 import at.asitplus.wallet.lib.validation.RelyingPartyTrustAnchors
@@ -42,6 +45,7 @@ import at.asitplus.wallet.lib.validation.UnregisteredRequestException
 import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
 import at.asitplus.wallet.lib.validation.ValidationPolicy
+import at.asitplus.wallet.lib.validation.ValidationReport
 import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -209,15 +213,39 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
-    "a device request without reader authentication fails the signature of the WRPAC, its WRPRC is still read" {
+    "a device request without reader authentication is reported as unsigned, not as forged" {
         val fixture = buildWrpFixture()
         val transcript = nfcTranscript()
-        val deviceRequest = fixture.proximityRequest(transcript).copy(readerAuthAll = null)
+        val unauthenticated = fixture.proximityRequest(transcript).copy(readerAuthAll = null)
 
-        fixture.validator().validate(deviceRequest, transcript, policy).apply {
+        fixture.validator().validate(unauthenticated, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            relyingParty.shouldBeNull()
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<UnsupportedWrpRequestException>()
+            accessChecks().apply {
+                parsing shouldBe CheckOutcome.NotApplicable
+                signature shouldBe CheckOutcome.NotApplicable
+            }
+            // its WRPRCs are not bound to the request, as anyone can copy them into one
+            report.children.drop(1).shouldBeEmpty()
+            untrustedRegistrations.shouldBeEmpty()
+            // a wallet may continue past these after warning the user, but past no integrity check
+            report.allNamedChecks().filterNot { it.satisfied }.map { it.name }.toSet() shouldBe
+                    setOf("requestData", "trust", "timeliness")
+        }
+    }
+
+    "a device request with a reader authentication that does not verify is reported as forged" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        // signed by another key than the one of the WRPAC in its x5chain
+        val forged = fixture.isoRequest(fixture.docRequestWithWrprc(), transcript, signingKey = EphemeralKeyWithoutCert())
+            .parameters.isoMdocRequest.deviceRequest
+
+        fixture.validator().validate(forged, transcript, policy).apply {
             report.decision shouldBe REJECTED
             accessChecks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
-            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData shouldBe CheckOutcome.Passed
         }
     }
 
@@ -241,8 +269,11 @@ val RelyingPartyValidatorTest by matrixSuite {
             parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier)),
         )
 
-        fixture.validate(unsigned).report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
-            .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<UnsupportedWrpRequestException>()
+        fixture.validate(unsigned).apply {
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<UnsupportedWrpRequestException>()
+            accessChecks().signature shouldBe CheckOutcome.NotApplicable
+        }
     }
 }
 
@@ -281,6 +312,9 @@ private suspend fun WrpFixture.request(
     request: CredentialPresentationRequest = mdocDcqlRequest(),
 ) = signedByWrp(parameters(payload, request))
 
+/** The named checks of this report and of its children. */
+private fun ValidationReport.allNamedChecks(): List<NamedCheck> = namedChecks + children.flatMap { it.allNamedChecks() }
+
 private fun RelyingPartyValidationResult.accessChecks() =
     report.children.first().checks.shouldBeInstanceOf<AccessCertificateChecks>()
 
@@ -310,14 +344,18 @@ private suspend fun WrpFixture.docRequestWithWrprc(
 private suspend fun WrpFixture.proximityRequest(transcript: SessionTranscript): DeviceRequest =
     isoRequest(docRequestWithWrprc(), transcript).parameters.isoMdocRequest.deviceRequest
 
-/** An ISO mdoc request over the DC API, authenticated with `readerAuthAll` by the WRPAC over [transcript]. */
+/**
+ * An ISO mdoc request over the DC API, authenticated with `readerAuthAll` over [transcript] by [signingKey], with the
+ * chain of the WRPAC in its `x5chain`.
+ */
 private suspend fun WrpFixture.isoRequest(
     docRequest: DocRequest,
     transcript: SessionTranscript,
+    signingKey: KeyMaterial = wrpKey,
 ): RequestParametersFrom.IsoMdocDcApi {
     val unsigned = DeviceRequest(Version(1, 1), docRequests = arrayOf(docRequest))
     val readerAuth = SignCoseDetached<ByteArray>(
-        wrpKey,
+        signingKey,
         unprotectedHeaderModifier = { header, _ ->
             header?.copy(certificateChain = wrpacChain.map { it.encodeToDer() })
         },

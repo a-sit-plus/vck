@@ -66,11 +66,13 @@ internal suspend fun evaluateAccessCertificate(
     now: Instant,
 ): AccessCertificateEvaluation {
     if (chain.isNullOrEmpty()) {
-        // A reader authentication that did not verify yields no chain, which says nothing about the certificate
-        val missing = if (signature is Failed)
-            Blocked()
-        else
-            Failed(IllegalArgumentException("The request transports no access certificate"))
+        // A reader authentication that did not verify yields no chain, which says nothing about the certificate, and
+        // an unsigned request has none
+        val missing = when (signature) {
+            is Failed -> Blocked()
+            NotApplicable -> NotApplicable
+            else -> Failed(IllegalArgumentException("The request transports no access certificate"))
+        }
         return AccessCertificateEvaluation(
             checks = AccessCertificateChecks(
                 parsing = missing,

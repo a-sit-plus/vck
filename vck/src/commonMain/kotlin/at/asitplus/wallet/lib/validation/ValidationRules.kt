@@ -272,9 +272,14 @@ internal fun VerifierAttestationChecks.named(policy: ValidationPolicy) = listOf(
 
 internal fun RelyingPartyChecks.named() = listOf(NamedCheck("requestData", requestData, REQUIRED))
 
+/**
+ * An unsigned request, e.g. an mdoc request without reader authentication, has neither a WRPAC nor a signature, so
+ * these are not applicable, and its relying party is rejected by the `requestData` of [RelyingPartyChecks] instead;
+ * a present signature has to verify.
+ */
 internal fun AccessCertificateChecks.named(policy: ValidationPolicy) = listOf(
-    NamedCheck("parsing", parsing, REQUIRED),
-    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("parsing", parsing, REQUIRED_IF_APPLICABLE),
+    NamedCheck("signature", signature, REQUIRED_IF_APPLICABLE),
     NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
     NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
     NamedCheck("clientId", clientId, REQUIRED_IF_APPLICABLE),
