@@ -6,8 +6,12 @@ import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import at.asitplus.wallet.lib.validation.Requirement.*
 import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
+import io.kotest.assertions.withClue
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 private val credentialChecks = CredentialChecks(
@@ -35,7 +39,64 @@ private fun List<NamedCheck>.requirements() = associate { it.name to it.requirem
 private fun CredentialChecks.namedUnder(policy: ValidationPolicy) =
     ValidationReport.credential(this, policy, evaluatedAt).namedChecks
 
+/** The named checks of [this] under [policy]: exhaustive, so that every type of checks is listed. */
+private fun ValidationChecks.namedUnder(policy: ValidationPolicy): List<NamedCheck> = when (this) {
+    is CredentialChecks -> named(policy)
+    is StatusListTokenChecks -> named(policy.trust)
+    is PresentationChecks -> named()
+    is ProtocolResponseChecks -> named()
+    is JwtProofChecks -> named()
+    is KeyAttestationChecks -> named(policy)
+    is ClientAttestationChecks -> named(policy)
+    is RequestObjectChecks -> named(policy)
+    is VerifierAttestationChecks -> named(policy)
+    is RelyingPartyChecks -> named()
+    is AccessCertificateChecks -> named(policy)
+    is RegistrationCertificateChecks -> named(policy)
+    is IssuerMetadataChecks -> named(policy)
+}
+
+/** One instance of every type of checks, see [namedUnder]. */
+private val everyTypeOfChecks: List<ValidationChecks> = listOf(
+    credentialChecks,
+    passingToken,
+    PresentationChecks(Passed, Passed, Passed, Passed, Passed, Passed),
+    ProtocolResponseChecks(Passed, Passed, Passed, Passed, Passed),
+    JwtProofChecks(Passed, Passed, Passed, Passed, Passed),
+    KeyAttestationChecks(Passed, Passed, trusted, Passed, validStatus, Passed),
+    ClientAttestationChecks(Passed, Passed, trusted, Passed, validStatus, Passed, Passed, Passed, Passed, Passed),
+    RequestObjectChecks(Passed, Passed, trusted, Passed, Passed, Passed, Passed),
+    VerifierAttestationChecks(Passed, Passed, trusted, Passed, Passed),
+    RelyingPartyChecks(Passed),
+    AccessCertificateChecks(Passed, Passed, trusted, Passed, Passed),
+    RegistrationCertificateChecks(Passed, Passed, trusted, Passed, validStatus, Passed, Passed),
+    IssuerMetadataChecks(Passed, Passed, trusted, Passed, Passed),
+)
+
+/** Names that refer to a time, see [NamedCheck]. */
+private val timeNames = setOf("timeliness", "proofTime", "popTime")
+
 val NamedChecksTest by matrixSuite {
+
+    "every type of checks follows the naming conventions of named checks" {
+        everyTypeOfChecks.forEach { checks ->
+            val named = checks.namedUnder(strictPolicy)
+            val type = checks::class.simpleName
+            withClue(type) {
+                named.map { it.name }.distinct() shouldBe named.map { it.name }
+                named.forEach { check ->
+                    withClue(check.name) {
+                        // the name of a field, see the toString() of the data class
+                        checks.toString() shouldContain "${check.name.substringBefore('.').substringBefore('[')}="
+                        (check.trust != null) shouldBe (check.name == "trust" || check.name.endsWith("Trust"))
+                        check.trust?.outcome?.let { it shouldBe check.outcome }
+                        if (check.name.contains("time", ignoreCase = true)) timeNames shouldContain check.name
+                        if (check.statusMechanism != null) check.name shouldStartWith "status."
+                    }
+                }
+            }
+        }
+    }
 
     "credential checks are listed in declaration order with their parts" {
         credentialChecks.namedUnder(strictPolicy).map { it.name } shouldBe listOf(

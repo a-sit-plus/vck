@@ -88,7 +88,11 @@ Release 9.0.0 (unreleased):
     - Add `ValidationReport.namedChecks`, the checks of a report by name with the `Requirement` its policy put on each
       (`NamedCheck.satisfied` tells whether it rejects the report), recorded when the report is created, so that a
       report can be displayed as it has been decided, including the checks a relaxed policy tolerates; the decision
-      rules are derived from the same lists
+      rules are derived from the same lists. Check names are field names, so renaming one is a breaking change noted
+      here; every check of trust carries its `TrustValidation`, `timeliness` is always the validity of the artifact
+      (the time of a holder proof is `proofTime` or `popTime`), and status parts start with `status.`
+    - Make `CheckOutcome.cause()` and `ValidationReport.firstRejection()` public, to display why a check did not pass
+      and why a report has been rejected
     - Move the holder binding of standalone credentials into `ValidationPolicy.holderBinding` (default
       `HolderBindingPolicy.None`): `CredentialValidator.validate(input, policy, context)`,
       `CredentialValidator.rejectUndecodable(cause, policy)`, and `ValidationReport.credential(checks, policy,

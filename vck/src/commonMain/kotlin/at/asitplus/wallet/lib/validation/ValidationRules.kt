@@ -37,7 +37,7 @@ internal fun CheckOutcome.satisfies(requirement: Requirement): Boolean = when (r
 }
 
 /** Why this outcome did not pass: the cause of [Failed] or [Blocked], if any. */
-internal fun CheckOutcome.cause(): Throwable? = when (this) {
+fun CheckOutcome.cause(): Throwable? = when (this) {
     is Failed -> throwable
     is Blocked -> cause
     Passed, NotApplicable -> null
@@ -50,6 +50,15 @@ internal fun CheckOutcome.cause(): Throwable? = when (this) {
  * what they refer to, without claim values: the
  * [trust] decision with the selected credential identifier and trust source, the [statusMechanism] with its reference,
  * observed status, and status list token report, or the [disclosedItem].
+ *
+ * Names follow these conventions, so that applications can key labels or their own handling of checks by the type of
+ * [ValidationChecks] and the name, e.g. to let the user continue past some unsatisfied checks only:
+ *  - a name is the name of a field, so renaming a field is a breaking change, noted in the changelog;
+ *  - every check of trust in a signer carries its [TrustValidation] in [trust], and every check carrying one is such a
+ *    check (`trust`, `issuerTrust`, `signerTrust`);
+ *  - `timeliness` is always the validity period of the artifact the report is about, including its certificates; the
+ *    time of a proof of possession by the holder is `proofTime` or `popTime`;
+ *  - the parts of the status of an artifact start with `status.`.
  */
 data class NamedCheck(
     val name: String,
@@ -135,7 +144,7 @@ internal fun CredentialChecks.meets(policy: ValidationPolicy): Boolean = named(p
  * [ValidationReport.namedChecks], or a description of it if the check has no cause, otherwise why its first rejected
  * child is rejected. `null` if the report is accepted.
  */
-internal fun ValidationReport.firstRejection(): Throwable? =
+fun ValidationReport.firstRejection(): Throwable? =
     if (decision == ValidationDecision.ACCEPTED) null
     else namedChecks.firstRejection()
         ?: children.firstOrNull { it.decision != ValidationDecision.ACCEPTED }?.firstRejection()
