@@ -23,9 +23,9 @@ data class CredentialTimelinessValidator @JvmOverloads constructor(
      */
     private val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
-    val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(),
-    val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator(),
-    val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator(),
+    val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator,
+    val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator,
+    val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator,
 ) {
     operator fun invoke(issuerSigned: IssuerSigned) = CredentialTimelinessValidationSummary.Mdoc(
         mdocTimelinessValidator(issuerSigned, timeScope = TimeScope(clock.now(), timeLeeway)),

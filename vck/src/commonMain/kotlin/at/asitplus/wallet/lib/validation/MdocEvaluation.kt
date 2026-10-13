@@ -55,7 +55,7 @@ internal suspend fun evaluateIssuerSigned(
         holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
             mso.deviceKeyInfo.deviceKey.toCryptoPublicKey().getOrNull() == key
         },
-        timeliness = MdocTimelinessValidator()(issuerSigned, timeScope).let { details ->
+        timeliness = MdocTimelinessValidator(issuerSigned, timeScope).let { details ->
             CredentialTimelinessValidationSummary.Mdoc(details).toValidation(
                 evaluatedAt = timeScope.now,
                 notYetValid = listOf(details.msoTimelinessValidationSummary?.mdocNotYetValidError),
