@@ -222,6 +222,26 @@ Release 9.0.0 (unreleased):
       validated presentations by credential query
     - BREAKING: `AuthnResponseResult.Success` and `Iso180137AnnexCWrapper` have the non-null `validationReport`, and
       `Iso180137AnnexCWrapper` the validated `presentationValidations`, both without defaults in their constructors
+    - BREAKING (behavior): `OpenId4VpVerifier` and `DcApiVerifier` validate every presentation once, with
+      `credentialValidator` under `presentationPolicy`, and project the legacy results from that validation:
+      an accepted presentation becomes its `VerifyPresentationResult`, with the `CredentialFreshnessSummary` of its
+      report, a rejected one fails with the cause of its first rejecting check
+      (`PresentationValidationResult.rejection(policy)`), and `submissionRequirementsValidationResult` is the
+      `submissionRequirements` check of the report. So what the legacy verifier accepted with a summary that is not
+      fresh, e.g. expired, revoked, or with a status that can not be resolved, fails whenever `presentationPolicy`
+      requires it, and by default every presentation fails without trust anchors. A status that the policy does not
+      resolve is reported as `TokenStatusValidationResult.Rejected` instead of `Valid`. Transaction data can no longer
+      be skipped through `ValidatorSdJwt(verifyTransactionData = false)`. Annex C `documents` hold the accepted
+      documents only: a rejected document no longer fails `validateAuthnResponse`, while a document of a type that
+      has not been requested still does
+    - Add `AuthnResponseResult.Success.presentationValidations`; deprecate `AuthnResponseResult.Success.vpTokenResult`,
+      `VpTokenValidationResultDCQL.credentialQueryResponseValidations`, `submissionRequirementsValidationResult`, and
+      `presentationResults`, and `Iso180137AnnexCWrapper.documents`, in favor of `validationReport` and
+      `presentationValidations`
+    - Deprecate the constructors of `OpenId4VpVerifier` and `DcApiVerifier` taking `verifier` and
+      `verifyCoseSignature`, which no longer take effect, and their property `verifier`; the new primary
+      constructors omit both. Deprecate `NonceChallengeVerifier.verifier`, its constructor taking it, and the
+      presentation methods of `ChallengeSession`, in favor of `CredentialValidator` with `ChallengeSession.context()`
     - `MapStore.remove` is documented to be atomic: of concurrent calls for one key, at most one returns the value, as
       `DefaultMapStore` does; custom stores passed to the verifiers need to guarantee this, so that a request is
       answered at most once

@@ -53,6 +53,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                     keyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.RedirectUri(clientId),
                     stateToAuthnRequestStore = stateToAuthnRequestStore,
+                    presentationPolicy = testPresentationPolicy,
                 )
             }
         }

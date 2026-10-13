@@ -11,7 +11,6 @@ import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.wallet.lib.DefaultNonceService
-import at.asitplus.wallet.lib.MdocDeviceSignatureVerifier
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -49,8 +48,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private val clientIdScheme: ClientIdScheme,
     /** Key material to sign the authentication request with [signAuthnRequest]. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /** Verifies the holder's response against our identifier from [clientIdScheme]. */
-    val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     /**
      * Long-lived key advertised in [metadata] so that holders can encrypt responses, but **only** for client
      * identifier schemes that do not convey client metadata in the request, i.e. where this key is distributed
@@ -67,8 +64,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     /** Advertised in [metadata]. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
-    /** Used to verify session transcripts from mDoc responses. */
-    private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     /** Creates and validates OpenID4VP request nonces. */
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests to verify the authn response to it */
@@ -86,9 +81,57 @@ class OpenId4VpVerifier @JvmOverloads constructor(
      */
     private val presentationPolicy: ValidationPolicy = defaultPresentationPolicy,
 ) {
+
+    /** The verifier passed to the deprecated constructor, which no longer takes effect. */
+    @Deprecated(
+        "Presentations are validated with credentialValidator, see AuthnResponseResult.Success.validationReport. " +
+                "To be removed in the next major release."
+    )
+    var verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId)
+        private set
+
+    @Deprecated(
+        "verifier and verifyCoseSignature no longer take effect: presentations are validated with " +
+                "credentialValidator under presentationPolicy. To be removed in the next major release.",
+    )
+    @JvmOverloads
+    constructor(
+        clientIdScheme: ClientIdScheme,
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+        verifier: Verifier,
+        decryptionKeyMaterial: KeyMaterial? = null,
+        ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
+        signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
+            SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
+        verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+        supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+        @Suppress("UNUSED_PARAMETER")
+        verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
+        nonceService: NonceService = DefaultNonceService(),
+        stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+        supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
+        credentialValidator: CredentialValidator = CredentialValidator(),
+        presentationPolicy: ValidationPolicy = defaultPresentationPolicy,
+    ) : this(
+        clientIdScheme = clientIdScheme,
+        keyMaterial = keyMaterial,
+        decryptionKeyMaterial = decryptionKeyMaterial,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        signAuthnRequest = signAuthnRequest,
+        verifyJwsObject = verifyJwsObject,
+        supportedAlgorithms = supportedAlgorithms,
+        nonceService = nonceService,
+        stateToAuthnRequestStore = stateToAuthnRequestStore,
+        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
+        credentialValidator = credentialValidator,
+        presentationPolicy = presentationPolicy,
+    ) {
+        @Suppress("DEPRECATION")
+        this.verifier = verifier
+    }
+
     private val nonceAwareVerifier = NonceChallengeVerifier(
         verifierId = clientIdScheme.clientId,
-        verifier = verifier,
         nonceService = nonceService,
     )
     private val requestFactory = OpenId4VpRequestFactory(
@@ -103,7 +146,6 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     )
     private val responseProcessor = AuthnResponseProcessor(requestFactory, nonceAwareVerifier)
     private val vpTokenValidator = VpTokenValidator(
-        mdocDeviceSignatureVerifier = MdocDeviceSignatureVerifier(verifyCoseSignature = verifyCoseSignature),
         createSessionTranscript = UrlSessionTranscriptCalculator(),
         decryptionKeyMaterial = decryptionKeyMaterial,
         credentialValidator = credentialValidator,
@@ -234,7 +276,12 @@ class OpenId4VpVerifier @JvmOverloads constructor(
                     expectedOrigin = CheckOutcome.NotApplicable,
                     session = session,
                 )
-                AuthnResponseResult.Success(validation.result, request, validation.report)
+                AuthnResponseResult.Success(
+                    vpTokenResult = validation.result,
+                    request = request,
+                    validationReport = validation.report,
+                    presentationValidations = validation.presentationValidations,
+                )
             }
         }
     }

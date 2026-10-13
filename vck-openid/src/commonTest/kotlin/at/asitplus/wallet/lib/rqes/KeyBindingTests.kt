@@ -33,6 +33,7 @@ import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
 import at.asitplus.wallet.lib.openid.createAuthorizationResponse
+import at.asitplus.wallet.lib.openid.testPresentationPolicy
 import at.asitplus.wallet.lib.openid.vpTokenOrThrow
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.bytes
@@ -82,7 +83,8 @@ val KeyBindingTests by matrixSuite {
             val verifierOid4Vp = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
-                stateToAuthnRequestStore = it.externalMapStore
+                stateToAuthnRequestStore = it.externalMapStore,
+                presentationPolicy = testPresentationPolicy,
             )
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = null)
 
@@ -115,7 +117,8 @@ val KeyBindingTests by matrixSuite {
             val verifierOid4Vp = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
-                stateToAuthnRequestStore = it.externalMapStore
+                stateToAuthnRequestStore = it.externalMapStore,
+                presentationPolicy = testPresentationPolicy,
             )
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_384))
 
@@ -147,7 +150,8 @@ val KeyBindingTests by matrixSuite {
             val verifierOid4Vp = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
-                stateToAuthnRequestStore = it.externalMapStore
+                stateToAuthnRequestStore = it.externalMapStore,
+                presentationPolicy = testPresentationPolicy,
             )
 
             val requestOptions =
@@ -175,8 +179,9 @@ val KeyBindingTests by matrixSuite {
                 .credentialQueryResponseValidations.values.shouldBeSingleton().first().first().isFailure shouldBe true
         }
 
-        "Transaction Data validation can be turned off" {
+        "Transaction data can not be turned off by the verifier passed in, which no longer takes effect" {
             val clientIdScheme = ClientIdScheme.RedirectUri(it.clientId)
+            @Suppress("DEPRECATION")
             val lenientVerifier = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = clientIdScheme,
@@ -184,7 +189,8 @@ val KeyBindingTests by matrixSuite {
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
                     validatorSdJwt = ValidatorSdJwt(verifyTransactionData = false)
-                )
+                ),
+                presentationPolicy = testPresentationPolicy,
             )
 
             val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, null)
@@ -206,9 +212,9 @@ val KeyBindingTests by matrixSuite {
             lenientVerifier.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
                 .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .credentialQueryResponseValidations.values.flatten()
                 .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "transaction data"
         }
     }
 }
