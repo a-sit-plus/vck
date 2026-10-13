@@ -47,6 +47,7 @@ import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.RelyingPartyChecks
 import at.asitplus.wallet.lib.validation.ValidationDecision
 import io.kotest.assertions.throwables.shouldThrowAny
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
@@ -313,6 +314,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
         DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
             .startAuthorizationResponsePreparation(fixture.walletRequest, testPresentationPolicy).getOrThrow().apply {
                 validationReport.shouldBeNull()
+                relyingParty.shouldBeNull()
                 preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()
             }
     }
@@ -327,6 +329,11 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
                     decision shouldBe ValidationDecision.REJECTED
                     checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
                         .shouldBeInstanceOf<CheckOutcome.Failed>()
+                }
+                // an Annex C request has no request object, so its report is the one of its relying party
+                relyingParty.shouldNotBeNull().apply {
+                    report shouldBe validationReport
+                    untrustedRegistrations.shouldBeEmpty()
                 }
                 // the wallet may continue after the user decided to
                 preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()

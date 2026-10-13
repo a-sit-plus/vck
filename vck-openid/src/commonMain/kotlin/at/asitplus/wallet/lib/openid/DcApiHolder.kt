@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.validation.RelyingPartyValidationResult
 import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.ValidationReport
@@ -88,14 +89,18 @@ class DcApiHolder @JvmOverloads constructor(
             is OpenId4VpDcApiUnsigned -> openId4VpHolder.startAuthorizationResponsePreparation(request, policy)
                 .getOrThrow().toDcApi()
 
-            is IsoMdocDcApi -> DcApiRequestValidation(
-                validationReport = request.takeIf { it.carriesRegistrationCertificate() }
-                    ?.validateRelyingParty(relyingPartyValidator, policy)?.report,
-                preparationState = DcApiPreparationState.Iso180137AnnexC(
-                    request = request,
-                    presentationRequest = iso180137AnnexCHolder.createPresentationRequest(request).getOrThrow(),
-                ),
-            )
+            is IsoMdocDcApi -> {
+                val relyingParty = request.takeIf { it.carriesRegistrationCertificate() }
+                    ?.validateRelyingParty(relyingPartyValidator, policy)
+                DcApiRequestValidation(
+                    validationReport = relyingParty?.report,
+                    preparationState = DcApiPreparationState.Iso180137AnnexC(
+                        request = request,
+                        presentationRequest = iso180137AnnexCHolder.createPresentationRequest(request).getOrThrow(),
+                    ),
+                    relyingParty = relyingParty,
+                )
+            }
         }
     }
 
@@ -103,7 +108,7 @@ class DcApiHolder @JvmOverloads constructor(
         parameters.isoMdocRequest.deviceRequest.docRequests.any { it.itemsRequest.value.requestInfo?.euWrprc != null }
 
     private fun AuthorizationRequestValidation.toDcApi() =
-        DcApiRequestValidation(validationReport, DcApiPreparationState.OpenId4Vp(preparationState))
+        DcApiRequestValidation(validationReport, DcApiPreparationState.OpenId4Vp(preparationState), relyingParty)
 
     /** Matches wallet credentials using the protocol and platform-selected credential IDs recorded in [state]. */
     suspend fun getMatchingCredentials(
@@ -191,4 +196,19 @@ data class DcApiRequestValidation(
     /** `null` only for an ISO/IEC 18013-7 Annex C request without registration certificates. */
     val validationReport: ValidationReport?,
     val preparationState: DcApiPreparationState,
-)
+    /**
+     * The result of validating the relying party of a request carrying registration certificates (WRPRCs), with the
+     * relying party if accepted, and what its WRPRCs say in any case, see
+     * [RelyingPartyValidationResult.untrustedRegistrations]. Its report is the
+     * [at.asitplus.wallet.lib.validation.RelyingPartyChecks] child of [validationReport] for an OpenID4VP request,
+     * and [validationReport] itself for an Annex C request. `null` for a request without one.
+     */
+    val relyingParty: RelyingPartyValidationResult? = null,
+) {
+    init {
+        require(
+            relyingParty == null || relyingParty.report == validationReport ||
+                    relyingParty.report in validationReport?.children.orEmpty()
+        ) { "The report of the relying party is the report of the request, or a child of it" }
+    }
+}

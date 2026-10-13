@@ -51,6 +51,10 @@ Release 9.0.0 (unreleased):
       `OpenId4VpProtocolClient.prepareAuthorizationResponse(input, policy)`, loading a request object by reference,
       and in `OpenId4VpKtorHolder` `startAuthorizationResponsePreparation(input, policy)`, its overload for parsed
       requests, and `prepareDcApiRequest(request, policy)`.
+      `AuthorizationRequestValidation.relyingParty` and `DcApiRequestValidation.relyingParty` carry the
+      `RelyingPartyValidationResult` of a request with a WRPRC, and `RelyingPartyValidationResult.untrustedRegistrations`
+      the payloads of its WRPRCs whose parsing passed, whatever the decision, to show them next to a warning instead of
+      parsing them with the deprecated `WrpAuthenticationRequestValidator`.
       `OpenId4VpHolder`, `OpenId4VpKtorHolder`, and `DcApiHolder` take a `relyingPartyValidator`; deprecate
       `RelyingPartyTrust` and the constructors taking `relyingPartyTrust` (mapped by `toRelyingPartyValidator()`;
       `RelyingPartyTrust.Custom` no longer takes effect) or the unused `keyMaterial`

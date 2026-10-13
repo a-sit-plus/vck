@@ -69,15 +69,19 @@ val RelyingPartyValidatorTest by matrixSuite {
             identifier.identifier shouldBe fixture.wrpIdentifier
             registrationCertificates.shouldBeSingleton().first() shouldBe payload
         }
+        result.untrustedRegistrations shouldBe listOf(payload)
     }
 
     "a revoked WRPRC is rejected, with its status" {
         val fixture = buildWrpFixture()
 
-        val result = fixture.validate(fixture.request(buildWrpPayload(fixture.wrpIdentifier, statusListIdx = 1)))
+        val payload = buildWrpPayload(fixture.wrpIdentifier, statusListIdx = 1)
+        val result = fixture.validate(fixture.request(payload))
 
         result.report.decision shouldBe REJECTED
         result.relyingParty.shouldBeNull()
+        // what the WRPRC says, to show it next to the warning
+        result.untrustedRegistrations shouldBe listOf(payload)
         result.registrationChecks().status.mechanisms.shouldBeSingleton().first().outcome
             .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<TokenStatusException>()
     }

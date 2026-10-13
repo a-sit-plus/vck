@@ -253,14 +253,17 @@ class RelyingPartyValidator @JvmOverloads constructor(
             registrationCertificates = registrations.map { it.second },
             evaluatedAt = timeScope.now,
         )
+        val untrustedRegistrations = registrations
+            .filter { (it.second.checks as RegistrationCertificateChecks).parsing == Passed }
+            .map { it.first.payload }
         val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
             ValidatedRelyingParty(
                 accessCertificateChain = requireNotNull(request.accessCertificateChain),
                 identifier = requireNotNull(access.identifier),
-                registrationCertificates = registrations.map { it.first.payload },
+                registrationCertificates = untrustedRegistrations,
             )
         } else null
-        return RelyingPartyValidationResult(report, relyingParty)
+        return RelyingPartyValidationResult(report, relyingParty, untrustedRegistrations)
     }
 
     /** A JAR, signed with the leaf of its `x5c`, with one WRPRC in `verifier_info` for its DCQL query. */
@@ -365,11 +368,21 @@ class RelyingPartyValidator @JvmOverloads constructor(
 data class RelyingPartyValidationResult(
     val report: ValidationReport,
     val relyingParty: ValidatedRelyingParty?,
+    /**
+     * What the WRPRCs of the request say whose `parsing` passed, whatever the decision of [report], e.g. to show the
+     * name and the purposes of a relying party next to the warning that its WRPRC is revoked. They are not verified
+     * unless [relyingParty] is present: their signer may not be trusted, nor their status valid, nor they be issued
+     * to the relying party that signed the request, so use them only to show them to the user, marked as such.
+     */
+    val untrustedRegistrations: List<WrpPayload> = emptyList(),
 ) {
     init {
         require(report.checks is RelyingPartyChecks) { "Report has to be a relying party report" }
         require((relyingParty != null) == (report.decision == ValidationDecision.ACCEPTED)) {
             "A relying party is present if and only if the report is accepted"
+        }
+        require(relyingParty == null || relyingParty.registrationCertificates == untrustedRegistrations) {
+            "The registrations of an accepted relying party are the untrusted registrations too"
         }
     }
 }
