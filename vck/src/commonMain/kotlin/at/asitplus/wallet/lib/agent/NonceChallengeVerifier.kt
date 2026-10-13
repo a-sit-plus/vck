@@ -21,16 +21,36 @@ import kotlin.jvm.JvmOverloads
  * verify the presentations of that response with the [ChallengeSession] it returns.
  *
  * This is deliberately not a [Verifier] itself, so that a presentation cannot be verified without accounting for
- * the challenge it answers: the [ChallengeSession] passes the challenge to the SD-JWT and VC-JWT verification of
- * the delegate, and hands it to the caller-provided factory that builds the mdoc device signature check, which
- * binds it through the session transcript. [verifier] is the plain [Verifier] to use where a challenge is out of
- * scope, e.g. ISO/IEC 18013-7 Annex C responses, and [nonceService] is the raw nonce store.
+ * the challenge it answers: [ChallengeSession.context] carries the challenge into the validation of every
+ * presentation with [at.asitplus.wallet.lib.validation.CredentialValidator]. [nonceService] is the raw nonce store.
  */
 class NonceChallengeVerifier @JvmOverloads constructor(
     val verifierId: String,
-    val verifier: Verifier = VerifierAgent(identifier = verifierId),
     val nonceService: NonceService = DefaultNonceService(),
 ) {
+
+    /** Backs the deprecated presentation methods of [ChallengeSession]. */
+    @Deprecated(
+        "Validate presentations with CredentialValidator, in the context of ChallengeSession.context(). " +
+                "To be removed in the next major release."
+    )
+    var verifier: Verifier = VerifierAgent(identifier = verifierId)
+        private set
+
+    @Deprecated(
+        "Validate presentations with CredentialValidator, in the context of ChallengeSession.context(), " +
+                "instead of verifier. To be removed in the next major release.",
+        ReplaceWith("NonceChallengeVerifier(verifierId, nonceService)"),
+    )
+    @JvmOverloads
+    constructor(
+        verifierId: String,
+        verifier: Verifier,
+        nonceService: NonceService = DefaultNonceService(),
+    ) : this(verifierId, nonceService) {
+        @Suppress("DEPRECATION")
+        this.verifier = verifier
+    }
 
     /**
      * Holder-facing presentation request input using a fresh challenge.
@@ -93,6 +113,11 @@ class NonceChallengeVerifier @JvmOverloads constructor(
         )
 
         /** @see Verifier.verifyPresentationSdJwt */
+        @Deprecated(
+            "Validate with CredentialValidator.validate(input, context(audience, ...), policy). " +
+                    "To be removed in the next major release."
+        )
+        @Suppress("DEPRECATION")
         suspend fun verifyPresentationSdJwt(
             input: SdJwtSigned,
             transactionData: List<TransactionDataBase64Url>? = null,
@@ -107,6 +132,11 @@ class NonceChallengeVerifier @JvmOverloads constructor(
         )
 
         /** @see Verifier.verifyPresentationVcJwt */
+        @Deprecated(
+            "Validate with CredentialValidator.validate(input, context(audience, ...), policy). " +
+                    "To be removed in the next major release."
+        )
+        @Suppress("DEPRECATION")
         suspend fun verifyPresentationVcJwt(
             input: JwsCompactTyped<VerifiablePresentationJws>,
         ): KmmResult<VerifyPresentationResult.Success> = verifier.verifyPresentationVcJwt(
@@ -115,6 +145,11 @@ class NonceChallengeVerifier @JvmOverloads constructor(
         )
 
         /** @see Verifier.verifyUnsignedVcJws */
+        @Deprecated(
+            "Validate with CredentialValidator.validate(input, context(audience, ...), policy). " +
+                    "To be removed in the next major release."
+        )
+        @Suppress("DEPRECATION")
         suspend fun verifyUnsignedVcJws(
             input: String,
         ): KmmResult<VerifyPresentationResult.SuccessUnsigned> = verifier.verifyUnsignedVcJws(input)
@@ -125,6 +160,11 @@ class NonceChallengeVerifier @JvmOverloads constructor(
          * [at.asitplus.wallet.lib.MdocDeviceSignatureVerifier].
          * @see Verifier.verifyPresentationIsoMdoc
          */
+        @Deprecated(
+            "Validate with CredentialValidator.validate(input, context(audience, ...), policy). " +
+                    "To be removed in the next major release."
+        )
+        @Suppress("DEPRECATION")
         suspend fun verifyPresentationIsoMdoc(
             input: DeviceResponse,
             verifyDocument: (challenge: String) -> suspend (MobileSecurityObject, Document) -> Boolean,

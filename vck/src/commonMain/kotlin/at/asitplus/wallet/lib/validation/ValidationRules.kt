@@ -132,6 +132,21 @@ internal fun StatusListTokenChecks.meets(signerTrust: TrustPolicy): Boolean =
 
 private fun StatusListTokenChecks.requiredOutcomes() = listOf(retrieval, parsing, signature, subject, timeliness)
 
+/**
+ * The cause of the first check of a rejected presentation report that does not pass, otherwise of its first rejected
+ * credential, whose holder binding is checked by the presentation.
+ */
+internal fun ValidationReport.presentationRejection(policy: ValidationPolicy): Throwable {
+    val checks = checks as PresentationChecks
+    return listOf(checks.parsing, checks.signature, checks.proofTime, checks.challenge, checks.audience,
+        checks.presentationBinding)
+        .firstOrNull { !it.satisfies(REQUIRED_IF_APPLICABLE) }
+        ?.let { it.cause() ?: IllegalArgumentException("The presentation did not pass: $it") }
+        ?: children.firstOrNull { it.decision != ValidationDecision.ACCEPTED }
+            ?.let { (it.checks as CredentialChecks).firstRejection(policy, HolderBindingPolicy.None) }
+        ?: IllegalArgumentException("The presentation is rejected")
+}
+
 /** All checks of a presentation apply unless the format does not define them or the request requires no proof. */
 internal fun PresentationChecks.satisfied(): Boolean =
     listOf(parsing, signature, proofTime, challenge, audience, presentationBinding)

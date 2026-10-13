@@ -85,4 +85,12 @@ data class PresentationValidationResult(
             "A presentation is present if and only if the report is accepted"
         }
     }
+
+    /**
+     * Why the presentation is rejected under [policy], the policy it has been validated under: the cause of its first
+     * check that does not pass, otherwise of the first rejecting check of its first rejected credential; `null` if it
+     * is accepted. For callers reporting a single error, e.g. the legacy results of verifiers.
+     */
+    fun rejection(policy: ValidationPolicy): Throwable? =
+        if (report.decision == ValidationDecision.ACCEPTED) null else report.presentationRejection(policy)
 }
