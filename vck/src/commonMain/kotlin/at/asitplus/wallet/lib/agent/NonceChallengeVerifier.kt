@@ -34,6 +34,7 @@ class NonceChallengeVerifier @JvmOverloads constructor(
         "Validate presentations with CredentialValidator, in the context of ChallengeSession.context(). " +
                 "To be removed in the next major release."
     )
+    @Suppress("DEPRECATION")
     var verifier: Verifier = VerifierAgent(identifier = verifierId)
         private set
 

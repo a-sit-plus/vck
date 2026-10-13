@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.iso.IssuerSigned
@@ -19,6 +21,7 @@ import kotlin.jvm.JvmOverloads
  * Does verify the cryptographic authenticity of the data.
  * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
+@Deprecated("Validate with at.asitplus.wallet.lib.validation.CredentialValidator, whose report holds every check. To be removed in the next major release.")
 class Validator @JvmOverloads constructor(
     /** Clients may use [TokenStatusResolverImpl]. */
     private val tokenStatusResolver: TokenStatusResolver = TokenStatusResolverNoop,

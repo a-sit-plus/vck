@@ -34,6 +34,7 @@ fun interface TrustedCertificates {
  * Do not use this for holder signatures, i.e. key binding, proof of possession or a signed presentation,
  * those are self-asserted by design.
  */
+@Deprecated("Configure at.asitplus.wallet.lib.validation.CredentialValidator with trust anchors per credential type, see CredentialTrustAnchors. To be removed in the next major release.")
 fun issuerJwsVerifier(trustedIssuers: TrustedCertificates?): VerifyJwsObjectFun =
     trustedIssuers?.let { VerifyJwsObjectTrustedCertificate(trustedIssuers = it) } ?: VerifyJwsObject()
 
@@ -41,6 +42,7 @@ fun issuerJwsVerifier(trustedIssuers: TrustedCertificates?): VerifyJwsObjectFun 
  * How to verify the issuer's signature on a COSE-based credential, i.e. the `issuerAuth` of an mdoc:
  * Against [trustedIssuers] if there are any, otherwise against the certificate transported in the COSE headers.
  */
+@Deprecated("Configure at.asitplus.wallet.lib.validation.CredentialValidator with trust anchors per credential type, see CredentialTrustAnchors. To be removed in the next major release.")
 fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCoseSignatureFun<P> =
     trustedIssuers?.let { VerifyCoseSignatureTrustedCertificate<P>(trustedIssuers = it) } ?: VerifyCoseSignature()
 

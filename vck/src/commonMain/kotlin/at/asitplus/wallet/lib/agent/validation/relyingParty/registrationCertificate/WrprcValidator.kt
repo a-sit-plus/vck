@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
 import at.asitplus.KmmResult
@@ -31,6 +33,7 @@ import kotlin.time.Duration.Companion.minutes
  *  - Linkage to access certificate
  *  - Token status
  **/
+@Deprecated("Validate relying parties with at.asitplus.wallet.lib.validation.RelyingPartyValidator. To be removed in the next major release.")
 class WrprcValidator(
     private val clock: Clock = Clock.System,
     private val timeLeeway: Duration = 5.minutes,

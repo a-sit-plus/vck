@@ -1,15 +1,23 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.sha256
+import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
+import at.asitplus.openid.VerifierInfo
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.TimeScope
+import at.asitplus.wallet.lib.agent.validation.relyingParty.InvalidRegistrationCertificateException
+import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate.WrpCwtRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate.WrpJwtRegistrationCertificate
@@ -25,6 +33,7 @@ import at.asitplus.wallet.lib.etsi.isExpired
 import at.asitplus.wallet.lib.etsi.isValidAt
 import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.decodeFromByteArray
 import kotlin.time.Duration
 import kotlin.time.Instant
 
@@ -287,4 +296,29 @@ private suspend fun requireRegistered(requests: List<WrpCredentialRequest>, payl
     val unregistered = requests.map { request -> WrprcRequestValidator(request, payload).getOrThrow() }
         .filterNot { it.second.isValid() }
     if (unregistered.isNotEmpty()) throw UnregisteredRequestException(unregistered)
+}
+
+/**
+ * Parses the only registration certificate in [this], keeping the cause in the exception if it can not be parsed.
+ */
+internal fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsCompactTyped<WrpPayload> {
+    val registrationCertificates = filter { it.format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true) }
+    if (registrationCertificates.isEmpty()) {
+        throw MissingRegistrationCertificateException("No WRPRC in verifier_info")
+    }
+    val registrationCertificate = registrationCertificates.singleOrNull()
+        ?: throw InvalidRegistrationCertificateException(
+            "Request must contain exactly one WRPRC, but contains ${registrationCertificates.size}"
+        )
+    return catchingUnwrapped { JwsCompactTyped<WrpPayload>(registrationCertificate.data) }.getOrElse {
+        throw InvalidRegistrationCertificateException("Could not parse WRPRC", it)
+    }
+}
+
+/** The payload of a WRPRC in CWT format, transported as `euWrprc` (ETSI TS 119 475 V1.2.1, 5.2.3). */
+internal fun parseWrprcCose(euWrprc: CoseSigned<ByteArray>): WrpPayload {
+    val type = euWrprc.protectedHeader.type ?: throw IllegalArgumentException("Missing typ header in euWrprc.")
+    require(type == WRPRC_CWT_TYPE) { "Invalid typ header in euWrprc: expected '$WRPRC_CWT_TYPE', got '$type'." }
+    val payloadBytes = euWrprc.payload ?: throw IllegalStateException("euWrprc payload not found.")
+    return coseCompliantSerializer.decodeFromByteArray<WrpPayload>(bytes = payloadBytes)
 }

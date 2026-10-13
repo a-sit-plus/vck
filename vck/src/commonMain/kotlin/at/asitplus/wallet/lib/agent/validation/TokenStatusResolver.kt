@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.KmmResult
@@ -28,10 +30,12 @@ import kotlin.time.Clock
 /**
  * Checks the status mechanisms in a given status claim to extract the token status.
  */
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 fun interface TokenStatusResolver {
     suspend operator fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus>
 }
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 class TokenStatusResolverImpl @JvmOverloads constructor(
     private val resolveStatusListToken: StatusListTokenResolver,
     private val clock: Clock = Clock.System,
@@ -58,11 +62,13 @@ class TokenStatusResolverImpl @JvmOverloads constructor(
 }
 
 /** Fallback implementation: Token status is always valid. */
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 object TokenStatusResolverNoop : TokenStatusResolver {
     override suspend fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus> =
         catching { TokenStatus.Valid }
 }
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 fun StatusListTokenResolver.toTokenStatusResolver(
     clock: Clock = Clock.System,
     zlibService: ZlibService = DefaultZlibService(),
@@ -88,6 +94,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
 }
 
 /** Resolves every advertised status mechanism and requires them to agree. */
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 suspend fun TokenStatusResolver.resolve(status: TokenStatusInfo): KmmResult<TokenStatus> = catching {
     val resolved = status.mechanisms.map { invoke(it).getOrThrow() }.distinct()
     require(resolved.size == 1) { "Token status mechanisms returned conflicting results" }

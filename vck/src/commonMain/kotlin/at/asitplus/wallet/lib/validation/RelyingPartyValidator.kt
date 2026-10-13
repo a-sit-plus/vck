@@ -18,8 +18,6 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.InvalidRegistrationC
 import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
 import at.asitplus.wallet.lib.agent.validation.relyingParty.UnsupportedWrpRequestException
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator.parseSingleRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
@@ -302,7 +300,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
                     val cose = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(encoded)
                     WrpRegistrationCertificate.WrpCwtRegistrationCertificate(
                         cose = cose,
-                        payload = WrpAuthenticationRequestValidator.parseCose(cose),
+                        payload = parseWrprcCose(cose),
                     )
                 }.getOrElse { throw InvalidRegistrationCertificateException("A WRPRC can not be parsed", it) }
                 certificate to WrpCredentialRequest.WrpDocRequest(docRequest)

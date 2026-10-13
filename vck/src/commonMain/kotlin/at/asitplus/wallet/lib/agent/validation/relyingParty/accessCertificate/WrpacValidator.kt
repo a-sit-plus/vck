@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate
 
 import at.asitplus.KmmResult
@@ -17,6 +19,7 @@ import kotlin.time.Clock
  *  - Linkage to the presentation request (OID4VP only)
  *  - Identifier is either legal or natural person
  **/
+@Deprecated("Validate relying parties with at.asitplus.wallet.lib.validation.RelyingPartyValidator. To be removed in the next major release.")
 object WrpacValidator {
 
     /**
