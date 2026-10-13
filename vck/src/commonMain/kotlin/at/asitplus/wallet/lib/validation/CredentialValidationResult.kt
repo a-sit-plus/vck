@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -25,6 +26,19 @@ sealed interface ValidatedCredential {
 
     data class IsoMdoc(val issuerSigned: IssuerSigned) : ValidatedCredential
 }
+
+/**
+ * The signed type of this credential: the `vct` of an SD-JWT VC, the `docType` of an ISO mdoc, or the only type of a
+ * VC-JWT other than `VerifiableCredential`, `null` if it has several.
+ */
+val ValidatedCredential.credentialIdentifier: String?
+    get() = when (this) {
+        is ValidatedCredential.SdJwtVc -> credential.verifiableCredentialType
+        is ValidatedCredential.IsoMdoc -> issuerSigned.issuerAuth.payload?.docType
+        is ValidatedCredential.VcJwt -> credential.vc.type
+            .filter { it != VcDataModelConstants.VERIFIABLE_CREDENTIAL }
+            .singleOrNull()
+    }
 
 /**
  * The [report] of validating a credential, and the [credential] if it has been accepted.

@@ -85,6 +85,21 @@ Release 9.0.0 (unreleased):
       (`TimeScope`): call `VcJwsTimelinessValidator(vcJws, timeScope)` instead of
       `VcJwsTimelinessValidator()(vcJws, timeScope)`; `MdocTimelinessValidator` no longer takes a
       `MobileSecurityObjectTimelinessValidator`
+    - Add `ValidationReport.namedChecks`, the checks of a report by name with the `Requirement` its policy put on each
+      (`NamedCheck.satisfied` tells whether it rejects the report), recorded when the report is created, so that a
+      report can be displayed as it has been decided, including the checks a relaxed policy tolerates; the decision
+      rules are derived from the same lists
+    - Move the holder binding of standalone credentials into `ValidationPolicy.holderBinding` (default
+      `HolderBindingPolicy.None`): `CredentialValidator.validate(input, policy, context)`,
+      `CredentialValidator.rejectUndecodable(cause, policy)`, and `ValidationReport.credential(checks, policy,
+      evaluatedAt)` no longer take a `HolderBindingPolicy`. In a presentation, the presentation decides the holder
+      binding of its credentials; `HolderAgent.storeCredentialWithReport` and
+      `OpenId4VciClient.validateCredentialResponse` always require the holder's key
+    - `PresentationValidationResult.rejection()` takes the requirements from the report instead of a policy. Rejection
+      messages name the check, e.g. "The issuerSignature check did not pass", and disclosed items by index
+    - Add `CredentialToJsonConverter.toJsonElement(ValidatedCredential)`, `ValidatedCredential.credentialIdentifier`,
+      and `ValidatedPresentation.credentials`, e.g. to display the claims of accepted presentations
+    - `StatusValidation` requires mechanisms for a passed `agreement`
     - Known limitations:
         - Certificate paths: trust is evaluated for single-hop paths (issuers, status list signers, attestations)
           or by walking the WRP chain, without RFC 5280 path building, `pathLenConstraint` or `keyUsage`, and

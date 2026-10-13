@@ -1,12 +1,14 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.catching
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.validation.ValidatedCredential
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonArray
@@ -64,14 +66,26 @@ object CredentialToJsonConverter {
             }
         }
 
-        is SubjectCredentialStore.StoreEntry.Iso -> buildJsonObject {
-            credential.issuerSigned.namespaces?.forEach {
-                put(it.key, buildJsonObject {
-                    it.value.entries.map { it.value }.forEach { value ->
-                        put(value.elementIdentifier, value.elementValue.toJsonElement())
-                    }
-                })
-            }
+        is SubjectCredentialStore.StoreEntry.Iso -> credential.issuerSigned.toJsonObject()
+    }
+
+    /**
+     * The claims of a validated credential, e.g. to display them: the reconstructed claims of an SD-JWT VC, the
+     * credential subject of a VC-JWT as in [toJsonElement], and the elements of an ISO mdoc by namespace.
+     */
+    fun toJsonElement(credential: ValidatedCredential): JsonObject = when (credential) {
+        is ValidatedCredential.SdJwtVc -> credential.reconstructedJsonObject
+        is ValidatedCredential.VcJwt -> toJsonElement(credential.credential)
+        is ValidatedCredential.IsoMdoc -> credential.issuerSigned.toJsonObject()
+    }
+
+    private fun IssuerSigned.toJsonObject() = buildJsonObject {
+        namespaces?.forEach {
+            put(it.key, buildJsonObject {
+                it.value.entries.map { it.value }.forEach { value ->
+                    put(value.elementIdentifier, value.elementValue.toJsonElement())
+                }
+            })
         }
     }
 

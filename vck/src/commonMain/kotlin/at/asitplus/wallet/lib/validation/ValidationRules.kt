@@ -12,10 +12,13 @@ import at.asitplus.wallet.lib.validation.Requirement.*
  * Parsing and signatures are always required. Trust, timeliness, and status follow the ValidationPolicy. Checks that
  * bind a holder proof to the request (challenge, audience, proof time, ...) are never relaxed, and are
  * REQUIRED_IF_APPLICABLE where the format or transport may not define them.
+ *
+ * Every rule is a list of named checks with their requirement, which the report records, see
+ * ValidationReport.namedChecks: a report is accepted if each of them is satisfied, and its children are accepted.
  */
 
 /** How a check contributes to a decision. */
-internal enum class Requirement {
+enum class Requirement {
     /** Only [Passed] satisfies the check. */
     REQUIRED,
 
@@ -26,10 +29,39 @@ internal enum class Requirement {
     OPTIONAL,
 }
 
+/** Whether this outcome satisfies [requirement], i.e. does not reject the report it belongs to. */
 internal fun CheckOutcome.satisfies(requirement: Requirement): Boolean = when (requirement) {
     REQUIRED -> this == Passed
     REQUIRED_IF_APPLICABLE -> this == Passed || this == NotApplicable
     OPTIONAL -> true
+}
+
+/** Why this outcome did not pass: the cause of [Failed] or [Blocked], if any. */
+internal fun CheckOutcome.cause(): Throwable? = when (this) {
+    is Failed -> throwable
+    is Blocked -> cause
+    Passed, NotApplicable -> null
+}
+
+/**
+ * A check of a report by its [name], the name of its field in the [ValidationChecks], with the [requirement] the policy
+ * of the report put on it, see [ValidationReport.namedChecks]. Compound fields are listed by their parts, e.g.
+ * `issuerTrust`, `disclosedItems[2].digest`, `status.claim`, `status.mechanisms[0]`, or `status.agreement`, and carry
+ * what they refer to, without claim values: the
+ * [trust] decision with the selected credential identifier and trust source, the [statusMechanism] with its reference,
+ * observed status, and status list token report, or the [disclosedItem].
+ */
+data class NamedCheck(
+    val name: String,
+    val outcome: CheckOutcome,
+    val requirement: Requirement,
+    val trust: TrustValidation? = null,
+    val statusMechanism: StatusMechanismValidation? = null,
+    val disclosedItem: DisclosedItemReference? = null,
+) {
+    /** Whether [outcome] satisfies [requirement], i.e. this check does not reject the report. */
+    val satisfied: Boolean
+        get() = outcome.satisfies(requirement)
 }
 
 /**
@@ -68,163 +100,196 @@ internal fun credentialChecksWithoutPrerequisites(
     )
 }
 
-/** Whether every check that [policy] and [holderBindingPolicy] require has passed. */
-internal fun CredentialChecks.meets(policy: ValidationPolicy, holderBindingPolicy: HolderBindingPolicy): Boolean =
-    parsing.satisfies(REQUIRED)
-            && issuerSignature.satisfies(REQUIRED)
-            && issuerTrust.outcome.satisfies(policy.trust.requirement)
-            && semantics.satisfies(REQUIRED)
-            && disclosedItems.all { it.meetsRequirements() }
-            && holderBinding.satisfies(holderBindingPolicy.requirement)
-            && timeliness.outcome.satisfies(policy.timelinessRequirement)
-            && status.meets(policy.status)
+internal fun List<NamedCheck>.allSatisfied() = all { it.satisfied }
+
+/** The cause of the first check that is not satisfied, or a description of it if it has no cause. */
+private fun List<NamedCheck>.firstRejection(): Throwable? =
+    firstOrNull { !it.satisfied }
+        ?.let { it.outcome.cause() ?: IllegalArgumentException("The ${it.name} check did not pass: ${it.outcome}") }
 
 /**
- * Why a credential is rejected under [policy] and [holderBindingPolicy]: the cause of the first check that does not
- * meet its requirement, in the order of [CredentialChecks], or a description of it if the check has no cause.
- * `null` if the credential is accepted.
+ * Every supplied item has to be valid, there is no partial acceptance of a credential. The holder binding is required
+ * as [ValidationPolicy.holderBinding] says.
  */
-internal fun CredentialChecks.firstRejection(
-    policy: ValidationPolicy,
-    holderBindingPolicy: HolderBindingPolicy,
-): Throwable? {
-    fun rejection(check: String, outcome: CheckOutcome, requirement: Requirement): Throwable? =
-        if (outcome.satisfies(requirement)) null
-        else outcome.cause() ?: IllegalArgumentException("The $check check did not pass: $outcome")
+internal fun CredentialChecks.named(policy: ValidationPolicy) =
+    listOf(
+        NamedCheck("parsing", parsing, REQUIRED),
+        NamedCheck("issuerSignature", issuerSignature, REQUIRED),
+        NamedCheck("issuerTrust", issuerTrust.outcome, policy.trust.requirement, trust = issuerTrust),
+        NamedCheck("semantics", semantics, REQUIRED),
+    ) + disclosedItems.flatMapIndexed { index, item ->
+        listOf("parsing" to item.parsing, "digest" to item.digest, "structure" to item.structure)
+            .map { (part, outcome) ->
+                NamedCheck("disclosedItems[$index].$part", outcome, REQUIRED, disclosedItem = item.reference)
+            }
+    } + listOf(
+        NamedCheck("holderBinding", holderBinding, policy.holderBinding.requirement),
+        NamedCheck("timeliness", timeliness.outcome, policy.timelinessRequirement),
+    ) + status.named(policy.status)
 
-    return rejection("parsing", parsing, REQUIRED)
-        ?: rejection("issuer signature", issuerSignature, REQUIRED)
-        ?: rejection("issuer trust", issuerTrust.outcome, policy.trust.requirement)
-        ?: rejection("semantics", semantics, REQUIRED)
-        ?: disclosedItems.firstNotNullOfOrNull { item ->
-            listOf(item.parsing, item.digest, item.structure)
-                .firstNotNullOfOrNull { rejection("disclosed item ${item.reference}", it, REQUIRED) }
-        }
-        ?: rejection("holder binding", holderBinding, holderBindingPolicy.requirement)
-        ?: rejection("timeliness", timeliness.outcome, policy.timelinessRequirement)
-        ?: status.takeUnless { it.meets(policy.status) }?.let { status ->
-            (listOf(status.claim) + status.mechanisms.map { it.outcome } + status.agreement)
-                .firstNotNullOfOrNull { it.cause() }
-                ?: IllegalArgumentException("The status check did not pass")
-        }
-}
-
-/** Every supplied item has to be valid, there is no partial acceptance of a credential. */
-private fun DisclosedItemValidation.meetsRequirements() =
-    parsing.satisfies(REQUIRED) && digest.satisfies(REQUIRED) && structure.satisfies(REQUIRED)
-
-internal fun StatusValidation.meets(policy: StatusPolicy): Boolean = when (policy) {
-    StatusPolicy.Skip -> true
-    is StatusPolicy.ValidateIfPresent -> claim == NotApplicable || mechanismsMeet()
-    is StatusPolicy.RequireClaim -> mechanismsMeet()
-}
+/** Whether every check that [policy] requires has passed. */
+internal fun CredentialChecks.meets(policy: ValidationPolicy): Boolean = named(policy).allSatisfied()
 
 /**
- * Every advertised mechanism has to yield an accepted status, and all have to agree. Signer trust is part of each
- * mechanism's outcome, through the report of its status list token, see [statusMechanismValidation].
+ * Why this report is rejected: the cause of its first check that is not satisfied, in the order of
+ * [ValidationReport.namedChecks], or a description of it if the check has no cause, otherwise why its first rejected
+ * child is rejected. `null` if the report is accepted.
  */
-private fun StatusValidation.mechanismsMeet(): Boolean =
-    claim == Passed && mechanisms.isNotEmpty() && mechanisms.all { it.outcome == Passed } && agreement == Passed
+internal fun ValidationReport.firstRejection(): Throwable? =
+    if (decision == ValidationDecision.ACCEPTED) null
+    else namedChecks.firstRejection()
+        ?: children.firstOrNull { it.decision != ValidationDecision.ACCEPTED }?.firstRejection()
+        ?: IllegalArgumentException("The ${checks::class.simpleName} are rejected")
+
+/**
+ * The status under [policy]: under [StatusPolicy.Skip] it is recorded only. Otherwise, a claim has to be present if
+ * [StatusPolicy.RequireClaim], and if there is one, every advertised mechanism has to yield an accepted status, and
+ * all have to agree, which a claim without mechanisms can not. Signer trust is part of each mechanism's outcome,
+ * through the report of its status list token, see [statusMechanismValidation].
+ */
+private fun StatusValidation.named(policy: StatusPolicy): List<NamedCheck> {
+    val claimRequirement = when (policy) {
+        StatusPolicy.Skip -> OPTIONAL
+        is StatusPolicy.ValidateIfPresent -> REQUIRED_IF_APPLICABLE
+        is StatusPolicy.RequireClaim -> REQUIRED
+    }
+    // Without a claim that passed there are no mechanisms, and the claim decides: its parts are only recorded.
+    val dependentRequirement = if (policy != StatusPolicy.Skip && claim == Passed) REQUIRED else OPTIONAL
+    return listOf(NamedCheck("status.claim", claim, claimRequirement)) +
+            mechanisms.mapIndexed { index, mechanism ->
+                NamedCheck(
+                    name = "status.mechanisms[$index]",
+                    outcome = mechanism.outcome,
+                    requirement = dependentRequirement,
+                    statusMechanism = mechanism,
+                )
+            } +
+            NamedCheck("status.agreement", agreement, dependentRequirement)
+}
 
 /** Status list tokens: the signer as [signerTrust] requires, and every other check, including time, always. */
-internal fun StatusListTokenChecks.meets(signerTrust: TrustPolicy): Boolean =
-    requiredOutcomes().all { it.satisfies(REQUIRED) } && this.signerTrust.outcome.satisfies(signerTrust.requirement)
-
-private fun StatusListTokenChecks.requiredOutcomes() = listOf(retrieval, parsing, signature, subject, timeliness)
+internal fun StatusListTokenChecks.named(signerTrust: TrustPolicy) = listOf(
+    NamedCheck("retrieval", retrieval, REQUIRED),
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("signerTrust", this.signerTrust.outcome, signerTrust.requirement, trust = this.signerTrust),
+    NamedCheck("subject", subject, REQUIRED),
+    NamedCheck("timeliness", timeliness, REQUIRED),
+)
 
 /**
- * The cause of the first check of a rejected presentation report that does not pass, otherwise of its first rejected
- * credential, whose holder binding is checked by the presentation.
+ * A presentation has to be parsed; its other checks apply unless the format does not define them or the request
+ * requires no proof.
  */
-internal fun ValidationReport.presentationRejection(policy: ValidationPolicy): Throwable {
-    val checks = checks as PresentationChecks
-    return listOf(checks.parsing, checks.signature, checks.proofTime, checks.challenge, checks.audience,
-        checks.presentationBinding)
-        .firstOrNull { !it.satisfies(REQUIRED_IF_APPLICABLE) }
-        ?.let { it.cause() ?: IllegalArgumentException("The presentation did not pass: $it") }
-        ?: children.firstOrNull { it.decision != ValidationDecision.ACCEPTED }
-            ?.let { (it.checks as CredentialChecks).firstRejection(policy, HolderBindingPolicy.None) }
-        ?: IllegalArgumentException("The presentation is rejected")
-}
+internal fun PresentationChecks.named() = listOf(
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED_IF_APPLICABLE),
+    NamedCheck("proofTime", proofTime, REQUIRED_IF_APPLICABLE),
+    NamedCheck("challenge", challenge, REQUIRED_IF_APPLICABLE),
+    NamedCheck("audience", audience, REQUIRED_IF_APPLICABLE),
+    NamedCheck("presentationBinding", presentationBinding, REQUIRED_IF_APPLICABLE),
+)
 
-/** All checks of a presentation apply unless the format does not define them or the request requires no proof. */
-internal fun PresentationChecks.satisfied(): Boolean =
-    listOf(parsing, signature, proofTime, challenge, audience, presentationBinding)
-        .all { it.satisfies(REQUIRED_IF_APPLICABLE) }
-
-internal fun ProtocolResponseChecks.satisfied(): Boolean =
-    listOf(parsing, encryption, expectedOrigin, requestState, submissionRequirements)
-        .all { it.satisfies(REQUIRED_IF_APPLICABLE) }
+internal fun ProtocolResponseChecks.named() = listOf(
+    NamedCheck("parsing", parsing, REQUIRED_IF_APPLICABLE),
+    NamedCheck("encryption", encryption, REQUIRED_IF_APPLICABLE),
+    NamedCheck("expectedOrigin", expectedOrigin, REQUIRED_IF_APPLICABLE),
+    NamedCheck("requestState", requestState, REQUIRED_IF_APPLICABLE),
+    NamedCheck("submissionRequirements", submissionRequirements, REQUIRED_IF_APPLICABLE),
+)
 
 /** A JWT proof binds a key to the request, so none of its checks can be relaxed; the nonce applies where provided. */
-internal fun JwtProofChecks.satisfied(): Boolean =
-    listOf(parsing, signature, proofTime, audience).all { it.satisfies(REQUIRED) }
-            && nonce.satisfies(REQUIRED_IF_APPLICABLE)
+internal fun JwtProofChecks.named() = listOf(
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("proofTime", proofTime, REQUIRED),
+    NamedCheck("nonce", nonce, REQUIRED_IF_APPLICABLE),
+    NamedCheck("audience", audience, REQUIRED),
+)
 
-internal fun KeyAttestationChecks.meets(policy: ValidationPolicy): Boolean =
-    parsing.satisfies(REQUIRED)
-            && signature.satisfies(REQUIRED)
-            && trust.outcome.satisfies(policy.trust.requirement)
-            && timeliness.satisfies(policy.timelinessRequirement)
-            && status.meets(policy.status)
-            && nonce.satisfies(REQUIRED_IF_APPLICABLE)
+internal fun KeyAttestationChecks.named(policy: ValidationPolicy) = listOf(
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
+    NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
+) + status.named(policy.status) + NamedCheck("nonce", nonce, REQUIRED_IF_APPLICABLE)
+
+internal fun KeyAttestationChecks.meets(policy: ValidationPolicy): Boolean = named(policy).allSatisfied()
 
 /**
  * The proof of possession can not be relaxed; with DPoP, its time and challenge are checks of the DPoP proof
  * (draft-ietf-oauth-attestation-based-client-auth-10, 6).
  */
-internal fun ClientAttestationChecks.meets(policy: ValidationPolicy): Boolean =
-    parsing.satisfies(REQUIRED)
-            && signature.satisfies(REQUIRED)
-            && trust.outcome.satisfies(policy.trust.requirement)
-            && timeliness.satisfies(policy.timelinessRequirement)
-            && status.meets(policy.status)
-            && popSignature.satisfies(REQUIRED)
-            && listOf(clientId, popTime, audience, challenge).all { it.satisfies(REQUIRED_IF_APPLICABLE) }
+internal fun ClientAttestationChecks.named(policy: ValidationPolicy) = listOf(
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
+    NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
+) + status.named(policy.status) + listOf(
+    NamedCheck("clientId", clientId, REQUIRED_IF_APPLICABLE),
+    NamedCheck("popSignature", popSignature, REQUIRED),
+    NamedCheck("popTime", popTime, REQUIRED_IF_APPLICABLE),
+    NamedCheck("audience", audience, REQUIRED_IF_APPLICABLE),
+    NamedCheck("challenge", challenge, REQUIRED_IF_APPLICABLE),
+)
+
+internal fun ClientAttestationChecks.meets(policy: ValidationPolicy): Boolean = named(policy).allSatisfied()
 
 /**
  * An unsigned request, e.g. with the `redirect_uri` prefix, has neither a signature nor a signer to trust; a signed
  * request has to have its trust evaluated as [policy] requires.
  */
-internal fun RequestObjectChecks.meets(policy: ValidationPolicy): Boolean =
-    parsing.satisfies(REQUIRED)
-            && signature.satisfies(REQUIRED_IF_APPLICABLE)
-            && (signature == NotApplicable && trust.outcome == NotApplicable
-            || trust.outcome.satisfies(policy.trust.requirement))
-            && timeliness.satisfies(policy.timelinessRequirement)
-            && listOf(clientId, walletNonce, expectedOrigin).all { it.satisfies(REQUIRED_IF_APPLICABLE) }
+internal fun RequestObjectChecks.named(policy: ValidationPolicy): List<NamedCheck> {
+    val trustRequirement = policy.trust.requirement
+        .let { if (it == REQUIRED && signature == NotApplicable) REQUIRED_IF_APPLICABLE else it }
+    return listOf(
+        NamedCheck("parsing", parsing, REQUIRED),
+        NamedCheck("signature", signature, REQUIRED_IF_APPLICABLE),
+        NamedCheck("trust", trust.outcome, trustRequirement, trust = trust),
+        NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
+        NamedCheck("clientId", clientId, REQUIRED_IF_APPLICABLE),
+        NamedCheck("walletNonce", walletNonce, REQUIRED_IF_APPLICABLE),
+        NamedCheck("expectedOrigin", expectedOrigin, REQUIRED_IF_APPLICABLE),
+    )
+}
 
-internal fun VerifierAttestationChecks.meets(policy: ValidationPolicy): Boolean =
-    parsing.satisfies(REQUIRED)
-            && signature.satisfies(REQUIRED)
-            && trust.outcome.satisfies(policy.trust.requirement)
-            && timeliness.satisfies(policy.timelinessRequirement)
-            && clientId.satisfies(REQUIRED)
+internal fun VerifierAttestationChecks.named(policy: ValidationPolicy) = listOf(
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
+    NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
+    NamedCheck("clientId", clientId, REQUIRED),
+)
 
-internal fun RelyingPartyChecks.satisfied(): Boolean = requestData.satisfies(REQUIRED)
+internal fun RelyingPartyChecks.named() = listOf(NamedCheck("requestData", requestData, REQUIRED))
 
-internal fun AccessCertificateChecks.meets(policy: ValidationPolicy): Boolean =
-    parsing.satisfies(REQUIRED)
-            && signature.satisfies(REQUIRED)
-            && trust.outcome.satisfies(policy.trust.requirement)
-            && timeliness.satisfies(policy.timelinessRequirement)
-            && clientId.satisfies(REQUIRED_IF_APPLICABLE)
+internal fun AccessCertificateChecks.named(policy: ValidationPolicy) = listOf(
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
+    NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
+    NamedCheck("clientId", clientId, REQUIRED_IF_APPLICABLE),
+)
 
-internal fun RegistrationCertificateChecks.meets(policy: ValidationPolicy): Boolean =
-    parsing.satisfies(REQUIRED)
-            && signature.satisfies(REQUIRED)
-            && trust.outcome.satisfies(policy.trust.requirement)
-            && timeliness.satisfies(policy.timelinessRequirement)
-            && status.meets(policy.status)
-            && linkage.satisfies(REQUIRED)
-            && requestAuthorization.satisfies(REQUIRED)
+internal fun RegistrationCertificateChecks.named(policy: ValidationPolicy) = listOf(
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
+    NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
+) + status.named(policy.status) + listOf(
+    NamedCheck("linkage", linkage, REQUIRED),
+    NamedCheck("requestAuthorization", requestAuthorization, REQUIRED),
+)
 
-internal fun IssuerMetadataChecks.meets(policy: ValidationPolicy): Boolean =
-    parsing.satisfies(REQUIRED)
-            && signature.satisfies(REQUIRED)
-            && trust.outcome.satisfies(policy.trust.requirement)
-            && timeliness.satisfies(policy.timelinessRequirement)
-            && subject.satisfies(REQUIRED)
+internal fun RegistrationCertificateChecks.meets(policy: ValidationPolicy): Boolean = named(policy).allSatisfied()
+
+internal fun IssuerMetadataChecks.named(policy: ValidationPolicy) = listOf(
+    NamedCheck("parsing", parsing, REQUIRED),
+    NamedCheck("signature", signature, REQUIRED),
+    NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
+    NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
+    NamedCheck("subject", subject, REQUIRED),
+)
 
 /**
  * Outcome of the status claim: Not applicable when the policy skips the status, or does not require a claim that is
@@ -270,9 +335,7 @@ internal fun statusMechanismValidation(
 
 /** The cause of the first check that keeps the token from being accepted. */
 private fun StatusListTokenChecks.firstCause(signerTrust: TrustPolicy): Throwable? =
-    (requiredOutcomes().filterNot { it.satisfies(REQUIRED) } +
-            listOf(this.signerTrust.outcome).filterNot { it.satisfies(signerTrust.requirement) })
-        .firstNotNullOfOrNull { it.cause() }
+    named(signerTrust).filterNot { it.satisfied }.firstNotNullOfOrNull { it.outcome.cause() }
 
 /**
  * Whether all [mechanisms] yield the same status: failed if two of them yield different ones, blocked if one could
@@ -304,23 +367,20 @@ internal val StatusPolicy.acceptedOrNull: Set<TokenStatus>?
         is StatusPolicy.RequireClaim -> accepted
     }
 
+/** The requirement on the trust in a signer: optional for [TrustPolicy.IntegrityOnly]. */
 private val TrustPolicy.requirement: Requirement
     get() = when (this) {
         TrustPolicy.IntegrityOnly -> OPTIONAL
         TrustPolicy.RequireAuthorizedSigner -> REQUIRED
     }
 
+/** The requirement on the holder binding of a credential. */
 private val HolderBindingPolicy.requirement: Requirement
     get() = when (this) {
         HolderBindingPolicy.None -> OPTIONAL
         HolderBindingPolicy.RequireExpectedKey -> REQUIRED
     }
 
+/** The requirement on the timeliness of an artifact; the time of holder proofs is always required. */
 private val ValidationPolicy.timelinessRequirement: Requirement
     get() = if (requireTimeliness) REQUIRED else OPTIONAL
-
-private fun CheckOutcome.cause(): Throwable? = when (this) {
-    is Failed -> throwable
-    is Blocked -> cause
-    Passed, NotApplicable -> null
-}

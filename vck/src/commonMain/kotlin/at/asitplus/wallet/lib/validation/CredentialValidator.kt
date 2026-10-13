@@ -33,29 +33,30 @@ class CredentialValidator @JvmOverloads constructor(
         get() = trustAnchors != null
 
     /**
-     * Validates [input] under [policy]; [holderBinding] decides whether it has to be bound to
+     * Validates [input] under [policy], whose [ValidationPolicy.holderBinding] decides whether it has to be bound to
      * [CredentialValidationContext.expectedHolderKey]. The clock is read once, all checks use that time.
      */
     @JvmOverloads
     suspend fun validate(
         input: CredentialValidationInput,
         policy: ValidationPolicy,
-        holderBinding: HolderBindingPolicy,
         context: CredentialValidationContext = CredentialValidationContext(),
     ): CredentialValidationResult {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
+        val holderBinding = policy.holderBinding
         val evaluation = when (input) {
             is VcJwt -> evaluateVcJwt(input, signatureCheck, holderBinding, context, timeScope)
             is SdJwtVc -> evaluateSdJwtVc(input, signatureCheck, holderBinding, context, timeScope)
             is IsoMdoc -> evaluateIsoMdoc(input, signatureCheck, holderBinding, context, timeScope)
         }
-        return complete(evaluation, policy, holderBinding, timeScope)
+        return complete(evaluation, policy, timeScope)
     }
 
     /**
      * Validates the presentation [input] against the request it answers, see [PresentationContext], under [policy]:
      * the holder's proof (key binding JWT, VP-JWT, or mdoc device authentication), and every credential it contains.
-     * The clock is read once, all checks use that time.
+     * The clock is read once, all checks use that time. The presentation decides the holder binding of its
+     * credentials, so [ValidationPolicy.holderBinding] does not apply.
      */
     suspend fun validate(
         input: PresentationValidationInput,
@@ -64,7 +65,7 @@ class CredentialValidator @JvmOverloads constructor(
     ): PresentationValidationResult {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
         val complete = CredentialValidationCompletion { evaluation, holderBinding ->
-            complete(evaluation, policy, holderBinding, timeScope)
+            complete(evaluation, policy.copy(holderBinding = holderBinding), timeScope)
         }
         val evaluation = when (input) {
             is PresentationValidationInput.SdJwt ->
@@ -95,12 +96,10 @@ class CredentialValidator @JvmOverloads constructor(
     fun rejectUndecodable(
         cause: Throwable,
         policy: ValidationPolicy,
-        holderBinding: HolderBindingPolicy,
     ): CredentialValidationResult = CredentialValidationResult(
         report = ValidationReport.credential(
             checks = credentialChecksWithoutPrerequisites(parsing = Failed(cause), issuerSignature = Blocked()),
             policy = policy,
-            holderBinding = holderBinding,
             evaluatedAt = clock.now(),
         ),
         credential = null,
@@ -132,16 +131,15 @@ class CredentialValidator @JvmOverloads constructor(
     private suspend fun complete(
         evaluation: FormatEvaluation,
         policy: ValidationPolicy,
-        holderBinding: HolderBindingPolicy,
         timeScope: TimeScope,
     ): CredentialValidationResult {
         val checks = when (evaluation) {
             is WithoutPrerequisites ->
                 credentialChecksWithoutPrerequisites(evaluation.parsing, evaluation.issuerSignature)
 
-            is Evaluated -> checks(evaluation, policy, holderBinding, timeScope)
+            is Evaluated -> checks(evaluation, policy, timeScope)
         }
-        val report = ValidationReport.credential(checks, policy, holderBinding, timeScope.now)
+        val report = ValidationReport.credential(checks, policy, timeScope.now)
         val credential = (evaluation as? Evaluated)?.credential
             ?.takeIf { report.decision == ValidationDecision.ACCEPTED }
         return CredentialValidationResult(report, credential)
@@ -150,7 +148,6 @@ class CredentialValidator @JvmOverloads constructor(
     private suspend fun checks(
         evaluation: Evaluated,
         policy: ValidationPolicy,
-        holderBinding: HolderBindingPolicy,
         timeScope: TimeScope,
     ): CredentialChecks {
         val identifier = evaluation.credentialIdentifier
@@ -170,7 +167,7 @@ class CredentialValidator @JvmOverloads constructor(
             timeliness = evaluation.timeliness,
             status = StatusValidation(NotApplicable, emptyList(), NotApplicable),
         )
-        return withoutStatus.copy(status = status(evaluation, withoutStatus, policy, holderBinding, timeScope))
+        return withoutStatus.copy(status = status(evaluation, withoutStatus, policy, timeScope))
     }
 
     /**
@@ -183,10 +180,9 @@ class CredentialValidator @JvmOverloads constructor(
         evaluation: Evaluated,
         withoutStatus: CredentialChecks,
         policy: ValidationPolicy,
-        holderBinding: HolderBindingPolicy,
         timeScope: TimeScope,
     ): StatusValidation {
-        val otherwiseAccepted = withoutStatus.meets(policy.copy(status = StatusPolicy.Skip), holderBinding)
+        val otherwiseAccepted = withoutStatus.meets(policy.copy(status = StatusPolicy.Skip))
         if (policy.status != StatusPolicy.Skip && evaluation.status != null && !otherwiseAccepted) {
             return StatusValidation(
                 claim = Blocked(IllegalStateException("The status of an invalid credential is not resolved")),

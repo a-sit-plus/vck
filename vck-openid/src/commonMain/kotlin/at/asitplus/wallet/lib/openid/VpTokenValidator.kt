@@ -132,7 +132,7 @@ internal class VpTokenValidator(
         val result = catching {
             VpTokenValidationResultDCQL(
                 credentialQueryResponseValidations = validated.mapValues { (_, entries) ->
-                    entries.map { legacyPresentationResult(it.compact, it.validations, presentationPolicy) }
+                    entries.map { legacyPresentationResult(it.compact, it.validations) }
                 },
                 submissionRequirementsValidationResult = submissionRequirements,
                 presentationValidations = presentationValidations,

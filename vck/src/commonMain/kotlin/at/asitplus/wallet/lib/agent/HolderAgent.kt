@@ -123,15 +123,14 @@ class HolderAgent @JvmOverloads constructor(
         renewalInfo: CredentialRenewalInfo?
     ) = catching {
         val result = storeCredentialWithReport(credential, compatibilityPolicy, renewalInfo).getOrThrow()
-        result.storedEntry ?: throw (result.validation.report.checks as CredentialChecks)
-            .firstRejection(compatibilityPolicy, HolderBindingPolicy.RequireExpectedKey)
+        result.storedEntry ?: throw result.validation.report.firstRejection()
             ?: IllegalStateException("The credential has not been stored")
     }
 
     /**
-     * Validates [credential] under [policy], bound to the key of this holder and of the type of its scheme, and stores
-     * it only if it is accepted, see [CredentialStorageResult]. A rejected credential is a successful result with
-     * its report; only persisting fails.
+     * Validates [credential] under [policy], bound to the key of this holder whatever [ValidationPolicy.holderBinding]
+     * says, and of the type of its scheme, and stores it only if it is accepted, see [CredentialStorageResult].
+     * A rejected credential is a successful result with its report; only persisting fails.
      */
     @JvmOverloads
     suspend fun storeCredentialWithReport(
@@ -139,27 +138,24 @@ class HolderAgent @JvmOverloads constructor(
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
     ): KmmResult<CredentialStorageResult> = catching {
-        val binding = HolderBindingPolicy.RequireExpectedKey
+        val bound = policy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey)
         val validation = when (credential) {
             is Holder.StoreCredentialInput.Vc -> credentialValidator.validate(
                 input = CredentialValidationInput.VcJwt(credential.vcJws),
-                policy = policy,
-                holderBinding = binding,
+                policy = bound,
                 context = context(credential.scheme.vcType)
             )
 
             is Holder.StoreCredentialInput.SdJwt -> credentialValidator.validate(
                 input = CredentialValidationInput.SdJwtVc(credential.vcSdJwt),
-                policy = policy,
-                holderBinding = binding,
+                policy = bound,
                 context = context(credential.scheme.sdJwtType),
             )
 
             // Validates the encoding, which is what presentations of the credential carry
             is Holder.StoreCredentialInput.Iso -> credentialValidator.validate(
                 input = CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(credential.issuerSigned)),
-                policy = policy,
-                holderBinding = binding,
+                policy = bound,
                 context = context(credential.scheme.isoDocType),
             )
         }
@@ -249,7 +245,7 @@ class HolderAgent @JvmOverloads constructor(
                 CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(issuerSigned))
         }
         val checks = catchingUnwrapped {
-            credentialValidator.validate(input, orderingPolicy, HolderBindingPolicy.None).report.checks
+            credentialValidator.validate(input, orderingPolicy).report.checks
         }.getOrNull() as? CredentialChecks ?: return false
         return checks.timeliness.outcome is CheckOutcome.Failed ||
                 checks.status.mechanisms.any { it.outcome is CheckOutcome.Failed } ||
