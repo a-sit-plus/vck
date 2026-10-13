@@ -24,6 +24,69 @@ Release 9.0.0 (unreleased):
     - Reject empty required arrays, empty digital identities, null certificate wire entries, missing scheme-operator
       and associated-body website contacts, and timestamps without a four-digit year. Trusted-entity contacts allow
       email without a website. Other `ListAndSchemeInformation` requirements remain unchanged
+- Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
+    - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations
+      (`PresentationValidationInput` in a `PresentationContext`) under a `ValidationPolicy` (`TrustPolicy`,
+      `StatusPolicy`, time leeway, `requireTimeliness`), returning a `ValidationReport`: a tree of checks
+      (`CheckOutcome`: passed, failed with its cause, blocked, or not applicable) whose `decision` follows from the
+      policy, next to the validated value, which is present only if the report is accepted. Trust anchors are
+      configured per credential type (`CredentialTrustAnchors`, `CredentialTrustScopes`, adapters for LoTEs and
+      `TrustAnchorProvider`), status with a `StatusValidator` and a `StatusListTokenResolver`, signatures with a
+      `SignatureCheck`
+    - Add `HolderAgent.storeCredentialWithReport(credential, policy, renewalInfo)`, and the parameter
+      `credentialValidator` of `HolderAgent`, which validates every credential before storing it, and orders stored
+      credentials in `getValidCredentialsByPriority()`, demoting only verified problems. Deprecate the constructor
+      taking `validator`, `validatorVcJws`, `validatorSdJwt`, `validatorMdoc` (which no longer take effect), and
+      `trustedIssuers` (adapted as anchors for every credential type)
+    - Add `OpenId4VciClient.validateCredentialResponse(...)`, reporting every credential of a (batch) response
+    - Add `RelyingPartyValidator` with `RelyingPartyTrustAnchors` (WRPAC and WRPRC anchors, status list signers of
+      WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
+      prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
+      request in one report; `IsoMdocDcApi.validateRelyingParty(validator, policy)` in `vck-openid`. An unregistered
+      request fails with an `UnregisteredRequestException`
+    - Add `AuthorizationRequestValidator.validate(request, policy)`, and
+      `OpenId4VpHolder.startAuthorizationResponsePreparation(input, policy)` and its `DcApiHolder` overload,
+      returning the report of the request next to the preparation state, also for a rejected request.
+      `OpenId4VpHolder`, `OpenId4VpKtorHolder`, and `DcApiHolder` take a `relyingPartyValidator`; deprecate
+      `RelyingPartyTrust` and the constructors taking `relyingPartyTrust` (mapped by `toRelyingPartyValidator()`;
+      `RelyingPartyTrust.Custom` no longer takes effect) or the unused `keyMaterial`
+    - Behavior changes, also through the legacy entry points, which delegate to the new validation:
+        - With `requireTimeliness` and a status policy other than `Skip`, an expired, not yet valid, revoked, or
+          status-unresolvable credential rejects its presentation and can't be stored
+        - With `TrustPolicy.RequireAuthorizedSigner`, missing anchors reject; with a status policy other than
+          `Skip`, a missing status list token resolver rejects a credential that has a status claim
+        - A `jwk` next to an `x5c` with a different key fails the signature
+        - SD-JWT: `typ` `dc+sd-jwt` and `kb+jwt` are enforced, `vc+sd-jwt` is rejected; unreferenced, duplicate, or
+          malformed disclosures and claim collisions fail (RFC 9901, 7.1); the KB-JWT `iat` has to be within the
+          leeway
+        - mdoc: storage checks item digests, the `docType` against the scheme, and the device key against the
+          holder key; a missing MSO fails
+        - VP-JWT: `exp` and `nbf` are checked; a VP with one rejected VC is rejected
+        - Status list tokens, key attestations, and client attestations are trusted only through an anchor that
+          issued their signing certificate (OpenID4VC HAIP 1.0, 4.4.1, 4.5.1, 6.1), a directly listed or
+          self-signed signer no longer passes
+        - WRPRC errors are reported instead of being turned into `false`, and one clock is used for certificate
+          chains; a WRPRC no longer needs `alg` ES256 or to lack `kid`, which ETSI TS 119 475 does not require
+        - A signed authorization request whose signature can not be verified, as no key is established for its
+          client identifier prefix and it asserts none, is rejected (OpenID4VP 1.0, 5.9.3)
+    - Deprecate the superseded validation API, to be removed in the next major release: `Validator`,
+      `ValidatorVcJws`, `ValidatorSdJwt`, `ValidatorMdoc`, `VerifierAgent`, and the presentation methods of `Verifier`
+      (use `CredentialValidator`); `VcJwsInputValidator`, `SdJwtInputValidator`, `MdocInputValidator` and their
+      results, `CredentialTimelinessValidator`, `CredentialFreshnessSummary`, `CredentialWrapper`, and
+      `ValidatiorVcJwsValidationException` (see the `timeliness` and `status` checks of the report);
+      `TokenStatusResolver`, `TokenStatusResolverImpl`, `TokenStatusResolverNoop`, `toTokenStatusResolver()`,
+      `TokenStatusResolver.resolve()`, `TokenStatusValidator` with its functions, and `TokenStatusValidationResult`
+      (use `StatusValidator` with a `StatusListTokenResolver`, which stays); `issuerJwsVerifier`,
+      `issuerCoseVerifier`, and `VerifyStatusListTokenHAIP` (use trust anchors of `CredentialValidator`);
+      `WrpacValidator`, `WrprcValidator`, `WrpAuthenticationRequestValidator`, `WrpChainValidator`, their results,
+      and `IsoMdocDcApi.validateWrpAuthenticationRequest()` (use `RelyingPartyValidator`)
+    - Known limitations:
+        - Certificate paths: trust is evaluated for single-hop paths (issuers, status list signers, attestations)
+          or by walking the WRP chain, without RFC 5280 path building, `pathLenConstraint` or `keyUsage`, and
+          without certificate revocation (CRL, OCSP). So chains with intermediate certificates are rejected by the
+          single-hop rules, a directly listed self-signed issuer certificate is accepted, and a revoked WRPAC or
+          signer certificate is not detected
+        - ZK mdoc presentations are validated like plain mdocs, their proofs are not verified
 - Trusted relying parties:
     - Fix JSON serialization of `JsonClaimReference` as `SingleClaimReference`, e.g. in `RequestDataValidity`, which produced invalid JSON since `NormalizedJsonPath` became a list in JsonPath4K 4.0.0. It is now serialized as an object holding `normalizedJsonPath`
     - `WrprcValidator` no longer drops the cause when a registration certificate can not be validated, e.g. for a missing or unparseable certificate chain: `WrprcValidationResult.certificateValidationResults` holds a `KmmResult` for each certificate. Deprecate `WrprcValidationResult.certificateValidation`, which maps such certificates to `null`

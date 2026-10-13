@@ -141,6 +141,7 @@ class DcApiVerifier @JvmOverloads constructor(
         "Presentations are validated with credentialValidator, see AuthnResponseResult.Success.validationReport " +
                 "and Iso180137AnnexCWrapper.validationReport. To be removed in the next major release."
     )
+    @Suppress("DEPRECATION")
     var verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId)
         private set
 

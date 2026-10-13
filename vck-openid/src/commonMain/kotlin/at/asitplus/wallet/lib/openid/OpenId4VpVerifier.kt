@@ -87,6 +87,7 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         "Presentations are validated with credentialValidator, see AuthnResponseResult.Success.validationReport. " +
                 "To be removed in the next major release."
     )
+    @Suppress("DEPRECATION")
     var verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId)
         private set
 
