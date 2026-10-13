@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
@@ -82,7 +83,20 @@ class RelyingPartyValidator @JvmOverloads constructor(
         request: RequestParametersFrom.IsoMdocDcApi,
         sessionTranscript: SessionTranscript,
         policy: ValidationPolicy,
-    ): RelyingPartyValidationResult = validate(extractMdoc(request, sessionTranscript), policy)
+    ): RelyingPartyValidationResult =
+        validate(request.parameters.isoMdocRequest.deviceRequest, sessionTranscript, policy)
+
+    /**
+     * Validates the relying party of the ISO mdoc [deviceRequest] under [policy], e.g. of a proximity presentation
+     * over BLE or NFC: every document request is authenticated by one WRPAC over [sessionTranscript] (ISO/IEC
+     * 18013-5:2021, 9.1.4), and carries the WRPRC for it in `euWrprc`. The clock is read once, all checks use that
+     * time.
+     */
+    suspend fun validate(
+        deviceRequest: DeviceRequest,
+        sessionTranscript: SessionTranscript,
+        policy: ValidationPolicy,
+    ): RelyingPartyValidationResult = validate(extractMdoc(deviceRequest, sessionTranscript), policy)
 
     /**
      * Whether trust in the client identifier of a request can be decided for any client identifier prefix, see
@@ -282,10 +296,9 @@ class RelyingPartyValidator @JvmOverloads constructor(
      * the WRPRC for it in `euWrprc`.
      */
     private suspend fun extractMdoc(
-        request: RequestParametersFrom.IsoMdocDcApi,
+        deviceRequest: DeviceRequest,
         sessionTranscript: SessionTranscript,
     ): ExtractedRequest {
-        val deviceRequest = request.parameters.isoMdocRequest.deviceRequest
         val chain = ReaderAuthenticationVerifier()(deviceRequest, sessionTranscript)
         val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
             if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {

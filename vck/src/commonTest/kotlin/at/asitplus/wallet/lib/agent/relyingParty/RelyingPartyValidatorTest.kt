@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent.relyingParty
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.dcapi.DCAPIHandover
+import at.asitplus.dcapi.NFCHandover
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.DeviceRequest
@@ -161,6 +162,61 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
+    "a device request of a proximity presentation with a WRPRC is accepted, authenticated over its transcript" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+
+        fixture.validator().validate(fixture.proximityRequest(transcript), transcript, policy).apply {
+            report.decision shouldBe ACCEPTED
+            accessChecks().signature shouldBe CheckOutcome.Passed
+            report.children.map { it.decision } shouldBe listOf(ACCEPTED, ACCEPTED)
+            relyingParty.shouldNotBeNull().apply {
+                identifier.identifier shouldBe fixture.wrpIdentifier
+                registrationCertificates.shouldBeSingleton().first().subjectIdentifier shouldBe fixture.wrpIdentifier
+            }
+        }
+    }
+
+    "a device request authenticated over another session transcript fails the signature of the WRPAC" {
+        val fixture = buildWrpFixture()
+        val deviceRequest = fixture.proximityRequest(nfcTranscript())
+
+        fixture.validator().validate(deviceRequest, nfcTranscript(handoverSelect = byteArrayOf(2)), policy).apply {
+            report.decision shouldBe REJECTED
+            accessChecks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+            relyingParty.shouldBeNull()
+        }
+    }
+
+    "a device request altered after its reader authentication fails the signature of the WRPAC" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val deviceRequest = fixture.proximityRequest(transcript)
+        val altered = deviceRequest.copy(
+            docRequests = arrayOf(fixture.docRequestWithWrprc(claimNames = listOf("given_name")))
+        )
+
+        fixture.validator().validate(altered, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            accessChecks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+            // the altered request is registered, but the WRPRC can't be linked to a WRPAC whose signature failed
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData shouldBe CheckOutcome.Passed
+            registrationChecks().linkage.shouldBeInstanceOf<CheckOutcome.Blocked>()
+        }
+    }
+
+    "a device request without reader authentication fails the signature of the WRPAC, its WRPRC is still read" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val deviceRequest = fixture.proximityRequest(transcript).copy(readerAuthAll = null)
+
+        fixture.validator().validate(deviceRequest, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            accessChecks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData shouldBe CheckOutcome.Passed
+        }
+    }
+
     "a request without a WRPRC is rejected as missing one" {
         val fixture = buildWrpFixture()
         val parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier)).copy(verifierInfo = null)
@@ -226,6 +282,29 @@ private fun RelyingPartyValidationResult.accessChecks() =
 
 private fun RelyingPartyValidationResult.registrationChecks() =
     report.children.drop(1).shouldBeSingleton().first().checks.shouldBeInstanceOf<RegistrationCertificateChecks>()
+
+/** The session transcript of a proximity presentation with NFC engagement (ISO/IEC 18013-5:2021, 9.1.5.1). */
+private fun nfcTranscript(handoverSelect: ByteArray = byteArrayOf(1)) = SessionTranscript.forNfc(
+    deviceEngagementBytes = byteArrayOf(0x0a),
+    eReaderKeyBytes = byteArrayOf(0x0b),
+    nfcHandover = NFCHandover(handoverSelect = handoverSelect, handoverRequest = null),
+)
+
+/** A document request carrying the WRPRC of the relying party in `euWrprc`. */
+private suspend fun WrpFixture.docRequestWithWrprc(
+    claimNames: List<String> = listOf("given_name", "family_name", "birth_date"),
+): DocRequest {
+    val payload = buildWrpPayload(wrpIdentifier)
+    val wrprc = coseCompliantSerializer.encodeToByteArray(signWrprcCose(wrprcSigningKeyMaterial, payload))
+    return mdocDocRequest(claimNames = claimNames).let {
+        val itemsRequest = it.itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = wrprc))
+        it.copy(itemsRequest = ByteStringWrapper(itemsRequest))
+    }
+}
+
+/** A device request of a proximity presentation, authenticated by the WRPAC over [transcript]. */
+private suspend fun WrpFixture.proximityRequest(transcript: SessionTranscript): DeviceRequest =
+    isoRequest(docRequestWithWrprc(), transcript).parameters.isoMdocRequest.deviceRequest
 
 /** An ISO mdoc request over the DC API, authenticated with `readerAuthAll` by the WRPAC over [transcript]. */
 private suspend fun WrpFixture.isoRequest(

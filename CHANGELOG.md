@@ -43,7 +43,8 @@ Release 9.0.0 (unreleased):
       WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
       request in one report; `IsoMdocDcApi.validateRelyingParty(validator, policy)` in `vck-openid`. An unregistered
-      request fails with an `UnregisteredRequestException`
+      request fails with an `UnregisteredRequestException`. `RelyingPartyValidator.validate(deviceRequest, sessionTranscript, policy)`
+      validates the reader of a proximity presentation, e.g. over BLE or NFC (ISO/IEC 18013-5:2021, 9.1.4)
     - Add `AuthorizationRequestValidator.validate(request, policy)`, and
       `OpenId4VpHolder.startAuthorizationResponsePreparation(input, policy)` and its `DcApiHolder` overload,
       returning the report of the request next to the preparation state, also for a rejected request.
