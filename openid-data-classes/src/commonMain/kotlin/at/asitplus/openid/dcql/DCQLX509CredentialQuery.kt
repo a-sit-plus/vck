@@ -1,0 +1,47 @@
+package at.asitplus.openid.dcql
+
+import at.asitplus.data.NonEmptyList
+import at.asitplus.openid.CredentialFormatEnum
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * ETSI TS 119 432 Annex A.6.3: selects an X.509 signing credential using CSC metadata constraints.
+ * Request parsing is supported; X.509 signing and submission validation require a separate QES flow.
+ */
+@Serializable
+data class DCQLX509CredentialQuery(
+    @SerialName(DCQLCredentialQuery.SerialNames.ID)
+    override val id: DCQLCredentialQueryIdentifier,
+    @SerialName(DCQLCredentialQuery.SerialNames.META)
+    override val meta: DCQLX509CredentialMetadataAndValidityConstraints,
+    @SerialName(DCQLCredentialQuery.SerialNames.CLAIMS)
+    override val claims: DCQLClaimsQueryList<DCQLJsonClaimsQuery>? = null,
+    @SerialName(DCQLCredentialQuery.SerialNames.CLAIM_SETS)
+    override val claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>? = null,
+    @SerialName(DCQLCredentialQuery.SerialNames.MULTIPLE)
+    override val multiple: Boolean = DCQLCredentialQuery.Defaults.MULTIPLE,
+    @SerialName(DCQLCredentialQuery.SerialNames.TRUSTED_AUTHORITIES)
+    override val trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>? = null,
+    @SerialName(DCQLCredentialQuery.SerialNames.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING)
+    override val requireCryptographicHolderBinding: Boolean = DCQLCredentialQuery.Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+    @SerialName(DCQLCredentialQuery.SerialNames.FORMAT)
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    override val format: CredentialFormatEnum = CREDENTIAL_FORMAT,
+) : DCQLCredentialQuery {
+    init {
+        validate()
+    }
+
+    companion object {
+        val CREDENTIAL_FORMAT = CredentialFormatEnum.X509
+    }
+
+    override fun validate() {
+        super.validate()
+        require(format == CREDENTIAL_FORMAT) {
+            "Value has an invalid format identifier in this context."
+        }
+    }
+}

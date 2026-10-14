@@ -9,6 +9,6 @@ This register records conflicts affecting the CSC and ETSI remote signing implem
 | Document reference checksum representation | ETSI TS 119 432 V1.3.1, A.6.4 specifies the structured Hash object from CSC Data Model 1.0.0, 7.4.                          | CSC Data Model Bindings 1.0.0 checksum requirements specify SRI syntax.                                                                                                                              | **Approved.** Previously mediated by the user.                     | Use structured Hash throughout the active project paths. Retain `ChecksumSerializer` as an unused object with `@Suppress("unused")` and explanatory KDoc. Do not add active SRI compatibility. This approval covers document reference checksum representation only.                                                                                  |
 
 ## Section for Agents
-Requirements above refer to the local editions listed in the [implementation plan](csc_2.2.0.0/IMPLEMENTATION_PLAN.md).
+Requirements above refer to the local editions listed in the csc_2.2.0.0/.
 Pending decisions do not authorize implementation of a proposed resolution. Approved decisions apply only
 within their recorded scope; newly discovered conflicts require separate mediation.
