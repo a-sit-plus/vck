@@ -1,5 +1,7 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.csc.bindings.QesResponse
+import at.asitplus.csc.bindings.X509PresentationResponse
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.QesRequest
@@ -122,6 +124,41 @@ val DCQLX509CredentialQueryTest by matrixSuite {
                 meta = X509MetadataQuery(),
                 format = CredentialFormatEnum.DC_SD_JWT,
             )
+        }
+    }
+
+    // Enable once the X.509 branch of checkSubmissionRequirements is implemented.
+    testSuite("X.509 QES submission validation", testConfig = TestConfig.disable()) {
+        val query = DCQLX509CredentialQuery(
+            id = DCQLCredentialQueryIdentifier("certificate"),
+            meta = X509MetadataQuery(),
+            requireCryptographicHolderBinding = false,
+        )
+
+        fun checkSubmission(response: Any) = query.checkSubmissionRequirements(
+            credentialQueryResponses = listOf(response),
+            parseIsoMdocCredential = { error("X.509 submissions must not use the ISO mdoc parser") },
+            parseSdJwtCredential = { error("X.509 submissions must not use the SD-JWT parser") },
+            parseVcJwsCredential = { error("X.509 submissions must not use the VC-JWS parser") },
+        )
+
+        // Synthetic payloads define the submission binding contract, not AdES signature verification.
+        listOf(
+            "embedded" to QesResponse(documentWithSignature = listOf(byteArrayOf(1, 2, 3))),
+            "detached" to QesResponse(signatureObject = listOf(byteArrayOf(4, 5, 6))),
+        ).asData(nameFn = { (format, _) -> "accepts an inline $format QES response" }) test { (_, qes) ->
+            checkSubmission(X509PresentationResponse(qes = qes)).getOrThrow() shouldBe Unit
+        }
+
+        test("rejects an SD-JWT credential submitted for an X.509 query") {
+            val credential = DCQLSdJwtCredential(
+                claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(buildJsonObject {}),
+                type = "eu.pid.1",
+                satisfiesCryptographicHolderBinding = true,
+                authorityKeyIdentifiers = emptyList(),
+            )
+
+            checkSubmission(credential).exceptionOrNull().shouldBeInstanceOf<IllegalArgumentException>()
         }
     }
 
