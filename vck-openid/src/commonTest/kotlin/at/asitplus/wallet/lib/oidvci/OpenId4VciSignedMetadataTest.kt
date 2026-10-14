@@ -108,7 +108,11 @@ val OpenId4VciSignedMetadataTest by matrixSuite {
         val otherIssuer = signing.metadataEndpoint()
             .execute(untrusting.loadIssuerMetadata("https://other.example.com", strictPolicy))
 
-        rejected.shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().untrustedMetadata.shouldNotBeNull()
+        rejected.shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().apply {
+            untrustedMetadata.shouldNotBeNull()
+            // this issuer carries no WRPRC in issuer_info
+            untrustedRegistration.shouldBeNull()
+        }
         untrusting.parseCredentialMetadataIgnoringTrust(rejected).getOrThrow().first().apply {
             issuerMetadata.credentialIssuer shouldBe ISSUER
             issuer.shouldBeNull()

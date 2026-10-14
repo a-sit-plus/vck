@@ -227,6 +227,13 @@ Release 9.0.0 (unreleased):
       `parseCredentialMetadataIgnoringTrust(loaded)` in `OpenId4VciProtocolClient` and `OpenId4VciKtorClient`, which
       parses them without a validated credential issuer, so that a wallet can continue after warning the user, e.g.
       about an untrusted WRPAC or a rejected WRPRC
+    - `IssuerMetadataValidator` keeps the requirements of the EUDI Wallet ecosystem out of `parsing` and `signature`:
+      the signature is verified with the key the metadata assert, the `x5c` leaf or a `jwk`; metadata without a WRPAC
+      in `x5c`, or with one carrying no identifier, fail `trust`; `issuer_info` is checked by the new named check
+      `registration` of `IssuerMetadataChecks`, required by every policy. A `registration_cert` is validated also
+      without a `registrar_dataset`, and `IssuerMetadataValidation.untrustedRegistration`, also on
+      `LoadedIssuerMetadata.Signed`, carries its payload whatever the decision. Metadata accepted without a WRPAC,
+      under a policy not requiring trust, come without an `issuer`
     - Add `IssuerMetadata.issuerInfo` with `IssuerInfo`, whose `data` is a JSON element, and
       `OpenIdConstants.IssuerInfo`; add `WrpRegistrarDataset`, `WrpMultiLangString`, and the entitlements of
       attestation providers in `WrpConstants` to `etsi-data-classes`

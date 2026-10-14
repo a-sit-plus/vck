@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.csc.api.serializers.Base64X509CertificateSerializer
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.etsi.relyingParty.WrpRegistrarDataset
+import at.asitplus.openid.IssuerInfo
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OpenIdConstants.ISSUER_METADATA_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.IssuerInfo.REGISTRAR_DATASET_FORMAT
@@ -55,21 +56,28 @@ class IssuerMetadataValidator @JvmOverloads constructor(
      * Validates [signedMetadata], requested for the credential issuer identifier [credentialIssuer], under [policy].
      * The clock is read once, all checks use that time.
      *  - `parsing`: a JWS with `typ` `openidvci-issuer-metadata+jwt`, whose payload is the metadata with the claims
-     *    `sub` and `iat` (OpenID4VCI 1.0, 12.2.3), signed with the certificate in `x5c` of its protected header
-     *    (ETSI TS 119 472-3 V1.1.1, ISS-MDATA-ACC_CERT-4.2.2-01), which carries the identifier of a legal or natural
-     *    person, as a WRPAC (ETSI TS 119 475 V1.2.1, 5.1); `issuer_info` is present (ISS-MDATA-REG_CERT-4.2.3-01),
-     *    with one `registrar_dataset`, a JSON object with `identifier`, `srvDescription`, `registryURI`, and
-     *    `providesAttestations` (-07 to -13), and at most one `registration_cert`, a JWT (-04 to -06);
-     *  - `signature`: with the access certificate in `x5c` (ISS-MDATA-4.2.1-02, ISS-MDATA-ACC_CERT-4.2.2-02);
-     *  - `trust`: the certificate chain leads to one of [accessCertificates], as for relying parties: "the Wallet
-     *    MUST establish trust in the signer of the metadata. Otherwise, the Wallet MUST reject the signed metadata"
-     *    (OpenID4VCI 1.0, 12.2.3);
+     *    `sub` and `iat` (OpenID4VCI 1.0, 12.2.3);
+     *  - `signature`: with the key the JWS asserts, the leaf of its `x5c` or a `jwk`, see [SignatureCheck]; whether
+     *    that key is an access certificate is a matter of `trust`;
+     *  - `trust`: the metadata are signed with the certificate in `x5c` of the protected header (ETSI TS 119 472-3
+     *    V1.1.1, ISS-MDATA-ACC_CERT-4.2.2-01), which carries the identifier of a legal or natural person, as a WRPAC
+     *    (ETSI TS 119 475 V1.2.1, 5.1), and whose chain leads to one of [accessCertificates], as for relying
+     *    parties: "the Wallet MUST establish trust in the signer of the metadata. Otherwise, the Wallet MUST reject
+     *    the signed metadata" (OpenID4VCI 1.0, 12.2.3);
      *  - `timeliness`: `iat` is not in the future, `exp`, if present, not in the past, and every certificate of the
      *    chain is valid;
      *  - `subject`: `sub` (12.2.3) and `credential_issuer` (12.2.4) are [credentialIssuer], compared as strings
-     *    without normalization (12.2.4).
+     *    without normalization (12.2.4);
+     *  - `registration`: `issuer_info` is present (ETSI TS 119 472-3 V1.1.1, ISS-MDATA-REG_CERT-4.2.3-01), with one
+     *    `registrar_dataset`, a JSON object with `identifier`, `srvDescription`, `registryURI`, and
+     *    `providesAttestations` (-07 to -13), and at most one `registration_cert`, a JWT (-04 to -06).
      *
-     * The WRPRC, if any, is a child report, see [RegistrationCertificateChecks]: validated as for relying parties,
+     * So metadata outside of the EUDI Wallet ecosystem, e.g. signed with a `jwk` and without `issuer_info`, pass
+     * `parsing`, `signature`, and `subject`, and are reported as not trusted and not registered, see
+     * [IssuerMetadataValidation.untrustedMetadata].
+     *
+     * The WRPRC, if any, is a child report, also if the rest of `issuer_info` is not complete, see
+     * [RegistrationCertificateChecks]: validated as for relying parties,
      * issued to the identifier of the WRPAC (GEN-5.2.4-02), trusted through [registrationCertificates], with its
      * status, and registering the provider with an entitlement of attestation providers (ETSI TS 119 475 V1.2.1,
      * 4.2, A.2). The registration information itself is signed with the metadata, but not by the registrar, so its
@@ -88,35 +96,40 @@ class IssuerMetadataValidator @JvmOverloads constructor(
                 trust = TrustValidation(Blocked(), source = ACCESS_CERTIFICATE_PROVIDERS),
                 timeliness = Blocked(),
                 subject = Blocked(),
+                registration = Blocked(),
             )
             return IssuerMetadataValidation(ValidationReport.issuerMetadata(checks, policy, evaluatedAt))
         }
         val metadata = parsed.payload
         val verification = signatureCheck.verify(parsed.jws)
         val chain = verification.certificateChain
-        val accessCertificate = evaluateAccessCertificate(
-            chain = chain,
-            signature = verification.outcome,
-            clientId = null,
-            anchors = accessCertificates,
-            source = ACCESS_CERTIFICATE_PROVIDERS,
-            now = evaluatedAt,
-        )
+        // Without x5c, there is no access certificate whose parsing and timeliness could be checked
+        val accessCertificate = chain?.let {
+            evaluateAccessCertificate(
+                chain = it,
+                signature = verification.outcome,
+                clientId = null,
+                anchors = accessCertificates,
+                source = ACCESS_CERTIFICATE_PROVIDERS,
+                now = evaluatedAt,
+            )
+        }
         val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
         val registration = catching { metadata.registration() }
-        val registrationCertificate = registration.getOrNull()?.certificate?.let {
-            validateRegistrationCertificate(it, accessCertificate.identifier, policy, timeScope)
+        // A WRPRC is validated whether or not the rest of issuer_info is complete, so its verdict is reported anyway
+        val certificate = catching { metadata.issuerInfo?.registrationCertificate() }.getOrNull()
+        val registrationCertificate = certificate?.let {
+            validateRegistrationCertificate(it, accessCertificate?.identifier, policy, timeScope)
         }
         val checks = IssuerMetadataChecks(
-            parsing = catching { parsed.requireWellFormed() }.toOutcome()
-                .andThen { registration.toOutcome() }
-                .andThen { accessCertificate.checks.parsing },
-            signature = if (chain == null) {
-                Failed(IllegalArgumentException("The signed metadata transports no certificate in x5c"))
-            } else verification.outcome,
-            trust = accessCertificate.checks.trust,
+            parsing = catching { parsed.requireWellFormed() }.toOutcome(),
+            signature = verification.outcome,
+            trust = accessCertificate?.trustInSigner() ?: TrustValidation(
+                outcome = Failed(IllegalArgumentException("The metadata are not signed with an access certificate")),
+                source = ACCESS_CERTIFICATE_PROVIDERS,
+            ),
             timeliness = metadata.timeliness(timeScope)
-                .andThen { accessCertificate.checks.timeliness },
+                .andThen { accessCertificate?.checks?.timeliness ?: Passed },
             subject = catching {
                 require(metadata.subject == credentialIssuer) {
                     "sub ${metadata.subject} is not the credential issuer $credentialIssuer"
@@ -125,23 +138,41 @@ class IssuerMetadataValidator @JvmOverloads constructor(
                     "credential_issuer ${metadata.credentialIssuer} is not the credential issuer $credentialIssuer"
                 }
             }.toOutcome(),
+            registration = registration.toOutcome(),
         )
         val report = ValidationReport.issuerMetadata(checks, policy, evaluatedAt, registrationCertificate)
         val untrustedMetadata = metadata.takeIf { checks.signature == Passed && checks.subject == Passed }
+        val untrustedRegistration = certificate?.payload?.takeIf {
+            (registrationCertificate?.checks as? RegistrationCertificateChecks)?.parsing == Passed
+        }
         return if (report.decision == ValidationDecision.ACCEPTED) {
+            val identifier = accessCertificate?.identifier
             IssuerMetadataValidation(
                 report = report,
                 metadata = metadata,
                 untrustedMetadata = untrustedMetadata,
-                issuer = ValidatedCredentialIssuer(
-                    accessCertificateChain = chain!!,
-                    identifier = accessCertificate.identifier!!,
+                untrustedRegistration = untrustedRegistration,
+                // A policy not requiring trust accepts metadata without a WRPAC, which identify no provider
+                issuer = if (chain != null && identifier != null) ValidatedCredentialIssuer(
+                    accessCertificateChain = chain,
+                    identifier = identifier,
                     registrarDataset = registration.getOrThrow().dataset,
                     registrationCertificate = registration.getOrThrow().certificate?.payload,
-                ),
+                ) else null,
             )
-        } else IssuerMetadataValidation(report, untrustedMetadata = untrustedMetadata)
+        } else IssuerMetadataValidation(
+            report = report,
+            untrustedMetadata = untrustedMetadata,
+            untrustedRegistration = untrustedRegistration,
+        )
     }
+
+    /**
+     * Trust in the signer of the metadata, which has to be a WRPAC carrying the identifier of the provider: a
+     * certificate without one is not trusted, whether or not its chain leads to an anchor.
+     */
+    private fun AccessCertificateEvaluation.trustInSigner(): TrustValidation =
+        if (checks.parsing == Passed) checks.trust else checks.trust.copy(outcome = checks.parsing)
 
     private suspend fun validateRegistrationCertificate(
         certificate: WrpJwtRegistrationCertificate,
@@ -171,7 +202,12 @@ class IssuerMetadataValidator @JvmOverloads constructor(
     /** The elements of `issuer_info` (ETSI TS 119 472-3 V1.1.1, 4.2.3). */
     private fun IssuerMetadata.registration(): Registration {
         val issuerInfo = requireNotNull(issuerInfo) { "The signed metadata contains no issuer_info" }
-        val datasets = issuerInfo.filter { it.format == REGISTRAR_DATASET_FORMAT }
+        return Registration(issuerInfo.registrarDataset(), issuerInfo.registrationCertificate())
+    }
+
+    /** One `registrar_dataset` with its required members (ISS-MDATA-REG_CERT-4.2.3-07 to -13). */
+    private fun List<IssuerInfo>.registrarDataset(): WrpRegistrarDataset {
+        val datasets = filter { it.format == REGISTRAR_DATASET_FORMAT }
         require(datasets.size == 1) { "issuer_info contains ${datasets.size} registrar_dataset elements, not one" }
         val data = datasets.single().data
         require(data is JsonObject && data.isNotEmpty()) { "The registrar_dataset is no non-empty JSON object" }
@@ -181,13 +217,17 @@ class IssuerMetadataValidator @JvmOverloads constructor(
         require(dataset.providesAttestations.isNotEmpty()) {
             "The registrar_dataset contains no providesAttestations"
         }
-        val certificates = issuerInfo.filter { it.format == REGISTRATION_CERT_FORMAT }
+        return dataset
+    }
+
+    /** At most one `registration_cert`, a JWT (ISS-MDATA-REG_CERT-4.2.3-04 to -06). */
+    private fun List<IssuerInfo>.registrationCertificate(): WrpJwtRegistrationCertificate? {
+        val certificates = filter { it.format == REGISTRATION_CERT_FORMAT }
         require(certificates.size <= 1) { "issuer_info contains ${certificates.size} registration_cert elements" }
-        val certificate = certificates.singleOrNull()?.data?.let {
+        return certificates.singleOrNull()?.data?.let {
             require(it is JsonPrimitive && it.isString) { "The registration_cert is no JWT" }
             WrpJwtRegistrationCertificate(JwsCompactTyped<WrpPayload>(it.content))
         }
-        return Registration(dataset, certificate)
     }
 
     private fun JwsCompactTyped<IssuerMetadata>.requireWellFormed() {
@@ -216,7 +256,8 @@ class IssuerMetadataValidator @JvmOverloads constructor(
 
 /**
  * The [report] of signed credential issuer metadata, with the report of its WRPRC as child, if any, and, if it has
- * been accepted, the [metadata] and the [issuer].
+ * been accepted, the [metadata] and the [issuer], which is `null` for metadata a policy not requiring trust accepted
+ * without a WRPAC.
  */
 data class IssuerMetadataValidation(
     val report: ValidationReport,
@@ -224,11 +265,19 @@ data class IssuerMetadataValidation(
     val issuer: ValidatedCredentialIssuer? = null,
     /**
      * The metadata, whatever the decision of [report], if their `signature` and `subject` passed: they are signed
-     * with the certificate in `x5c`, and are the ones of the requested credential issuer, but this signer may not be
-     * trusted, nor be a registered provider. So they are no more trustworthy than unsigned metadata: use them only to
-     * continue after showing the report to the user, never as an accepted credential issuer.
+     * with the key they assert, the certificate in `x5c` or a `jwk`, and are the ones of the requested credential
+     * issuer, but this signer may not be trusted, nor be a registered provider. So they are no more trustworthy than
+     * unsigned metadata: use them only to continue after showing the report to the user, never as an accepted
+     * credential issuer.
      */
     val untrustedMetadata: IssuerMetadata? = null,
+    /**
+     * What the WRPRC in `issuer_info` says, whatever the decision of [report], if its `parsing` passed, e.g. to show
+     * the name and the registered attestations of a provider next to the warning that it is not trusted. It is not
+     * verified unless [issuer] is present: its signer may not be trusted, nor its status valid, nor it be issued to
+     * the signer of the metadata, so use it only to show it to the user, marked as such.
+     */
+    val untrustedRegistration: WrpPayload? = null,
 ) {
     init {
         require(report.checks is IssuerMetadataChecks) { "Report has to be an issuer metadata report" }
@@ -237,6 +286,9 @@ data class IssuerMetadataValidation(
         }
         require(metadata == null || metadata == untrustedMetadata) {
             "Accepted metadata are the untrusted metadata too"
+        }
+        require(issuer?.registrationCertificate == null || issuer.registrationCertificate == untrustedRegistration) {
+            "The registration certificate of an accepted issuer is the untrusted registration too"
         }
     }
 }

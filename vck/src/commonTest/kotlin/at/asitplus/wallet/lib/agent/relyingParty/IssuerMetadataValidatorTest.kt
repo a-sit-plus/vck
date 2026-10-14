@@ -141,7 +141,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
         }
     }
 
-    "issuer_info has to contain one registrar_dataset and at most one registration_cert, as JWT" {
+    "issuer_info has to contain one registrar_dataset and at most one registration_cert, as JWT, for registration" {
         val fixture = buildWrpFixture()
         val wrprc = fixture.issuerWrprc()
         val dataset = IssuerInfo(REGISTRAR_DATASET_FORMAT, registrarDatasetJson())
@@ -159,9 +159,35 @@ val IssuerMetadataValidatorTest by matrixSuite {
         )
 
         invalid.forEach {
-            fixture.validate(fixture.signedMetadata(metadata(issuerInfo = it))).checks().parsing
-                .shouldBeInstanceOf<CheckOutcome.Failed>()
+            fixture.validate(fixture.signedMetadata(metadata(issuerInfo = it))).apply {
+                report.decision shouldBe REJECTED
+                checks().parsing shouldBe CheckOutcome.Passed
+                checks().registration.shouldBeInstanceOf<CheckOutcome.Failed>()
+                // the metadata are still authentic for the credential issuer
+                untrustedMetadata.shouldNotBeNull()
+            }
         }
+    }
+
+    "a WRPRC is validated also without a registrar_dataset, and what it says is carried whatever the decision" {
+        val fixture = buildWrpFixture()
+        val wrprc = fixture.issuerWrprc()
+        val onlyCertificate = listOf(IssuerInfo(REGISTRATION_CERT_FORMAT, JsonPrimitive(wrprc)))
+
+        fixture.validate(fixture.signedMetadata(metadata(issuerInfo = onlyCertificate))).apply {
+            report.decision shouldBe REJECTED
+            checks().registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable.message shouldBe
+                    "issuer_info contains 0 registrar_dataset elements, not one"
+            report.children.single().decision shouldBe ACCEPTED
+            untrustedRegistration.shouldNotBeNull().providesAttestations shouldBe PROVIDED_ATTESTATIONS
+            issuer.shouldBeNull()
+        }
+        fixture.validate(fixture.signedMetadata(metadata(issuerInfo = issuerInfo(wrprc)))).apply {
+            report.decision shouldBe ACCEPTED
+            untrustedRegistration.shouldNotBeNull()
+            issuer.shouldNotBeNull().registrationCertificate shouldBe untrustedRegistration
+        }
+        fixture.validate(fixture.signedMetadata()).untrustedRegistration.shouldBeNull()
     }
 
     "without anchors, trust is blocked, and with an empty list of WRPAC providers it fails" {
@@ -209,15 +235,42 @@ val IssuerMetadataValidatorTest by matrixSuite {
         }
     }
 
-    "metadata signed without x5c is rejected" {
+    "metadata signed with a jwk instead of a WRPAC are authentic, but not trusted" {
         val fixture = buildWrpFixture()
-        val signed = SignJwt<IssuerMetadata>(fixture.wrpKey, JwsHeaderJwk())(
-            ISSUER_METADATA_JWT_TYPE, metadata(), IssuerMetadata.serializer()
+        suspend fun signedWithJwk(metadata: IssuerMetadata) = SignJwt<IssuerMetadata>(fixture.wrpKey, JwsHeaderJwk())(
+            ISSUER_METADATA_JWT_TYPE, metadata, IssuerMetadata.serializer()
         ).getOrThrow().toString()
 
-        fixture.validate(signed).apply {
+        // e.g. outside of the EUDI Wallet ecosystem: no x5c, and no issuer_info
+        fixture.validate(signedWithJwk(metadata(issuerInfo = null))).apply {
+            report.decision shouldBe REJECTED
+            checks().parsing shouldBe CheckOutcome.Passed
+            checks().signature shouldBe CheckOutcome.Passed
+            checks().subject shouldBe CheckOutcome.Passed
+            checks().timeliness shouldBe CheckOutcome.Passed
+            checks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+            checks().registration.shouldBeInstanceOf<CheckOutcome.Failed>()
+            metadata.shouldBeNull()
+            untrustedMetadata.shouldNotBeNull().credentialIssuer shouldBe CREDENTIAL_ISSUER
+        }
+        // a policy not requiring trust accepts them, but they identify no provider
+        IssuerMetadataValidator(accessCertificates = fixture.trustAnchors)
+            .validate(signedWithJwk(metadata()), CREDENTIAL_ISSUER, policy.copy(trust = TrustPolicy.IntegrityOnly))
+            .apply {
+                report.decision shouldBe ACCEPTED
+                metadata.shouldNotBeNull()
+                issuer.shouldBeNull()
+            }
+        // a signature that does not verify with the jwk, and metadata of another issuer, are still rejected
+        val signed = signedWithJwk(metadata())
+        val other = signedWithJwk(metadata(subject = "https://other.example.com"))
+        val tampered = signed.substringBeforeLast('.') + "." + other.substringAfterLast('.')
+        fixture.validate(tampered).apply {
             checks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
-            checks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Blocked>()
+            untrustedMetadata.shouldBeNull()
+        }
+        fixture.validate(other).apply {
+            checks().subject.shouldBeInstanceOf<CheckOutcome.Failed>()
             untrustedMetadata.shouldBeNull()
         }
     }
@@ -259,7 +312,11 @@ val IssuerMetadataValidatorTest by matrixSuite {
     "the access certificate has to carry the identifier of the provider" {
         val fixture = buildWrpFixture(wrpacIdentifier = null)
 
-        fixture.validate(fixture.signedMetadata()).checks().parsing.shouldBeInstanceOf<CheckOutcome.Failed>()
+        fixture.validate(fixture.signedMetadata()).apply {
+            report.decision shouldBe REJECTED
+            checks().parsing shouldBe CheckOutcome.Passed
+            checks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+        }
     }
 
     "expired metadata and metadata issued in the future are rejected" {
