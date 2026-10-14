@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
+import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
 import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
 import at.asitplus.wallet.lib.validation.JwtProofChecks
 import at.asitplus.wallet.lib.validation.KeyAttestationChecks
@@ -276,8 +277,9 @@ class ProofValidator @JvmOverloads constructor(
     )
 
     /**
-     * With a Nonce Endpoint, a key attestation contains a server-provided `c_nonce`, as `attestation` proof
-     * (OpenID4VCI 1.0, F.3) and embedded in a `jwt` proof (F.1), where it need not be the nonce of the proof.
+     * With a Nonce Endpoint, a key attestation contains a server-provided `c_nonce` as `attestation` proof
+     * (OpenID4VCI 1.0, F.3). Embedded in a `jwt` proof (F.1), whose own nonce is checked, its optional `nonce` (D.1)
+     * need not be the nonce of the proof, but is checked if present.
      */
     private suspend fun validateKeyAttestation(
         attestation: JwsCompactTyped<KeyAttestationJwt>,
@@ -291,7 +293,8 @@ class ProofValidator @JvmOverloads constructor(
             policy = policy,
             evaluatedAt = evaluatedAt,
             embedded = embedded,
-            nonce = nonceOutcome(attestation.payload.nonce),
+            nonce = if (embedded && attestation.payload.nonce == null) NotApplicable
+            else nonceOutcome(attestation.payload.nonce),
             supportedAlgorithms = supportedAlgorithms,
         ),
     )
