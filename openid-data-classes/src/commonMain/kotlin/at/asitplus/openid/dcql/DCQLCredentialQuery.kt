@@ -155,6 +155,20 @@ sealed interface DCQLCredentialQuery {
                     ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
             )
 
+            CredentialFormatEnum.X509 -> DCQLX509CredentialQuery(
+                id = id,
+                format = format,
+                meta = meta as X509MetadataQuery,
+                claims = claims?.map {
+                    it as DCQLJsonClaimsQuery
+                }?.toNonEmptyList()?.let(::DCQLClaimsQueryList),
+                claimSets = claimSets,
+                multiple = multiple ?: Defaults.MULTIPLE,
+                trustedAuthorities = trustedAuthorities,
+                requireCryptographicHolderBinding = requireCryptographicHolderBinding
+                    ?: Defaults.REQUIRE_CRYPTOGRAPHIC_HOLDER_BINDING,
+            )
+
             else -> throw IllegalArgumentException("Unsupported credential format: ${format}")
         }
     }
@@ -341,6 +355,9 @@ sealed interface DCQLCredentialQuery {
                     is DCQLIsoMdocZkCredentialQuery -> parseIsoMdocCredential(it)
                     is DCQLSdJwtCredentialQuery -> parseSdJwtCredential(it)
                     is DCQLJwtVcCredentialQuery -> parseVcJwsCredential(it)
+                    is DCQLX509CredentialQuery -> throw IllegalArgumentException(
+                        "X.509 submissions require QES validation, which is not supported by this credential path"
+                    )
                 },
             ).getOrThrow()
         }

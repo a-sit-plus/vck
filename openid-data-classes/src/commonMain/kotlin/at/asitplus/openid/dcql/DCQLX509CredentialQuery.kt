@@ -15,7 +15,7 @@ data class DCQLX509CredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.ID)
     override val id: DCQLCredentialQueryIdentifier,
     @SerialName(DCQLCredentialQuery.SerialNames.META)
-    override val meta: DCQLX509CredentialMetadataAndValidityConstraints,
+    override val meta: X509MetadataQuery,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIMS)
     override val claims: DCQLClaimsQueryList<DCQLJsonClaimsQuery>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIM_SETS)
