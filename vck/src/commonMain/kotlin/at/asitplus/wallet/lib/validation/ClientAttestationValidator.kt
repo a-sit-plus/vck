@@ -50,8 +50,9 @@ class ClientAttestationValidator @JvmOverloads constructor(
      *    `wallet_name`, `wallet_version`, `wallet_solution_certification_information`, and `client_status` are
      *    present (EUDI TS3, 2.3.1); and the proof of possession is well-formed, see [ClientAttestationPossession];
      *  - `signature`: with the signing certificate in `x5c` (EUDI TS3, 2.2.1.2);
-     *  - `trust`: the signing certificate is issued by one of [walletProviderAnchors], which are not transported
-     *    (OpenID4VC HAIP 1.0, 4.4.1);
+     *  - `trust`: the signing certificate is one of [walletProviderAnchors] (ETSI TS 119 472-3 V1.1.1,
+     *    AUTH-REQ-PROC-4.4.3-01, TOKEN-REQ-PROC-4.5.2-01), or it leads to one of them through intermediate
+     *    certificates in `x5c`, which does not contain the anchor (EUDI TS3, 2.2.1.2; OpenID4VC HAIP 1.0, 4.4.1);
      *  - `timeliness`: `exp` is not in the past (EUDI TS3, 2.2.1.2), `iat`, which is optional, not in the future, the
      *    lifetime less than 24 hours (EUDI TS3, 2.2.1.1), and `client_status.exp` not in the past, being how long the
      *    wallet provider maintains the status (EUDI TS3, 2.4.1);
