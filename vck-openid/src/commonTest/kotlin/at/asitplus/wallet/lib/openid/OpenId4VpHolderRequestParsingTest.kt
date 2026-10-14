@@ -22,6 +22,27 @@ val OpenId4VpHolderRequestParsingTest by matrixSuite {
 
     val requestUri = "https://example.com/request/1234"
 
+    listOf(
+        emptyList(),
+        listOf("not-base64!"),
+        listOf("{".encodeToByteArray().encodeToString(Base64UrlStrict)),
+        listOf("""{"type":"unknown"}""".encodeToByteArray().encodeToString(Base64UrlStrict)),
+    ).asData(
+        nameFn = { "Malformed transaction_data is rejected during preparation: $it" },
+    ) test { entries ->
+        val input = """{
+            "response_type": "vp_token",
+            "client_id": "https://verifier.example.org",
+            "nonce": "transaction-nonce",
+            "transaction_data": ${Json.encodeToString(entries)}
+        }""".trimIndent()
+        Json.decodeFromString<AuthenticationRequestParameters>(input)
+        val error = OpenId4VpHolder().startAuthorizationResponsePreparation(input)
+            .exceptionOrNull().shouldNotBeNull().shouldBeInstanceOf<OAuth2Exception.InvalidTransactionData>()
+        error.error shouldBe "invalid_transaction_data"
+        error.cause.shouldNotBeNull()
+    }
+
     // CSC permits omission only when the surrounding protocol does not require credential_ids.
     // OpenID4VP 1.0 sections 5.1 and 8.5 require valid, non-empty references before user consent or signing.
     listOf(null, "[]", "[\"unknown-query\"]").asData(

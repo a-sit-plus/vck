@@ -1,8 +1,5 @@
-package at.asitplus.wallet.lib.data
+package at.asitplus.openid
 
-import at.asitplus.openid.TransactionData
-import at.asitplus.openid.TransactionDataBase64Url
-import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -24,17 +21,17 @@ object Base64URLTransactionDataSerializer : KSerializer<TransactionData> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("Base64URLTransactionDataSerializer", PrimitiveKind.STRING)
 
-    override fun deserialize(decoder: Decoder): TransactionData =
-        joseCompliantSerializer.decodeFromString(
-            TransactionData.serializer(),
-            decoder.decodeString().decodeToByteArray(Base64UrlStrict).decodeToString()
-        )
-
     override fun serialize(encoder: Encoder, value: TransactionData) {
         val jsonString = joseCompliantSerializer.encodeToString(TransactionData.serializer(), value)
         val base64URLString = jsonString.encodeToByteArray().encodeToString(Base64UrlStrict)
         encoder.encodeString(base64URLString)
     }
+
+    override fun deserialize(decoder: Decoder): TransactionData =
+        joseCompliantSerializer.decodeFromString(
+            TransactionData.serializer(),
+            decoder.decodeString().decodeToByteArray(Base64UrlStrict).decodeToString()
+        )
 }
 
 fun TransactionDataBase64Url.toTransactionData(): TransactionData =
