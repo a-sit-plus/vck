@@ -1,6 +1,7 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- Moved `Base64URLTransactionDataSerializer` to openid-data-classes
 - QES approvals:
     - Bind each approval transaction to one selected DCQL credential submission, allowing separate approvals for distinct queries without adding approvals to unrelated identity presentations
     - Treat multiple `credential_ids` as alternatives and reject missing, empty, or unknown query references in OpenID4VP transaction data with `invalid_transaction_data`
