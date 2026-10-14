@@ -86,6 +86,11 @@ Release 9.0.0 (unreleased):
           the `signature` and `parsing` of the WRPAC are not applicable, `requestData` fails with an
           `UnsupportedWrpRequestException`, and their WRPRCs are not evaluated, while a reader authentication that does
           not verify fails the `signature`, so that a wallet can tell an unauthenticated reader from a forged one
+        - A relying party reports its WRPRCs in the new named check `registration` of `RelyingPartyChecks`, required by
+          every policy: a missing WRPRC (`MissingRegistrationCertificateException`) or one that can not be parsed
+          (`InvalidRegistrationCertificateException`) fails `registration` instead of `requestData`, which keeps the
+          extraction of the request, e.g. its `client_id` and DCQL query, and fails for unsigned requests, whose
+          `registration` is blocked
     - Deprecate the superseded validation API, to be removed in the next major release: `Validator`,
       `ValidatorVcJws`, `ValidatorSdJwt`, `ValidatorMdoc`, `VerifierAgent`, and the presentation methods of `Verifier`
       (use `CredentialValidator`); `VcJwsInputValidator`, `SdJwtInputValidator`, `MdocInputValidator` and their

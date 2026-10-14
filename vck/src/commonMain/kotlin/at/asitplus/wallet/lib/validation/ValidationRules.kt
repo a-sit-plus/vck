@@ -59,9 +59,9 @@ fun CheckOutcome.cause(): Throwable? = when (this) {
  *  - `timeliness` is always the validity period of the artifact the report is about, including its certificates; the
  *    time of a proof of possession by the holder is `proofTime` or `popTime`;
  *  - the parts of the status of an artifact start with `status.`;
- *  - `registration` is the registration information of a credential issuer, `linkage` and `requestAuthorization`
- *    are the checks of a registration certificate (WRPRC), and `requestData` the extraction of the requested
- *    credentials and the WRPRCs of a relying party.
+ *  - `registration` is the registration information of a credential issuer, or the registration certificates
+ *    (WRPRCs) a relying party transports, `linkage` and `requestAuthorization` are checks of a WRPRC, and
+ *    `requestData` the extraction of the credentials a relying party requests.
  */
 data class NamedCheck(
     val name: String,
@@ -273,7 +273,11 @@ internal fun VerifierAttestationChecks.named(policy: ValidationPolicy) = listOf(
     NamedCheck("clientId", clientId, REQUIRED),
 )
 
-internal fun RelyingPartyChecks.named() = listOf(NamedCheck("requestData", requestData, REQUIRED))
+/** The registration of a relying party is required by every policy, as for credential issuers. */
+internal fun RelyingPartyChecks.named() = listOf(
+    NamedCheck("requestData", requestData, REQUIRED),
+    NamedCheck("registration", registration, REQUIRED),
+)
 
 /**
  * An unsigned request, e.g. an mdoc request without reader authentication, has neither a WRPAC nor a signature, so

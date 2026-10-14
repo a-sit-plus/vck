@@ -39,6 +39,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.relyingParty.InvalidRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.UnsupportedWrpRequestException
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -274,7 +275,7 @@ val RelyingPartyValidatorTest by matrixSuite {
             untrustedRegistrations.shouldBeEmpty()
             // a wallet may continue past these after warning the user, but past no integrity check
             report.allNamedChecks().filterNot { it.satisfied }.map { it.name }.toSet() shouldBe
-                    setOf("requestData", "trust", "timeliness")
+                    setOf("requestData", "registration", "trust", "timeliness")
         }
     }
 
@@ -297,11 +298,47 @@ val RelyingPartyValidatorTest by matrixSuite {
 
         val result = fixture.validate(fixture.signedByWrp(parameters))
 
-        result.report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
-            .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
-            .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+        result.report.checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
+            requestData shouldBe CheckOutcome.Passed
+            registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+        }
         result.report.children.drop(1).shouldBeEmpty()
         result.accessChecks().signature shouldBe CheckOutcome.Passed
+    }
+
+    "a WRPRC that can not be parsed fails the registration of a relying party, not its request" {
+        val fixture = buildWrpFixture()
+        val parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier))
+            .copy(verifierInfo = nonEmptyListOf(VerifierInfo(REGISTRATION_CERT_FORMAT, "not-a-jws")))
+
+        fixture.validate(fixture.signedByWrp(parameters)).apply {
+            report.decision shouldBe REJECTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
+                requestData shouldBe CheckOutcome.Passed
+                registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                    .shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+            }
+            // the request is authenticated by a trusted WRPAC, so a wallet may continue after warning the user
+            report.allNamedChecks().filterNot { it.satisfied }.map { it.name } shouldBe listOf("registration")
+            untrustedRegistrations.shouldBeEmpty()
+        }
+    }
+
+    "a device request without WRPRCs fails the registration of a proximity reader, not its request" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val deviceRequest = fixture.isoRequest(mdocDocRequest(), transcript).parameters.isoMdocRequest.deviceRequest
+
+        fixture.validator().validate(deviceRequest, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            accessChecks().signature shouldBe CheckOutcome.Passed
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
+                requestData shouldBe CheckOutcome.Passed
+                registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                    .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+            }
+        }
     }
 
     "an unsigned request is not supported" {
@@ -315,6 +352,8 @@ val RelyingPartyValidatorTest by matrixSuite {
             report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
                 .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<UnsupportedWrpRequestException>()
             accessChecks().signature shouldBe CheckOutcome.NotApplicable
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
+                .shouldBeInstanceOf<CheckOutcome.Blocked>()
         }
     }
 }

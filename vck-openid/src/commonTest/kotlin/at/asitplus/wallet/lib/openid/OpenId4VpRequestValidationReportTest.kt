@@ -122,7 +122,7 @@ val OpenId4VpRequestValidationReportTest by matrixSuite {
         validation.validationReport.apply {
             decision shouldBe REJECTED
             requestChecks().signature shouldBe CheckOutcome.Passed
-            children.single().checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+            children.single().checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
                 .shouldBeInstanceOf<CheckOutcome.Failed>()
         }
         validation.relyingParty.shouldNotBeNull().untrustedRegistrations.shouldBeEmpty()

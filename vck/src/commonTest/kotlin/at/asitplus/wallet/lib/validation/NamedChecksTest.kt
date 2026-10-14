@@ -67,7 +67,7 @@ private val everyTypeOfChecks: List<ValidationChecks> = listOf(
     ClientAttestationChecks(Passed, Passed, trusted, Passed, validStatus, Passed, Passed, Passed, Passed, Passed),
     RequestObjectChecks(Passed, Passed, trusted, Passed, Passed, Passed, Passed),
     VerifierAttestationChecks(Passed, Passed, trusted, Passed, Passed),
-    RelyingPartyChecks(Passed),
+    RelyingPartyChecks(Passed, Passed),
     AccessCertificateChecks(Passed, Passed, trusted, Passed, Passed),
     RegistrationCertificateChecks(Passed, Passed, trusted, Passed, validStatus, Passed, Passed),
     IssuerMetadataChecks(Passed, Passed, trusted, Passed, Passed, Passed),
