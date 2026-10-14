@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.csc.bindings.QesApprovalBinding
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
@@ -8,11 +9,15 @@ import at.asitplus.openid.dcql.DCQLClaimsQueryResult.JsonResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemSpec
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemType
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreSdJwt
+import at.asitplus.wallet.lib.agent.QesApprovalTestData.approvalJson
+import at.asitplus.wallet.lib.agent.QesApprovalTestData.encodeTransactionData
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
@@ -67,6 +72,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             val sdJwtCredential = issueAndStoreSdJwt(holder, holderKeyMaterial, issuer)
             val isoCredential = issueAndStoreIsoMdoc(holder, holderKeyMaterial, issuer)
             object {
+                val holder = holder
                 val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
                 val sdJwtCredential = sdJwtCredential
                 val isoCredential = isoCredential
@@ -290,6 +296,69 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             }
         }
 
+        /**
+         * ETSI TS 119 432 V1.3.1 B.6.3 selects the digest algorithm from the request's hashAlgorithmOID;
+         * CSC Data Model Bindings 1.0.0 section 7.2.1.1 instead requires fixed SHA-256 for mdoc approvals.
+         * These tests verify the request-selected algorithm and hashing of the original decoded UTF-8 JSON bytes.
+         */
+        "QES mdoc approval digest" - { fixture ->
+            "direct mdoc approval creation permits omitted protocol-specific credential_ids" {
+                val raw = approvalJson(Digest.SHA256.oid.toString(), credentialIds = null)
+                val result = fixture.verifiablePresentationFactory.createVerifiablePresentation(
+                    request = presentationRequest().copy(
+                        transactionData = listOf(
+                            JsonPrimitive(
+                                encodeTransactionData(raw)
+                            )
+                        ),
+                    ),
+                    credential = fixture.isoCredential,
+                    disclosedAttributes = emptyList(),
+                ).getOrThrow()
+                result.qesApprovalDigest().shouldNotBeNull()
+                    .contentEquals(Digest.SHA256.digest(raw.encodeToByteArray())) shouldBe true
+            }
+
+            listOf(Digest.SHA256, Digest.SHA384, Digest.SHA512).asData(
+                nameFn = { digest -> "mdoc uses requested $digest over original decoded UTF-8 JSON" },
+            ) test { digest ->
+                val rawApprovalJson = approvalJson(digest.oid.toString())
+                val encodedTransactionData = encodeTransactionData(rawApprovalJson)
+                val request = presentationRequest().copy(
+                    transactionData = listOf(JsonPrimitive(encodedTransactionData)),
+                )
+
+                val result = fixture.verifiablePresentationFactory.createVerifiablePresentation(
+                    request = request,
+                    credential = fixture.isoCredential,
+                    disclosedAttributes = emptyList(),
+                ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
+
+                val deviceNamespaces =
+                    result.deviceResponse.documents.shouldNotBeNull().single().deviceSigned.namespaces.value
+                val approval = deviceNamespaces.entries[QesApprovalBinding.NAMESPACE]
+                    ?.entries?.single { item -> item.key == QesApprovalBinding.DATA_ELEMENT_IDENTIFIER }
+                    ?.value.shouldNotBeNull()
+                (approval as ByteArray).contentEquals(digest.digest(rawApprovalJson.encodeToByteArray())) shouldBe true
+            }
+
+            "mdoc rejects an unsupported approval hash algorithm" {
+                val unsupportedOid = "1.2.3.4"
+                val encodedTransactionData = encodeTransactionData(approvalJson(unsupportedOid))
+                val request = presentationRequest().copy(
+                    transactionData = listOf(JsonPrimitive(encodedTransactionData)),
+                )
+
+                shouldThrow<PresentationException> {
+                    fixture.verifiablePresentationFactory.createVerifiablePresentation(
+                        request = request,
+                        credential = fixture.isoCredential,
+                        disclosedAttributes = emptyList(),
+                    ).getOrThrow()
+                }.message shouldBe "Unsupported qesApproval hash algorithm $unsupportedOid"
+            }
+        }
+
         "iso createVerifiablePresentation uses disclosedAttributes (dcql query results) an ZKP request without fallback" {
             val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
 
@@ -310,6 +379,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
 
     }
 }
+
 // Simple Session Transcript (mostly empty)
 private val simpleTranscriptCallback: () -> SessionTranscript = {
     SessionTranscript.forQr(
@@ -338,7 +408,7 @@ private fun CreatePresentationResult.DeviceResponse.disclosedIsoClaimNames(names
 
 private val setOfDefaultSdJwtClaims = setOf("iss", "nbf", "exp", "cnf", "vct", "status", "sub", "iat")
 
-private fun invalidIsoZkMetaData(zkRequired: Boolean) =  ZkMetadata.IsoMdocZk(
+private fun invalidIsoZkMetaData(zkRequired: Boolean) = ZkMetadata.IsoMdocZk(
     zkRequest = DCQLIsoMdocZkSystemType(
         zkRequired = zkRequired,
         systemSpecs = listOf(
@@ -357,5 +427,5 @@ private fun invalidIsoZkMetaData(zkRequired: Boolean) =  ZkMetadata.IsoMdocZk(
                 version = 12,
             )
         ),
-    ).also{ it.validate() }.toZkRequest()
+    ).also { it.validate() }.toZkRequest()
 )

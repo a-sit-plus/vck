@@ -1,11 +1,16 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.json.Json
 
 /**
  * `OpenId4VpHolder` can only process authorization requests, but the request parser may well return something else,
@@ -16,6 +21,39 @@ import io.ktor.http.*
 val OpenId4VpHolderRequestParsingTest by matrixSuite {
 
     val requestUri = "https://example.com/request/1234"
+
+    // CSC permits omission only when the surrounding protocol does not require credential_ids.
+    // OpenID4VP 1.0 sections 5.1 and 8.5 require valid, non-empty references before user consent or signing.
+    listOf(null, "[]", "[\"unknown-query\"]").asData(
+        nameFn = { ids -> "QES approval with invalid credential_ids is rejected during preparation: $ids" },
+    ) test { ids ->
+        val encoded = """{
+            "type": "https://cloudsignatureconsortium.org/2025/qes-approval",
+            ${ids?.let { "\"credential_ids\": $it," }.orEmpty()}
+            "signatureQualifier": "eu_eidas_qes",
+            "numSignatures": 1,
+            "documentDigests": [{ "label": "Contract", "hash": "AQID" }],
+            "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1"
+        }""".trimIndent().encodeToByteArray().encodeToString(Base64UrlStrict)
+        val input = """{
+            "response_type": "vp_token",
+            "client_id": "https://verifier.example.org",
+            "nonce": "approval-nonce",
+            "dcql_query": {
+                "credentials": [{
+                    "id": "approval-credential", "format": "dc+sd-jwt",
+                    "meta": { "vct_values": ["AtomicAttribute2023"] }
+                }]
+            },
+            "transaction_data": ["$encoded"]
+        }""".trimIndent()
+        // Parsing the model permits CSC's conditional omission; the OpenID protocol boundary rejects it.
+        Json.decodeFromString<AuthenticationRequestParameters>(input)
+        val error = OpenId4VpHolder().startAuthorizationResponsePreparation(input)
+            .exceptionOrNull().shouldNotBeNull().shouldBeInstanceOf<OAuth2Exception.InvalidTransactionData>()
+        error.error shouldBe "invalid_transaction_data"
+        error.cause.shouldNotBeNull().message.shouldNotBeNull() shouldContain "credential_ids"
+    }
 
     "request_uri that can not be retrieved is rejected" {
         // The retriever answers nothing, e.g. because the fetch failed, or because the verifier put a URL into

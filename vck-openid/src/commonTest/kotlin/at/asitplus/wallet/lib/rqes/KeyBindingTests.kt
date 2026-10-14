@@ -44,9 +44,9 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
-private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
+private fun malignTransactionData(queryId: String): List<TransactionDataBase64Url> = listOf(
     QCertCreationAcceptance(
-        credentialIds = setOf(),
+        credentialIds = setOf(queryId),
         qcTermsConditionsUri = uuid4().toString(),
         qcHash = uuid4().bytes,
         qcHashAlgorithmOid = Digest.SHA256.oid,
@@ -160,7 +160,9 @@ val KeyBindingTests by matrixSuite {
 
             val malignResponse = it.holderOid4vp.createAuthnResponse(
                 joseCompliantSerializer.encodeToString(
-                    authnRequest.copy(transactionData = malignTransactionData())
+                    authnRequest.copy(
+                        transactionData = malignTransactionData(authnRequest.dcqlQuery!!.credentials.first().id.string)
+                    )
                 )
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
@@ -192,7 +194,9 @@ val KeyBindingTests by matrixSuite {
             }
             val malignResponse = it.holderOid4vp.createAuthnResponse(
                 joseCompliantSerializer.encodeToString(
-                    authnRequest.copy(transactionData = malignTransactionData())
+                    authnRequest.copy(
+                        transactionData = malignTransactionData(authnRequest.dcqlQuery!!.credentials.first().id.string)
+                    )
                 )
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()

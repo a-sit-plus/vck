@@ -44,12 +44,10 @@ sealed class TransactionData {
     abstract val credentialIds: Set<String>
 
     /**
-     * OID4VP: OPTIONAL. Array of strings each representing a hash algorithm identifier, one of which MUST be used to
-     * calculate hashes in transaction_data_hashes response parameter. The value of the identifier MUST be a hash
-     * algorithm value from the "Hash Name String" column in the IANA "Named Information Hash Algorithm" registry
-     * or a value defined in another specification and/or profile of this specification. If this parameter is not
-     * present, a default value of sha-256 MUST be used. To promote interoperability, implementations MUST support the
-     * `sha-256` hash algorithm.
+     * OID4VP Annex B.3.3.1: Optional hash algorithms for binding each transaction-data item into the SD-JWT VC Key
+     * Binding JWT. For CSC QES signing and approval transactions, this binds the exact request data to the holder's
+     * proof of possession. If absent, SHA-256 is used. Values are IANA hash names, and implementations must support
+     * `sha-256`.
      */
     abstract val transactionDataHashAlgorithms: Set<String>?
 }

@@ -15,8 +15,9 @@ import kotlinx.serialization.Transient
  * Structured hash containing a Base64-encoded digest and its algorithm OID. Its JSON form is an object, for example
  * `{"value":"BwgJ","algorithmOID":"2.16.840.1.101.3.4.2.1"}`.
  *
- * CSC Data Model Bindings 1.0.0 section 6.2.1 uses an SRI string for `qesRequest.checksum`;
- * ETSI TS 119 432 Annex A uses the structured object.
+ * CSC Data Model Bindings 1.0.0 specifies SRI strings for its QES request checksum fields. ETSI TS 119 432 Annex A.6.4
+ * specifies this structured object. VC-K follows the TS 119 432 representation wherever the definitions conflict and
+ * uses [Hash] for checksum models and serialized output throughout the project.
  */
 @Serializable
 data class Hash(

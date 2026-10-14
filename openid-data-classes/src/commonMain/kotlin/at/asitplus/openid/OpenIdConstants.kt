@@ -501,6 +501,9 @@ object OpenIdConstants {
         /** Invalid request in general: `invalid_request`. */
         const val INVALID_REQUEST = "invalid_request"
 
+        /** Invalid OpenID4VP transaction data or credential references: `invalid_transaction_data`. */
+        const val INVALID_TRANSACTION_DATA = "invalid_transaction_data"
+
         /** Invalid client, e.g. missing client authentication: `invalid_client`. */
         const val INVALID_CLIENT = "invalid_client"
 

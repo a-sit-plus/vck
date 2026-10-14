@@ -1,6 +1,10 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- QES approvals:
+    - Bind each approval transaction to one selected DCQL credential submission, allowing separate approvals for distinct queries without adding approvals to unrelated identity presentations
+    - Treat multiple `credential_ids` as alternatives and reject missing, empty, or unknown query references in OpenID4VP transaction data with `invalid_transaction_data`
+    - Add optional `PresentationRequestParameters.qesApprovalTransactionData` for selecting approval data independently of the general SD-JWT transaction-data integrity hashes
 - CSC data classes:
     - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
     - Implement CSC Data Model 1.0.0
