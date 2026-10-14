@@ -19,16 +19,18 @@ import kotlin.time.Instant
 internal enum class TrustRule {
     /**
      * The signing certificate is issued by an anchor, or the chain consists of only the signing certificate, which is
-     * itself an anchor: issuers of credentials, as `requireTrustedSigningCertificate` with `allowDirectTrust`.
-     * A directly listed certificate may be self-signed, which OpenID4VC HAIP 1.0, 6.1.1 forbids for the issuer of an
-     * SD-JWT VC.
+     * itself an anchor, as `requireTrustedSigningCertificate` with `allowDirectTrust`: issuers of credentials and
+     * signers of status list tokens. A LoTE lists "certificates that can be used to verify the signature or seal
+     * created by the provider" for its issuance and revocation services alike (ETSI TS 119 602 V1.1.1, 6.6.3, D.3,
+     * G.3), which "can be the X.509 certificate corresponding to the private key used to sign or seal" (H.3, NOTE).
+     * This relaxes OpenID4VC HAIP 1.0, which forbids a transported anchor and a self-signed signer for SD-JWT VCs
+     * (6.1.1) and status list tokens (6.1): a directly listed certificate may be self-signed.
      */
     ISSUED_BY_ANCHOR_OR_LISTED,
 
     /**
      * The signing certificate is issued by an anchor, the anchor is not transported, and the signer is not
-     * self-signed, as OpenID4VC HAIP 1.0 requires for status list tokens (6.1), key attestations (4.5.1), wallet
-     * attestations (4.4.1), and signed issuer metadata (4.1).
+     * self-signed, as OpenID4VC HAIP 1.0 requires for key attestations (4.5.1) and wallet attestations (4.4.1).
      */
     ISSUED_BY_ANCHOR,
 
@@ -73,8 +75,8 @@ internal suspend fun checkTrust(
 
 /**
  * Whether [chain] is authorized for [purpose] by the anchors of the signed [credentialIdentifier], see
- * [CredentialTrustAnchors]: issuers may be issued by an anchor or listed themselves, status list signers have to be
- * issued by an anchor (OpenID4VC HAIP 1.0, 6.1).
+ * [CredentialTrustAnchors]: issuers and status list signers alike may be issued by an anchor or listed themselves,
+ * see [TrustRule.ISSUED_BY_ANCHOR_OR_LISTED].
  *
  * Blocked if no [CredentialTrustAnchors] are configured, no scope covers the type, or its anchors are unavailable.
  */
@@ -100,12 +102,8 @@ internal suspend fun CredentialTrustAnchors?.checkCredentialTrust(
         credentialIdentifier = credentialIdentifier,
 
         )
-    val rule = when (purpose) {
-        TrustPurpose.ISSUANCE -> TrustRule.ISSUED_BY_ANCHOR_OR_LISTED
-        TrustPurpose.STATUS -> TrustRule.ISSUED_BY_ANCHOR
-    }
     return TrustValidation(
-        outcome = checkTrust(chain, anchors.certificates, at, rule),
+        outcome = checkTrust(chain, anchors.certificates, at, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED),
         credentialIdentifier = credentialIdentifier,
         source = anchors.source
     )

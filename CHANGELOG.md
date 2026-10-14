@@ -90,9 +90,10 @@ Release 9.0.0 (unreleased):
         - mdoc: storage checks item digests, the `docType` against the scheme, and the device key against the
           holder key; a missing MSO fails
         - VP-JWT: `exp` and `nbf` are checked; a VP with one rejected VC is rejected
-        - Status list tokens, key attestations, and client attestations are trusted only through an anchor that
-          issued their signing certificate (OpenID4VC HAIP 1.0, 4.4.1, 4.5.1, 6.1), a directly listed or
-          self-signed signer no longer passes
+        - Key attestations and client attestations are trusted only through an anchor that issued their signing
+          certificate (OpenID4VC HAIP 1.0, 4.4.1, 4.5.1), a directly listed or self-signed signer no longer passes.
+          Status list tokens are trusted through an anchor that issued their signing certificate (6.1), or one that
+          is the signing certificate, as a LoTE may list it (ETSI TS 119 602 V1.1.1, 6.6.3, H.3)
         - WRPRC errors are reported instead of being turned into `false`, and one clock is used for certificate
           chains; a WRPRC no longer needs `alg` ES256 or to lack `kid`, which ETSI TS 119 475 does not require
         - A signed authorization request whose signature can not be verified, as no key is established for its
