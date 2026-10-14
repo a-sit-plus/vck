@@ -10,8 +10,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class WrpClaim(
     @SerialName("path")
-    val path: List<String>,
+    val path: WrpClaimPath,
 
     @SerialName("values")
-    val values: List<String>? = null
+    val values: List<WrpClaimValue>? = null
 )

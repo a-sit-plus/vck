@@ -3,6 +3,7 @@ import at.asitplus.gradle.envExtra
 import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.ktor
 import at.asitplus.gradle.napier
+import at.asitplus.gradle.serialization
 import at.asitplus.gradle.setupDokka
 import at.asitplus.gradle.vckAndroid
 
@@ -30,6 +31,7 @@ kotlin {
             dependencies {
                 implementation(project.napier())
                 implementation(project.ktor("http"))
+                implementation(project.serialization("cbor"))
                 api(project(":rfc3986-uri-syntax"))
                 api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
             }

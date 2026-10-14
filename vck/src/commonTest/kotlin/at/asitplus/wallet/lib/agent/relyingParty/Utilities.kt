@@ -6,6 +6,7 @@ import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpClaimPath
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpLangString
@@ -201,7 +202,7 @@ fun defaultMdocCredential(
 ): WrpCredential = WrpCredential(
     format = "mso_mdoc",
     meta = WrpCredentialMeta(doctypeValue = doctypeValue),
-    claim = claimNames.map { WrpClaim(path = listOf(doctypeValue, it)) },
+    claim = claimNames.map { WrpClaim(path = WrpClaimPath(doctypeValue, it)) },
 )
 
 fun buildWrpPayload(

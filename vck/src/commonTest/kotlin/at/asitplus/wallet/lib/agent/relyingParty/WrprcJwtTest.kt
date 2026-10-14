@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.agent.relyingParty
 import at.asitplus.KmmResult
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpClaimPath
+import at.asitplus.etsi.relyingParty.WrpClaimValue
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
@@ -219,7 +221,12 @@ val WrprcJwtTest by matrixSuite {
     "WRPRC with unsupported claim values does not authorize a path-only request" {
         val fixture = buildWrpFixture()
         val credential = defaultMdocCredential().copy(
-            claim = listOf(WrpClaim(path = listOf(DEFAULT_DOCTYPE, "given_name"), values = listOf("Alice")))
+            claim = listOf(
+                WrpClaim(
+                    path = WrpClaimPath(DEFAULT_DOCTYPE, "given_name"),
+                    values = listOf(WrpClaimValue.StringValue("Alice")),
+                )
+            )
         )
 
         val result = fixture.validateWrprc(

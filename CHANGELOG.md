@@ -8,6 +8,9 @@ Release 9.0.0 (unreleased):
 - CSC data classes:
     - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
     - Implement CSC Data Model 1.0.0
+- ETSI data classes:
+    - BREAKING: `WrpClaim.path` is a `WrpClaimPath` of name, index and wildcard (`null`) segments, (de-)serialized from JSON and CBOR, instead of `List<String>`, following the claims path pointer of OpenID4VP 1.0 section 7, which ETSI TS 119 475 B.2.10 refers to for guidance. In CBOR, an empty map as segment decodes as wildcard, as kotlinx-serialization reads it as `null`
+    - BREAKING: `WrpClaim.values` is a `List<WrpClaimValue>` of strings, integers and booleans instead of `List<String>`
 - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
 - Trusted relying parties:
@@ -16,6 +19,7 @@ Release 9.0.0 (unreleased):
     - `WrprcValidator` validates each credential request on its own, so a request that can not be validated (e.g. a DCQL claims path with a `null` segment) no longer fails the whole validation: `WrprcValidationResult.requestDataValidationResults` holds a `KmmResult` for each request. Deprecate `WrprcValidationResult.requestDataValidation`, which maps such requests to an invalid credential type without attributes, `WrprcValidator.validateRequest()` in favor of `validateCredentialRequests()`, and the `WrprcValidationResult` constructor taking the old types
     - `WrpAuthenticationRequestValidator` tells apart why it can not extract a WRPRC, with exceptions extending `IllegalArgumentException`: `MissingRegistrationCertificateException` if the request contains none, `InvalidRegistrationCertificateException` with the parsing error as cause if it can not be parsed, and `UnsupportedWrpRequestException` for requests it can not validate, e.g. unsigned ones
     - `WrpAuthenticationRequestValidator` rejects requests with more than one `registration_cert` entry in `verifier_info`, also if only one of them can be parsed, and ISO requests that carry an `euWrprc` in only some of their `DocRequest`s
+    - `WrprcValidator` and `WrprcRequestValidator` accept registered claim paths with index or wildcard segments; those paths decode, but do not authorize a request yet
     - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
 - Status lists:
     - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.

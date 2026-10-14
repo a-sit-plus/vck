@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertifi
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.etsi.relyingParty.WrpClaimPath
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMetaDomain
 import at.asitplus.etsi.relyingParty.WrpPayload
@@ -110,7 +112,8 @@ object WrprcRequestValidator {
     ): Boolean = when (representation) {
         ISO_MDOC -> {
             val claim = attribute as? MdocClaimReference ?: return false
-            this.claim.any { it.path == listOf(claim.namespace, claim.claimName) }
+            val expected = listOf(claim.namespace, claim.claimName)
+            this.claim.any { it.path.nameSegmentsOrNull() == expected }
         }
 
         SD_JWT -> {
@@ -118,10 +121,16 @@ object WrprcRequestValidator {
             val segments = claim.normalizedJsonPath.map { (it as? NameSegment)?.memberName }
             if (segments.contains(null)) return false
             if (segments.lastOrNull() == "vct") return true
-            this.claim.any { it.path == segments }
+            this.claim.any { it.path.nameSegmentsOrNull() == segments }
         }
 
         PLAIN_JWT -> false
+    }
+
+    /** Names only: paths with an index or wildcard segment never match, until they are evaluated. */
+    private fun WrpClaimPath.nameSegmentsOrNull(): List<String>? {
+        val names = segments.filterIsInstance<WrpClaimPathSegment.NameSegment>()
+        return if (names.size == segments.size) names.map { it.name } else null
     }
 
     private fun WrpCredentialMetaDomain.WrpDocTypeDomain.contains(other: WrpCredentialMetaDomain.WrpDocTypeDomain): Boolean =
