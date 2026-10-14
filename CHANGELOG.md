@@ -90,10 +90,12 @@ Release 9.0.0 (unreleased):
         - mdoc: storage checks item digests, the `docType` against the scheme, and the device key against the
           holder key; a missing MSO fails
         - VP-JWT: `exp` and `nbf` are checked; a VP with one rejected VC is rejected
-        - Key attestations and client attestations are trusted only through an anchor that issued their signing
-          certificate (OpenID4VC HAIP 1.0, 4.4.1, 4.5.1), a directly listed or self-signed signer no longer passes.
-          Status list tokens are trusted through an anchor that issued their signing certificate (6.1), or one that
-          is the signing certificate, as a LoTE may list it (ETSI TS 119 602 V1.1.1, 6.6.3, H.3)
+        - Credential issuers, status list tokens, key attestations, and client attestations are trusted through an
+          anchor that issued their signing certificate, possibly through intermediate certificates transported with
+          it, or one that is the signing certificate, as a LoTE may list it (ETSI TS 119 602 V1.1.1, 6.6.3, H.3; ETSI
+          TS 119 472-3 V1.1.1, AUTH-REQ-PROC-4.4.3-01). Otherwise, a transported anchor or a self-signed signer fails
+          (OpenID4VC HAIP 1.0, 4.5.1, 6.1, 6.1.1), and so does a transported certificate that did not issue the one
+          before it
         - WRPRC errors are reported instead of being turned into `false`, and one clock is used for certificate
           chains; a WRPRC no longer needs `alg` ES256 or to lack `kid`, which ETSI TS 119 475 does not require
         - A signed authorization request whose signature can not be verified, as no key is established for its
@@ -143,11 +145,10 @@ Release 9.0.0 (unreleased):
       and `ValidatedPresentation.credentials`, e.g. to display the claims of accepted presentations
     - `StatusValidation` requires mechanisms for a passed `agreement`
     - Known limitations:
-        - Certificate paths: trust is evaluated for single-hop paths (issuers, status list signers, attestations)
-          or by walking the WRP chain, without RFC 5280 path building, `pathLenConstraint` or `keyUsage`, and
-          without certificate revocation (CRL, OCSP). So chains with intermediate certificates are rejected by the
-          single-hop rules, a directly listed self-signed issuer certificate is accepted, and a revoked WRPAC or
-          signer certificate is not detected
+        - Certificate paths: trust is evaluated by walking the transported chain, without RFC 5280 path building,
+          `pathLenConstraint` or `keyUsage`, and without certificate revocation (CRL, OCSP). So a chain missing an
+          intermediate certificate is rejected, a directly listed self-signed signer certificate is accepted, and a
+          revoked WRPAC or signer certificate is not detected
         - ZK mdoc presentations are validated like plain mdocs, their proofs are not verified
 - Trusted relying parties:
     - Fix JSON serialization of `JsonClaimReference` as `SingleClaimReference`, e.g. in `RequestDataValidity`, which produced invalid JSON since `NormalizedJsonPath` became a list in JsonPath4K 4.0.0. It is now serialized as an object holding `normalizedJsonPath`
