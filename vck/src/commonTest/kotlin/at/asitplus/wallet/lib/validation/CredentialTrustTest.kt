@@ -158,14 +158,14 @@ val CredentialTrustTest by matrixSuite {
             scopes.checkCredentialTrust(PID_VCT, TrustPurpose.ISSUANCE, listOf(listed), now()).outcome shouldBe Passed
         }
 
-        "a status list signer has to be issued by an anchor, it can not be listed itself" {
-            val listed = selfSignedKey().getCertificate().shouldNotBeNull()
+        "a status list signer may be listed itself" {
+            val listed = TestCertificateAuthority().issue().getCertificate().shouldNotBeNull()
             val scopes = CredentialTrustScopes(
-                CredentialTrustScope(setOf(PID_VCT), "PID", { setOf(listed) }, { setOf(listed) })
+                CredentialTrustScope(setOf(PID_VCT), "PID", { emptySet() }, { setOf(listed) })
             )
 
-            scopes.checkCredentialTrust(PID_VCT, TrustPurpose.STATUS, listOf(listed), now())
-                .outcome.shouldBeInstanceOf<Failed>()
+            scopes.checkCredentialTrust(PID_VCT, TrustPurpose.STATUS, listOf(listed), now()) shouldBe
+                    TrustValidation(Passed, PID_VCT, "PID")
         }
 
         "a status list signer issued by a status anchor is authorized" {

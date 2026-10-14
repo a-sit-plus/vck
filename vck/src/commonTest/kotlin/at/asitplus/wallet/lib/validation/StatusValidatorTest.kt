@@ -290,7 +290,7 @@ val StatusValidatorTest by matrixSuite {
                     .single().outcome shouldBe Passed
             }
 
-            "a directly listed signer is not authorized" {
+            "a directly listed signer is authorized" {
                 val signer = selfSignedKey()
                 val listed = signer.getCertificate()!!
                 val anchors = StatusSignerAnchors.OfCredentialType(
@@ -301,6 +301,23 @@ val StatusValidatorTest by matrixSuite {
                 )
 
                 StatusValidator(resolver(STATUS_LIST_URI to jwt(signer))).check(statusAt(0), anchors).single()
+                    .outcome shouldBe Passed
+            }
+
+            "a directly listed signer of an artifact kind is authorized" {
+                val signer = TestCertificateAuthority().issue()
+                val anchors = TrustedCertificates { setOf(signer.getCertificate()!!) }
+
+                StatusValidator(resolver(STATUS_LIST_URI to jwt(signer)))
+                    .check(statusAt(0), StatusSignerAnchors.OfArtifactKind(anchors, "wallet providers"))
+                    .single().outcome shouldBe Passed
+            }
+
+            "a self-signed signer that is not listed is not authorized" {
+                val revocation = TestCertificateAuthority()
+
+                StatusValidator(resolver(STATUS_LIST_URI to jwt(selfSignedKey())))
+                    .check(statusAt(0), revocation.pidStatusAnchors()).single()
                     .token.tokenChecks().signerTrust.outcome.shouldBeInstanceOf<Failed>()
             }
 

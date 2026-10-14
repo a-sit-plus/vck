@@ -56,8 +56,9 @@ sealed interface StatusSignerAnchors {
  * (retrieval, media type, signature, signer, subject, and time), and the status is only taken from a token that is
  * accepted.
  *
- * The signers of status list tokens have to be issued by an anchor of [StatusSignerAnchors], never directly trusted,
- * as the trust anchor must not be included in `x5c` and the signer must not be self-signed (OpenID4VC HAIP 1.0, 6.1).
+ * The signers of status list tokens have to be issued by an anchor of [StatusSignerAnchors], which is not included in
+ * `x5c`, and not be self-signed (OpenID4VC HAIP 1.0, 6.1), unless the signing certificate is an anchor itself, as the
+ * revocation services of a LoTE may list it (ETSI TS 119 602 V1.1.1, 6.6.3, H.3, NOTE).
  */
 class StatusValidator @JvmOverloads constructor(
     /** Retrieves status list tokens. Without one, a status claim can not be checked, which blocks it. */
@@ -223,7 +224,7 @@ class StatusValidator @JvmOverloads constructor(
             ?.let { catching { it() } }
             ?.fold(
                 onSuccess = {
-                    TrustValidation(checkTrust(chain, it, at, TrustRule.ISSUED_BY_ANCHOR), source = source)
+                    TrustValidation(checkTrust(chain, it, at, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED), source = source)
                 },
                 onFailure = {
                     TrustValidation(Blocked(it), source = source)
