@@ -9,11 +9,19 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WrpClaim(
-    /** Path to the claim within the credential (clause B.2.10). */
+    /**
+     * Path pointer to the claim within the credential (clause B.2.10), following the claims path pointer of
+     * OpenID4VP, see [WrpClaimPathSegment].
+     */
     @SerialName("path")
-    val path: List<String>,
+    val path: List<WrpClaimPathSegment>,
 
     /** Expected values of the claim, if constrained (clause B.2.10). */
     @SerialName("values")
-    val values: List<String>? = null
-)
+    val values: List<WrpClaimValue>? = null
+) {
+    companion object {
+        /** A claim selected by the names of its path, e.g. a namespace and an element identifier of ISO mdoc. */
+        fun named(vararg names: String) = WrpClaim(names.map { WrpClaimPathSegment.Name(it) })
+    }
+}

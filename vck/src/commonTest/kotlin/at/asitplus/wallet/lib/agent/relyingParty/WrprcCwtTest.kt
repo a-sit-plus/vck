@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
+import at.asitplus.etsi.relyingParty.WrpClaimValue
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.DocRequestInfo
 import at.asitplus.signum.indispensable.CryptoSignature
@@ -114,10 +116,20 @@ val WrprcCwtTest by matrixSuite {
         result.requestDataValidationResults.toMap().values.single().getOrThrow().isValid() shouldBe false
     }
 
+    "claim paths of a CWT WRPRC are encoded as CBOR text strings and null" {
+        val claim = WrpClaim(listOf(WrpClaimPathSegment.Name(DEFAULT_DOCTYPE), WrpClaimPathSegment.AllElements))
+
+        val encoded = coseCompliantSerializer.encodeToByteArray(WrpClaim.serializer(), claim)
+
+        coseCompliantSerializer.decodeFromByteArray(WrpClaim.serializer(), encoded) shouldBe claim
+    }
+
     "CWT WRPRC with unsupported claim values does not authorize a path-only request" {
         val fixture = buildWrpFixture()
         val credential = defaultMdocCredential().copy(
-            claim = listOf(WrpClaim(path = listOf(DEFAULT_DOCTYPE, "given_name"), values = listOf("Alice")))
+            claim = listOf(
+                WrpClaim.named(DEFAULT_DOCTYPE, "given_name").copy(values = listOf(WrpClaimValue.Text("Alice")))
+            )
         )
 
         val result = fixture.validateWrprcCose(

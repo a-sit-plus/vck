@@ -3,9 +3,15 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertifi
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment.AllElements
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment.Index
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment.Name
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMetaDomain
 import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.IndexSegment
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -110,19 +116,31 @@ object WrprcRequestValidator {
     ): Boolean = when (representation) {
         ISO_MDOC -> {
             val claim = attribute as? MdocClaimReference ?: return false
-            this.claim.any { it.path == listOf(claim.namespace, claim.claimName) }
+            this.claim.any { it.path == listOf(Name(claim.namespace), Name(claim.claimName)) }
         }
 
         SD_JWT -> {
             val claim = attribute as? JsonClaimReference ?: return false
-            val segments = claim.normalizedJsonPath.map { (it as? NameSegment)?.memberName }
-            if (segments.contains(null)) return false
-            if (segments.lastOrNull() == "vct") return true
-            this.claim.any { it.path == segments }
+            val segments = claim.normalizedJsonPath.toList()
+            if ((segments.lastOrNull() as? NameSegment)?.memberName == "vct") return true
+            this.claim.any { it.path.covers(segments) }
         }
 
         PLAIN_JWT -> false
     }
+
+    /**
+     * Whether this registered path selects the [requested] claim, segment by segment, as claims path pointers do
+     * (OpenID4VP 1.0, 7): a name selects the same key, an index the same element, and `null` any element of an array.
+     */
+    private fun List<WrpClaimPathSegment>.covers(requested: List<NormalizedJsonPathSegment>): Boolean =
+        size == requested.size && zip(requested) { registered, segment ->
+            when (registered) {
+                is Name -> segment is NameSegment && segment.memberName == registered.name
+                is Index -> segment is IndexSegment && segment.index == registered.index
+                AllElements -> segment is IndexSegment
+            }
+        }.all { it }
 
     private fun WrpCredentialMetaDomain.WrpDocTypeDomain.contains(other: WrpCredentialMetaDomain.WrpDocTypeDomain): Boolean =
         this.doctypeValue == other.doctypeValue

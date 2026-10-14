@@ -227,7 +227,7 @@ private fun registration() = WrpPayload(
         WrpCredential(
             format = "dc+sd-jwt",
             meta = WrpCredentialMeta(vctValues = listOf(AtomicAttribute2023.sdJwtType)),
-            claim = listOf(WrpClaim(path = listOf(CLAIM_GIVEN_NAME))),
+            claim = listOf(WrpClaim.named(CLAIM_GIVEN_NAME)),
         )
     ),
     intendedUseId = "urn:uuid:${uuid4()}",

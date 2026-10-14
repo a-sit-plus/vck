@@ -1,9 +1,14 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.NFCHandover
 import at.asitplus.dcapi.request.IsoMdocRequest
+import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
+import at.asitplus.etsi.relyingParty.WrpCredential
+import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
@@ -16,6 +21,16 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VerifierInfo
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.IndexSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -53,12 +68,12 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.encodeToByteArray
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.encodeToByteArray
 
 val RelyingPartyValidatorTest by matrixSuite {
 
@@ -74,6 +89,33 @@ val RelyingPartyValidatorTest by matrixSuite {
             registrationCertificates.shouldBeSingleton().first() shouldBe payload
         }
         result.untrustedRegistrations shouldBe listOf(payload)
+    }
+
+    "a WRPRC registering all elements of an array authorizes requests for each of them, not for the array" {
+        val fixture = buildWrpFixture()
+        val nationalities = WrpCredential(
+            format = "dc+sd-jwt",
+            meta = WrpCredentialMeta(vctValues = listOf(PID_VCT)),
+            claim = listOf(
+                WrpClaim(listOf(WrpClaimPathSegment.Name("nationalities"), WrpClaimPathSegment.AllElements))
+            ),
+        )
+        val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(nationalities))
+        val elements = sdJwtRequest(
+            DCQLClaimsPathPointer(nonEmptyListOf(NameSegment("nationalities"), IndexSegment(0U))),
+            DCQLClaimsPathPointer(nonEmptyListOf(NameSegment("nationalities"), IndexSegment(1U))),
+        )
+        val array = sdJwtRequest(DCQLClaimsPathPointer("nationalities"))
+
+        fixture.validate(fixture.request(payload, elements)).apply {
+            report.decision shouldBe ACCEPTED
+            relyingParty.shouldNotBeNull().registrationCertificates.single() shouldBe payload
+        }
+        fixture.validate(fixture.request(payload, array)).apply {
+            report.decision shouldBe REJECTED
+            registrationChecks().requestAuthorization.shouldBeInstanceOf<CheckOutcome.Failed>()
+                .throwable.shouldBeInstanceOf<UnregisteredRequestException>()
+        }
     }
 
     "a revoked WRPRC is rejected, with its status" {
@@ -311,6 +353,23 @@ private suspend fun WrpFixture.request(
     payload: WrpPayload,
     request: CredentialPresentationRequest = mdocDcqlRequest(),
 ) = signedByWrp(parameters(payload, request))
+
+private const val PID_VCT = "urn:eudi:pid:1"
+
+/** A DCQL request for an SD-JWT VC of [PID_VCT] with the claims at [paths]. */
+private fun sdJwtRequest(vararg paths: DCQLClaimsPathPointer) = CredentialPresentationRequest.DCQLRequest(
+    DCQLQuery(
+        credentials = DCQLCredentialQueryList(
+            nonEmptyListOf(
+                DCQLSdJwtCredentialQuery(
+                    id = DCQLCredentialQueryIdentifier("pid"),
+                    meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(vctValues = listOf(PID_VCT)),
+                    claims = DCQLClaimsQueryList(paths.map { DCQLJsonClaimsQuery(path = it) }.toNonEmptyList()),
+                )
+            )
+        )
+    )
+)
 
 /** The named checks of this report and of its children. */
 private fun ValidationReport.allNamedChecks(): List<NamedCheck> = namedChecks + children.flatMap { it.allNamedChecks() }

@@ -205,7 +205,7 @@ fun defaultMdocCredential(
 ): WrpCredential = WrpCredential(
     format = "mso_mdoc",
     meta = WrpCredentialMeta(doctypeValue = doctypeValue),
-    claim = claimNames.map { WrpClaim(path = listOf(doctypeValue, it)) },
+    claim = claimNames.map { WrpClaim.named(doctypeValue, it) },
 )
 
 fun buildWrpPayload(
