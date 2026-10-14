@@ -355,9 +355,7 @@ sealed interface DCQLCredentialQuery {
                     is DCQLIsoMdocZkCredentialQuery -> parseIsoMdocCredential(it)
                     is DCQLSdJwtCredentialQuery -> parseSdJwtCredential(it)
                     is DCQLJwtVcCredentialQuery -> parseVcJwsCredential(it)
-                    is DCQLX509CredentialQuery -> throw IllegalArgumentException(
-                        "X.509 submissions require QES validation, which is not supported by this credential path"
-                    )
+                    is DCQLX509CredentialQuery -> TODO("Implement X.509 QES submission validation")
                 },
             ).getOrThrow()
         }

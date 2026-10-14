@@ -76,6 +76,29 @@ val OpenId4VpHolderRequestParsingTest by matrixSuite {
         error.cause.shouldNotBeNull().message.shouldNotBeNull() shouldContain "credential_ids"
     }
 
+    listOf(null, "[]", "[\"unknown-query\"]").asData(
+        nameFn = { ids -> "X.509 QES request with invalid credential_ids is rejected during preparation: $ids" },
+    ) test { ids ->
+        val encoded = """{
+            "type":"https://cloudsignatureconsortium.org/2025/qes",
+            ${ids?.let { "\"credential_ids\": $it," }.orEmpty()}
+            "signatureRequests":[{
+                "href":"https://example.test/contract.pdf", "signatureQualifier":"eu_eidas_qes"
+            }]
+        }""".encodeToByteArray().encodeToString(Base64UrlStrict)
+        val input = """{
+            "response_type":"vp_token", "client_id":"https://verifier.example.org", "nonce":"qes-nonce",
+            "dcql_query":{"credentials":[{
+                "id":"certificate", "format":"https://cloudsignatureconsortium.org/2025/x509", "meta":{}
+            }]},
+            "transaction_data":["$encoded"]
+        }"""
+        Json.decodeFromString<AuthenticationRequestParameters>(input)
+        OpenId4VpHolder().startAuthorizationResponsePreparation(input)
+            .exceptionOrNull().shouldNotBeNull().shouldBeInstanceOf<OAuth2Exception.InvalidTransactionData>()
+            .cause.shouldNotBeNull().message.shouldNotBeNull() shouldContain "credential_ids"
+    }
+
     "request_uri that can not be retrieved is rejected" {
         // The retriever answers nothing, e.g. because the fetch failed, or because the verifier put a URL into
         // `request_uri` that the wallet does not handle: either way there is no request object to process

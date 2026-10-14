@@ -20,6 +20,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocZkCredentialQuery
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.openid.dcql.DCQLX509CredentialQuery
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
@@ -345,6 +346,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                                 is DCQLIsoMdocZkCredentialQuery -> bad.copy(id = good.id)
                                 is DCQLJwtVcCredentialQuery -> bad.copy(id = good.id)
                                 is DCQLSdJwtCredentialQuery -> bad.copy(id = good.id)
+                                is DCQLX509CredentialQuery -> bad.copy(id = good.id)
                             }
                         }.toNonEmptyList()
                     )
