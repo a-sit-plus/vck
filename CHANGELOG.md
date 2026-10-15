@@ -399,7 +399,8 @@ Release 9.0.0 (unreleased):
       answered at most once
 - Server-side HTTP responses:
     - Add `PreparedHttpResponse` in `vck-openid` (package `at.asitplus.wallet.lib`), a response with status, headers and
-      encoded body, to be written out unchanged with any HTTP server stack
+      encoded body, to be written out unchanged with any HTTP server stack. The `body` is an `HttpBody`, with the
+      `contentType` to write out as `Content-Type`; the `headers` never contain `Content-Type`
     - Add `OAuth2Exception.toHttpResponse()` for errors of authorization server endpoints: status 400, with `DPoP-Nonce`
       for `use_dpop_nonce` and `OAuth-Client-Attestation-Challenge` for `use_attestation_challenge`
     - Add `OAuth2Exception.toResourceServerHttpResponse(authorizationHeader)` for errors of endpoints accessed with an

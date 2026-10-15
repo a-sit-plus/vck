@@ -10,6 +10,8 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.AuthorizationServerFixture
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
+import at.asitplus.wallet.lib.oauth2.bodyContentType
+import at.asitplus.wallet.lib.oauth2.bodyText
 import io.kotest.matchers.shouldBe
 import io.ktor.http.*
 
@@ -41,12 +43,12 @@ val OpenId4VciServerResponsesTest by matrixSuite {
                         status shouldBe HttpStatusCode.OK
                         headers[HttpHeaders.Vary] shouldBe HttpHeaders.Accept
                         if (expected == signed) {
-                            headers[HttpHeaders.ContentType] shouldBe MediaTypes.Application.JWT
-                            JwsCompactTyped<IssuerMetadata>(body).payload.credentialIssuer shouldBe
+                            bodyContentType shouldBe MediaTypes.Application.JWT
+                            JwsCompactTyped<IssuerMetadata>(bodyText).payload.credentialIssuer shouldBe
                                     server.metadata.credentialIssuer
                         } else {
-                            headers[HttpHeaders.ContentType] shouldBe MediaTypes.Application.JSON
-                            joseCompliantSerializer.decodeFromString<IssuerMetadata>(body) shouldBe server.metadata
+                            bodyContentType shouldBe MediaTypes.Application.JSON
+                            joseCompliantSerializer.decodeFromString<IssuerMetadata>(bodyText) shouldBe server.metadata
                         }
                     }
                 }
@@ -58,16 +60,16 @@ val OpenId4VciServerResponsesTest by matrixSuite {
         test("is not cached, with fresh DPoP nonce") {
             OpenId4VciServer.Nonce(nonce, "dpop-nonce").toHttpResponse().apply {
                 status shouldBe HttpStatusCode.OK
-                headers[HttpHeaders.ContentType] shouldBe MediaTypes.Application.JSON
+                bodyContentType shouldBe MediaTypes.Application.JSON
                 headers[HttpHeaders.CacheControl] shouldBe "no-store"
                 headers[HttpHeaders.DPoPNonce] shouldBe "dpop-nonce"
-                joseCompliantSerializer.decodeFromString<ClientNonceResponse>(body) shouldBe nonce
+                joseCompliantSerializer.decodeFromString<ClientNonceResponse>(bodyText) shouldBe nonce
             }
         }
 
         test("without DPoP nonce") {
             OpenId4VciServer.Nonce(nonce).toHttpResponse().headers.names() shouldBe
-                    setOf(HttpHeaders.ContentType, HttpHeaders.CacheControl)
+                    setOf(HttpHeaders.CacheControl)
         }
     }
 
@@ -77,9 +79,9 @@ val OpenId4VciServerResponsesTest by matrixSuite {
 
             OpenId4VciServer.CredentialResponse.Plain(response).toHttpResponse().apply {
                 status shouldBe HttpStatusCode.OK
-                headers[HttpHeaders.ContentType] shouldBe MediaTypes.Application.JSON
+                bodyContentType shouldBe MediaTypes.Application.JSON
                 headers[HttpHeaders.CacheControl] shouldBe "no-store"
-                joseCompliantSerializer.decodeFromString<CredentialResponseParameters>(body) shouldBe response
+                joseCompliantSerializer.decodeFromString<CredentialResponseParameters>(bodyText) shouldBe response
             }
         }
 
@@ -89,9 +91,9 @@ val OpenId4VciServerResponsesTest by matrixSuite {
             OpenId4VciServer.CredentialResponse.Encrypted(JweEncrypted.deserialize(jwe).getOrThrow())
                 .toHttpResponse().apply {
                     status shouldBe HttpStatusCode.OK
-                    headers[HttpHeaders.ContentType] shouldBe MediaTypes.Application.JWT
+                    bodyContentType shouldBe MediaTypes.Application.JWT
                     headers[HttpHeaders.CacheControl] shouldBe "no-store"
-                    body shouldBe jwe
+                    bodyText shouldBe jwe
                 }
         }
     }
