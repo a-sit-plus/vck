@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -55,6 +56,24 @@ val HttpErrorResponseExceptionTest by matrixSuite {
                 extensions = buildJsonObject { put("balance", 30) },
             )
             message shouldBe "Balance is too low"
+        }
+    }
+
+    test("status of problem details is ignored unless a JSON number of a valid status code") {
+        val invalidStatuses = listOf(JsonPrimitive("403"), JsonPrimitive(99), JsonPrimitive(600), JsonPrimitive(403.5))
+        invalidStatuses.forEach { invalidStatus ->
+            HttpErrorResponseException(
+                HttpStatusCode.Forbidden,
+                contentType(ContentType.Application.ProblemJson),
+                buildJsonObject {
+                    put("title", "No credit")
+                    put("status", invalidStatus)
+                    put("detail", "Balance is too low")
+                }.toString()
+            ).apply {
+                status shouldBe HttpStatusCode.Forbidden
+                problemDetails shouldBe ProblemDetails(title = "No credit", detail = "Balance is too low")
+            }
         }
     }
 

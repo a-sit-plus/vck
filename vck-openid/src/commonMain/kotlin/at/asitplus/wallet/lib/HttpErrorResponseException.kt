@@ -15,6 +15,12 @@ import kotlinx.serialization.json.jsonObject
  * Standard members of an
  * [RFC 9457 problem details object](https://datatracker.ietf.org/doc/html/rfc9457#name-the-problem-details-json-ob).
  * [type] defaults to `about:blank`; problem-specific members are retained in [extensions].
+ *
+ * [status] is `null` if the member is absent, is not a JSON number, or is not a valid status code: "If a member's
+ * value type does not match the specified type, the member MUST be ignored" (RFC 9457, 3.1), and "Values outside the
+ * range 100..599 are invalid" (RFC 9110, 15). Parsing never fails because of it: the member "is only advisory"
+ * (RFC 9457, 3.1.2), the status of the response is [HttpErrorResponseException.status], and failing would replace the
+ * exception for the actual error response.
  */
 data class ProblemDetails(
     val type: String = "about:blank",
@@ -84,6 +90,7 @@ private object SerialNames {
 
 private fun JsonObject.toProblemDetails() = ProblemDetails(
     type = string(SerialNames.TYPE) ?: "about:blank",
+    // ignored if not a JSON number (RFC 9457, 3.1) or not in 100..599 (RFC 9110, 15), see ProblemDetails
     status = (get(SerialNames.STATUS) as? JsonPrimitive)
         ?.takeUnless { it.isString }
         ?.intOrNull
