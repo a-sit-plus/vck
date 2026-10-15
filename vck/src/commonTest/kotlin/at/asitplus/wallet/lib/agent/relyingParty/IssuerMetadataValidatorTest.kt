@@ -3,17 +3,12 @@ package at.asitplus.wallet.lib.agent.relyingParty
 import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
-import at.asitplus.etsi.relyingParty.WrpIdentifier
-import at.asitplus.etsi.relyingParty.WrpMultiLangString
 import at.asitplus.etsi.relyingParty.WrpPayload
-import at.asitplus.etsi.relyingParty.WrpRegistrarDataset
 import at.asitplus.openid.IssuerInfo
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OpenIdConstants.ISSUER_METADATA_JWT_TYPE
-import at.asitplus.openid.OpenIdConstants.IssuerInfo.REGISTRAR_DATASET_FORMAT
 import at.asitplus.openid.OpenIdConstants.IssuerInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.openid.truncateToSeconds
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -43,7 +38,6 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Clock
@@ -53,32 +47,38 @@ import kotlin.time.Instant
 
 val IssuerMetadataValidatorTest by matrixSuite {
 
-    "metadata signed with a trusted access certificate are accepted, with the signer" {
+    "metadata signed with a trusted access certificate, with the WRPRC of an attestation provider, are accepted" {
         val fixture = buildWrpFixture()
 
         fixture.validate(fixture.signedMetadata()).apply {
             report.decision shouldBe ACCEPTED
-            report.children.shouldBeEmpty()
+            report.children.single().decision shouldBe ACCEPTED
             metadata.shouldNotBeNull().credentialIssuer shouldBe CREDENTIAL_ISSUER
             untrustedMetadata shouldBe metadata
             issuer.shouldNotBeNull().apply {
                 identifier shouldBe WrpacIdentifier.WrpacLegalIdentifier(fixture.wrpIdentifier)
                 accessCertificateChain shouldBe fixture.wrpacChain
-                registrarDataset shouldBe registrarDataset()
-                registrationCertificate.shouldBeNull()
+                registrationCertificate.providesAttestations shouldBe PROVIDED_ATTESTATIONS
+                registrationCertificate shouldBe untrustedRegistration
             }
         }
     }
 
-    "metadata with the WRPRC of an attestation provider are accepted, with what it is registered for" {
+    "metadata without a WRPRC are rejected, also if the policy does not require trust" {
         val fixture = buildWrpFixture()
-        val wrprc = fixture.issuerWrprc()
+        val signed = fixture.signedMetadata(fixture.metadata().copy(issuerInfo = emptyList()))
 
-        fixture.validate(fixture.signedMetadata(metadata(issuerInfo = issuerInfo(wrprc)))).apply {
-            report.decision shouldBe ACCEPTED
-            report.children.single().decision shouldBe ACCEPTED
-            issuer.shouldNotBeNull().registrationCertificate.shouldNotBeNull()
-                .providesAttestations shouldBe PROVIDED_ATTESTATIONS
+        listOf(policy, policy.copy(trust = TrustPolicy.IntegrityOnly)).forEach {
+            fixture.validate(signed, validationPolicy = it).apply {
+                report.decision shouldBe REJECTED
+                report.children.shouldBeEmpty()
+                checks().trust.outcome shouldBe CheckOutcome.Passed
+                checks().registration.shouldBeInstanceOf<CheckOutcome.Failed>()
+                metadata.shouldBeNull()
+                issuer.shouldBeNull()
+                untrustedMetadata.shouldNotBeNull()
+                untrustedRegistration.shouldBeNull()
+            }
         }
     }
 
@@ -87,7 +87,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
         val serviceProvider = "https://uri.etsi.org/19475/Entitlement/Service_Provider"
         val wrprc = fixture.issuerWrprc(entitlements = listOf(serviceProvider))
 
-        fixture.validate(fixture.signedMetadata(metadata(issuerInfo = issuerInfo(wrprc)))).apply {
+        fixture.validate(fixture.signedMetadata(fixture.metadata(wrprc = wrprc))).apply {
             report.decision shouldBe REJECTED
             registrationChecks().requestAuthorization.shouldBeInstanceOf<CheckOutcome.Failed>()
             metadata.shouldBeNull()
@@ -106,7 +106,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
         // the status list tokens are signed by a key without certificate, so their signers are not authorized
         val statusPolicy = policy.copy(status = StatusPolicy.RequireClaim(signerTrust = TrustPolicy.IntegrityOnly))
         suspend fun signed(statusListIdx: Int) = fixture.signedMetadata(
-            metadata(issuerInfo = issuerInfo(fixture.issuerWrprc(statusListIdx = statusListIdx)))
+            fixture.metadata(wrprc = fixture.issuerWrprc(statusListIdx = statusListIdx))
         )
 
         validator.validate(signed(statusListIdx = 0), CREDENTIAL_ISSUER, statusPolicy).report.decision shouldBe ACCEPTED
@@ -128,10 +128,10 @@ val IssuerMetadataValidatorTest by matrixSuite {
         val fixture = buildWrpFixture()
         val other = fixture.issuerWrprc(identifier = "another-provider")
 
-        fixture.validate(fixture.signedMetadata(metadata(issuerInfo = issuerInfo(other))))
+        fixture.validate(fixture.signedMetadata(fixture.metadata(wrprc = other)))
             .registrationChecks().linkage.shouldBeInstanceOf<CheckOutcome.Failed>()
         IssuerMetadataValidator(accessCertificates = fixture.trustAnchors).validate(
-            fixture.signedMetadata(metadata(issuerInfo = issuerInfo(fixture.issuerWrprc()))),
+            fixture.signedMetadata(),
             CREDENTIAL_ISSUER,
             policy,
         ).apply {
@@ -141,25 +141,20 @@ val IssuerMetadataValidatorTest by matrixSuite {
         }
     }
 
-    "issuer_info has to contain one registrar_dataset and at most one registration_cert, as JWT, for registration" {
+    "issuer_info has to contain exactly one registration_cert, as JWT, for registration" {
         val fixture = buildWrpFixture()
         val wrprc = fixture.issuerWrprc()
-        val dataset = IssuerInfo(REGISTRAR_DATASET_FORMAT, registrarDatasetJson())
         val certificate = IssuerInfo(REGISTRATION_CERT_FORMAT, JsonPrimitive(wrprc))
         val invalid = listOf(
             null,
             emptyList(),
-            listOf(certificate),
-            listOf(dataset, dataset),
-            listOf(IssuerInfo(REGISTRAR_DATASET_FORMAT, JsonObject(emptyMap()))),
-            listOf(IssuerInfo(REGISTRAR_DATASET_FORMAT, JsonPrimitive("not an object"))),
-            listOf(dataset, certificate, certificate),
-            listOf(dataset, IssuerInfo(REGISTRATION_CERT_FORMAT, buildJsonObject { })),
-            listOf(dataset, IssuerInfo(REGISTRATION_CERT_FORMAT, JsonPrimitive("not-a-jws"))),
+            listOf(IssuerInfo(REGISTRATION_CERT_FORMAT, buildJsonObject { })),
+            listOf(IssuerInfo(REGISTRATION_CERT_FORMAT, JsonPrimitive("not an object"))),
+            listOf(certificate, certificate)
         )
 
         invalid.forEach {
-            fixture.validate(fixture.signedMetadata(metadata(issuerInfo = it))).apply {
+            fixture.validate(fixture.signedMetadata(fixture.metadata().copy(issuerInfo = it))).apply {
                 report.decision shouldBe REJECTED
                 checks().parsing shouldBe CheckOutcome.Passed
                 checks().registration.shouldBeInstanceOf<CheckOutcome.Failed>()
@@ -167,27 +162,6 @@ val IssuerMetadataValidatorTest by matrixSuite {
                 untrustedMetadata.shouldNotBeNull()
             }
         }
-    }
-
-    "a WRPRC is validated also without a registrar_dataset, and what it says is carried whatever the decision" {
-        val fixture = buildWrpFixture()
-        val wrprc = fixture.issuerWrprc()
-        val onlyCertificate = listOf(IssuerInfo(REGISTRATION_CERT_FORMAT, JsonPrimitive(wrprc)))
-
-        fixture.validate(fixture.signedMetadata(metadata(issuerInfo = onlyCertificate))).apply {
-            report.decision shouldBe REJECTED
-            checks().registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable.message shouldBe
-                    "issuer_info contains 0 registrar_dataset elements, not one"
-            report.children.single().decision shouldBe ACCEPTED
-            untrustedRegistration.shouldNotBeNull().providesAttestations shouldBe PROVIDED_ATTESTATIONS
-            issuer.shouldBeNull()
-        }
-        fixture.validate(fixture.signedMetadata(metadata(issuerInfo = issuerInfo(wrprc)))).apply {
-            report.decision shouldBe ACCEPTED
-            untrustedRegistration.shouldNotBeNull()
-            issuer.shouldNotBeNull().registrationCertificate shouldBe untrustedRegistration
-        }
-        fixture.validate(fixture.signedMetadata()).untrustedRegistration.shouldBeNull()
     }
 
     "without anchors, trust is blocked, and with an empty list of WRPAC providers it fails" {
@@ -242,7 +216,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
         ).getOrThrow().toString()
 
         // e.g. outside of the EUDI Wallet ecosystem: no x5c, and no issuer_info
-        fixture.validate(signedWithJwk(metadata(issuerInfo = null))).apply {
+        fixture.validate(signedWithJwk(fixture.metadata().copy(issuerInfo = null))).apply {
             report.decision shouldBe REJECTED
             checks().parsing shouldBe CheckOutcome.Passed
             checks().signature shouldBe CheckOutcome.Passed
@@ -253,17 +227,17 @@ val IssuerMetadataValidatorTest by matrixSuite {
             metadata.shouldBeNull()
             untrustedMetadata.shouldNotBeNull().credentialIssuer shouldBe CREDENTIAL_ISSUER
         }
-        // a policy not requiring trust accepts them, but they identify no provider
-        IssuerMetadataValidator(accessCertificates = fixture.trustAnchors)
-            .validate(signedWithJwk(metadata()), CREDENTIAL_ISSUER, policy.copy(trust = TrustPolicy.IntegrityOnly))
-            .apply {
-                report.decision shouldBe ACCEPTED
-                metadata.shouldNotBeNull()
-                issuer.shouldBeNull()
-            }
+        // a policy not requiring trust rejects them too, as their WRPRC is linked to no WRPAC
+        val relaxed = policy.copy(trust = TrustPolicy.IntegrityOnly)
+        fixture.validate(signedWithJwk(fixture.metadata()), validationPolicy = relaxed).apply {
+            report.decision shouldBe REJECTED
+            registrationChecks().linkage.shouldBeInstanceOf<CheckOutcome.Blocked>()
+            metadata.shouldBeNull()
+            untrustedMetadata.shouldNotBeNull()
+        }
         // a signature that does not verify with the jwk, and metadata of another issuer, are still rejected
-        val signed = signedWithJwk(metadata())
-        val other = signedWithJwk(metadata(subject = "https://other.example.com"))
+        val signed = signedWithJwk(fixture.metadata())
+        val other = signedWithJwk(fixture.metadata(subject = "https://other.example.com"))
         val tampered = signed.substringBeforeLast('.') + "." + other.substringAfterLast('.')
         fixture.validate(tampered).apply {
             checks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
@@ -279,7 +253,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
         val fixture = buildWrpFixture()
         val selfSigned = EphemeralKeyWithSelfSignedCert()
         val signed = SignJwt<IssuerMetadata>(selfSigned, JwsHeaderCertOrJwk())(
-            ISSUER_METADATA_JWT_TYPE, metadata(), IssuerMetadata.serializer()
+            ISSUER_METADATA_JWT_TYPE, fixture.metadata(), IssuerMetadata.serializer()
         ).getOrThrow().toString()
 
         fixture.validate(signed).report.decision shouldBe REJECTED
@@ -288,11 +262,11 @@ val IssuerMetadataValidatorTest by matrixSuite {
     "metadata of another credential issuer is rejected" {
         val fixture = buildWrpFixture()
 
-        fixture.validate(fixture.signedMetadata(metadata(subject = "https://other.example.com"))).apply {
+        fixture.validate(fixture.signedMetadata(fixture.metadata(subject = "https://other.example.com"))).apply {
             checks().subject.shouldBeInstanceOf<CheckOutcome.Failed>()
             untrustedMetadata.shouldBeNull()
         }
-        fixture.validate(fixture.signedMetadata(metadata(credentialIssuer = "https://other.example.com")))
+        fixture.validate(fixture.signedMetadata(fixture.metadata(credentialIssuer = "https://other.example.com")))
             .checks().subject.shouldBeInstanceOf<CheckOutcome.Failed>()
         // compared without normalization (OpenID4VCI 1.0, 12.2.4)
         fixture.validate(fixture.signedMetadata(), credentialIssuer = "$CREDENTIAL_ISSUER/")
@@ -304,7 +278,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
 
         fixture.validate(fixture.signedMetadata(type = "JWT")).checks().parsing
             .shouldBeInstanceOf<CheckOutcome.Failed>()
-        fixture.validate(fixture.signedMetadata(metadata().copy(issuedAt = null))).checks().parsing
+        fixture.validate(fixture.signedMetadata(fixture.metadata().copy(issuedAt = null))).checks().parsing
             .shouldBeInstanceOf<CheckOutcome.Failed>()
         fixture.validate("not-a-jws").checks().parsing.shouldBeInstanceOf<CheckOutcome.Failed>()
     }
@@ -323,10 +297,11 @@ val IssuerMetadataValidatorTest by matrixSuite {
         val fixture = buildWrpFixture()
         val now = Clock.System.now().truncateToSeconds()
 
-        fixture.validate(fixture.signedMetadata(metadata(issuedAt = now - 2.hours).copy(expiration = now - 1.hours)))
+        val expired = fixture.metadata(issuedAt = now - 2.hours).copy(expiration = now - 1.hours)
+        fixture.validate(fixture.signedMetadata(expired))
             .checks().timeliness.shouldBeInstanceOf<CheckOutcome.Failed>()
             .throwable.shouldBeInstanceOf<TimelinessException>()
-        fixture.validate(fixture.signedMetadata(metadata(issuedAt = now + 1.hours)))
+        fixture.validate(fixture.signedMetadata(fixture.metadata(issuedAt = now + 1.hours)))
             .checks().timeliness.shouldBeInstanceOf<CheckOutcome.Failed>()
     }
 }
@@ -342,9 +317,12 @@ private val policy = ValidationPolicy(
 
 private fun IssuerMetadataValidation.checks() = report.checks.shouldBeInstanceOf<IssuerMetadataChecks>()
 
-private suspend fun WrpFixture.validate(signed: String, credentialIssuer: String = CREDENTIAL_ISSUER) =
-    IssuerMetadataValidator(accessCertificates = trustAnchors, registrationCertificates = trustAnchors)
-        .validate(signed, credentialIssuer, policy)
+private suspend fun WrpFixture.validate(
+    signed: String,
+    credentialIssuer: String = CREDENTIAL_ISSUER,
+    validationPolicy: ValidationPolicy = policy,
+) = IssuerMetadataValidator(accessCertificates = trustAnchors, registrationCertificates = trustAnchors)
+    .validate(signed, credentialIssuer, validationPolicy)
 
 private fun IssuerMetadataValidation.registrationChecks() =
     report.children.single().checks.shouldBeInstanceOf<RegistrationCertificateChecks>()
@@ -353,21 +331,8 @@ private val PROVIDED_ATTESTATIONS = listOf(
     WrpCredential(format = "dc+sd-jwt", meta = WrpCredentialMeta(vctValues = listOf("urn:eudi:pid:1"))),
 )
 
-private fun registrarDataset() = WrpRegistrarDataset(
-    identifier = listOf(WrpIdentifier(type = "http://data.europa.eu/eudi/id/LEI", identifier = "LEI-PROVIDER")),
-    srvDescription = listOf(WrpMultiLangString(lang = "en", content = "Issues PIDs")),
-    registryURI = "https://registrar.example.com",
-    providesAttestations = PROVIDED_ATTESTATIONS,
-)
-
-private fun registrarDatasetJson() =
-    joseCompliantSerializer.encodeToJsonElement(WrpRegistrarDataset.serializer(), registrarDataset())
-
-/** `issuer_info` with the registration information, and [wrprc] if any (ETSI TS 119 472-3 V1.1.1, 4.2.3). */
-private fun issuerInfo(wrprc: String? = null) = listOfNotNull(
-    IssuerInfo(REGISTRAR_DATASET_FORMAT, registrarDatasetJson()),
-    wrprc?.let { IssuerInfo(REGISTRATION_CERT_FORMAT, JsonPrimitive(it)) },
-)
+/** `issuer_info` with the WRPRC [wrprc] (ETSI TS 119 472-3 V1.1.1, 4.2.3). */
+private fun issuerInfo(wrprc: String) = listOf(IssuerInfo(REGISTRATION_CERT_FORMAT, JsonPrimitive(wrprc)))
 
 /** A WRPRC of this fixture for a provider of PIDs, signed by the WRPRC provider of the fixture. */
 private suspend fun WrpFixture.issuerWrprc(
@@ -380,28 +345,32 @@ private suspend fun WrpFixture.issuerWrprc(
     return signWrprc(wrprcSigningKeyMaterial, payload)
 }
 
-private fun metadata(
+/** Metadata of [CREDENTIAL_ISSUER] with [wrprc] in `issuer_info`, by default [issuerWrprc]. */
+private suspend fun WrpFixture.metadata(
     credentialIssuer: String = CREDENTIAL_ISSUER,
     subject: String = CREDENTIAL_ISSUER,
     issuedAt: Instant = Clock.System.now().truncateToSeconds(),
-    issuerInfo: List<IssuerInfo>? = issuerInfo(),
+    wrprc: String? = null,
 ) = IssuerMetadata(
     credentialIssuer = credentialIssuer,
     credentialEndpointUrl = "$CREDENTIAL_ISSUER/credential",
     supportedCredentialConfigurations = emptyMap(),
     subject = subject,
     issuedAt = issuedAt,
-    issuerInfo = issuerInfo,
+    issuerInfo = issuerInfo(wrprc ?: issuerWrprc()),
 )
 
-/** [metadata] signed by [key] with the WRPAC chain of this fixture in `x5c`, as OpenID4VCI 1.0, 12.2.3. */
+/**
+ * [metadata], by default the ones with the WRPRC of this fixture, signed by [key] with the WRPAC chain of this
+ * fixture in `x5c`, as OpenID4VCI 1.0, 12.2.3.
+ */
 private suspend fun WrpFixture.signedMetadata(
-    metadata: IssuerMetadata = metadata(),
+    metadata: IssuerMetadata? = null,
     key: KeyMaterial = wrpKey,
     type: String = ISSUER_METADATA_JWT_TYPE,
     chain: List<X509Certificate> = wrpacChain,
 ): String = SignJwt<IssuerMetadata>(key, { header, _ -> header.copy(certificateChain = chain) })(
     type = type,
-    payload = metadata,
+    payload = metadata ?: metadata(),
     serializer = IssuerMetadata.serializer(),
 ).getOrThrow().toString()

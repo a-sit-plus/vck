@@ -416,8 +416,6 @@ object OpenIdConstants {
         /** The registration certificate (WRPRC) of the provider (ISS-MDATA-REG_CERT-4.2.3-05). */
         const val REGISTRATION_CERT_FORMAT = "registration_cert"
 
-        /** The registration information of the provider, provided by its registrar (ISS-MDATA-REG_CERT-4.2.3-08). */
-        const val REGISTRAR_DATASET_FORMAT = "registrar_dataset"
     }
 
 

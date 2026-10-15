@@ -149,8 +149,7 @@ data class IssuerMetadata(
     /**
      * ETSI TS 119 472-3 V1.1.1, 4.2.3: REQUIRED in the signed metadata of PID and attestation providers of the EUDI
      * Wallet ecosystem (ISS-MDATA-REG_CERT-4.2.3-01, -02). Attestations about the provider, structured as
-     * `verifier_info` of OpenID4VP: the registration information of its registrar (`registrar_dataset`), and possibly
-     * its registration certificate (`registration_cert`).
+     * `verifier_info` of OpenID4VP: possibly its registration certificate (`registration_cert`).
      */
     @SerialName("issuer_info")
     val issuerInfo: List<IssuerInfo>? = null,

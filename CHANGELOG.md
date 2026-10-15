@@ -217,11 +217,10 @@ Release 9.0.0 (unreleased):
       (ETSI TS 119 472-3 V1.1.1, 4.2), whose chain leads to an anchor of the WRPAC providers. It returns a report, and
       the metadata with the signing WRPAC if accepted; a policy not requiring trust lets a wallet warn about an
       untrusted provider instead of rejecting it
-    - The metadata have to carry `issuer_info` with the registration information of the provider
-      (`registrar_dataset`), and may carry its registration certificate (`registration_cert`), which is validated as
-      for relying parties, has to be issued to the identifier of the WRPAC, and has to register the provider with an
-      entitlement of attestation providers (ETSI TS 119 472-3 V1.1.1, 4.2.3; ETSI TS 119 475 V1.2.1, A.2). Accepted
-      metadata come with a `ValidatedCredentialIssuer`
+    - The metadata have to carry `issuer_info` holding its registration certificate (`registration_cert`),
+      which is validated as for relying parties, has to be issued to the identifier of the WRPAC, and has to register
+      the provider with an entitlement of attestation providers (ETSI TS 119 472-3 V1.1.1, 4.2.3;
+      ETSI TS 119 475 V1.2.1, A.2). Accepted metadata come with a `ValidatedCredentialIssuer`
     - Add `IssuerMetadataValidation.untrustedMetadata` and `LoadedIssuerMetadata.Signed.untrustedMetadata`, the
       metadata whatever the decision if their signature and subject passed, and
       `parseCredentialMetadataIgnoringTrust(loaded)` in `OpenId4VciProtocolClient` and `OpenId4VciKtorClient`, which
@@ -230,13 +229,12 @@ Release 9.0.0 (unreleased):
     - `IssuerMetadataValidator` keeps the requirements of the EUDI Wallet ecosystem out of `parsing` and `signature`:
       the signature is verified with the key the metadata assert, the `x5c` leaf or a `jwk`; metadata without a WRPAC
       in `x5c`, or with one carrying no identifier, fail `trust`; `issuer_info` is checked by the new named check
-      `registration` of `IssuerMetadataChecks`, required by every policy. A `registration_cert` is validated also
-      without a `registrar_dataset`, and `IssuerMetadataValidation.untrustedRegistration`, also on
-      `LoadedIssuerMetadata.Signed`, carries its payload whatever the decision. Metadata accepted without a WRPAC,
-      under a policy not requiring trust, come without an `issuer`
+      `registration` of `IssuerMetadataChecks`, required by every policy, which fails without exactly one
+      `registration_cert`. `IssuerMetadataValidation.untrustedRegistration`, also on `LoadedIssuerMetadata.Signed`,
+      carries its payload whatever the decision. As the WRPRC has to be linked to the identifier of a WRPAC, metadata
+      without a WRPAC are rejected under every policy, and accepted metadata always come with an `issuer`
     - Add `IssuerMetadata.issuerInfo` with `IssuerInfo`, whose `data` is a JSON element, and
-      `OpenIdConstants.IssuerInfo`; add `WrpRegistrarDataset`, `WrpMultiLangString`, and the entitlements of
-      attestation providers in `WrpConstants` to `etsi-data-classes`
+      `OpenIdConstants.IssuerInfo`
     - Add `OpenId4VciServer.issuerInfo`, served in the signed metadata
     - Renamed `WalletService` (in `vck-openid`) to `OpenId4VciClient`
     - Renamed `OpenId4VciClient` (in `vck-openid-ktor`) to `OpenId4VciKtorClient`
