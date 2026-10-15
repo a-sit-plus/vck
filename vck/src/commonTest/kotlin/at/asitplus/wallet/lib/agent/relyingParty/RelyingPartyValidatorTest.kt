@@ -119,6 +119,23 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
+    "only the root vct is exempt from claim registration" - {
+        listOf(
+            DCQLClaimsPathPointer("vct") to ACCEPTED,
+            DCQLClaimsPathPointer("address", "vct") to REJECTED,
+        ).asData() test { (path, decision) ->
+            val fixture = buildWrpFixture()
+            val credential = WrpCredential(
+                format = "dc+sd-jwt",
+                meta = WrpCredentialMeta(vctValues = listOf(PID_VCT)),
+                claim = listOf(WrpClaim.named("given_name")),
+            )
+            val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
+
+            fixture.validate(fixture.request(payload, sdJwtRequest(path))).report.decision shouldBe decision
+        }
+    }
+
     "a revoked WRPRC is rejected, with its status" {
         val fixture = buildWrpFixture()
 

@@ -122,7 +122,8 @@ object WrprcRequestValidator {
         SD_JWT -> {
             val claim = attribute as? JsonClaimReference ?: return false
             val segments = claim.normalizedJsonPath.toList()
-            if ((segments.lastOrNull() as? NameSegment)?.memberName == "vct") return true
+            // SD-JWT VC: vct is a root claim, never selectively disclosed (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3).
+            if (segments == listOf(NameSegment("vct"))) return true
             this.claim.any { it.path.covers(segments) }
         }
 
