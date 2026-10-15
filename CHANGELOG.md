@@ -28,7 +28,8 @@ Release 9.0.0 (unreleased):
       of an array, or an index), and `WrpClaim.values` a list of `WrpClaimValue`s (a string, integer, or boolean), as
       ETSI TS 119 475 V1.2.1, B.2.10 refers to OpenID4VP for them; `WrpClaim.named(...)` creates a path of names. A
       WRPRC with `null` or an index in a path could not be parsed before. Registered paths authorize requested claims
-      segment by segment, `null` any index; in the CWT format, segments and values can be strings or `null` only
+      segment by segment, `null` any index. JSON and CWT decode typed segments and values; empty paths and
+      indices above `UInt.MAX_VALUE` are rejected. kotlinx-serialization CBOR also reads an empty map as `null`
 - Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
     - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations
       (`PresentationValidationInput` in a `PresentationContext`) under a `ValidationPolicy` (`TrustPolicy`,

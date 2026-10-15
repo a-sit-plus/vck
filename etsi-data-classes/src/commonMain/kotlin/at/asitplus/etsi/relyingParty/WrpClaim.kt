@@ -20,6 +20,10 @@ data class WrpClaim(
     @SerialName("values")
     val values: List<WrpClaimValue>? = null
 ) {
+    init {
+        require(path.isNotEmpty()) { "Claim path must not be empty" } // OpenID4VP 1.0, 7
+    }
+
     companion object {
         /** A claim selected by the names of its path, e.g. a namespace and an element identifier of ISO mdoc. */
         fun named(vararg names: String) = WrpClaim(names.map { WrpClaimPathSegment.Name(it) })

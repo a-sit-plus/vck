@@ -1,8 +1,10 @@
 package at.asitplus.etsi.relyingParty
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.cbor.CborDecoder
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
@@ -27,10 +29,10 @@ sealed interface WrpClaimValue {
 }
 
 /**
- * Serializes a [WrpClaimValue] as a string, an integer, or a boolean. A WRPRC in JWT format (JSON) may carry any of
- * them; without a generic CBOR element in kotlinx-serialization, the values of a WRPRC in CWT format can only be
- * decoded as strings.
+ * Serializes a [WrpClaimValue] as a string, an integer, or a boolean in JSON and CBOR.
+ * CBOR decoding tries text, boolean, then integer; see [WrpClaimPathSegmentSerializer].
  */
+@OptIn(ExperimentalSerializationApi::class)
 object WrpClaimValueSerializer : KSerializer<WrpClaimValue> {
     override val descriptor =
         PrimitiveSerialDescriptor("at.asitplus.etsi.relyingParty.WrpClaimValue", PrimitiveKind.STRING)
@@ -43,16 +45,28 @@ object WrpClaimValueSerializer : KSerializer<WrpClaimValue> {
         }
     }
 
-    override fun deserialize(decoder: Decoder): WrpClaimValue = if (decoder is JsonDecoder) {
-        val element = decoder.decodeJsonElement()
-        when {
-            element !is JsonPrimitive -> throw SerializationException("Invalid value of a claim: $element")
-            element.isString -> WrpClaimValue.Text(element.content)
-            element.booleanOrNull != null -> WrpClaimValue.Bool(element.booleanOrNull!!)
-            element.longOrNull != null -> WrpClaimValue.Integer(element.longOrNull!!)
-            else -> throw SerializationException("Invalid value of a claim: $element")
+    override fun deserialize(decoder: Decoder): WrpClaimValue = when (decoder) {
+        is JsonDecoder -> {
+            val element = decoder.decodeJsonElement()
+            when {
+                element !is JsonPrimitive -> throw SerializationException("Invalid value of a claim: $element")
+                element.isString -> WrpClaimValue.Text(element.content)
+                element.booleanOrNull != null -> WrpClaimValue.Bool(element.booleanOrNull!!)
+                element.longOrNull != null -> WrpClaimValue.Integer(element.longOrNull!!)
+                else -> throw SerializationException("Invalid value of a claim: $element")
+            }
         }
-    } else {
-        WrpClaimValue.Text(decoder.decodeString())
+
+        is CborDecoder -> try {
+            WrpClaimValue.Text(decoder.decodeString())
+        } catch (_: SerializationException) {
+            try {
+                WrpClaimValue.Bool(decoder.decodeBoolean())
+            } catch (_: SerializationException) {
+                WrpClaimValue.Integer(decoder.decodeLong())
+            }
+        }
+
+        else -> throw SerializationException("Unsupported format for WrpClaimValue")
     }
 }

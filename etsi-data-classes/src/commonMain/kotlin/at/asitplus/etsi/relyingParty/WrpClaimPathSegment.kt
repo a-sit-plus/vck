@@ -1,17 +1,17 @@
 package at.asitplus.etsi.relyingParty
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.cbor.CborDecoder
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.longOrNull
 import kotlin.jvm.JvmInline
 
 /**
@@ -35,11 +35,13 @@ sealed interface WrpClaimPathSegment {
 }
 
 /**
- * Serializes a [WrpClaimPathSegment] as a string, `null`, or a non-negative integer. A WRPRC in JWT format (JSON) may
- * carry any of them. Without a generic CBOR element in kotlinx-serialization, the segments of a WRPRC in CWT format
- * can only be decoded as strings or `null`, which covers the paths of ISO mdoc claims, a namespace and an element
- * identifier (OpenID4VP 1.0, 7.2).
+ * Encodes names, indices and wildcards as strings, non-negative integers and `null` in JSON and CBOR.
+ * CBOR decoding tries text before integer, relying on kotlinx-serialization (since 1.10.0) checking the
+ * major type before consuming input, as Signum's CoseHeaderSerializer does for x5chain.
+ *
+ * Limitation: kotlinx-serialization CBOR treats an empty map as `null`, so it also decodes as [WrpClaimPathSegment.AllElements].
  */
+@OptIn(ExperimentalSerializationApi::class)
 object WrpClaimPathSegmentSerializer : KSerializer<WrpClaimPathSegment> {
     override val descriptor =
         PrimitiveSerialDescriptor("at.asitplus.etsi.relyingParty.WrpClaimPathSegment", PrimitiveKind.STRING)
@@ -52,19 +54,29 @@ object WrpClaimPathSegmentSerializer : KSerializer<WrpClaimPathSegment> {
         }
     }
 
-    override fun deserialize(decoder: Decoder): WrpClaimPathSegment = if (decoder is JsonDecoder) {
-        when (val element = decoder.decodeJsonElement()) {
+    override fun deserialize(decoder: Decoder): WrpClaimPathSegment = when (decoder) {
+        is JsonDecoder -> when (val element = decoder.decodeJsonElement()) {
             JsonNull -> WrpClaimPathSegment.AllElements
             is JsonPrimitive if element.isString -> WrpClaimPathSegment.Name(element.content)
-            is JsonPrimitive if element.longOrNull?.let { it >= 0 } == true ->
-                WrpClaimPathSegment.Index(element.longOrNull!!.toUInt())
-
-            else -> throw SerializationException("Invalid segment of a claim path: $element")
+            is JsonPrimitive -> element.content.toUIntOrNull()?.let { WrpClaimPathSegment.Index(it) }
+                ?: throw SerializationException("Invalid segment of a claim path")
+            else -> throw SerializationException("Invalid segment of a claim path")
         }
-    } else if (decoder.decodeNotNullMark()) {
-        WrpClaimPathSegment.Name(decoder.decodeString())
-    } else {
-        decoder.decodeNull()
-        WrpClaimPathSegment.AllElements
+
+        is CborDecoder -> if (!decoder.decodeNotNullMark()) {
+            decoder.decodeNull()
+            WrpClaimPathSegment.AllElements
+        } else {
+            try {
+                WrpClaimPathSegment.Name(decoder.decodeString())
+            } catch (_: SerializationException) {
+                val index = decoder.decodeLong()
+                if (index < 0 || index > UInt.MAX_VALUE.toLong())
+                    throw SerializationException("Invalid index of a claim path")
+                WrpClaimPathSegment.Index(index.toUInt())
+            }
+        }
+
+        else -> throw SerializationException("Unsupported format for WrpClaimPathSegment")
     }
 }
