@@ -305,6 +305,9 @@ data class AuthenticationRequestParameters(
      * contains a typed parameter set with details about the transaction that the Verifier is requesting
      * the End-User to authorize. The Wallet MUST return an error if a request contains even one unrecognized
      * transaction data type or transaction data not conforming to the respective type definition.
+     *
+     * In the response the hash is taken over the string itself and so it should not be
+     * Base64URL decoded before. For type-safe usage see [transactionDataDecoded]
      */
     @SerialName("transaction_data")
     val transactionData: List<TransactionDataBase64Url>? = null,
@@ -336,6 +339,8 @@ data class AuthenticationRequestParameters(
             ResponseType(it) // syntax validation
         }
     }
+
+    val transactionDataDecoded by lazy { transactionData?.map { it.toTransactionData() } }
 
     /**
      * Reads the [OpenIdConstants.ClientIdScheme] by extracting the prefix from [clientId]

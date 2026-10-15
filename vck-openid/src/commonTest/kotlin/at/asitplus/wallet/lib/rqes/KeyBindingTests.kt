@@ -5,6 +5,10 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.TransactionDataBase64Url
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.digest
+import at.asitplus.openid.formUrlEncode
+import at.asitplus.openid.toBase64UrlJsonString
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
@@ -21,10 +25,6 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
-import at.asitplus.wallet.lib.data.digest
-import at.asitplus.wallet.lib.data.toBase64UrlJsonString
-import at.asitplus.openid.decodeFromQuery
-import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions

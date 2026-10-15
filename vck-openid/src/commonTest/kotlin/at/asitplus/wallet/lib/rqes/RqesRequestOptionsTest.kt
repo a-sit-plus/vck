@@ -20,7 +20,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
-import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
@@ -49,7 +48,7 @@ val RqesRequestOptionsTest by matrixSuite {
             it.verifierOid4Vp.createAuthnRequest(requestOptions, CreationOptions.Query("https://example.com"))
                 .getOrThrow().url.let { Url(it) }.decodeFromQuery<AuthenticationRequestParameters>().apply {
                     val dcqlId = dcqlQuery.shouldNotBeNull().credentials.first().id
-                    transactionData.shouldNotBeNull().first().toTransactionData().apply {
+                    transactionDataDecoded.shouldNotBeNull().first().apply {
                         transactionDataHashAlgorithms shouldNotBe null
                         credentialIds.first() shouldBe dcqlId.string
                     }

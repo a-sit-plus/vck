@@ -15,6 +15,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * strongly standardized (normal vs pretty-print etc) so de-/serialization between
  * different parties with different serializer settings may lead to erroneous
  * request rejection.
+ *
+ * Also see [Base64URLTransactionDataSerializer]
  */
 typealias TransactionDataBase64Url = JsonPrimitive
 

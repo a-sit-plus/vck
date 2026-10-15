@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.csc.api.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
+import at.asitplus.openid.Base64URLTransactionDataSerializer
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
@@ -10,7 +11,6 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.oidvci.randomString
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull

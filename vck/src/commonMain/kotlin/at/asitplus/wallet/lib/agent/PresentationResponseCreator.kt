@@ -12,9 +12,9 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
 import at.asitplus.openid.dcql.DCQLIsoMdocZkCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.toTransactionData
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure
 
 private typealias QesApprovalSubmission = Pair<DCQLCredentialQueryIdentifier, Int>

@@ -8,6 +8,7 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.wrapInCborTag
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.openid.Base64URLTransactionDataSerializer
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.Digest
@@ -16,7 +17,6 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
-import at.asitplus.wallet.lib.data.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import io.ktor.util.*
 import kotlinx.serialization.builtins.ByteArraySerializer
@@ -27,7 +27,10 @@ internal fun List<TransactionDataBase64Url>.hash(digest: Digest?): List<ByteArra
 
 internal fun getCommonHashesAlgorithms(transactionData: List<TransactionDataBase64Url>?): Set<String>? {
     val listOfSets = transactionData?.map {
-        joseCompliantSerializer.decodeFromJsonElement(Base64URLTransactionDataSerializer, it).transactionDataHashAlgorithms
+        joseCompliantSerializer.decodeFromJsonElement(
+            Base64URLTransactionDataSerializer,
+            it
+        ).transactionDataHashAlgorithms
     }
     return if (listOfSets == null || listOfSets.any { it == null }) {
         null

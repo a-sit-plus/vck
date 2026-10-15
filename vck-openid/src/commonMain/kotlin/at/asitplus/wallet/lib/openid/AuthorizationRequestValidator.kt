@@ -20,7 +20,6 @@ import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
-import at.asitplus.wallet.lib.data.toTransactionData
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
@@ -90,21 +89,19 @@ internal class AuthorizationRequestValidator(
      * OpenID4VP 1.0 sections 5.1 and 8.5 require non-empty DCQL credential_ids. CSC's conditional omission
      * of this field applies to other transaction protocols, not to an OpenID4VP authorization request.
      */
-    private fun AuthenticationRequestParameters.validateTransactionData() {
-        transactionData?.let { entries ->
-            catchingUnwrapped {
-                require(entries.isNotEmpty()) { "transaction_data must be non-empty" }
+    private fun AuthenticationRequestParameters.validateTransactionData(): Unit =
+        catchingUnwrapped {
+            transactionDataDecoded?.let {
+                require(it.isNotEmpty()) { "transaction_data must be non-empty" }
                 val queryIds = dcqlQuery?.credentials?.map { it.id.string }?.toSet()
-                entries.forEach { encoded ->
-                    val data = encoded.toTransactionData()
+                it.forEach { data ->
                     require(data.credentialIds.isNotEmpty()) { "credential_ids must be present and non-empty" }
                     require(queryIds == null || queryIds.containsAll(data.credentialIds)) {
                         "credential_ids references an unknown DCQL query"
                     }
                 }
-            }.getOrElse { throw InvalidTransactionData("Invalid transaction_data", it) }
-        }
-    }
+            } ?: Unit
+        }.getOrElse { throw InvalidTransactionData("Invalid transaction_data", it) }
 
     /**
      * Verifies the signature on a signed request object against [publicKey], which the caller has established as
