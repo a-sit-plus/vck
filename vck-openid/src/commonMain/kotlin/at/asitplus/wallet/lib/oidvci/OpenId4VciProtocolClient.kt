@@ -17,6 +17,8 @@ import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.BodyContentTypes
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ProtocolRequest
@@ -335,15 +337,13 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
             is OpenId4VciClient.CredentialRequest.Encrypted -> PreparedHttpRequest(
                 url = issuerMetadata.credentialEndpointUrl,
                 method = HttpMethod.Post,
-                headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT),
-                body = request.request.serialize(),
+                body = HttpBody(BodyContentTypes.Jwt, request.request.serialize()),
             )
 
             is OpenId4VciClient.CredentialRequest.Plain -> PreparedHttpRequest(
                 url = issuerMetadata.credentialEndpointUrl,
                 method = HttpMethod.Post,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                body = joseCompliantSerializer.encodeToString(request.request),
+                body = HttpBody(ContentType.Application.Json, joseCompliantSerializer.encodeToString(request.request)),
             )
         },
         tokenResponse = tokenResponse,

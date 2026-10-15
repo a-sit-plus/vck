@@ -29,6 +29,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ProtocolRequest
@@ -725,11 +726,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
     private fun formPost(url: String, parameters: FormParameters, accept: String? = null) = PreparedHttpRequest(
         url = url,
         method = HttpMethod.Post,
-        headers = headers {
-            append(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded.toString())
-            accept?.let { append(HttpHeaders.Accept, it) }
-        },
-        body = parameters.formUrlEncode(),
+        headers = accept?.let { headersOf(HttpHeaders.Accept, it) } ?: Headers.Empty,
+        body = HttpBody(ContentType.Application.FormUrlEncoded, parameters.formUrlEncode()),
     )
 
     /** Parses the JWT response with [verifyTokenIntrospectionJwt], issued by [issuer], else the JSON response. */

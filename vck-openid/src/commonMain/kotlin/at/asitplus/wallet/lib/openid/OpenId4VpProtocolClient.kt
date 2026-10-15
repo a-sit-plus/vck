@@ -7,6 +7,7 @@ import at.asitplus.rfc3986uri.Rfc3986UniformResourceIdentifier
 import at.asitplus.rfc3986uri.Rfc3986UriReference
 import at.asitplus.rfc3986uri.Rfc3986UriSchemeName
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.PreparedHttpRequest
@@ -141,8 +142,7 @@ class OpenId4VpProtocolClient(
                 PreparedHttpRequest(
                     url = response.url,
                     method = HttpMethod.Post,
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded.toString()),
-                    body = response.params.formUrlEncode(),
+                    body = HttpBody(ContentType.Application.FormUrlEncoded, response.params.formUrlEncode()),
                 )
             )
         ),
@@ -154,11 +154,11 @@ class OpenId4VpProtocolClient(
         return if (method == HttpMethod.Post) PreparedHttpRequest(
             url = uri,
             method = HttpMethod.Post,
-            headers = headersOf(
-                accept,
-                HttpHeaders.ContentType to listOf(ContentType.Application.FormUrlEncoded.toString()),
+            headers = headersOf(accept),
+            body = HttpBody(
+                ContentType.Application.FormUrlEncoded,
+                requestObjectParameters?.encodeToParameters()?.formUrlEncode().orEmpty(),
             ),
-            body = requestObjectParameters?.encodeToParameters()?.formUrlEncode().orEmpty(),
         ) else PreparedHttpRequest(url = uri, method = method, headers = headersOf(accept))
     }
 
