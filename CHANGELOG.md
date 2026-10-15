@@ -206,7 +206,8 @@ Release 9.0.0 (unreleased):
       token introspection, userinfo) including DPoP and attestation-based client authentication, without sending
       requests itself: each call returns an `HttpExchange`, whose requests (`ProtocolRequest`) callers send with any
       HTTP stack. `ProtocolRequest.Retryable` marks the requests that are sent again when the server asks for a DPoP
-      nonce or an attestation challenge, with their `attempt`
+      nonce or an attestation challenge, with their `attempt`. The `PreparedHttpRequest` of each request carries its
+      `body` as `HttpBody`, with the `contentType` to send as `Content-Type`; its `headers` never contain `Content-Type`
     - `OAuth2KtorClient` sends the requests of `OAuth2ProtocolClient`, keeping its API
     - Move `TokenResponseWithDpopNonce`, `LoadInstanceAttestationInput` and `OpenUrlForAuthnRequest` to `vck-openid`
       (`at.asitplus.wallet.lib.oauth2`, the latter two nested in `OAuth2ProtocolClient`), deprecate the typealiases

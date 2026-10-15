@@ -87,13 +87,6 @@ internal suspend fun <T> HttpClient.execute(exchange: HttpExchange<T>): T {
 internal suspend fun HttpClient.send(prepared: PreparedHttpRequest): HttpResponse = request(prepared.url) {
     method = prepared.method
     expectSuccess = false
-    prepared.headers.forEach { name, values ->
-        // the content type is set with the body, see below
-        if (!name.equals(HttpHeaders.ContentType, ignoreCase = true)) values.forEach { headers.append(name, it) }
-    }
-    prepared.body?.let { body ->
-        val contentType = prepared.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
-            ?: ContentType.Text.Plain
-        setBody(TextContent(body, contentType))
-    }
+    prepared.headers.forEach { name, values -> values.forEach { headers.append(name, it) } }
+    prepared.body?.let { setBody(TextContent(it.text, it.contentType)) }
 }

@@ -82,7 +82,7 @@ fun ProtocolRequest.toRequestInfo() = http.toRequestInfo()
 val PreparedHttpRequest.path: String
     get() = Url(url).encodedPath
 
-fun PreparedHttpRequest.formParameters(): FormParameters = body.orEmpty().toFormParameters()
+fun PreparedHttpRequest.formParameters(): FormParameters = body?.text.orEmpty().toFormParameters()
 
 /** What the client receives, when a server sends this response. */
 fun PreparedHttpResponse.received() = ReceivedHttpResponse(status = status, headers = headers, body = body)

@@ -11,6 +11,7 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -449,12 +450,11 @@ class OpenId4VpKtorHolder(
             PreparedHttpRequest(
                 url = input.url,
                 method = input.method,
-                headers = Headers.build {
-                    input.headers.forEach { (name, value) -> append(name, value) }
-                    if (isPost) append(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded.toString())
-                },
-                body = if (isPost) input.requestObjectParameters?.encodeToParameters()?.formUrlEncode().orEmpty()
-                else null,
+                headers = Headers.build { input.headers.forEach { (name, value) -> append(name, value) } },
+                body = if (isPost) HttpBody(
+                    ContentType.Application.FormUrlEncoded,
+                    input.requestObjectParameters?.encodeToParameters()?.formUrlEncode().orEmpty(),
+                ) else null,
             )
         )
         val body = response.bodyAsText()

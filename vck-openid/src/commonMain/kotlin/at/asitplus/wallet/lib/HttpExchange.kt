@@ -4,15 +4,19 @@ import at.asitplus.KmmResult
 import io.ktor.http.*
 
 /**
- * A request to send. [body] is already encoded, e.g. as form, JSON or JWT, and its media type is set as
- * `Content-Type` in [headers].
+ * A request to send. Send every header in [headers], and [body] with its [HttpBody.contentType] as `Content-Type`;
+ * [headers] never contain `Content-Type`.
  */
 data class PreparedHttpRequest(
     val url: String,
     val method: HttpMethod,
     val headers: Headers = Headers.Empty,
-    val body: String? = null,
-)
+    val body: HttpBody? = null,
+) {
+    init {
+        headers.requireNoContentType()
+    }
+}
 
 /** The server's answer, whatever the status code. Callers must not follow redirects. */
 data class ReceivedHttpResponse(

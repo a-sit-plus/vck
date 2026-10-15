@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.AuthorizationServerFixture
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.FakeHttpStack
@@ -449,6 +450,13 @@ val OpenId4VciProtocolClientTest by matrixSuite {
             ).shouldNotBeEmpty()
 
             http.sent.drop(sentBefore).kinds() shouldBe listOf("Credential(0)", "Credential(1)")
+            http.sent.drop(sentBefore).forEach {
+                it.http.headers[HttpHeaders.ContentType] shouldBe null
+                it.http.body.shouldNotBeNull().contentType shouldBe when (request) {
+                    is OpenId4VciClient.CredentialRequest.Encrypted -> ContentType.parse(MediaTypes.Application.JWT)
+                    is OpenId4VciClient.CredentialRequest.Plain -> ContentType.Application.Json
+                }
+            }
             http.received[sentBefore].apply {
                 status shouldBe HttpStatusCode.Unauthorized
                 headers[HttpHeaders.WWWAuthenticate] shouldBe "DPoP error=\"$USE_DPOP_NONCE\""

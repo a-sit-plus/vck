@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.credentialDataProviderFun
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
@@ -51,6 +52,7 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
@@ -175,6 +177,8 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
 
                 request.url.fullPath.startsWith(credentialEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
+                    // the JWE of the credential request, as the issuer requires request encryption
+                    request.body.contentType shouldBe ContentType.parse(MediaTypes.Application.JWT)
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
                     openId4VciServer.credential(
                         authorizationHeader = authn,
