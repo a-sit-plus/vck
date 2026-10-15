@@ -358,8 +358,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             client = this,
             authentication = Authentication.Client(oauthMetadata, popAudience, issuerMetadata),
             maxRetries = MAX_RETRIES_CLIENT_AUTHENTICATION,
-            kind = ProtocolRequest::Token,
-            request = formPost(url, request.encodeToParameters()),
+            toProtocolRequest = ProtocolRequest::Token,
+            unauthenticatedRequest = formPost(url, request.encodeToParameters()),
             parse = { response ->
                 TokenResponseWithDpopNonce(
                     joseCompliantSerializer.decodeFromString<TokenResponseParameters>(response.body),
@@ -436,8 +436,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 client = this,
                 authentication = Authentication.Client(oauthMetadata, authorizationServer, issuerMetadata),
                 maxRetries = MAX_RETRIES_CLIENT_AUTHENTICATION,
-                kind = ProtocolRequest::PushedAuthorization,
-                request = formPost(
+                toProtocolRequest = ProtocolRequest::PushedAuthorization,
+                unauthenticatedRequest = formPost(
                     url = url,
                     parameters = authRequest.encodeToParameters() +
                             (OpenIdConstants.PARAMETER_PROMPT to OpenIdConstants.PARAMETER_PROMPT_LOGIN)
@@ -502,8 +502,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             client = this,
             authentication = Authentication.Client(oauthMetadata, popAudience, issuerMetadata),
             maxRetries = MAX_RETRIES_CLIENT_AUTHENTICATION,
-            kind = ProtocolRequest::TokenIntrospection,
-            request = formPost(
+            toProtocolRequest = ProtocolRequest::TokenIntrospection,
+            unauthenticatedRequest = formPost(
                 url = url,
                 parameters = request.encodeToParameters(),
                 accept = verifyTokenIntrospectionJwt?.let { TOKEN_INTROSPECTION_JWT },
@@ -527,24 +527,27 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         userInfoEndpoint: String,
         tokenResponse: TokenResponseParameters,
     ): HttpExchange<JsonObject> = accessTokenRequest(
-        request = get(userInfoEndpoint),
+        unauthenticatedRequest = get(userInfoEndpoint),
         tokenResponse = tokenResponse,
-        kind = ProtocolRequest::UserInfo,
+        toProtocolRequest = ProtocolRequest::UserInfo,
         parse = { joseCompliantSerializer.decodeFromString<JsonObject>(it.body) },
     )
 
-    /** Sends [request] with the access token from [tokenResponse], retrying once if the server asks for a DPoP nonce. */
+    /**
+     * Sends [unauthenticatedRequest] with the access token from [tokenResponse], retrying once if the server asks for a
+     * DPoP nonce.
+     */
     internal fun <T> accessTokenRequest(
-        request: PreparedHttpRequest,
+        unauthenticatedRequest: PreparedHttpRequest,
         tokenResponse: TokenResponseParameters,
-        kind: (PreparedHttpRequest, Int) -> ProtocolRequest,
+        toProtocolRequest: (http: PreparedHttpRequest, attempt: Int) -> ProtocolRequest.Retryable,
         parse: suspend (ReceivedHttpResponse) -> T,
     ): HttpExchange<T> = AuthenticatedExchange(
         client = this,
         authentication = Authentication.AccessToken(tokenResponse),
         maxRetries = MAX_RETRIES_ACCESS_TOKEN,
-        kind = kind,
-        request = request,
+        unauthenticatedRequest = unauthenticatedRequest,
+        toProtocolRequest = toProtocolRequest,
         parse = parse,
     )
 

@@ -331,7 +331,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         credentialFormat: SupportedCredentialFormat,
         credentialScheme: CredentialScheme,
     ): HttpExchange<Collection<Holder.StoreCredentialInput>> = oauth2Client.accessTokenRequest(
-        request = when (request) {
+        unauthenticatedRequest = when (request) {
             is OpenId4VciClient.CredentialRequest.Encrypted -> PreparedHttpRequest(
                 url = issuerMetadata.credentialEndpointUrl,
                 method = HttpMethod.Post,
@@ -347,7 +347,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
             )
         },
         tokenResponse = tokenResponse,
-        kind = ProtocolRequest::Credential,
+        toProtocolRequest = ProtocolRequest::Credential,
         parse = { response ->
             vciClient.parseCredentialResponse(
                 response = response.body,

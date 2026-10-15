@@ -33,18 +33,21 @@ internal sealed interface Authentication {
 }
 
 /**
- * Sends [request] with the headers for [authentication], retrying at most [maxRetries] times when the server asks for
- * a DPoP nonce or an attestation challenge. Before each attempt with client authentication, an attestation challenge
- * may be fetched first, see [OAuth2ProtocolClient.attestationChallengeRequest].
+ * Sends [unauthenticatedRequest] with the headers for [authentication], retrying at most [maxRetries] times when the
+ * server asks for a DPoP nonce or an attestation challenge. Before each attempt with client authentication, an
+ * attestation challenge may be fetched first, see [OAuth2ProtocolClient.attestationChallengeRequest].
  *
- * The body of [request] is built only once by the caller, and reused for every attempt; only the headers are rebuilt.
+ * The body of [unauthenticatedRequest] is built only once by the caller, and reused for every attempt; only the
+ * headers are rebuilt.
  */
 internal class AuthenticatedExchange<T>(
     private val client: OAuth2ProtocolClient,
     private val authentication: Authentication,
     private val maxRetries: Int,
-    private val kind: (PreparedHttpRequest, Int) -> ProtocolRequest,
-    private val request: PreparedHttpRequest,
+    /** The request without authentication headers. */
+    private val unauthenticatedRequest: PreparedHttpRequest,
+    /** Wraps the authenticated request of an attempt, e.g. `ProtocolRequest::Token`. */
+    private val toProtocolRequest: (http: PreparedHttpRequest, attempt: Int) -> ProtocolRequest.Retryable,
     private val parse: suspend (ReceivedHttpResponse) -> T,
 ) : HttpExchange<T> {
 
@@ -79,7 +82,7 @@ internal class AuthenticatedExchange<T>(
         is Authentication.AccessToken -> sendAttempt(attempt, null)
         is Authentication.Client -> {
             instanceAttestation = client.loadInstanceAttestation(authentication)
-            client.attestationChallengeRequest(authentication, request.url, instanceAttestation)
+            client.attestationChallengeRequest(authentication, unauthenticatedRequest.url, instanceAttestation)
                 ?.let {
                     state = State.AwaitingChallenge(attempt)
                     HttpStep.Send(ProtocolRequest.AttestationChallenge(it))
@@ -91,21 +94,21 @@ internal class AuthenticatedExchange<T>(
     private suspend fun sendAttempt(attempt: Int, fetchedChallenge: String?): HttpStep<T> {
         val authenticationHeaders = when (authentication) {
             is Authentication.AccessToken ->
-                client.accessTokenHeaders(authentication.tokenResponse, request.url, request.method)
+                client.accessTokenHeaders(authentication.tokenResponse, unauthenticatedRequest.url, unauthenticatedRequest.method)
 
             is Authentication.Client -> client.clientAuthenticationHeaders(
                 authentication = authentication,
-                resourceUrl = request.url,
-                httpMethod = request.method,
+                resourceUrl = unauthenticatedRequest.url,
+                httpMethod = unauthenticatedRequest.method,
                 instanceAttestation = instanceAttestation,
                 fetchedChallenge = fetchedChallenge,
             )
         }
         state = State.AwaitingResponse(attempt)
         return HttpStep.Send(
-            kind(
-                request.copy(headers = Headers.build {
-                    appendAll(request.headers)
+            toProtocolRequest(
+                unauthenticatedRequest.copy(headers = Headers.build {
+                    appendAll(unauthenticatedRequest.headers)
                     appendAll(authenticationHeaders)
                 }),
                 attempt,
@@ -115,8 +118,8 @@ internal class AuthenticatedExchange<T>(
 
     private suspend fun handleResponse(attempt: Int, response: ReceivedHttpResponse): HttpStep<T> {
         when (authentication) {
-            is Authentication.Client -> client.recordAuthorizationServerResponse(request.url, response.headers)
-            is Authentication.AccessToken -> client.recordResourceServerResponse(request.url, response.headers)
+            is Authentication.Client -> client.recordAuthorizationServerResponse(unauthenticatedRequest.url, response.headers)
+            is Authentication.AccessToken -> client.recordResourceServerResponse(unauthenticatedRequest.url, response.headers)
         }
         if (response.status.isSuccess()) {
             return HttpStep.Done(parse(response))
