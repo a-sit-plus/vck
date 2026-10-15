@@ -18,4 +18,14 @@ val HttpBodyTest by matrixSuite {
             }
         }
     }
+
+    test("response with Content-Type in its headers is rejected, as it is set with the body") {
+        shouldThrow<IllegalArgumentException> {
+            PreparedHttpResponse(
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                body = HttpBody(ContentType.Application.Json, "{}"),
+            )
+        }
+    }
 }

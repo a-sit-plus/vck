@@ -7,8 +7,9 @@ import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.wallet.lib.BodyContentTypes
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.PreparedHttpResponse
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jsonHttpResponse
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import io.ktor.http.*
@@ -73,8 +74,7 @@ fun TokenIntrospectionResult.toHttpResponse(): PreparedHttpResponse = when (this
     is TokenIntrospectionResponse -> jsonHttpResponse(this)
     is TokenIntrospectionJwtResponse -> PreparedHttpResponse(
         status = HttpStatusCode.OK,
-        headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.TOKEN_INTROSPECTION_JWT),
-        body = toString(),
+        body = HttpBody(BodyContentTypes.TokenIntrospectionJwt, toString()),
     )
 }
 

@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.BodyContentTypes
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.acceptsOverJson
 import at.asitplus.wallet.lib.data.MediaTypes
@@ -35,11 +37,8 @@ fun OpenId4VciServer.CredentialResponse.toHttpResponse(): PreparedHttpResponse =
 
     is OpenId4VciServer.CredentialResponse.Encrypted -> PreparedHttpResponse(
         status = HttpStatusCode.OK,
-        headers = headers {
-            append(HttpHeaders.ContentType, MediaTypes.Application.JWT)
-            append(HttpHeaders.CacheControl, NO_STORE)
-        },
-        body = response.serialize(),
+        headers = headersOf(HttpHeaders.CacheControl, NO_STORE),
+        body = HttpBody(BodyContentTypes.Jwt, response.serialize()),
     )
 }
 

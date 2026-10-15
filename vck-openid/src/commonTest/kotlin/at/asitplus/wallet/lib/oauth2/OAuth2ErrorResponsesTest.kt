@@ -111,7 +111,7 @@ val OAuth2ErrorResponsesTest by matrixSuite {
         ).asData(nameFn = { it.name }) test { case ->
             with(case.response) {
                 status shouldBe case.status
-                headers[HttpHeaders.ContentType] shouldBe ContentType.Application.Json.toString()
+                bodyContentType shouldBe ContentType.Application.Json.toString()
                 headers[HttpHeaders.WWWAuthenticate] shouldBe case.wwwAuthenticate
                 headers[HttpHeaders.DPoPNonce] shouldBe case.dpopNonce
                 headers[HttpHeaders.OAuthClientAttestationChallenge] shouldBe case.attestationChallenge
@@ -145,4 +145,4 @@ val OAuth2ErrorResponsesTest by matrixSuite {
     }
 }
 
-private fun PreparedHttpResponse.oauth2Error() = joseCompliantSerializer.decodeFromString<OAuth2Error>(body)
+private fun PreparedHttpResponse.oauth2Error() = joseCompliantSerializer.decodeFromString<OAuth2Error>(bodyText)

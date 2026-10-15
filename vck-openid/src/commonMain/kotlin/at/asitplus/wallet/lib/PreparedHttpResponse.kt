@@ -5,14 +5,18 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import io.ktor.http.*
 
 /**
- * A response to send, whatever the HTTP server stack. [body] is already encoded, e.g. as JSON or JWT, and its media
- * type is set as `Content-Type` in [headers]. Write out [status], every header in [headers] and [body] unchanged.
+ * A response to send, whatever the HTTP server stack. Write out [status], every header in [headers], and [body]
+ * unchanged with its [HttpBody.contentType] as `Content-Type`; [headers] never contain `Content-Type`.
  */
 data class PreparedHttpResponse(
     val status: HttpStatusCode,
     val headers: Headers = Headers.Empty,
-    val body: String = "",
-)
+    val body: HttpBody? = null,
+) {
+    init {
+        headers.requireNoContentType()
+    }
+}
 
 /** A response with [value] as JSON body, with [status], and the headers from [extraHeaders]. */
 internal inline fun <reified T> jsonHttpResponse(
@@ -21,11 +25,8 @@ internal inline fun <reified T> jsonHttpResponse(
     extraHeaders: HeadersBuilder.() -> Unit = {},
 ) = PreparedHttpResponse(
     status = status,
-    headers = Headers.build {
-        append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-        extraHeaders()
-    },
-    body = joseCompliantSerializer.encodeToString(value),
+    headers = Headers.build(extraHeaders),
+    body = HttpBody(ContentType.Application.Json, joseCompliantSerializer.encodeToString(value)),
 )
 
 /**

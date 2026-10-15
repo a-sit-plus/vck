@@ -16,6 +16,8 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.wallet.lib.BodyContentTypes
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -23,7 +25,6 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jsonHttpResponse
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -177,11 +178,8 @@ class OpenId4VciServer @JvmOverloads constructor(
         if (acceptsSignedMetadata(acceptHeader)) {
             PreparedHttpResponse(
                 status = HttpStatusCode.OK,
-                headers = headers {
-                    append(HttpHeaders.ContentType, MediaTypes.Application.JWT)
-                    append(HttpHeaders.Vary, HttpHeaders.Accept)
-                },
-                body = signedMetadata().getOrThrow().jws.toString(),
+                headers = headersOf(HttpHeaders.Vary, HttpHeaders.Accept),
+                body = HttpBody(BodyContentTypes.Jwt, signedMetadata().getOrThrow().jws.toString()),
             )
         } else {
             jsonHttpResponse(metadata) { append(HttpHeaders.Vary, HttpHeaders.Accept) }
