@@ -587,7 +587,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         val clientAttestation = clientAttestation ?: return null
         val oauthMetadata = authentication.oauthMetadata
         if (!oauthMetadata.supportsClientAuth()) return null
-        if (oauthMetadata.clientAttestationModes().combined) {
+        if (oauthMetadata.clientAttestationPopMethod() == ClientAttestationPopMethod.DpopCombined) {
             require(oauthMetadata.supportsDPoP()) {
                 "Authorization server does not support DPoP, but client attestation PoP is combined"
             }
@@ -629,9 +629,13 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         val oauthMetadata = authentication.oauthMetadata
         val challengeEndpoint = oauthMetadata.challengeEndpoint ?: return null
         if (hasAttestationChallenge(resourceUrl)) return null
-        val modes = oauthMetadata.clientAttestationModes()
-        val needsChallenge = (instanceAttestation != null && modes.normal) ||
-                (modes.combined && oauthMetadata.supportsDPoP() && authorizationServerDpopNonces.current(resourceUrl) == null)
+        val needsChallenge = when (oauthMetadata.clientAttestationPopMethod()) {
+            ClientAttestationPopMethod.AttestationPopJwt -> instanceAttestation != null
+            ClientAttestationPopMethod.DpopCombined ->
+                oauthMetadata.supportsDPoP() && authorizationServerDpopNonces.current(resourceUrl) == null
+
+            else -> false
+        }
         return if (needsChallenge) PreparedHttpRequest(challengeEndpoint, HttpMethod.Post) else null
     }
 
@@ -652,10 +656,12 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         fetchedChallenge: String?,
     ): Headers {
         val oauthMetadata = authentication.oauthMetadata
-        val modes = oauthMetadata.clientAttestationModes()
+        val popMethod = oauthMetadata.clientAttestationPopMethod()
 
         val attestationKey = clientAttestation?.keyMaterial
-        val clientAttPop = if (instanceAttestation != null && attestationKey != null && modes.normal) {
+        val clientAttPop = if (
+            popMethod == ClientAttestationPopMethod.AttestationPopJwt && instanceAttestation != null && attestationKey != null
+        ) {
             BuildClientAttestationPoPJwt(
                 signJwt = SignJwt(attestationKey, JwsHeaderNone()),
                 audience = authentication.authorizationServer,
@@ -669,7 +675,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
                 url = resourceUrl,
                 httpMethod = httpMethod.value,
-                nonce = if (modes.combined) {
+                nonce = if (popMethod == ClientAttestationPopMethod.DpopCombined) {
                     takeAttestationChallenge(resourceUrl)
                         ?: authorizationServerDpopNonces.current(resourceUrl)
                         ?: fetchedChallenge
@@ -687,16 +693,19 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         }
     }
 
-    private data class ClientAttestationModes(val normal: Boolean, val combined: Boolean)
-
-    private fun OAuth2AuthorizationServerMetadata.clientAttestationModes(): ClientAttestationModes {
+    /**
+     * The client attestation PoP method to use with this authorization server: a dedicated client attestation PoP JWT
+     * (normal mode) if advertised, else the DPoP proof as combined PoP if advertised, else `null` (no
+     * attestation-based client authentication).
+     */
+    private fun OAuth2AuthorizationServerMetadata.clientAttestationPopMethod(): ClientAttestationPopMethod? {
         val methods = tokenEndPointAuthMethodsSupported.orEmpty()
             .mapNotNull { ClientAttestationPopMethod.matchByClientAuthMethod(it) }
-        val normalMode = methods.contains(ClientAttestationPopMethod.AttestationPopJwt)
-        return ClientAttestationModes(
-            normal = normalMode,
-            combined = !normalMode && methods.contains(ClientAttestationPopMethod.DpopCombined),
-        )
+        return when {
+            ClientAttestationPopMethod.AttestationPopJwt in methods -> ClientAttestationPopMethod.AttestationPopJwt
+            ClientAttestationPopMethod.DpopCombined in methods -> ClientAttestationPopMethod.DpopCombined
+            else -> null
+        }
     }
 
     private fun OAuth2AuthorizationServerMetadata.supportsClientAuth(): Boolean =
