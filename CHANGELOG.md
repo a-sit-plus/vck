@@ -30,6 +30,7 @@ Release 9.0.0 (unreleased):
       WRPRC with `null` or an index in a path could not be parsed before. Registered paths authorize requested claims
       segment by segment, `null` any index. JSON and CWT decode typed segments and values; empty paths and
       indices above `UInt.MAX_VALUE` are rejected. kotlinx-serialization CBOR also reads an empty map as `null`
+- DCQL claim paths preserve numeric object keys as strings and reject invalid or overflowing indices
 - WRPRC authorization exempts only the root `vct` claim; nested claims named `vct` must be registered
 - Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
     - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations

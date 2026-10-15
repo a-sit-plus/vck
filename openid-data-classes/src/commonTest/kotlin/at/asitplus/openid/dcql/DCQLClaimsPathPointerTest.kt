@@ -4,6 +4,7 @@ import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.*
 import at.asitplus.testballoon.matrix.matrixSuite
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -18,6 +19,17 @@ import kotlin.random.Random
 import kotlin.random.nextUInt
 
 val DCQLClaimsPathPointerTest by matrixSuite {
+    "numeric object keys remain names" {
+        Json.decodeFromString<DCQLClaimsPathPointer>("""["age_equal_or_over","18"]""") shouldBe
+                DCQLClaimsPathPointer("age_equal_or_over", "18")
+    }
+
+    "invalid segments are rejected" - {
+        listOf("[-1]", "[4294967296]", "[1.5]", "[true]", "[{}]", "[[]]").asData() test { wire ->
+            shouldThrowAny { Json.decodeFromString<DCQLClaimsPathPointer>(wire) }
+        }
+    }
+
     "constructors" - {
         listOf("test", 0u, null).asData() test {
             when (it) {
