@@ -31,6 +31,7 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -133,6 +134,62 @@ val RelyingPartyValidatorTest by matrixSuite {
             val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
 
             fixture.validate(fixture.request(payload, sdJwtRequest(path))).report.decision shouldBe decision
+        }
+    }
+
+    "registered JSON paths cover only their selected claims and descendants" - {
+        listOf(
+            Triple("[\"address\"]", "[\"address\"]", ACCEPTED),
+            Triple("[\"address\"]", "[\"address\",\"locality\"]", ACCEPTED),
+            Triple("[\"address\",\"locality\"]", "[\"address\"]", REJECTED),
+            Triple("[\"degrees\",null,\"type\"]", "[\"degrees\",1,\"type\"]", ACCEPTED),
+            Triple("[\"degrees\",null,\"type\"]", "[\"degrees\",null,\"type\"]", ACCEPTED),
+            Triple("[\"degrees\",null,\"type\"]", "[\"degrees\",\"1\",\"type\"]", REJECTED),
+            Triple("[\"degrees\",1,\"type\"]", "[\"degrees\",null,\"type\"]", REJECTED),
+            Triple("[\"degrees\",1,\"type\"]", "[\"degrees\",0,\"type\"]", REJECTED),
+            Triple("[\"degrees\",1,\"type\"]", "[\"degrees\",1,\"type\"]", ACCEPTED),
+            Triple("[\"degrees\"]", "[\"degrees\",null,\"university\"]", ACCEPTED),
+            Triple("[\"nationalities\",null]", "[\"nationalities\",null]", ACCEPTED),
+            Triple("[\"nationalities\",null]", "[\"nationalities\",0]", ACCEPTED),
+            Triple("[\"nationalities\",null]", "[\"nationalities\"]", REJECTED),
+            Triple("[\"nationalities\",0]", "[\"nationalities\",null]", REJECTED),
+            Triple("[\"age_equal_or_over\",\"18\"]", "[\"age_equal_or_over\",\"18\"]", ACCEPTED),
+        ).asData(nameFn = { (grant, request, _) -> "$grant covers $request" }) test { (grant, request, decision) ->
+            val fixture = buildWrpFixture()
+            val credential = WrpCredential(
+                format = "dc+sd-jwt",
+                meta = WrpCredentialMeta(vctValues = listOf(PID_VCT)),
+                claim = listOf(joseCompliantSerializer.decodeFromString(WrpClaim.serializer(), """{"path":$grant}""")),
+            )
+            val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
+            val path = joseCompliantSerializer.decodeFromString(DCQLClaimsPathPointer.serializer(), request)
+            val result = fixture.validate(fixture.request(payload, sdJwtRequest(path)))
+
+            result.report.decision shouldBe decision
+            if (decision == ACCEPTED) {
+                result.registrationChecks().requestAuthorization shouldBe CheckOutcome.Passed
+            } else {
+                result.registrationChecks().requestAuthorization.shouldBeInstanceOf<CheckOutcome.Failed>()
+                    .throwable.shouldBeInstanceOf<UnregisteredRequestException>()
+            }
+        }
+    }
+
+    "mdoc registration matches exactly namespace and element" - {
+        listOf(
+            "[\"$DEFAULT_DOCTYPE\",\"given_name\"]" to ACCEPTED,
+            "[\"$DEFAULT_DOCTYPE\"]" to REJECTED,
+            "[\"$DEFAULT_DOCTYPE\",null]" to REJECTED,
+            "[\"$DEFAULT_DOCTYPE\",0]" to REJECTED,
+            "[\"$DEFAULT_DOCTYPE\",\"given_name\",\"child\"]" to REJECTED,
+        ).asData() test { (grant, decision) ->
+            val fixture = buildWrpFixture()
+            val credential = defaultMdocCredential().copy(
+                claim = listOf(joseCompliantSerializer.decodeFromString(WrpClaim.serializer(), """{"path":$grant}""")),
+            )
+            val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
+            fixture.validate(fixture.request(payload, mdocDcqlRequest(claimNames = listOf("given_name"))))
+                .report.decision shouldBe decision
         }
     }
 

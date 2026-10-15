@@ -10,9 +10,10 @@ import at.asitplus.etsi.relyingParty.WrpClaimPathSegment.Name
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMetaDomain
 import at.asitplus.etsi.relyingParty.WrpPayload
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.IndexSegment
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.IndexSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NullSegment
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
@@ -121,9 +122,9 @@ object WrprcRequestValidator {
 
         SD_JWT -> {
             val claim = attribute as? JsonClaimReference ?: return false
-            val segments = claim.normalizedJsonPath.toList()
+            val segments = claim.path
             // SD-JWT VC: vct is a root claim, never selectively disclosed (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3).
-            if (segments == listOf(NameSegment("vct"))) return true
+            if (segments.size == 1 && segments.first() == NameSegment("vct")) return true
             this.claim.any { it.path.covers(segments) }
         }
 
@@ -131,15 +132,16 @@ object WrprcRequestValidator {
     }
 
     /**
-     * Whether this registered path selects the [requested] claim, segment by segment, as claims path pointers do
-     * (OpenID4VP 1.0, 7): a name selects the same key, an index the same element, and `null` any element of an array.
+     * Structural over-asking check: a registered claim includes its descendants (OpenID4VP 1.0, 7.3).
+     * Names and indices match exactly; registered `null` covers an index or `null` (7.1).
+     * A narrower registration never authorizes a broader request, regardless of the credential's contents.
      */
-    private fun List<WrpClaimPathSegment>.covers(requested: List<NormalizedJsonPathSegment>): Boolean =
-        size == requested.size && zip(requested) { registered, segment ->
+    private fun List<WrpClaimPathSegment>.covers(requested: List<DCQLClaimsPathPointerSegment>): Boolean =
+        size <= requested.size && zip(requested) { registered, segment ->
             when (registered) {
-                is Name -> segment is NameSegment && segment.memberName == registered.name
+                is Name -> segment is NameSegment && segment.name == registered.name
                 is Index -> segment is IndexSegment && segment.index == registered.index
-                AllElements -> segment is IndexSegment
+                AllElements -> segment is IndexSegment || segment == NullSegment
             }
         }.all { it }
 

@@ -124,20 +124,37 @@ val WrprcCwtTest by matrixSuite {
         coseCompliantSerializer.decodeFromByteArray(WrpClaim.serializer(), encoded) shouldBe claim
     }
 
-    "CWT WRPRC with unsupported claim values does not authorize a path-only request" {
+    "a signed CWT with an additional numeric path still authorizes its named claims" {
         val fixture = buildWrpFixture()
-        val credential = defaultMdocCredential().copy(
-            claim = listOf(
-                WrpClaim.named(DEFAULT_DOCTYPE, "given_name").copy(values = listOf(WrpClaimValue.Text("Alice")))
-            )
-        )
-
+        val credential = defaultMdocCredential().let {
+            it.copy(claim = it.claim + WrpClaim(
+                listOf(WrpClaimPathSegment.Name(DEFAULT_DOCTYPE), WrpClaimPathSegment.Index(0u))
+            ))
+        }
         val result = fixture.validateWrprcCose(
             payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential)),
-            request = mdocDocRequest(claimNames = listOf("given_name")),
-        )
+        ).getOrThrow()
 
-        result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validPayload shouldBe false
+        result.certificateValidationResults.values.single().getOrThrow().isValid() shouldBe true
+        result.requestDataValidationResults.single().second.getOrThrow().isValid() shouldBe true
+    }
+
+    "CWT WRPRC with unsupported claim values does not authorize a path-only request" - {
+        listOf(WrpClaimValue.Text("Alice"), WrpClaimValue.Integer(18), WrpClaimValue.Bool(true)).asData() test { value ->
+            val fixture = buildWrpFixture()
+            val credential = defaultMdocCredential().copy(
+                claim = listOf(
+                    WrpClaim.named(DEFAULT_DOCTYPE, "given_name").copy(values = listOf(value))
+                )
+            )
+
+            val result = fixture.validateWrprcCose(
+                payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential)),
+                request = mdocDocRequest(claimNames = listOf("given_name")),
+            )
+
+            result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validPayload shouldBe false
+        }
     }
 
     "CWT without a certificate chain is invalid and carries the cause" {

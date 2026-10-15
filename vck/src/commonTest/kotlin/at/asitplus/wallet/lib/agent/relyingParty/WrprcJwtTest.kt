@@ -245,7 +245,7 @@ val WrprcJwtTest by matrixSuite {
             .message.shouldContain("Certificate chain is empty")
     }
 
-    "Credential request that can not be validated is invalid and does not affect other requests" {
+    "An unregistered wildcard request is invalid and does not affect other requests" {
         val fixture = buildWrpFixture()
         val mdocQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest)
             .dcqlQuery.credentials.single()
@@ -274,8 +274,7 @@ val WrprcJwtTest by matrixSuite {
             (request as WrpCredentialRequest.WrpDcqlCredentialQuery).query.id to result
         }
         requestResults.getValue(mdocQuery.id).getOrThrow().isValid() shouldBe true
-        requestResults.getValue(nullSegmentQuery.id).exceptionOrNull().shouldNotBeNull()
-            .message.shouldContain("NullSegment")
+        requestResults.getValue(nullSegmentQuery.id).getOrThrow().isValid() shouldBe false
         @Suppress("DEPRECATION")
         result.requestDataValidation.associate { (request, validity) ->
             (request as WrpCredentialRequest.WrpDcqlCredentialQuery).query.id to validity.isValid()
