@@ -284,6 +284,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
         http.execute(clientWithoutAttestation().userInfoRequest("$asUrl/userinfo", token))
 
         http.sent.kinds() shouldBe listOf("UserInfo(0)", "UserInfo(1)")
+        http.sent.filterIsInstance<ProtocolRequest.Retryable>().map { it.attempt } shouldBe listOf(0, 1)
         http.sent[1].http.headers[HttpHeaders.Authorization] shouldBe token.toHttpHeaderValue()
         http.sent[1].toRequestInfo().dpop.shouldNotBeNull().payload.apply {
             nonce shouldBe "n1"
