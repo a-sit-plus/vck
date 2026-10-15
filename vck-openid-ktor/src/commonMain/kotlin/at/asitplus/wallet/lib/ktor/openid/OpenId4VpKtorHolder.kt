@@ -11,6 +11,7 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
+import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
@@ -442,7 +443,6 @@ class OpenId4VpKtorHolder(
      * Fetches a request object for the deprecated methods of [openId4VpHolder], i.e. sends the request as
      * [OpenId4VpProtocolClient.prepareAuthorizationResponse] does, and fails for a non-success response.
      */
-    @Suppress("DEPRECATION") // throws the subclass of this module, as execute does
     private suspend fun HttpClient.fetch(input: RemoteResourceRetrieverInput): String {
         val isPost = input.method == HttpMethod.Post
         val response = send(
@@ -458,7 +458,7 @@ class OpenId4VpKtorHolder(
             )
         )
         val body = response.bodyAsText()
-        if (!response.status.isSuccess()) throw HttpErrorResponseException(response, body)
+        if (!response.status.isSuccess()) throw HttpErrorResponseException(response.status, response.headers, body)
         return body
     }
 

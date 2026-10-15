@@ -116,16 +116,21 @@ val ExtensionsTest by matrixSuite {
         }.problemDetails shouldBe ProblemDetails()
     }
 
-    test("error response is still thrown as the deprecated ktor subclass") {
+    test("deprecated name catches error responses of ktor clients and of any other HTTP stack") {
         @Suppress("DEPRECATION")
         shouldThrow<at.asitplus.wallet.lib.ktor.openid.HttpErrorResponseException> {
             requestWithValidation(HttpStatusCode.Unauthorized, "denied", ContentType.Text.Plain)
         }.apply {
-            response.status shouldBe HttpStatusCode.Unauthorized
             status shouldBe HttpStatusCode.Unauthorized
             headers[HttpHeaders.ContentType] shouldBe ContentType.Text.Plain.toString()
             responseBody shouldBe "denied"
         }
+
+        // e.g. thrown by an HttpExchange whose requests are sent without ktor
+        @Suppress("DEPRECATION")
+        shouldThrow<at.asitplus.wallet.lib.ktor.openid.HttpErrorResponseException> {
+            throw HttpErrorResponseException(HttpStatusCode.Unauthorized, Headers.Empty, "denied")
+        }.status shouldBe HttpStatusCode.Unauthorized
     }
 
     test("unstructured error response is preserved") {

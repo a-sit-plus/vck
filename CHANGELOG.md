@@ -193,10 +193,12 @@ Release 9.0.0 (unreleased):
       OAuth 2.0 errors and RFC 9457 problem details of non-success responses are available without a ktor client.
       The exception carries `status` and `headers` instead of a ktor `HttpResponse`
     - Add `OAuth2Error?.dpopNonce(Headers)` and `OAuth2Error?.attestationChallenge(Headers)` in `vck-openid`
-    - BREAKING: `HttpErrorResponseException` in `vck-openid-ktor` now extends the new class instead of ktor's
-      `ResponseException`; it keeps its constructor and `response`, and is still an `IllegalStateException`
-    - Deprecate `HttpErrorResponseException` and the typealias `ProblemDetails` in `vck-openid-ktor`, replace with the
-      classes from `vck-openid`
+    - BREAKING: `HttpErrorResponseException` in `vck-openid-ktor` is a deprecated typealias of the new class, and no
+      longer a ktor `ResponseException`, so catching either name catches every error response, also of exchanges sent
+      without ktor. Its `response` and the constructors taking an `HttpResponse` are removed, use `status`, `headers`
+      and `responseBody`; it is still an `IllegalStateException`
+    - Deprecate the typealiases `HttpErrorResponseException` and `ProblemDetails` in `vck-openid-ktor`, replace with
+      the classes from `vck-openid`
     - Deprecate `HttpErrorResponseException.dpopNonce()` and `HttpErrorResponseException.attestationChallenge()` in
       `vck-openid-ktor`, replace with `oauth2Error.dpopNonce(headers)` and `oauth2Error.attestationChallenge(headers)`
 - OAuth 2.0 client:
