@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.procedures.iso
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.AgeAttestation
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.ItemsRequest
@@ -17,6 +18,12 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 
 /** Matching and submission validation for ISO Device Retrieval requests. */
 internal object DeviceRetrievalProcedure {
+
+    /**
+     * Error code for a data element that is not returned, as per ISO/IEC 18013-5:2021, Table 9:
+     * "The mdoc does not provide the requested document or data element without any given reason."
+     */
+    internal const val ERROR_CODE_DATA_NOT_RETURNED = 0
 
     fun match(
         deviceRequest: DeviceRequest,
@@ -47,12 +54,13 @@ internal object DeviceRetrievalProcedure {
                 "Credential docType does not match document request at index $index"
             }
             val meta = itemsRequest.requestInfo?.zkRequest?.let {
-               ZkMetadata.IsoMdocZk(it)
+                ZkMetadata.IsoMdocZk(it)
             }
-            val requiredPaths = evaluateItemsRequestAgainstCredential(
+            val evaluation = evaluateItemsRequestAgainstCredential(
                 itemsRequest = itemsRequest,
                 issuerSigned = credential.issuerSigned,
-            ).getOrThrow().map {
+            ).getOrThrow()
+            val requiredPaths = evaluation.matches.map {
                 NormalizedJsonPath() + it.namespace + it.claimName
             }.toSet()
             require(
@@ -61,7 +69,12 @@ internal object DeviceRetrievalProcedure {
             ) {
                 "Disclosed attributes do not exactly match document request at index $index"
             }
-            IsoPresentationParameters.create(credential, submission.disclosedAttributes, meta).getOrThrow()
+            IsoPresentationParameters.create(
+                credential = credential,
+                claims = submission.disclosedAttributes,
+                zkMetadata = meta,
+                errors = evaluation.errors,
+            ).getOrThrow()
         }
     }
 
@@ -74,37 +87,79 @@ internal object DeviceRetrievalProcedure {
                 evaluateItemsRequestAgainstCredential(
                     itemsRequest = this,
                     issuerSigned = it.issuerSigned,
-                ).getOrNull()?.let { requestedClaims ->
+                ).getOrNull()?.let { evaluation ->
                     IsoDeviceRetrievalCredentialMatch(
                         credentialIndex = index,
-                        requestedClaims = requestedClaims,
+                        requestedClaims = evaluation.matches,
+                        unansweredClaims = evaluation.unansweredClaims,
                     )
                 }
             }
     }
 
     /**
-     * Returns all requested claims only if the credential contains every requested namespace and data element.
+     * The claims of [issuerSigned] that answer [itemsRequest], and the requested data elements that cannot be
+     * answered.
+     *
+     * Every requested data element must be present in the credential, with one exception: an age attestation
+     * (`age_over_NN`) is resolved according to ISO/IEC 18013-5:2021, 7.2.5, so a request for a threshold the
+     * credential does not carry is answered by the nearest attestation that implies it. When no attestation can
+     * answer it, 7.2.5 step 3 requires that no `age_over_nn` element be returned — that is a valid response, not
+     * a failure, so the element is reported in [ItemsRequestEvaluation.unansweredClaims] and the rest of the
+     * request is still satisfied.
+     *
      * `intentToRetain` controls verifier retention and does not make an element optional.
      */
     private fun evaluateItemsRequestAgainstCredential(
         itemsRequest: ItemsRequest,
         issuerSigned: IssuerSigned,
-    ): KmmResult<List<IsoDeviceRetrievalClaimMatch>> = catching {
-        itemsRequest.namespaces.flatMap { (namespace, requestedItems) ->
-            requestedItems.entries.map { request ->
-                val item = issuerSigned.namespaces?.get(namespace)?.entries
-                    ?.firstOrNull { it.value.elementIdentifier == request.dataElementIdentifier }
-                    ?.value
-                    ?: throw PresentationException(
-                        "Credential does not contain requested data element $['$namespace']['${request.dataElementIdentifier}']"
+    ): KmmResult<ItemsRequestEvaluation> = catching {
+        val matches = mutableListOf<IsoDeviceRetrievalClaimMatch>()
+        val unanswered = mutableListOf<IsoDeviceRetrievalClaimMatch.Unanswered>()
+
+        itemsRequest.namespaces.forEach { (namespace, requestedItems) ->
+            val availableItems = issuerSigned.namespaces?.get(namespace)?.entries
+                ?.associate { it.value.elementIdentifier to it.value }
+                .orEmpty()
+            val availableValues = availableItems.mapValues { it.value.elementValue }
+
+            requestedItems.entries.forEach { request ->
+                val requestedIdentifier = request.dataElementIdentifier
+                val resolvedIdentifier = AgeAttestation.resolve(requestedIdentifier, availableValues)
+
+                if (resolvedIdentifier == null) {
+                    if (AgeAttestation.isAgeAttestation(requestedIdentifier)) {
+                        unanswered += IsoDeviceRetrievalClaimMatch.Unanswered(namespace, requestedIdentifier)
+                        return@forEach
+                    }
+                    throw PresentationException(
+                        "Credential does not contain requested data element $['$namespace']['$requestedIdentifier']"
                     )
-                IsoDeviceRetrievalClaimMatch(
+                }
+
+                val item = availableItems.getValue(resolvedIdentifier)
+                matches += IsoDeviceRetrievalClaimMatch(
                     namespace = namespace,
                     claimName = item.elementIdentifier,
                     claimValue = item.elementValue,
+                    requestedClaimName = requestedIdentifier.takeIf { it != item.elementIdentifier },
                 )
             }
         }
+
+        ItemsRequestEvaluation(matches = matches, unansweredClaims = unanswered)
+    }
+
+    /** The outcome of evaluating one `ItemsRequest` against one credential. */
+    private data class ItemsRequestEvaluation(
+        val matches: List<IsoDeviceRetrievalClaimMatch>,
+        val unansweredClaims: List<IsoDeviceRetrievalClaimMatch.Unanswered>,
+    ) {
+        /** [unansweredClaims] in the shape of the mdoc response `errors` structure (8.3.2.1.2.2). */
+        val errors: Map<String, Map<String, Int>>
+            get() = unansweredClaims
+                .groupBy { it.namespace }
+                .mapValues { (_, claims) -> claims.associate { it.claimName to ERROR_CODE_DATA_NOT_RETURNED } }
     }
 }
+
