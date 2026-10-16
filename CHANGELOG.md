@@ -268,6 +268,10 @@ Release 9.0.0 (unreleased):
     - Form-encoded requests (PAR, token, token introspection) are sent as `application/x-www-form-urlencoded` without
       `charset` in the `Content-Type`, as the media type defines no such parameter
 - OpenID for Verifiable Credential Issuance client:
+    - Add `CredentialIssuanceResult.Success.prepareCredentialStorage(holder, policy)`, validating the received
+      credentials with their renewal info by `HolderAgent.prepareCredentialStorage`, for the wallet to show the reports
+      and store them with `HolderAgent.storeAccepted`, or `HolderAgent.storeAfterUserConsent` after the user accepts a
+      rejected report, e.g. of a credential missing claims its type requires (`ValidationPolicy.requiredClaims`)
     - Add `OpenId4VciProtocolClient.loadIssuerMetadata(credentialIssuer, policy)` and
       `OpenId4VciKtorClient.loadIssuerMetadata(credentialIssuer, policy)`, asking for signed metadata
       (`application/jwt`) over unsigned ones (OpenID4VCI 1.0, 12.2.2), and returning `LoadedIssuerMetadata`: `Signed`
