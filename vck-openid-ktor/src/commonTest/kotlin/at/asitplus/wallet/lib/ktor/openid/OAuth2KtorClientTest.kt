@@ -239,7 +239,7 @@ val OAuth2KtorClientTest by matrixSuite {
         }
     }
 
-    test("errors of the protocol client are still thrown as the deprecated ktor exception") {
+    test("errors of the protocol client are thrown as HttpErrorResponseException") {
         with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = false)) {
             // Also covers the deprecated constructor, which builds its own HTTP client
             @Suppress("DEPRECATION")
@@ -257,9 +257,9 @@ val OAuth2KtorClientTest by matrixSuite {
                 scope = requestedScope,
                 authorizationDetails = setOf(),
             ).exceptionOrNull()
-                .shouldBeInstanceOf<at.asitplus.wallet.lib.ktor.openid.HttpErrorResponseException>()
+                .shouldBeInstanceOf<at.asitplus.wallet.lib.HttpErrorResponseException>()
                 .apply {
-                    response.status shouldBe HttpStatusCode.BadRequest
+                    status shouldBe HttpStatusCode.BadRequest
                     oauth2Error.shouldNotBeNull().error shouldBe OAuth2Exception.InvalidGrant("nope").error
                 }
         }

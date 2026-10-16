@@ -29,6 +29,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ProtocolRequest
@@ -358,8 +359,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             client = this,
             authentication = Authentication.Client(oauthMetadata, popAudience, issuerMetadata),
             maxRetries = MAX_RETRIES_CLIENT_AUTHENTICATION,
-            kind = ProtocolRequest::Token,
-            request = formPost(url, request.encodeToParameters()),
+            toProtocolRequest = ProtocolRequest::Token,
+            unauthenticatedRequest = formPost(url, request.encodeToParameters()),
             parse = { response ->
                 TokenResponseWithDpopNonce(
                     joseCompliantSerializer.decodeFromString<TokenResponseParameters>(response.body),
@@ -436,8 +437,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 client = this,
                 authentication = Authentication.Client(oauthMetadata, authorizationServer, issuerMetadata),
                 maxRetries = MAX_RETRIES_CLIENT_AUTHENTICATION,
-                kind = ProtocolRequest::PushedAuthorization,
-                request = formPost(
+                toProtocolRequest = ProtocolRequest::PushedAuthorization,
+                unauthenticatedRequest = formPost(
                     url = url,
                     parameters = authRequest.encodeToParameters() +
                             (OpenIdConstants.PARAMETER_PROMPT to OpenIdConstants.PARAMETER_PROMPT_LOGIN)
@@ -502,8 +503,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             client = this,
             authentication = Authentication.Client(oauthMetadata, popAudience, issuerMetadata),
             maxRetries = MAX_RETRIES_CLIENT_AUTHENTICATION,
-            kind = ProtocolRequest::TokenIntrospection,
-            request = formPost(
+            toProtocolRequest = ProtocolRequest::TokenIntrospection,
+            unauthenticatedRequest = formPost(
                 url = url,
                 parameters = request.encodeToParameters(),
                 accept = verifyTokenIntrospectionJwt?.let { TOKEN_INTROSPECTION_JWT },
@@ -527,24 +528,27 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         userInfoEndpoint: String,
         tokenResponse: TokenResponseParameters,
     ): HttpExchange<JsonObject> = accessTokenRequest(
-        request = get(userInfoEndpoint),
+        unauthenticatedRequest = get(userInfoEndpoint),
         tokenResponse = tokenResponse,
-        kind = ProtocolRequest::UserInfo,
+        toProtocolRequest = ProtocolRequest::UserInfo,
         parse = { joseCompliantSerializer.decodeFromString<JsonObject>(it.body) },
     )
 
-    /** Sends [request] with the access token from [tokenResponse], retrying once if the server asks for a DPoP nonce. */
+    /**
+     * Sends [unauthenticatedRequest] with the access token from [tokenResponse], retrying once if the server asks for a
+     * DPoP nonce.
+     */
     internal fun <T> accessTokenRequest(
-        request: PreparedHttpRequest,
+        unauthenticatedRequest: PreparedHttpRequest,
         tokenResponse: TokenResponseParameters,
-        kind: (PreparedHttpRequest, Int) -> ProtocolRequest,
+        toProtocolRequest: (http: PreparedHttpRequest, attempt: Int) -> ProtocolRequest.Retryable,
         parse: suspend (ReceivedHttpResponse) -> T,
     ): HttpExchange<T> = AuthenticatedExchange(
         client = this,
         authentication = Authentication.AccessToken(tokenResponse),
         maxRetries = MAX_RETRIES_ACCESS_TOKEN,
-        kind = kind,
-        request = request,
+        unauthenticatedRequest = unauthenticatedRequest,
+        toProtocolRequest = toProtocolRequest,
         parse = parse,
     )
 
@@ -587,7 +591,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         val clientAttestation = clientAttestation ?: return null
         val oauthMetadata = authentication.oauthMetadata
         if (!oauthMetadata.supportsClientAuth()) return null
-        if (oauthMetadata.clientAttestationModes().combined) {
+        if (oauthMetadata.clientAttestationPopMethod() == ClientAttestationPopMethod.DpopCombined) {
             require(oauthMetadata.supportsDPoP()) {
                 "Authorization server does not support DPoP, but client attestation PoP is combined"
             }
@@ -629,9 +633,13 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         val oauthMetadata = authentication.oauthMetadata
         val challengeEndpoint = oauthMetadata.challengeEndpoint ?: return null
         if (hasAttestationChallenge(resourceUrl)) return null
-        val modes = oauthMetadata.clientAttestationModes()
-        val needsChallenge = (instanceAttestation != null && modes.normal) ||
-                (modes.combined && oauthMetadata.supportsDPoP() && authorizationServerDpopNonces.current(resourceUrl) == null)
+        val needsChallenge = when (oauthMetadata.clientAttestationPopMethod()) {
+            ClientAttestationPopMethod.AttestationPopJwt -> instanceAttestation != null
+            ClientAttestationPopMethod.DpopCombined ->
+                oauthMetadata.supportsDPoP() && authorizationServerDpopNonces.current(resourceUrl) == null
+
+            else -> false
+        }
         return if (needsChallenge) PreparedHttpRequest(challengeEndpoint, HttpMethod.Post) else null
     }
 
@@ -652,10 +660,12 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         fetchedChallenge: String?,
     ): Headers {
         val oauthMetadata = authentication.oauthMetadata
-        val modes = oauthMetadata.clientAttestationModes()
+        val popMethod = oauthMetadata.clientAttestationPopMethod()
 
         val attestationKey = clientAttestation?.keyMaterial
-        val clientAttPop = if (instanceAttestation != null && attestationKey != null && modes.normal) {
+        val clientAttPop = if (
+            popMethod == ClientAttestationPopMethod.AttestationPopJwt && instanceAttestation != null && attestationKey != null
+        ) {
             BuildClientAttestationPoPJwt(
                 signJwt = SignJwt(attestationKey, JwsHeaderNone()),
                 audience = authentication.authorizationServer,
@@ -669,7 +679,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
                 url = resourceUrl,
                 httpMethod = httpMethod.value,
-                nonce = if (modes.combined) {
+                nonce = if (popMethod == ClientAttestationPopMethod.DpopCombined) {
                     takeAttestationChallenge(resourceUrl)
                         ?: authorizationServerDpopNonces.current(resourceUrl)
                         ?: fetchedChallenge
@@ -687,16 +697,19 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         }
     }
 
-    private data class ClientAttestationModes(val normal: Boolean, val combined: Boolean)
-
-    private fun OAuth2AuthorizationServerMetadata.clientAttestationModes(): ClientAttestationModes {
+    /**
+     * The client attestation PoP method to use with this authorization server: a dedicated client attestation PoP JWT
+     * (normal mode) if advertised, else the DPoP proof as combined PoP if advertised, else `null` (no
+     * attestation-based client authentication).
+     */
+    private fun OAuth2AuthorizationServerMetadata.clientAttestationPopMethod(): ClientAttestationPopMethod? {
         val methods = tokenEndPointAuthMethodsSupported.orEmpty()
             .mapNotNull { ClientAttestationPopMethod.matchByClientAuthMethod(it) }
-        val normalMode = methods.contains(ClientAttestationPopMethod.AttestationPopJwt)
-        return ClientAttestationModes(
-            normal = normalMode,
-            combined = !normalMode && methods.contains(ClientAttestationPopMethod.DpopCombined),
-        )
+        return when {
+            ClientAttestationPopMethod.AttestationPopJwt in methods -> ClientAttestationPopMethod.AttestationPopJwt
+            ClientAttestationPopMethod.DpopCombined in methods -> ClientAttestationPopMethod.DpopCombined
+            else -> null
+        }
     }
 
     private fun OAuth2AuthorizationServerMetadata.supportsClientAuth(): Boolean =
@@ -713,11 +726,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
     private fun formPost(url: String, parameters: FormParameters, accept: String? = null) = PreparedHttpRequest(
         url = url,
         method = HttpMethod.Post,
-        headers = headers {
-            append(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded.toString())
-            accept?.let { append(HttpHeaders.Accept, it) }
-        },
-        body = parameters.formUrlEncode(),
+        headers = accept?.let { headersOf(HttpHeaders.Accept, it) } ?: Headers.Empty,
+        body = HttpBody(ContentType.Application.FormUrlEncoded, parameters.formUrlEncode()),
     )
 
     /** Parses the JWT response with [verifyTokenIntrospectionJwt], issued by [issuer], else the JSON response. */

@@ -5,6 +5,8 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.MediaTypes
+import at.asitplus.wallet.lib.oauth2.bodyContentType
+import at.asitplus.wallet.lib.oauth2.bodyText
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
@@ -21,8 +23,8 @@ val OpenId4VpVerifierResponsesTest by matrixSuite {
 
             request.loadRequestObjectHttpResponse(params).getOrThrow().apply {
                 status shouldBe HttpStatusCode.OK
-                headers[HttpHeaders.ContentType] shouldBe MediaTypes.Application.AUTHZ_REQ_JWT
-                body shouldBe "request-object-for-wallet-nonce"
+                bodyContentType shouldBe MediaTypes.Application.AUTHZ_REQ_JWT
+                bodyText shouldBe "request-object-for-wallet-nonce"
             }
             loadedFor shouldBe params
         }
@@ -45,18 +47,19 @@ val OpenId4VpVerifierResponsesTest by matrixSuite {
 
             directPostHttpResponse(redirectUri).apply {
                 status shouldBe HttpStatusCode.OK
-                headers[HttpHeaders.ContentType] shouldBe MediaTypes.Application.JSON
+                bodyContentType shouldBe MediaTypes.Application.JSON
                 headers[HttpHeaders.CacheControl] shouldBe "no-store"
-                joseCompliantSerializer.decodeFromString<OpenId4VpSuccess>(body) shouldBe OpenId4VpSuccess(redirectUri)
+                joseCompliantSerializer.decodeFromString<OpenId4VpSuccess>(bodyText) shouldBe
+                        OpenId4VpSuccess(redirectUri)
             }
         }
 
         test("without redirect_uri, an empty JSON object") {
             directPostHttpResponse().apply {
                 status shouldBe HttpStatusCode.OK
-                headers[HttpHeaders.ContentType] shouldBe MediaTypes.Application.JSON
+                bodyContentType shouldBe MediaTypes.Application.JSON
                 headers[HttpHeaders.CacheControl] shouldBe "no-store"
-                body shouldBe "{}"
+                bodyText shouldBe "{}"
             }
         }
     }

@@ -81,7 +81,7 @@ val OpenId4VpProtocolClientTest by matrixSuite {
         alter: (RequestObjectParameters?) -> RequestObjectParameters? = { it },
     ) = FakeHttpStack { request ->
         if (request.url == requestUrl) loadRequestObjectHttpResponse(
-            alter(request.body?.decodeFromFormUrlEncoded<RequestObjectParameters>())
+            alter(request.body?.text?.decodeFromFormUrlEncoded<RequestObjectParameters>())
         ).getOrThrow().received()
         else ReceivedHttpResponse(HttpStatusCode.NotFound, Headers.Empty, "")
     }
@@ -167,8 +167,10 @@ val OpenId4VpProtocolClientTest by matrixSuite {
             url shouldBe requestUrl
             method shouldBe HttpMethod.Post
             headers.getAll(HttpHeaders.Accept) shouldBe listOf(MediaTypes.Application.AUTHZ_REQ_JWT)
-            headers.getAll(HttpHeaders.ContentType) shouldBe listOf("application/x-www-form-urlencoded")
-            val sent = body.shouldNotBeNull().decodeFromFormUrlEncoded<RequestObjectParameters>()
+            headers.getAll(HttpHeaders.ContentType) shouldBe null
+            val body = body.shouldNotBeNull()
+            body.contentType shouldBe ContentType.Application.FormUrlEncoded
+            val sent = body.text.decodeFromFormUrlEncoded<RequestObjectParameters>()
             sent.walletMetadata.shouldNotBeNull()
             state.request.parameters.walletNonce shouldBe sent.walletNonce.shouldNotBeNull()
         }
@@ -191,7 +193,7 @@ val OpenId4VpProtocolClientTest by matrixSuite {
 
         http.execute(client(holder).prepareAuthorizationResponse(request.url))
             .request.decryptedFrom.shouldNotBeNull()
-        http.sent.single().http.body.shouldNotBeNull()
+        http.sent.single().http.body.shouldNotBeNull().text
             .decodeFromFormUrlEncoded<RequestObjectParameters>()
             .walletMetadata?.jsonWebKeySet?.keys.shouldNotBeNull().shouldBeSingleton()
     }
@@ -235,7 +237,8 @@ val OpenId4VpProtocolClientTest by matrixSuite {
         http.sent.single().http.apply {
             url shouldBe response.url
             method shouldBe HttpMethod.Post
-            headers.getAll(HttpHeaders.ContentType) shouldBe listOf("application/x-www-form-urlencoded")
+            headers.getAll(HttpHeaders.ContentType) shouldBe null
+            body.shouldNotBeNull().contentType.toString() shouldBe "application/x-www-form-urlencoded"
             formParameters() shouldBe response.params
         }
     }
@@ -258,7 +261,7 @@ val OpenId4VpProtocolClientTest by matrixSuite {
         // the verifier's response endpoint, answering processed responses as OpenID4VP 1.0, 8.2 requires
         val processed = mutableListOf<AuthnResponseResult>()
         val http = FakeHttpStack { request ->
-            verifier.validateAuthnResponse(request.body.shouldNotBeNull()).fold(
+            verifier.validateAuthnResponse(request.body.shouldNotBeNull().text).fold(
                 onSuccess = { processed += it; directPostHttpResponse(redirectUri).received() },
                 onFailure = { OAuth2Exception.InvalidRequest(it.message).toErrorResponse() },
             )

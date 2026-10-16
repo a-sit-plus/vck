@@ -172,7 +172,7 @@ class AuthorizationServerFixture(
             val authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
             openId4VciServer.credential(
                 authorizationHeader = authorizationHeader,
-                params = OpenId4VciClient.CredentialRequest.parse(request.body.orEmpty()).getOrThrow(),
+                params = OpenId4VciClient.CredentialRequest.parse(request.body?.text.orEmpty()).getOrThrow(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 request = request.toRequestInfo(),
             ).fold(
@@ -210,7 +210,7 @@ class AuthorizationServerFixture(
 
         request.path.startsWith("/token") -> {
             receivedPopChallenges += request.toRequestInfo().clientAttestationPop?.payload?.challenge
-            val params = request.body.orEmpty().decodeFromFormUrlEncoded<TokenRequestParameters>()
+            val params = request.body?.text.orEmpty().decodeFromFormUrlEncoded<TokenRequestParameters>()
             authorizationService.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
                 onSuccess = { result ->
                     result.attestationChallenge?.let { attestationChallengesOnSuccess += it }
@@ -222,7 +222,7 @@ class AuthorizationServerFixture(
 
         request.path.startsWith("/introspect") -> {
             receivedPopChallenges += request.toRequestInfo().clientAttestationPop?.payload?.challenge
-            val params = request.body.orEmpty().decodeFromFormUrlEncoded<TokenIntrospectionRequest>()
+            val params = request.body?.text.orEmpty().decodeFromFormUrlEncoded<TokenIntrospectionRequest>()
             authorizationService.tokenIntrospection(params, request.toRequestInfo()).fold(
                 onSuccess = { it.toHttpResponse().received() },
                 onFailure = { it.toAuthorizationServerResponse() },
