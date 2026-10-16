@@ -201,6 +201,8 @@ class OpenId4VciKtorClient private constructor(
      *
      * @param credentialIssuerUrl URL of the credential issuer service
      * @param credentialIdentifierInfo credential to request, i.e. picked by user selection
+     * @param reissuingStoreEntryId the stored credential the new one replaces, if any, kept in the [ProvisioningContext]
+     * and returned in [CredentialIssuanceResult.Success.reissuingStoreEntryId]
      */
     suspend fun startProvisioningWithAuthRequestReturningResult(
         credentialIssuerUrl: String,
@@ -277,6 +279,7 @@ class OpenId4VciKtorClient private constructor(
             credentialIdentifier = context.credential.credentialIdentifier,
             credentialScheme = credentialScheme,
             previouslyRequestedScope = context.credential.supportedCredentialFormat.scope,
+            reissuingStoreEntryId = context.reissuingStoreEntryId,
         )
     }
 
@@ -337,6 +340,7 @@ class OpenId4VciKtorClient private constructor(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         credentialIdentifier: String,
         previouslyRequestedScope: String?,
+        reissuingStoreEntryId: Long? = null,
     ): CredentialIssuanceResult.Success {
         Napier.i("postCredentialRequestAndStore: ${issuerMetadata.credentialEndpointUrl}")
         Napier.d("postCredentialRequestAndStore: $tokenResponse")
@@ -364,14 +368,15 @@ class OpenId4VciKtorClient private constructor(
             )
         }
         return CredentialIssuanceResult.Success(
-            storeCredentialInputs,
-            CredentialRenewalInfo(
+            credentials = storeCredentialInputs,
+            refreshToken = CredentialRenewalInfo(
                 refreshToken = tokenResponse.params.refreshToken,
                 issuerMetadata = issuerMetadata,
                 oauthMetadata = oauthMetadata,
                 credentialFormat = credentialFormat,
                 credentialIdentifier = credentialIdentifier,
-            )
+            ),
+            reissuingStoreEntryId = reissuingStoreEntryId,
         )
     }
 
@@ -475,6 +480,12 @@ sealed interface CredentialIssuanceResult {
     data class Success(
         val credentials: Collection<Holder.StoreCredentialInput>,
         val refreshToken: CredentialRenewalInfo? = null,
+        /**
+         * The stored credential the [credentials] replace, as passed to
+         * [OpenId4VciKtorClient.startProvisioningWithAuthRequestReturningResult] and kept in the [ProvisioningContext],
+         * for the wallet to remove once it stored the new ones.
+         */
+        val reissuingStoreEntryId: Long? = null,
     ) : CredentialIssuanceResult {
 
         /**
