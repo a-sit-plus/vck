@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.HttpStep
 import at.asitplus.wallet.lib.PreparedHttpRequest
+import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.ProtocolRequest
 import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -21,11 +22,15 @@ class FakeHttpStack(
 ) {
     val sent = mutableListOf<ProtocolRequest>()
 
+    /** The responses to the requests in [sent], in the same order. */
+    val received = mutableListOf<ReceivedHttpResponse>()
+
     suspend fun <T> execute(exchange: HttpExchange<T>): T {
         var step = exchange.next().getOrThrow()
         while (step is HttpStep.Send) {
             sent += step.request
-            step = exchange.next(handle(step.request.http)).getOrThrow()
+            val response = handle(step.request.http).also { received += it }
+            step = exchange.next(response).getOrThrow()
         }
         return (step as HttpStep.Done).value
     }
@@ -36,7 +41,8 @@ class FakeHttpStack(
         while (step is HttpStep.Send) {
             (step.request as? R)?.let { return it }
             sent += step.request
-            step = exchange.next(handle(step.request.http)).getOrThrow()
+            val response = handle(step.request.http).also { received += it }
+            step = exchange.next(response).getOrThrow()
         }
         throw AssertionError("Exchange finished without sending ${R::class.simpleName}")
     }
@@ -77,6 +83,27 @@ val PreparedHttpRequest.path: String
     get() = Url(url).encodedPath
 
 fun PreparedHttpRequest.formParameters(): FormParameters = body.orEmpty().toFormParameters()
+
+/** What the client receives, when a server sends this response. */
+fun PreparedHttpResponse.received() = ReceivedHttpResponse(status = status, headers = headers, body = body)
+
+/** Adds the header [name] with [value], e.g. a fresh DPoP nonce alongside an error (RFC 9449 8.2). */
+fun ReceivedHttpResponse.withHeader(name: String, value: String) =
+    copy(headers = Headers.build { appendAll(headers); append(name, value) })
+
+/**
+ * Error response of an authorization server endpoint, see [OAuth2Exception.toHttpResponse], or 500 for anything else.
+ */
+fun Throwable.toAuthorizationServerResponse(): ReceivedHttpResponse =
+    (this as? OAuth2Exception)?.toHttpResponse()?.received() ?: internalServerError
+
+/**
+ * Error response of a resource endpoint, see [OAuth2Exception.toResourceServerHttpResponse], or 500 for anything else.
+ */
+fun Throwable.toResourceServerResponse(authorizationHeader: String?): ReceivedHttpResponse =
+    (this as? OAuth2Exception)?.toResourceServerHttpResponse(authorizationHeader)?.received() ?: internalServerError
+
+private val internalServerError = ReceivedHttpResponse(HttpStatusCode.InternalServerError, Headers.Empty, "")
 
 inline fun <reified T> jsonResponse(
     value: T,

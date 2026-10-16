@@ -93,7 +93,8 @@ class ProofValidator @JvmOverloads constructor(
      *
      * Requests from the client are HTTP POST.
      *
-     * MUST be delivered with `Cache-Control: no-store` as HTTP header.
+     * Integrators serve it through [OpenId4VciServer.nonceWithDpopNonce], converted with
+     * [OpenId4VciServer.Nonce.toHttpResponse], which sets `Cache-Control: no-store`.
      */
     suspend fun nonce() = ClientNonceResponse(
         clientNonce = clientNonceService.provideNonce()

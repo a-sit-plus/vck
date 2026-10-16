@@ -509,12 +509,12 @@ val OAuth2ProtocolClientTest by matrixSuite {
         }
     }
 
-    test("fetches a fresh attestation challenge for every request") {
+    test("uses a fresh attestation challenge for every request") {
         with(AuthorizationServerFixture(requirePAR = true)) {
             authorizationCodeFlow()
 
             // A challenge is single-use on the server, so PAR and token must not share one
-            receivedPopChallenges shouldBe issuedAttestationChallenges
+            receivedPopChallenges shouldBe issuedAttestationChallenges + attestationChallengesOnSuccess.first()
             receivedPopChallenges.distinct() shouldBe receivedPopChallenges
         }
     }
@@ -656,10 +656,20 @@ val OAuth2ProtocolClientTest by matrixSuite {
     }
 
     test("uses attestation challenge from PAR response for token request") {
-        with(AuthorizationServerFixture(requirePAR = true, provideChallengeOnParSuccess = true)) {
+        with(AuthorizationServerFixture(requirePAR = true)) {
             authorizationCodeFlow()
 
-            receivedPopChallenges shouldBe issuedAttestationChallenges
+            // OA-ABCA 6.2: the fresh challenge of the PAR response saves a request to the challenge endpoint
+            http.sent.kinds().takeLast(2) shouldBe listOf("PushedAuthorization(1)", "Token(0)")
+            receivedPopChallenges.last() shouldBe attestationChallengesOnSuccess.first()
+        }
+    }
+
+    test("no attestation challenge on success responses without attestation-based client authentication") {
+        with(AuthorizationServerFixture(requirePAR = true, popMethods = null)) {
+            authorizationCodeFlow().params.accessToken.shouldNotBeNull()
+
+            attestationChallengesOnSuccess.shouldBeEmpty()
         }
     }
 }

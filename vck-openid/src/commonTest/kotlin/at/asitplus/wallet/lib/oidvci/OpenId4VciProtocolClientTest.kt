@@ -317,12 +317,12 @@ val OpenId4VciProtocolClientTest by matrixSuite {
             )
 
             requestCredentials(vci, token, format).shouldNotBeEmpty()
+            // The token request uses the attestation challenge of the PAR response (OA-ABCA 6.2)
             http.sent.kinds() shouldBe listOf(
                 "AttestationChallenge",
                 "PushedAuthorization(0)",
                 "AttestationChallenge",
                 "PushedAuthorization(1)",
-                "AttestationChallenge",
                 "Token(0)",
                 "Nonce",
                 "Credential(0)",
@@ -422,6 +422,38 @@ val OpenId4VciProtocolClientTest by matrixSuite {
 
             credentialRequest.http.url shouldBe "https://credentials.example.com/credential"
             credentialRequest.toRequestInfo().dpop.shouldNotBeNull().payload.nonce.shouldBeNull()
+        }
+    }
+
+    /** [RFC 9449 9.](https://datatracker.ietf.org/doc/html/rfc9449#section-9): the resource server asks for a nonce. */
+    test("credential request retries with the DPoP nonce of a 401 with WWW-Authenticate") {
+        with(AuthorizationServerFixture(requirePAR = false)) {
+            val vci = vciClient()
+            val format = vci.selectFormat(this)
+            val token = preAuthorizedToken(format)
+            // the c_nonce without a response of the nonce endpoint, so the client has no DPoP nonce of the issuer
+            val clientNonce = openId4VciServer.nonceWithDpopNonce().getOrThrow().response.clientNonce
+            val request = vci.createCredential(
+                token.params, openId4VciServer.metadata, format, clientNonce, previouslyRequestedScope = format.scope,
+            ).getOrThrow().shouldBeSingleton().first()
+            val sentBefore = http.sent.size
+
+            http.execute(
+                vci.credentialRequest(
+                    request = request,
+                    issuerMetadata = openId4VciServer.metadata,
+                    tokenResponse = token.params,
+                    credentialFormat = format,
+                    credentialScheme = vci.resolveCredentialScheme(format).shouldNotBeNull(),
+                )
+            ).shouldNotBeEmpty()
+
+            http.sent.drop(sentBefore).kinds() shouldBe listOf("Credential(0)", "Credential(1)")
+            http.received[sentBefore].apply {
+                status shouldBe HttpStatusCode.Unauthorized
+                headers[HttpHeaders.WWWAuthenticate] shouldBe "DPoP error=\"$USE_DPOP_NONCE\""
+                headers[HttpHeaders.DPoPNonce].shouldNotBeNull()
+            }
         }
     }
 

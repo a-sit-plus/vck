@@ -62,15 +62,17 @@ import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
-import at.asitplus.wallet.lib.openid.OpenId4VpSuccess
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
+import at.asitplus.wallet.lib.openid.directPostHttpResponse
+import at.asitplus.wallet.lib.openid.loadRequestObjectHttpResponse
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -228,7 +230,7 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                     clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUri),
                 )
                 val responseEndpointPath = "/response"
-                val (url, jar) = verifier.createAuthnRequest(
+                val createdRequest = verifier.createAuthnRequest(
                     requestOptions.copy(responseUrl = responseEndpointPath),
                     CreationOptions.SignedRequestByReference(
                         "http://wallet.example.com/",
@@ -236,7 +238,7 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                         requestUriMethod,
                     )
                 ).getOrThrow()
-                jar.shouldNotBeNull()
+                createdRequest.loadRequestObject.shouldNotBeNull()
 
                 this.mockEngine = MockEngine { request ->
                     when {
@@ -250,32 +252,27 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                                 walletMetadataString = queryParameters["wallet_metadata"],
                                 walletNonce = queryParameters["wallet_nonce"]
                             )
-                            respond(jar.invoke(requestObjectParameters).getOrThrow())
+                            respond(createdRequest.loadRequestObjectHttpResponse(requestObjectParameters).getOrThrow())
                         }
 
                         request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString()
                             .startsWith(redirectUri) -> {
                             val requestBody = request.body.toByteArray().decodeToString()
-                            val result = if (requestBody.isNotEmpty()) {
+                            if (requestBody.isNotEmpty()) {
                                 postedContentTypes += request.body.contentType
-                                verifier.validateAuthnResponse(requestBody)
+                                validate(verifier.validateAuthnResponse(requestBody))
+                                respond(directPostHttpResponse(redirectUriAfterPost))
                             } else {
-                                verifier.validateAuthnResponse(request.url.toString())
+                                validate(verifier.validateAuthnResponse(request.url.toString()))
+                                respondOk()
                             }
-                            validate(result)
-                            redirectUriAfterPost?.let {
-                                respond(
-                                    content = joseCompliantSerializer.encodeToString(OpenId4VpSuccess(it)),
-                                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-                                )
-                            } ?: respondOk()
                         }
 
                         else -> respondError(HttpStatusCode.NotFound)
                             .also { Napier.w("NOT MATCHED ${request.url.fullPath}") }
                     }
                 }
-                this.url = url
+                this.url = createdRequest.url
             }
 
         }

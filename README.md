@@ -152,11 +152,16 @@ val request = verifier.createAuthnRequest(
 ).getOrThrow()
 
 // Show request.url as QR code or open it as a wallet deep link.
-// For RequestByReference/SignedRequestByReference also serve request.loadRequestObject from your request_uri.
+// For RequestByReference/SignedRequestByReference also serve the request object at your request_uri, with the
+// parameters the wallet may have posted: request.loadRequestObjectHttpResponse(walletParameters).getOrThrow()
 
 val response = verifier.validateAuthnResponse(walletRedirectUrlOrDirectPostBody).getOrThrow()
 val vpValidation = response.vpTokenValidationResult?.getOrThrow()
+// For direct_post and direct_post.jwt, answer the wallet's POST, optionally with a redirect_uri for the wallet:
+val answer = directPostHttpResponse(redirectUri = "https://rp.example/result#response_code=$freshSecret")
 ```
+
+Each `PreparedHttpResponse` is written out unchanged: its status, every header in `headers`, and `body`.
 
 On the wallet side, use the two-step API when the user must review and choose credentials. To establish trust in
 the relying party sending a request, pass a `relyingPartyTrust`: it verifies the request object per client identifier
@@ -209,7 +214,9 @@ when (val authnResponse = holder.finalizeAuthorizationResponse(preparation).getO
 ### OpenID4VCI credential issuance
 
 Use `OpenId4VciServer` on the issuer service. Your HTTP framework only needs to expose the metadata, nonce, and
-credential endpoints and forward request data into the protocol object.
+credential endpoints, forward request data into the protocol object, and write out the `PreparedHttpResponse` it
+gets back unchanged (status, headers, body). Status codes and headers, e.g. `Cache-Control: no-store`, `DPoP-Nonce`
+and `WWW-Authenticate`, are set by VC-K.
 
 ```kotlin
 val credentialIssuer = OpenId4VciServer(
@@ -222,23 +229,33 @@ val credentialIssuer = OpenId4VciServer(
     nonceEndpointPath = "/nonce",
 )
 
-// GET /.well-known/openid-credential-issuer
-fun issuerMetadata() = credentialIssuer.metadata
+// GET /.well-known/openid-credential-issuer, signed metadata if the Accept header asks for application/jwt
+suspend fun issuerMetadata(acceptHeader: String?): PreparedHttpResponse =
+    credentialIssuer.metadataHttpResponse(acceptHeader).getOrThrow()
 
 // POST /nonce
-suspend fun nonce() = credentialIssuer.nonceWithDpopNonce().getOrThrow()
+suspend fun nonce(): PreparedHttpResponse = credentialIssuer.nonceWithDpopNonce().getOrThrow().toHttpResponse()
 
 // POST /credential
-suspend fun credential(authorizationHeader: String, requestBody: String, requestInfo: RequestInfo) =
-    credentialIssuer.credential(
-        authorizationHeader = authorizationHeader,
-        params = OpenId4VciClient.CredentialRequest.parse(requestBody).getOrThrow(),
-        request = requestInfo,
-        credentialDataProvider = credentialDataProvider,
-    ).getOrThrow()
-
-// Serialize CredentialResponse.Plain as JSON and CredentialResponse.Encrypted as application/jwt.
+suspend fun credential(
+    authorizationHeader: String,
+    requestBody: String,
+    requestInfo: RequestInfo,
+): PreparedHttpResponse = credentialIssuer.credential(
+    authorizationHeader = authorizationHeader,
+    params = OpenId4VciClient.CredentialRequest.parse(requestBody).getOrThrow(),
+    request = requestInfo,
+    credentialDataProvider = credentialDataProvider,
+).fold(
+    onSuccess = { it.toHttpResponse() },
+    // 401 with WWW-Authenticate for token and DPoP errors, 400 for credential errors; other errors are yours
+    onFailure = { (it as? OAuth2Exception)?.toResourceServerHttpResponse(authorizationHeader) ?: throw it },
+)
 ```
+
+The authorization server works the same way: convert the results of `SimpleAuthorizationService`, e.g. of
+`parWithDpopNonce` and `tokenWithDpopNonce`, with `toHttpResponse()`, and its errors with
+`OAuth2Exception.toHttpResponse()`.
 
 On the wallet side, three layers build on each other:
 

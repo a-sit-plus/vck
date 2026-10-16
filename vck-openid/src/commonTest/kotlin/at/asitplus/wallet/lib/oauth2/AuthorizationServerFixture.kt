@@ -4,9 +4,7 @@ import at.asitplus.catching
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersSerializer
-import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
-import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -18,7 +16,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -27,11 +24,10 @@ import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
-import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
 /**
@@ -45,7 +41,6 @@ class AuthorizationServerFixture(
     captureAttestationInput: ((OAuth2ProtocolClient.LoadInstanceAttestationInput) -> Unit)? = null,
     private val serveChallengeEndpoint: Boolean = true,
     requireChallengeRetry: Boolean = false,
-    private val provideChallengeOnParSuccess: Boolean = false,
     popMethods: Set<ClientAttestationPopMethod>? = setOf(ClientAttestationPopMethod.AttestationPopJwt),
     dpopAlgorithms: Set<JwsAlgorithm.Signature> = setOf(JwsAlgorithm.Signature.ES256),
     /** DPoP combined mode has a single key: the attested key is also the DPoP key. */
@@ -93,7 +88,11 @@ class AuthorizationServerFixture(
         publicContext = credentialIssuerPublicContext,
     )
 
+    /** Challenges from the challenge endpoint and from error responses. */
     val issuedAttestationChallenges = mutableListOf<String>()
+
+    /** Fresh challenges from success responses of PAR and token endpoints. */
+    val attestationChallengesOnSuccess = mutableListOf<String>()
     val receivedPopChallenges = mutableListOf<String?>()
     private var challengeRetryRequired = requireChallengeRetry
 
@@ -122,7 +121,7 @@ class AuthorizationServerFixture(
         val parameters = Url(authorizationUrl).parameters.entries().associate { it.key to it.value.first() }
         val request: RequestParameters = RequestParametersSerializer.decodeFormParameters(parameters)
         return authorizationService.authorize(request) { catching { DummyUserProvider.user } }.getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().url
+            .toHttpResponse().headers[HttpHeaders.Location].shouldNotBeNull()
     }
 
     /** Runs the authorization code flow with PAR (if required), and returns the token response. */
@@ -148,40 +147,31 @@ class AuthorizationServerFixture(
             .also { issuedAttestationChallenges += it }
 
     private suspend fun route(request: PreparedHttpRequest): ReceivedHttpResponse = when {
-        request.path == "/.well-known/oauth-authorization-server" -> jsonResponse(metadata())
+        request.path == "/.well-known/oauth-authorization-server" -> metadata().toHttpResponse().received()
 
-        request.path == "/.well-known/openid-credential-issuer" -> jsonResponse(openId4VciServer.metadata)
+        request.path == "/.well-known/openid-credential-issuer" ->
+            openId4VciServer.metadataHttpResponse(request.headers[HttpHeaders.Accept]).getOrThrow().received()
 
-        request.path.startsWith("/nonce") -> openId4VciServer.nonceWithDpopNonce().getOrThrow().let { result ->
-            jsonResponse(result.response) {
-                append(HttpHeaders.CacheControl, "no-store")
-                result.dpopNonce?.let { append(HttpHeaders.DPoPNonce, it) }
-            }
+        request.path.startsWith("/nonce") ->
+            openId4VciServer.nonceWithDpopNonce().getOrThrow().toHttpResponse().received()
+
+        request.path.startsWith("/credential") -> {
+            val authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
+            openId4VciServer.credential(
+                authorizationHeader = authorizationHeader,
+                params = OpenId4VciClient.CredentialRequest.parse(request.body.orEmpty()).getOrThrow(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+                request = request.toRequestInfo(),
+            ).fold(
+                onSuccess = { it.toHttpResponse().received() },
+                onFailure = { it.toResourceServerResponse(authorizationHeader) },
+            )
         }
-
-        request.path.startsWith("/credential") -> openId4VciServer.credential(
-            authorizationHeader = request.headers[HttpHeaders.Authorization].shouldNotBeNull(),
-            params = OpenId4VciClient.CredentialRequest.parse(request.body.orEmpty()).getOrThrow(),
-            credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
-            request = request.toRequestInfo(),
-        ).fold(
-            onSuccess = {
-                when (it) {
-                    is OpenId4VciServer.CredentialResponse.Plain -> jsonResponse(it.response)
-                    is OpenId4VciServer.CredentialResponse.Encrypted -> ReceivedHttpResponse(
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT),
-                        body = it.response.serialize(),
-                    )
-                }
-            },
-            onFailure = { it.toErrorResponse() },
-        )
 
         request.path.startsWith("/challenge") && serveChallengeEndpoint -> {
             val response = authorizationService.attestationChallenge().getOrThrow().shouldNotBeNull()
             issuedAttestationChallenges += response.attestationChallenge
-            jsonResponse(response) { append(HttpHeaders.CacheControl, "no-store") }
+            response.toHttpResponse().received()
         }
 
         request.path.startsWith("/par") -> {
@@ -190,20 +180,17 @@ class AuthorizationServerFixture(
                 challengeRetryRequired = false
                 // PAR mandates a fresh DPoP nonce, so the AS supplies it along with the rejection for the missing
                 // attestation challenge, and a single retry carries both.
-                OAuth2Exception.UseAttestationChallenge(newAttestationChallenge())
-                    .toErrorResponse(dpopNonce = authorizationService.getDpopNonce())
+                OAuth2Exception.UseAttestationChallenge(newAttestationChallenge()).toHttpResponse().received()
+                    .withHeader(HttpHeaders.DPoPNonce, authorizationService.getDpopNonce().shouldNotBeNull())
             } else {
                 val authnRequest: RequestParameters =
                     RequestParametersSerializer.decodeFormParameters(request.formParameters())
                 authorizationService.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
                     onSuccess = { result ->
-                        val challenge = if (provideChallengeOnParSuccess) newAttestationChallenge() else null
-                        jsonResponse(result.response) {
-                            result.dpopNonce?.let { append(HttpHeaders.DPoPNonce, it) }
-                            challenge?.let { append(HttpHeaders.OAuthClientAttestationChallenge, it) }
-                        }
+                        result.attestationChallenge?.let { attestationChallengesOnSuccess += it }
+                        result.toHttpResponse().received()
                     },
-                    onFailure = { it.toErrorResponse() }
+                    onFailure = { it.toAuthorizationServerResponse() }
                 )
             }
         }
@@ -213,9 +200,10 @@ class AuthorizationServerFixture(
             val params = request.body.orEmpty().decodeFromFormUrlEncoded<TokenRequestParameters>()
             authorizationService.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
                 onSuccess = { result ->
-                    jsonResponse(result.response) { result.dpopNonce?.let { append(HttpHeaders.DPoPNonce, it) } }
+                    result.attestationChallenge?.let { attestationChallengesOnSuccess += it }
+                    result.toHttpResponse().received()
                 },
-                onFailure = { it.toErrorResponse() },
+                onFailure = { it.toAuthorizationServerResponse() },
             )
         }
 
@@ -223,13 +211,8 @@ class AuthorizationServerFixture(
             receivedPopChallenges += request.toRequestInfo().clientAttestationPop?.payload?.challenge
             val params = request.body.orEmpty().decodeFromFormUrlEncoded<TokenIntrospectionRequest>()
             authorizationService.tokenIntrospection(params, request.toRequestInfo()).fold(
-                onSuccess = {
-                    when (it) {
-                        is TokenIntrospectionResponse -> jsonResponse(it)
-                        is TokenIntrospectionJwtResponse -> jsonResponse(it)
-                    }
-                },
-                onFailure = { it.toErrorResponse() },
+                onSuccess = { it.toHttpResponse().received() },
+                onFailure = { it.toAuthorizationServerResponse() },
             )
         }
 
