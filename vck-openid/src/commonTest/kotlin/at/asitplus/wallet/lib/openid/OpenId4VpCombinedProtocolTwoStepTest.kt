@@ -63,7 +63,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
             val dcqlRequest = preparationState.credentialPresentationRequest
                 .shouldBeInstanceOf<DCQLRequest>()
@@ -98,7 +98,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
             val dcqlRequest = preparationState.credentialPresentationRequest
                 .shouldBeInstanceOf<DCQLRequest>()
@@ -147,7 +147,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
             val dcqlRequest = preparationState.credentialPresentationRequest
                 .shouldBeInstanceOf<DCQLRequest>()
@@ -219,7 +219,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
             val dcqlRequest = preparationState.credentialPresentationRequest
                 .shouldBeInstanceOf<DCQLRequest>()

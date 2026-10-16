@@ -91,16 +91,9 @@ val OpenId4VpX509SanDnsTest by matrixSuite {
             ).getOrThrow()
             jar.shouldNotBeNull()
 
-            it.holderOid4vp = OpenId4VpHolder(
-                keyMaterial = it.holderKeyMaterial,
-                holder = it.holderAgent,
-                remoteResourceRetriever = {
-                    if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-                },
-                randomSource = RandomSource.Default,
-            )
+            val endpoint = requestUriEndpoint(requestUrl) { parameters -> jar.invoke(parameters).getOrThrow() }
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(walletUrl, endpoint).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
@@ -132,16 +125,9 @@ val OpenId4VpX509SanDnsTest by matrixSuite {
             ).getOrThrow()
             jar.shouldNotBeNull()
 
-            it.holderOid4vp = OpenId4VpHolder(
-                keyMaterial = it.holderKeyMaterial,
-                holder = it.holderAgent,
-                remoteResourceRetriever = {
-                    if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-                },
-                randomSource = RandomSource.Default,
-            )
+            val endpoint = requestUriEndpoint(requestUrl) { parameters -> jar.invoke(parameters).getOrThrow() }
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(walletUrl, endpoint).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()

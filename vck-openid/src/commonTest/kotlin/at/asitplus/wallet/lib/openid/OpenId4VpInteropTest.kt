@@ -87,8 +87,6 @@ val OpenId4VpInteropTest by matrixSuite {
             object {
 
                 val sdAlgorithm = sdAlgorithm!!
-                val holderKeyMaterial = holderKeyMaterial
-                val holderAgent = holderAgent
                 val issuerKeyId = issuerKeyId
                 val issuerIdentifier = issuerIdentifier
                 var holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
@@ -147,16 +145,11 @@ val OpenId4VpInteropTest by matrixSuite {
             requestUrlForWallet shouldContain it.verifierClientId.encodeURLParameter()
             requestUrlForWallet shouldStartWith "haip://"
 
-            it.holderOid4vp = OpenId4VpHolder(
-                keyMaterial = it.holderKeyMaterial,
-                holder = it.holderAgent,
-                remoteResourceRetriever = {
-                    if (it.url == requestUrl) requestObject.invoke(it.requestObjectParameters).getOrThrow() else null
-                },
-                randomSource = RandomSource.Default,
-            )
+            val endpoint = requestUriEndpoint(requestUrl) { parameters ->
+                requestObject.invoke(parameters).getOrThrow()
+            }
 
-            val state = it.holderOid4vp.startAuthorizationResponsePreparation(requestUrlForWallet).getOrThrow()
+            val state = it.holderOid4vp.prepareAuthorizationResponse(requestUrlForWallet, endpoint).getOrThrow()
             val parameters = state.request
                 .shouldBeInstanceOf<RequestParametersFrom.Jws<AuthenticationRequestParameters>>()
 

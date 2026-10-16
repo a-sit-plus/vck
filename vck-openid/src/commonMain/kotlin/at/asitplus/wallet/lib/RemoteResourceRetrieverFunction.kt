@@ -7,6 +7,10 @@ import kotlin.jvm.JvmOverloads
 /**
  * Implementations need to fetch the url passed in, and return either the body, if there is one,
  * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
+ *
+ * Wallets don't need it: [at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient] and
+ * [at.asitplus.wallet.lib.oidvci.OpenId4VciProtocolClient] fetch request objects and credential offers passed by
+ * reference with [HttpExchange]s, which can also report status codes and headers.
  */
 typealias RemoteResourceRetrieverFunction = suspend (RemoteResourceRetrieverInput) -> String?
 

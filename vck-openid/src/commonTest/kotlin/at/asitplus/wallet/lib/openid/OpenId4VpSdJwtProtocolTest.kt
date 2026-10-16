@@ -75,7 +75,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
 
             authnRequest shouldContain requestedClaim
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -103,7 +103,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                 CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
@@ -126,7 +126,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                 CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             // anyone knowing the state may post a response: this one carries no vp_token and is not accepted,
@@ -154,7 +154,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                 CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             val storedRequest = it.stateToAuthnRequestStore.get(state).shouldNotBeNull()
 
@@ -188,7 +188,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                 CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()

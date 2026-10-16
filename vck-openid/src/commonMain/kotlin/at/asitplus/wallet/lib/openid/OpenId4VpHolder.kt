@@ -10,7 +10,6 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
@@ -26,12 +25,10 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
-import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -62,6 +59,9 @@ import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredential
  * we can parse and validate it in [startAuthorizationResponsePreparation],
  * show the information to the user,
  * and create the response in [finalizeAuthorizationResponse], and send it back to the verifier.
+ *
+ * This class sends no HTTP requests: wallets fetch a request object passed by reference, and post responses to the
+ * verifier, with [OpenId4VpProtocolClient], which returns [at.asitplus.wallet.lib.HttpExchange]s for any HTTP stack.
  */
 class OpenId4VpHolder @JvmOverloads constructor(
     /** Key material used to encrypt responses and sign ID tokens. */
@@ -77,8 +77,8 @@ class OpenId4VpHolder @JvmOverloads constructor(
     /** Advertised as `authorization_endpoint` in [metadata]. */
     private val authorizationEndpoint: String = "openid4vp:",
     /**
-     * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
-     * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
+     * Fetches a request object passed by reference in `request_uri`, for the deprecated methods taking the request as
+     * `String`; [OpenId4VpProtocolClient.prepareAuthorizationResponse] does not use it.
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
@@ -201,6 +201,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
      * Exceptions thrown during request parsing are caught by [KmmResult],
      * exceptions during request handling result in the [AuthenticationResponseResult] containing the [OAuth2Error].
      */
+    @Deprecated(
+        "Fetches the request object with remoteResourceRetriever; use " +
+                "OpenId4VpProtocolClient.prepareAuthorizationResponse, then finalizeAuthorizationResponse"
+    )
     suspend fun createAuthnResponse(
         input: String,
     ): KmmResult<AuthenticationResponseResult> = catching {
@@ -211,6 +215,21 @@ class OpenId4VpHolder @JvmOverloads constructor(
         input: String,
     ) = requestParser.parseRequestParameters(input)
         .getOrThrow().requireAuthenticationRequest()
+
+    /**
+     * Parses [input] like [startAuthorizationResponsePreparation], but returns where to fetch a request object passed
+     * by reference instead of fetching it, see [OpenId4VpProtocolClient.prepareAuthorizationResponse].
+     */
+    internal suspend fun parseWithoutFetching(
+        input: String,
+    ): RequestParser.ParsedRequest = requestParser.parseWithoutFetching(input)
+
+    /** Resolves the request object fetched for [reference] from its [content], see [parseWithoutFetching]. */
+    internal suspend fun resolveFetchedRequestObject(
+        reference: RequestParser.ParsedRequest.ByReference,
+        content: String,
+    ): RequestParametersFrom<AuthenticationRequestParameters> =
+        requestParser.resolveFetchedRequestObject(reference, content).requireAuthenticationRequest()
 
     /** Creates an error response for the [error], which can be sent to the verifier / relying party. */
     suspend fun createAuthnErrorResponse(
@@ -260,11 +279,16 @@ class OpenId4VpHolder @JvmOverloads constructor(
     }
 
     /**
-     * Parses the [AuthenticationRequestParameters] from [input] and loads remote objects (client metadata, keys).
+     * Parses the [AuthenticationRequestParameters] from [input], fetching the request object passed by reference
+     * in `request_uri`, and validates it, see the overload taking parsed parameters.
      * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
      *
      * Exceptions thrown during request parsing are caught by [KmmResult],
      */
+    @Deprecated(
+        "Fetches the request object with remoteResourceRetriever; use " +
+                "OpenId4VpProtocolClient.prepareAuthorizationResponse"
+    )
     suspend fun startAuthorizationResponsePreparation(
         input: String,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
@@ -272,7 +296,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
     }
 
     /**
-     * Validates the [AuthenticationRequestParameters] from [params] and loads remote objects (client metadata, keys).
+     * Validates the [AuthenticationRequestParameters] from [params]. The verifier's keys are the `jwks` of its
+     * `client_metadata`, else those from [lookupJsonWebKeysForClient]; a `jwks_uri` is ignored, as
+     * [OpenID4VP 1.0, 5.1](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-new-parameters)
+     * defines only `jwks`, and requires other metadata parameters to be ignored.
      * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
      *
      * Exceptions thrown during request parsing are caught by [KmmResult],
@@ -281,7 +308,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         authorizationRequestValidator.validateAuthorizationRequest(params)
-        val loadedKeys = (params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
+        val loadedKeys = (params.parameters.clientMetadata?.jsonWebKeySet?.keys
             ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(params.parameters.clientId))?.keys)
         val jsonWebKeys = loadedKeys?.combine(params.extractLeafCertKey())
         AuthorizationResponsePreparationState(
@@ -399,11 +426,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialIds() =
         (this as? RequestParametersFrom.DcApiRequest)?.credentialIds
 
-    private suspend fun RelyingPartyMetadata.loadJsonWebKeySet(): JsonWebKeySet? =
-        jsonWebKeySet ?: jsonWebKeySetUrl
-            ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
-            ?.let { joseCompliantSerializer.decodeFromString(it) }
-
     private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
             dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
@@ -418,7 +440,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
  * error instead of failing with a [ClassCastException] somewhere inside request validation.
  */
 @Suppress("UNCHECKED_CAST")
-private fun RequestParametersFrom<*>.requireAuthenticationRequest(): RequestParametersFrom<AuthenticationRequestParameters> =
+internal fun RequestParametersFrom<*>.requireAuthenticationRequest(): RequestParametersFrom<AuthenticationRequestParameters> =
     if (parameters is AuthenticationRequestParameters)
         this as RequestParametersFrom<AuthenticationRequestParameters>
     else throw InvalidRequest("not an authorization request: ${parameters::class.simpleName}")

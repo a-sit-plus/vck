@@ -22,10 +22,10 @@ data class ReceivedHttpResponse(
 )
 
 /**
- * Every HTTP request the OAuth 2.0 and OpenID4VCI protocol clients hand out, see
- * [at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient]. Each method returning an [HttpExchange] documents which of
- * these kinds it sends, in which order, and how often. [attempt] starts at 0 for the first attempt of a request, and
- * is increased for each retry.
+ * Every HTTP request the OAuth 2.0, OpenID4VCI and OpenID4VP protocol clients hand out, see
+ * [at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient] and [at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient].
+ * Each method returning an [HttpExchange] documents which of these kinds it sends, in which order, and how often.
+ * [attempt] starts at 0 for the first attempt of a request, and is increased for each retry.
  */
 sealed class ProtocolRequest {
     abstract val http: PreparedHttpRequest
@@ -65,6 +65,18 @@ sealed class ProtocolRequest {
 
     /** GET the `userinfo_endpoint`, with the access token. */
     data class UserInfo(override val http: PreparedHttpRequest, val attempt: Int) : ProtocolRequest()
+
+    /**
+     * GET the request object from the `request_uri` of an OpenID4VP authorization request, or POST `wallet_metadata`
+     * and `wallet_nonce` to it as form, for `request_uri_method=post`.
+     */
+    data class RequestObject(override val http: PreparedHttpRequest) : ProtocolRequest()
+
+    /**
+     * POST an OpenID4VP authorization response, or authorization error response, as form to the `response_uri` of
+     * the verifier, for the response modes `direct_post` and `direct_post.jwt`.
+     */
+    data class AuthorizationResponse(override val http: PreparedHttpRequest) : ProtocolRequest()
 }
 
 /** One step of an [HttpExchange]. */
