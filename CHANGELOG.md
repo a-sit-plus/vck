@@ -31,6 +31,9 @@ Release 9.0.0 (unreleased):
       by coverage: a registered ancestor covers descendants, and `null` covers an index or `null`. JSON and CWT
       decode typed segments and values; empty paths and
       indices above `UInt.MAX_VALUE` are rejected. kotlinx-serialization CBOR also reads an empty map as `null`
+    - `WrpPayload.srvDescription` stays an array of arrays (ETSI TS 119 475 V1.2.1, B.2.1), and also decodes from a
+      single array of `WrpLangString`s, in JSON and CWT, as one service description; arrays mixed with objects are
+      rejected
 - DCQL claim paths preserve numeric object keys as strings and reject invalid or overflowing indices
 - BREAKING: `JsonClaimReference` now wraps `path: DCQLClaimsPathPointer`, preserving wildcards during WRPRC authorization. The concrete-path
   constructor is retained; deprecate `normalizedJsonPath`, which cannot represent wildcards. Its JSON member name
