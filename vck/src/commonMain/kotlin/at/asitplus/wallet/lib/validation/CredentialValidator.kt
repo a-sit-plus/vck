@@ -148,9 +148,9 @@ class CredentialValidator @JvmOverloads constructor(
             is Evaluated -> checks(evaluation, policy, timeScope)
         }
         val report = ValidationReport.credential(checks, policy, timeScope.now)
-        val credential = (evaluation as? Evaluated)?.credential
-            ?.takeIf { report.decision == ValidationDecision.ACCEPTED }
-        return CredentialValidationResult(report, credential)
+        val unaccepted = (evaluation as? Evaluated)?.credential?.takeIf { report.isIntactCredential() }
+        val credential = unaccepted?.takeIf { report.decision == ValidationDecision.ACCEPTED }
+        return CredentialValidationResult(report, credential, unaccepted)
     }
 
     private suspend fun checks(
