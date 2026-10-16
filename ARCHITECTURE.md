@@ -331,9 +331,14 @@ accepted, so an unverified value is never exposed as validated. Rules to keep:
 - Trust is configured as anchors per artifact kind, and for credentials per credential type
   (`CredentialTrustAnchors`), never as an injected verification function that hides its anchors. A missing source
   of trust blocks the check, and `TrustPolicy.RequireAuthorizedSigner` then rejects (fail closed).
-- The policy relaxes only trust, status, and timeliness of the artifact; parsing, signatures, holder binding and the
-  time of holder proofs, nonces, and audiences are never relaxed. A status is resolved only for an artifact that is
-  valid otherwise (draft-ietf-oauth-status-list-21, 8.3).
+- The policy relaxes only trust, status, and timeliness of the artifact, and whether a standalone credential has to
+  contain the claims its type requires; parsing, signatures, holder binding and the time of holder proofs, nonces, and
+  audiences are never relaxed. A status is resolved only for an artifact that is valid otherwise
+  (draft-ietf-oauth-status-list-21, 8.3); missing claims do not make a credential invalid as a token.
+- The claims a credential type requires come from its metadata, selected by the type signed into the credential
+  through a `RequiredClaimsResolver`, by default the `CredentialMetadataRegistry`s and the schemes of
+  `AttributeIndex`. A type without metadata blocks `requiredClaims`, it never passes as a type without required claims.
+  Presentations disclose selectively, so the check does not apply to presented credentials.
 - Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
   `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy
   results of the OpenID4VP verifiers) delegate to the new validation under a compatibility policy or the configured

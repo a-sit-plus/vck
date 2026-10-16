@@ -22,6 +22,7 @@ private val credentialChecks = CredentialChecks(
     disclosedItems = listOf(
         DisclosedItemValidation(DisclosedItemReference.SdJwt(0, "given_name"), Passed, Passed, Passed)
     ),
+    requiredClaims = RequiredClaimsValidation(NotApplicable),
     holderBinding = NotApplicable,
     timeliness = TimelinessValidation(Passed, details = null),
     status = validStatus,
@@ -92,6 +93,8 @@ val NamedChecksTest by matrixSuite {
                         check.trust?.outcome?.let { it shouldBe check.outcome }
                         if (check.name.contains("time", ignoreCase = true)) timeNames shouldContain check.name
                         if (check.statusMechanism != null) check.name shouldStartWith "status."
+                        (check.claims != null) shouldBe (check.name == "requiredClaims")
+                        check.claims?.outcome?.let { it shouldBe check.outcome }
                     }
                 }
             }
@@ -107,6 +110,7 @@ val NamedChecksTest by matrixSuite {
             "disclosedItems[0].parsing",
             "disclosedItems[0].digest",
             "disclosedItems[0].structure",
+            "requiredClaims",
             "holderBinding",
             "timeliness",
             "status.claim",
@@ -120,13 +124,19 @@ val NamedChecksTest by matrixSuite {
         named.getValue("issuerTrust").trust shouldBe trusted
         named.getValue("disclosedItems[0].digest").disclosedItem shouldBe DisclosedItemReference.SdJwt(0, "given_name")
         named.getValue("status.mechanisms[0]").statusMechanism shouldBe validStatus.mechanisms.single()
+        named.getValue("requiredClaims").claims shouldBe credentialChecks.requiredClaims
         named.getValue("parsing").trust.shouldBeNull()
     }
 
-    "the policy relaxes trust and timeliness, never parsing or signatures" {
-        val strict = credentialChecks
-            .namedUnder(strictPolicy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey)).requirements()
+    "the policy relaxes trust, timeliness, and required claims, never parsing or signatures" {
+        val strict = credentialChecks.namedUnder(
+            strictPolicy.copy(
+                holderBinding = HolderBindingPolicy.RequireExpectedKey,
+                requiredClaims = RequiredClaimsPolicy.RequireMandatory,
+            )
+        ).requirements()
         strict.getValue("issuerTrust") shouldBe REQUIRED
+        strict.getValue("requiredClaims") shouldBe REQUIRED
         strict.getValue("timeliness") shouldBe REQUIRED
         strict.getValue("holderBinding") shouldBe REQUIRED
         strict.getValue("status.claim") shouldBe REQUIRED
@@ -135,6 +145,7 @@ val NamedChecksTest by matrixSuite {
         relaxed.getValue("issuerTrust") shouldBe OPTIONAL
         relaxed.getValue("timeliness") shouldBe OPTIONAL
         relaxed.getValue("holderBinding") shouldBe OPTIONAL
+        relaxed.getValue("requiredClaims") shouldBe OPTIONAL
         relaxed.getValue("status.claim") shouldBe REQUIRED_IF_APPLICABLE
         relaxed.getValue("parsing") shouldBe REQUIRED
         relaxed.getValue("issuerSignature") shouldBe REQUIRED

@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.validation
 
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -38,6 +39,14 @@ val ValidatedCredential.credentialIdentifier: String?
         is ValidatedCredential.VcJwt -> credential.vc.type
             .filter { it != VcDataModelConstants.VERIFIABLE_CREDENTIAL }
             .singleOrNull()
+    }
+
+/** The representation of this credential. */
+val ValidatedCredential.representation: CredentialRepresentation
+    get() = when (this) {
+        is ValidatedCredential.VcJwt -> CredentialRepresentation.PLAIN_JWT
+        is ValidatedCredential.SdJwtVc -> CredentialRepresentation.SD_JWT
+        is ValidatedCredential.IsoMdoc -> CredentialRepresentation.ISO_MDOC
     }
 
 /**
