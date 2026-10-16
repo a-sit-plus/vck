@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.StatusListJwt
@@ -69,6 +70,14 @@ val ClientAttestationValidationTest by matrixSuite {
             }
             client.shouldNotBeNull().clientId shouldBe CLIENT_ID
         }
+    }
+
+    "an attestation signed with a certificate the wallet providers list directly is accepted" {
+        val walletProvider = WalletProvider()
+        val service = walletProvider.service(anchors = { setOf(walletProvider.signingCertificate()) })
+
+        service.validate(walletProvider.request(service), CLIENT_ID, null, strictPolicy)
+            .report.decision shouldBe ACCEPTED
     }
 
     "without wallet provider anchors, attestations are rejected" {
@@ -217,7 +226,7 @@ private fun ValidationReport.attestationChecks() = checks.shouldBeInstanceOf<Cli
 /** A wallet provider signing client attestations with a certificate issued by its CA, for a [clientKey]. */
 private class WalletProvider private constructor(
     val authority: TestCertificateAuthority,
-    keyMaterial: KeyMaterial,
+    private val keyMaterial: KeyMaterial,
 ) {
     val clientKey = EphemeralKeyWithoutCert()
     private val signJwt = SignJwt<JsonWebToken>(keyMaterial, JwsHeaderCertOrJwk())
@@ -227,10 +236,11 @@ private class WalletProvider private constructor(
         nonceService: DefaultNonceService = DefaultNonceService(),
         issuerIdentifier: String? = AUTHORIZATION_SERVER,
         popMethods: Set<ClientAttestationPopMethod> = setOf(ClientAttestationPopMethod.AttestationPopJwt),
+        anchors: TrustedCertificates = TrustedCertificates { setOf(authority.certificate) },
     ) = AttestationBasedClientAuthenticationService(
         acceptedPopMethods = popMethods,
         clientAttestationValidator = ClientAttestationValidator(
-            walletProviderAnchors = { setOf(authority.certificate) },
+            walletProviderAnchors = anchors,
             statusValidator = StatusValidator(statusListTokenResolver),
         ),
         issuerIdentifier = issuerIdentifier,
@@ -243,6 +253,9 @@ private class WalletProvider private constructor(
         clientKey = clientKey.jsonWebKey,
         clientStatus = clientStatus(),
     )
+
+    /** The certificate the attestations are signed with, issued by [authority]. */
+    suspend fun signingCertificate() = keyMaterial.getCertificate().shouldNotBeNull()
 
     /** The payload of [attestation], to build variants of it. */
     suspend fun payload() = attestation().payload
