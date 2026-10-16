@@ -146,6 +146,20 @@ internal fun CredentialChecks.named(policy: ValidationPolicy) =
 /** Whether every check that [policy] requires has passed. */
 internal fun CredentialChecks.meets(policy: ValidationPolicy): Boolean = named(policy).allSatisfied()
 
+/** Names of the checks of a credential a policy may relax, see [isIntactCredential]. */
+private val relaxableCredentialChecks = setOf("issuerTrust", "timeliness", "requiredClaims")
+
+/**
+ * Whether this credential report satisfies every check but those a policy may relax: issuer trust, timeliness, the
+ * required claims, and the status (which is resolved only for an otherwise valid credential). Parsing, the issuer
+ * signature, semantics, every disclosed item, and the holder binding as the policy requires it remain. So a user may
+ * be asked to accept such a credential nonetheless, see [CredentialValidationResult.unacceptedCredential].
+ */
+fun ValidationReport.isIntactCredential(): Boolean =
+    checks is CredentialChecks && namedChecks
+        .filterNot { it.name in relaxableCredentialChecks || it.name.startsWith("status.") }
+        .allSatisfied()
+
 /**
  * Why this report is rejected: the cause of its first check that is not satisfied, in the order of
  * [ValidationReport.namedChecks], or a description of it if the check has no cause, otherwise why its first rejected

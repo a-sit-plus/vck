@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
+import kotlin.jvm.JvmOverloads
 
 /**
  * A credential that passed every check its validation policy requires.
@@ -53,14 +54,28 @@ val ValidatedCredential.representation: CredentialRepresentation
  * The [report] of validating a credential, and the [credential] if it has been accepted.
  * An unverified value is never exposed as validated: [credential] is present if and only if the report is accepted.
  */
-data class CredentialValidationResult(
+data class CredentialValidationResult @JvmOverloads constructor(
     val report: ValidationReport,
     val credential: ValidatedCredential?,
+    /**
+     * The credential whatever the decision of [report], if every check no policy relaxes passed, see
+     * [isIntactCredential]: it can be parsed, the issuer signed it, it is of the expected type, every disclosed item
+     * is intact, and it is bound to the holder if required. But its issuer may not be trusted, it may be expired or
+     * revoked, or miss claims its type requires. Use it only to continue after showing the report to the user, e.g.
+     * to store a credential the user accepts nonetheless, never as an accepted credential.
+     */
+    val unacceptedCredential: ValidatedCredential? = credential,
 ) {
     init {
         require(report.checks is CredentialChecks) { "Report has to be a credential report" }
         require((credential != null) == (report.decision == ValidationDecision.ACCEPTED)) {
             "A credential is present if and only if the report is accepted"
+        }
+        require(credential == null || credential == unacceptedCredential) {
+            "An accepted credential is the unaccepted credential too"
+        }
+        require(unacceptedCredential == null || report.isIntactCredential()) {
+            "An unaccepted credential is only present for an intact credential"
         }
     }
 }
