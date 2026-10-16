@@ -1,5 +1,20 @@
 package at.asitplus.wallet.lib.ktor.openid
 
+import kotlin.time.Duration.Companion.seconds
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldBeSingleton
+import at.asitplus.wallet.lib.validation.ValidationPolicy
+import at.asitplus.wallet.lib.validation.ValidationDecision
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.RequiredClaimsPolicy
+import at.asitplus.wallet.lib.validation.CredentialChecks
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_METADATA_URL
+import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.catching
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.OpenIdConstants
@@ -266,6 +281,47 @@ val OpenId4VciKtorClientTest by matrixSuite {
                     credentialKeyMaterial.publicKey
                 )
             }
+        }
+    }
+
+    "a PID missing mandatory claims is stored only after the user's consent" {
+        val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+        val attributes = mapOf(EuPidSdJwtDataElements.FAMILY_NAME to uuid4().toString())
+        with(setup(euPidSdJwtScheme, SD_JWT, attributes)) {
+            val selectedCredential = client.loadCredentialMetadata("https://issuer.example.com").getOrThrow()
+                .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
+            val offer = authorizationService.offerWithPreAuthnForUserForSchemes(
+                user = dummyUser(),
+                credentialIssuer = openId4VciServer.metadata.credentialIssuer,
+                schemes = setOf(euPidSdJwtScheme to SD_JWT),
+            )
+            val holder = HolderAgent(credentialKeyMaterial)
+            // The test issuer is not trusted, and its status list is not resolved
+            val policy = ValidationPolicy(
+                trust = TrustPolicy.IntegrityOnly,
+                status = StatusPolicy.Skip,
+                timeLeeway = 300.seconds,
+                requireTimeliness = true,
+                requiredClaims = RequiredClaimsPolicy.RequireMandatory,
+            )
+            val prepared = client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null)
+                .getOrThrow()
+                .shouldBeInstanceOf<CredentialIssuanceResult.Success>()
+                .prepareCredentialStorage(holder, policy).getOrThrow()
+                .shouldBeSingleton().single()
+
+            prepared.validation.report.decision shouldBe ValidationDecision.REJECTED
+            prepared.renewalInfo.shouldNotBeNull()
+            prepared.validation.report.checks.shouldBeInstanceOf<CredentialChecks>().requiredClaims.apply {
+                outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+                source shouldBe EU_PID_SD_JWT_METADATA_URL
+                missing shouldContain OpenId4VciClaimsPathPointer(EuPidSdJwtDataElements.GIVEN_NAME)
+                missing shouldNotContain OpenId4VciClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME)
+            }
+
+            holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldBeNull()
+            holder.storeAfterUserConsent(prepared).getOrThrow().storedEntry.shouldNotBeNull()
+            holder.getCredentials().shouldNotBeNull().shouldBeSingleton()
         }
     }
 
