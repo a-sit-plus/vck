@@ -7,6 +7,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.validation.ValidationReport
 import kotlinx.serialization.Serializable
 
 /**
@@ -37,3 +38,13 @@ data class AuthorizationResponsePreparationState(
         get() = request.decryptedFrom != null
 
 }
+
+/**
+ * The [validationReport] of an authorization request, see [at.asitplus.wallet.lib.validation.RequestObjectChecks],
+ * and the [preparationState] to answer it with, also if the request is rejected: either to answer the verifier with
+ * an error, or, where the policy of the wallet allows, after the user decided to proceed.
+ */
+data class AuthorizationRequestValidation(
+    val validationReport: ValidationReport,
+    val preparationState: AuthorizationResponsePreparationState,
+)

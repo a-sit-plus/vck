@@ -1,3 +1,6 @@
+// Covers the deprecated relyingPartyTrust, mapped onto RelyingPartyValidator
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -30,6 +33,7 @@ import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -75,7 +79,7 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
             clientIdScheme = sanDnsScheme(impostor),
             trust = setOf(RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate) }),
         ).exceptionOrNull().shouldNotBeNull()
-            .message.shouldNotBeNull() shouldContain "self-signed"
+            .message.shouldNotBeNull() shouldContain "trust anchor"
     }
 
     "x509_hash request from a relying party certified by a trusted CA is accepted, untrusted is rejected" {
@@ -112,7 +116,7 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
             relyingParty, scheme,
             setOf(RelyingPartyTrust.VerifierAttesterKeys { setOf(EphemeralKeyWithoutCert().jsonWebKey) }),
         ).exceptionOrNull().shouldNotBeNull()
-            .message.shouldNotBeNull() shouldContain "not issued by a trusted party"
+            .message.shouldNotBeNull() shouldContain "not signed by a trusted attester"
     }
 
     // ponytail: `sub` != client_id is enforced but not covered, ClientIdScheme.VerifierAttestation derives the
@@ -152,16 +156,12 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
 
     // `entity_id` needs an OpenID Federation trust chain, which this library does not implement, and
     // ClientIdScheme models no such scheme either, so the request is hand-built rather than made by a verifier
-    "a scheme this library does not evaluate is handed to the custom hook" {
+    // The hook decided opaquely, so it is not mapped onto RelyingPartyValidator, see ClientIdentifierTrust
+    "a scheme this library does not evaluate is rejected, as the custom hook no longer takes effect" {
         var seen: String? = null
         validate(ENTITY_ID_CLIENT_ID, setOf(RelyingPartyTrust.Custom { seen = it.parameters.clientId }))
-        seen.shouldNotBeNull() shouldContain "rp.example.com"
-
-        validate(
-            ENTITY_ID_CLIENT_ID,
-            setOf(RelyingPartyTrust.Custom { throw IllegalArgumentException("federation trust chain not established") }),
-        ).exceptionOrNull().shouldNotBeNull()
-            .message.shouldNotBeNull() shouldContain "federation trust chain"
+            .exceptionOrNull().shouldNotBeNull()
+        seen.shouldBeNull()
     }
 
     // Otherwise a relying party bypasses the configured trust anchors just by naming itself with a scheme this
@@ -169,7 +169,7 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
     "a scheme this library does not evaluate is rejected when no custom hook is configured" {
         validate(ENTITY_ID_CLIENT_ID, setOf(RelyingPartyTrust.Certificates { setOf() }))
             .exceptionOrNull().shouldNotBeNull()
-            .message.shouldNotBeNull() shouldContain "no custom trust source for client identifier scheme entity_id"
+            .message.shouldNotBeNull() shouldContain "No trust source for the client identifier prefix"
     }
 
     "a scheme this library does not evaluate passes when trust is not evaluated at all" {
@@ -177,12 +177,10 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
     }
 
     // The point of passing a set: several sources of the same kind are a union, e.g. a trust list next to a
-    // locally pinned CA, so trust established by any one of them is enough. Sources after the one that
-    // establishes trust are not consulted, they may fetch a trust list or hit a database
+    // locally pinned CA, so trust established by any one of them is enough
     "a relying party trusted by one of several configured sources of the same kind is accepted" {
         val ca = TestCertificateAuthority()
         val relyingParty = ca.issue(extensions = subjectAltNameDns(CLIENT_ID_DNS))
-        var consultedAfterTrustEstablished = false
 
         presentTo(
             relyingParty = relyingParty,
@@ -190,14 +188,9 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
             trust = setOf(
                 RelyingPartyTrust.Certificates { setOf(TestCertificateAuthority().certificate) },
                 RelyingPartyTrust.Certificates { setOf(ca.certificate) },
-                RelyingPartyTrust.Certificates {
-                    consultedAfterTrustEstablished = true
-                    setOf()
-                },
+                RelyingPartyTrust.Certificates { setOf() },
             ),
         ).getOrThrow()
-
-        consultedAfterTrustEstablished shouldBe false
     }
 
     "a scheme without configured trust material is rejected" {
@@ -206,7 +199,7 @@ val OpenId4VpRelyingPartyTrustTest by matrixSuite {
 
         presentTo(relyingParty, scheme, setOf(RelyingPartyTrust.Certificates { setOf() }))
             .exceptionOrNull().shouldNotBeNull()
-            .message.shouldNotBeNull() shouldContain "no pre-registered relying parties configured"
+            .message.shouldNotBeNull() shouldContain "No pre-registered clients configured"
     }
 }
 

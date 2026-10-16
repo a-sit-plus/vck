@@ -233,5 +233,4 @@ class StatusValidator @JvmOverloads constructor(
     private val StatusSignerAnchors.credentialIdentifier: String?
         get() = (this as? StatusSignerAnchors.OfCredentialType)?.credentialIdentifier
 
-    private fun KmmResult<*>.toOutcome(): CheckOutcome = fold(onSuccess = { Passed }, onFailure = { Failed(it) })
 }

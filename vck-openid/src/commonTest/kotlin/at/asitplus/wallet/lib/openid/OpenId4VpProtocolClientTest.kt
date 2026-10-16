@@ -18,7 +18,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.FakeHttpStack
 import at.asitplus.wallet.lib.oauth2.formParameters
@@ -92,8 +92,9 @@ val OpenId4VpProtocolClientTest by matrixSuite {
             loadRequestObject.shouldNotBeNull().invoke(null).getOrThrow()
         ).payload
 
+    // Asserts its key, as the wallet verifies the signature of a pre-registered client with it, lacking trust
     suspend fun AuthenticationRequestParameters.signed(): String =
-        SignJwt<AuthenticationRequestParameters>(verifierKeyMaterial, JwsHeaderNone())(
+        SignJwt<AuthenticationRequestParameters>(verifierKeyMaterial, JwsHeaderCertOrJwk())(
             JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
             this,
             AuthenticationRequestParameters.serializer(),

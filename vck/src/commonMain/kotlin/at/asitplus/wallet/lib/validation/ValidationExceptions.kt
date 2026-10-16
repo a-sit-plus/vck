@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
+import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.RequestDataValidity
+import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import kotlin.time.Instant
 
@@ -18,3 +20,11 @@ class TimelinessException(
     val notBefore: Instant?,
     val notAfter: Instant?,
 ) : IllegalArgumentException(message)
+
+/**
+ * A wallet-relying party requests credentials or claims its registration certificate does not cover: [requests]
+ * holds each such request with what is registered of it, e.g. to tell the user which claims are not registered.
+ */
+class UnregisteredRequestException(
+    val requests: List<Pair<WrpCredentialRequest, RequestDataValidity>>,
+) : IllegalArgumentException("${requests.size} credential request(s) are not registered")

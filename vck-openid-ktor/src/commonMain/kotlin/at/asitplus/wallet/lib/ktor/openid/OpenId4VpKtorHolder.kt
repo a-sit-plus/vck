@@ -29,8 +29,10 @@ import at.asitplus.wallet.lib.openid.Iso180137AnnexCHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient
 import at.asitplus.wallet.lib.openid.RelyingPartyTrust
+import at.asitplus.wallet.lib.openid.toRelyingPartyValidator
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -54,10 +56,10 @@ typealias OpenId4VpWallet = OpenId4VpKtorHolder
  */
 class OpenId4VpKtorHolder(
     /**
-     * The app's ktor client, i.e. with its engine and logging. This class sends its requests with a copy that does not
-     * follow redirects (see [HttpClient.config]), setting content type and status handling per request. Plugins must
-     * not re-send requests or react to error statuses: a re-sent authorization response submits the presentation
-     * twice.
+     * The app's ktor client, i.e. with its engine and logging. This class sends its requests with a copy that
+     * does not follow redirects (see [HttpClient.config]), setting content type and status handling per request.
+     * Plugins must not re-send requests or react to error statuses: a re-sent authorization response submits the
+     * presentation twice.
      */
     httpClient: HttpClient,
     /** Key material used to encrypt responses and sign ID tokens. */
@@ -72,8 +74,6 @@ class OpenId4VpKtorHolder(
     clientId: String = "https://wallet.a-sit.at/",
     /** Advertised as `authorization_endpoint` in [OpenId4VpHolder.metadata]. */
     authorizationEndpoint: String = "openid4vp:",
-    /** How to establish trust in the relying party sending an authorization request, or `null` for trusting all. */
-    relyingPartyTrust: Set<RelyingPartyTrust>? = null,
     /** Stores our nonce used when fetching authn requests using POST. */
     walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     /** Source for random bytes, i.e., nonces for encrypted responses. */
@@ -81,14 +81,79 @@ class OpenId4VpKtorHolder(
     /** Callback to load encryption keys for pre-registered clients. */
     lookupJsonWebKeysForClient: (OpenId4VpHolder.JsonWebKeyLookupInput) -> JsonWebKeySet? = { null },
     /** Supplies the allowed schemes for origins received with OpenID4VP DC API requests. */
-    allowedDcApiOriginSchemes: suspend () -> Set<String> = { OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES },
+    allowedDcApiOriginSchemes: suspend () -> Set<String> = {
+        OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES
+    },
     /** Set to accept encrypted authorization requests fetched with a POST (when RP supports that). */
     ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
     /** Advertised in `wallet_metadata` to encrypt authorization requests, see [ephemeralEncryptionKeyService]. */
     supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
     /** Set to reject a plain request object we have fetched with POST (when RP supports that) */
     requireEncryptedRequests: Boolean = false,
+    /** Validates the relying party behind requests, see [OpenId4VpHolder]. */
+    relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
 ) {
+
+    @Deprecated(
+        "Trust in relying parties is established by relyingPartyValidator, with the anchors of the access " +
+                "certificate providers: use the constructor without relyingPartyTrust"
+    )
+    @Suppress("DEPRECATION")
+    constructor(
+        /**
+         * The app's ktor client, i.e. with its engine and logging. This class sends its requests with a copy that
+         * does not follow redirects (see [HttpClient.config]), setting content type and status handling per request.
+         * Plugins must not re-send requests or react to error statuses: a re-sent authorization response submits the
+         * presentation twice.
+         */
+        httpClient: HttpClient,
+        /** Key material used to encrypt responses and sign ID tokens. */
+        keyMaterial: KeyMaterial,
+        /** Holds the credentials and creates the verifiable presentation. */
+        holder: Holder,
+        /** Encrypts the authn response to the verifier, if this has been requested. */
+        encryptJarm: EncryptJweFun = EncryptJwe(),
+        /** Advertised in [OpenId4VpHolder.metadata] and compared against holder's requirements. */
+        supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+        /** Advertised as `issuer` in [OpenId4VpHolder.metadata]. */
+        clientId: String = "https://wallet.a-sit.at/",
+        /** Advertised as `authorization_endpoint` in [OpenId4VpHolder.metadata]. */
+        authorizationEndpoint: String = "openid4vp:",
+        /** How to establish trust in the relying party sending an authorization request, or `null` for trusting all. */
+        relyingPartyTrust: Set<RelyingPartyTrust>?,
+        /** Stores our nonce used when fetching authn requests using POST. */
+        walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
+        /** Source for random bytes, i.e., nonces for encrypted responses. */
+        randomSource: RandomSource = RandomSource.Secure,
+        /** Callback to load encryption keys for pre-registered clients. */
+        lookupJsonWebKeysForClient: (OpenId4VpHolder.JsonWebKeyLookupInput) -> JsonWebKeySet? = { null },
+        /** Supplies the allowed schemes for origins received with OpenID4VP DC API requests. */
+        allowedDcApiOriginSchemes: suspend () -> Set<String> = {
+            OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES
+        },
+        /** Set to accept encrypted authorization requests fetched with a POST (when RP supports that). */
+        ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+        /** Advertised in `wallet_metadata` to encrypt authorization requests, see [ephemeralEncryptionKeyService]. */
+        supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
+        /** Set to reject a plain request object we have fetched with POST (when RP supports that) */
+        requireEncryptedRequests: Boolean = false,
+    ) : this(
+        httpClient = httpClient,
+        keyMaterial = keyMaterial,
+        holder = holder,
+        encryptJarm = encryptJarm,
+        supportedAlgorithms = supportedAlgorithms,
+        clientId = clientId,
+        authorizationEndpoint = authorizationEndpoint,
+        walletNonceMapStore = walletNonceMapStore,
+        randomSource = randomSource,
+        lookupJsonWebKeysForClient = lookupJsonWebKeysForClient,
+        allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
+        requireEncryptedRequests = requireEncryptedRequests,
+        relyingPartyValidator = relyingPartyTrust.toRelyingPartyValidator(),
+    )
 
     /**
      * @param engine ktor engine to make requests to the Relying Party.
@@ -107,6 +172,7 @@ class OpenId4VpKtorHolder(
         "Pass the app's HttpClient instead of engine and httpClientConfig, and the holder as holder; " +
                 "this also takes every other parameter of OpenId4VpHolder"
     )
+    @Suppress("DEPRECATION")
     constructor(
         engine: HttpClientEngine,
         httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
@@ -123,11 +189,18 @@ class OpenId4VpKtorHolder(
         httpClient = buildHttpClient(engine, httpClientConfig = httpClientConfig),
         keyMaterial = keyMaterial,
         holder = holderAgent,
-        relyingPartyTrust = relyingPartyTrust,
+        encryptJarm = EncryptJwe(),
+        supportedAlgorithms = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+        clientId = "https://wallet.a-sit.at/",
+        authorizationEndpoint = "openid4vp:",
+        walletNonceMapStore = DefaultMapStore(),
         randomSource = randomSource,
+        lookupJsonWebKeysForClient = { null },
         allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
         ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        supportedJweEncryptionAlgorithms = JweEncryption.entries.toSet(),
         requireEncryptedRequests = requireEncryptedRequests,
+        relyingPartyValidator = relyingPartyTrust.toRelyingPartyValidator(),
     )
 
     sealed interface AuthenticationResult
@@ -145,7 +218,6 @@ class OpenId4VpKtorHolder(
     private val client = httpClient.config { followRedirects = false }
 
     val openId4VpHolder = OpenId4VpHolder(
-        keyMaterial = keyMaterial,
         holder = holder,
         encryptJarm = encryptJarm,
         supportedAlgorithms = supportedAlgorithms,
@@ -153,7 +225,6 @@ class OpenId4VpKtorHolder(
         authorizationEndpoint = authorizationEndpoint,
         // only used by the deprecated methods of OpenId4VpHolder, this class sends the exchanges of protocolClient
         remoteResourceRetriever = { client.fetch(it) },
-        relyingPartyTrust = relyingPartyTrust,
         walletNonceMapStore = walletNonceMapStore,
         randomSource = randomSource,
         lookupJsonWebKeysForClient = lookupJsonWebKeysForClient,
@@ -161,6 +232,7 @@ class OpenId4VpKtorHolder(
         ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
         supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
         requireEncryptedRequests = requireEncryptedRequests,
+        relyingPartyValidator = relyingPartyValidator,
     )
 
     val iso180137AnnexCHolder = Iso180137AnnexCHolder(
@@ -173,6 +245,7 @@ class OpenId4VpKtorHolder(
         holder = holder,
         openId4VpHolder = openId4VpHolder,
         iso180137AnnexCHolder = iso180137AnnexCHolder,
+        relyingPartyValidator = relyingPartyValidator,
     )
 
     internal val protocolClient = OpenId4VpProtocolClient(openId4VpHolder)

@@ -6,7 +6,8 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.requireChainToAnchor
-import at.asitplus.wallet.lib.validation.CheckOutcome.*
+import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
+import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import kotlin.time.Instant
 
 /**
@@ -67,7 +68,7 @@ internal suspend fun checkTrust(
 
             TrustRule.CHAIN_TO_ANCHOR -> requireChainToAnchor(signer, anchors, at)
         }
-    }.fold(onSuccess = { Passed }, onFailure = { Failed(it) })
+    }.toOutcome()
 }
 
 /**
@@ -98,7 +99,7 @@ internal suspend fun CredentialTrustAnchors?.checkCredentialTrust(
         outcome = Blocked(IllegalArgumentException("No trust scope covers $credentialIdentifier")),
         credentialIdentifier = credentialIdentifier,
 
-    )
+        )
     val rule = when (purpose) {
         TrustPurpose.ISSUANCE -> TrustRule.ISSUED_BY_ANCHOR_OR_LISTED
         TrustPurpose.STATUS -> TrustRule.ISSUED_BY_ANCHOR

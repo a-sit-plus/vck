@@ -37,7 +37,6 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
             val clientId: String = "https://example.com/rp/${uuid4()}"
             val holderAgent: Holder = HolderAgent(holderKeyMaterial)
             val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
-                keyMaterial = holderKeyMaterial,
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
             )

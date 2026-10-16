@@ -173,7 +173,7 @@ private fun presentationBinding(
             "The transaction data hashes do not match the transaction data"
         }
     }
-}.fold(onSuccess = { Passed }, onFailure = { Failed(it) })
+}.toOutcome()
 
 /**
  * Validates a VP-JWT (W3C VC Data Model 1.1, *JWT encoding*): signed by the holder, whose key `iss` identifies,
