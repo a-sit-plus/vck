@@ -24,6 +24,18 @@ Release 9.0.0 (unreleased):
     - Reject empty required arrays, empty digital identities, null certificate wire entries, missing scheme-operator
       and associated-body website contacts, and timestamps without a four-digit year. Trusted-entity contacts allow
       email without a website. Other `ListAndSchemeInformation` requirements remain unchanged
+    - BREAKING: `WrpClaim.path` is a claims path pointer of `WrpClaimPathSegment`s (a name, `null` for all elements
+      of an array, or an index), and `WrpClaim.values` a list of `WrpClaimValue`s (a string, integer, or boolean), as
+      ETSI TS 119 475 V1.2.1, B.2.10 refers to OpenID4VP for them; `WrpClaim.named(...)` creates a path of names. A
+      WRPRC with `null` or an index in a path could not be parsed before. Registered paths authorize requested claims
+      by coverage: a registered ancestor covers descendants, and `null` covers an index or `null`. JSON and CWT
+      decode typed segments and values; empty paths and
+      indices above `UInt.MAX_VALUE` are rejected. kotlinx-serialization CBOR also reads an empty map as `null`
+- DCQL claim paths preserve numeric object keys as strings and reject invalid or overflowing indices
+- BREAKING: `JsonClaimReference` now wraps `path: DCQLClaimsPathPointer`, preserving wildcards during WRPRC authorization. The concrete-path
+  constructor is retained; deprecate `normalizedJsonPath`, which cannot represent wildcards. Its JSON member name
+  remains `normalizedJsonPath`
+- WRPRC authorization exempts only the root `vct` claim; nested claims named `vct` must be registered
 - Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
     - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations
       (`PresentationValidationInput` in a `PresentationContext`) under a `ValidationPolicy` (`TrustPolicy`,
@@ -81,6 +93,11 @@ Release 9.0.0 (unreleased):
           the `signature` and `parsing` of the WRPAC are not applicable, `requestData` fails with an
           `UnsupportedWrpRequestException`, and their WRPRCs are not evaluated, while a reader authentication that does
           not verify fails the `signature`, so that a wallet can tell an unauthenticated reader from a forged one
+        - A relying party reports its WRPRCs in the new named check `registration` of `RelyingPartyChecks`, required by
+          every policy: a missing WRPRC (`MissingRegistrationCertificateException`) or one that can not be parsed
+          (`InvalidRegistrationCertificateException`) fails `registration` instead of `requestData`, which keeps the
+          extraction of the request, e.g. its `client_id` and DCQL query, and fails for unsigned requests, whose
+          `registration` is blocked
     - Deprecate the superseded validation API, to be removed in the next major release: `Validator`,
       `ValidatorVcJws`, `ValidatorSdJwt`, `ValidatorMdoc`, `VerifierAgent`, and the presentation methods of `Verifier`
       (use `CredentialValidator`); `VcJwsInputValidator`, `SdJwtInputValidator`, `MdocInputValidator` and their

@@ -253,7 +253,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
             certificate to ValidationReport.registrationCertificate(checks, policy, timeScope.now)
         }
         val report = ValidationReport.relyingParty(
-            checks = RelyingPartyChecks(requestData = request.requestData),
+            checks = RelyingPartyChecks(requestData = request.requestData, registration = request.registration),
             accessCertificate = ValidationReport.accessCertificate(access.checks, policy, timeScope.now),
             registrationCertificates = registrations.map { it.second },
             evaluatedAt = timeScope.now,
@@ -281,23 +281,26 @@ class RelyingPartyValidator @JvmOverloads constructor(
         if (parameters == null)
             return unsupported("The request is no authorization request")
         val chain = jws.jwsHeader.certificateChain?.takeIf { it.isNotEmpty() }
-        val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
+        val requestData = catching {
             requireNotNull(parameters.clientId) { "The request has no client_id" }
-            val dcqlQuery = requireNotNull(parameters.dcqlQuery) { "The request has no DCQL query" }
+            requireNotNull(parameters.dcqlQuery) { "The request has no DCQL query" }
+        }
+        val certificate = catching<WrpRegistrationCertificate> {
             val verifierInfo = parameters.verifierInfo
                 ?: throw MissingRegistrationCertificateException("The request has no verifier_info")
-            val certificate = WrpRegistrationCertificate.WrpJwtRegistrationCertificate(
-                verifierInfo.parseSingleRegistrationCertificate()
-            )
-            mapOf(certificate to dcqlQuery.credentials.map { WrpCredentialRequest.WrpDcqlCredentialQuery(it) })
+            WrpRegistrationCertificate.WrpJwtRegistrationCertificate(verifierInfo.parseSingleRegistrationCertificate())
         }
+        val requests: List<WrpCredentialRequest>? =
+            parameters.dcqlQuery?.credentials?.map { WrpCredentialRequest.WrpDcqlCredentialQuery(it) }
         return ExtractedRequest(
             accessCertificateChain = chain,
             signature = chain?.let { signatureCheck.verify(jws).outcome }
                 ?: Blocked(IllegalArgumentException("The request transports no certificate chain")),
             clientId = parameters.clientId.orEmpty(),
-            requestData = registrationCertificates.toOutcome(),
-            registrationCertificates = registrationCertificates.getOrElse { emptyMap() },
+            requestData = requestData.toOutcome(),
+            registration = certificate.toOutcome(),
+            registrationCertificates = certificate.getOrNull()?.let { wrprc -> requests?.let { mapOf(wrprc to it) } }
+                .orEmpty(),
         )
     }
 
@@ -335,7 +338,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
             accessCertificateChain = chain.getOrNull(),
             signature = chain.toOutcome(),
             clientId = null,
-            requestData = registrationCertificates.toOutcome(),
+            requestData = Passed,
+            registration = registrationCertificates.toOutcome(),
             registrationCertificates = registrationCertificates.getOrElse { emptyMap() },
         )
     }
@@ -349,6 +353,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         signature = NotApplicable,
         clientId = null,
         requestData = Failed(UnsupportedWrpRequestException(message)),
+        registration = Blocked(),
         registrationCertificates = emptyMap(),
     )
 
@@ -357,6 +362,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         signature = Blocked(),
         clientId = null,
         requestData = Failed(UnsupportedWrpRequestException(message)),
+        registration = Blocked(),
         registrationCertificates = emptyMap(),
     )
 
@@ -367,8 +373,10 @@ class RelyingPartyValidator @JvmOverloads constructor(
         val signature: CheckOutcome,
         /** The client identifier of a JAR, `null` for mdoc reader authentication. */
         val clientId: String?,
-        /** Whether the WRPRCs and the credential requests could be extracted. */
+        /** Whether the credential requests could be extracted from a request this validator supports. */
         val requestData: CheckOutcome,
+        /** Whether the request carries its WRPRCs as required, and they could be parsed. */
+        val registration: CheckOutcome,
         val registrationCertificates: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>,
     )
 
