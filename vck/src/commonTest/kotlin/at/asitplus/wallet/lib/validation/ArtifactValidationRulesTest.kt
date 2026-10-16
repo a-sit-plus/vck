@@ -101,6 +101,7 @@ private val passingIssuerMetadata = IssuerMetadataChecks(
     trust = relyingPartyTrust,
     timeliness = Passed,
     subject = Passed,
+    registration = Passed,
 )
 
 private fun keyAttestation(
@@ -369,6 +370,11 @@ val ArtifactValidationRulesTest by matrixSuite {
             val untrusted = passingIssuerMetadata.copy(trust = relyingPartyTrust.copy(outcome = Failed(failure)))
             ValidationReport.issuerMetadata(untrusted, strictPolicy, evaluatedAt).decision shouldBe REJECTED
             ValidationReport.issuerMetadata(untrusted, relaxedPolicy, evaluatedAt).decision shouldBe ACCEPTED
+        }
+
+        "missing registration information rejects even under a relaxed policy" {
+            val unregistered = passingIssuerMetadata.copy(registration = Failed(failure))
+            ValidationReport.issuerMetadata(unregistered, relaxedPolicy, evaluatedAt).decision shouldBe REJECTED
         }
     }
 

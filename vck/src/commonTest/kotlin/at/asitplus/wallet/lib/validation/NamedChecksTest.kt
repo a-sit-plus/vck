@@ -70,7 +70,7 @@ private val everyTypeOfChecks: List<ValidationChecks> = listOf(
     RelyingPartyChecks(Passed),
     AccessCertificateChecks(Passed, Passed, trusted, Passed, Passed),
     RegistrationCertificateChecks(Passed, Passed, trusted, Passed, validStatus, Passed, Passed),
-    IssuerMetadataChecks(Passed, Passed, trusted, Passed, Passed),
+    IssuerMetadataChecks(Passed, Passed, trusted, Passed, Passed, Passed),
 )
 
 /** Names that refer to a time, see [NamedCheck]. */
