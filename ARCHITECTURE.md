@@ -321,7 +321,9 @@ Every artifact a party receives is validated in `vck/.../lib/validation` into a 
 checks, each a `CheckOutcome` (passed, failed with its cause, blocked by a failed prerequisite, or not applicable),
 whose `decision` is derived from the checks, the children, and a `ValidationPolicy` by the pure rules in
 `ValidationRules.kt`. A result holds the report next to the validated value, which is present only if the report is
-accepted, so an unverified value is never exposed as validated. Rules to keep:
+accepted, so an unverified value is never exposed as validated. Where a user may continue after seeing the report, the
+result also carries the value as untrusted or unaccepted, e.g. `CredentialValidationResult.unacceptedCredential` for
+a credential that only fails checks the policy may relax (`isIntactCredential`). Rules to keep:
 
 - One validator per artifact kind: `CredentialValidator` for credentials and presentations, `StatusValidator` for
   status list tokens, `RelyingPartyValidator` for WRPACs, WRPRCs and client identifier prefixes,

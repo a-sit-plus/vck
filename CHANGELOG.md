@@ -72,6 +72,9 @@ Release 9.0.0 (unreleased):
       (draft-ietf-oauth-sd-jwt-vc-19, 5.6.3), resolved by the new `requiredClaimsResolver` of `CredentialValidator`
       (`RequiredClaimsResolver.Default` uses the credential metadata registries and schemes of `AttributeIndex`, and
       blocks the check for a type without metadata). Not applicable to presented credentials
+    - Add `CredentialValidationResult.unacceptedCredential` and `ValidationReport.isIntactCredential()`: the
+      credential whatever the decision, if only checks a policy may relax are not satisfied (issuer trust, timeliness,
+      required claims, status), so that a wallet can store it after the user accepts the report
     - Add `RelyingPartyValidator` with `RelyingPartyTrustAnchors` (WRPAC and WRPRC anchors, status list signers of
       WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a

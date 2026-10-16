@@ -101,6 +101,7 @@ val RequiredClaimsTest by matrixSuite {
 
                 result.report.decision shouldBe REJECTED
                 result.credential.shouldBeNull()
+                result.unacceptedCredential.shouldNotBeNull()
                 val expected = OpenId4VciClaimsPathPointer(
                     listOfNotNull(scheme.isoNamespace.takeIf { representation == ISO_MDOC }, "missing")
                 )
@@ -117,6 +118,7 @@ val RequiredClaimsTest by matrixSuite {
 
                 result.report.decision shouldBe REJECTED
                 result.claims.outcome.shouldBeInstanceOf<Blocked>()
+                result.unacceptedCredential.shouldNotBeNull()
             }
 
             "a failing resolver blocks the check with its cause" {
