@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.ktor.openid
 
-import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.HttpExchange
+import at.asitplus.wallet.lib.HttpStep
+import at.asitplus.wallet.lib.PreparedHttpRequest
+import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -11,41 +14,43 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonObject
+
+@Deprecated(
+    "Moved to vck-openid, which does not depend on a ktor client",
+    ReplaceWith("ProblemDetails", "at.asitplus.wallet.lib.ProblemDetails"),
+)
+typealias ProblemDetails = at.asitplus.wallet.lib.ProblemDetails
 
 /**
- * Standard members of an
- * [RFC 9457 problem details object](https://datatracker.ietf.org/doc/html/rfc9457#name-the-problem-details-json-ob).
- * [type] defaults to `about:blank`; problem-specific members are retained in [extensions].
+ * A non-success HTTP response with its OAuth or RFC 9457 error details, when available,
+ * as thrown by the ktor-based clients in this module.
  */
-data class ProblemDetails(
-    val type: String = "about:blank",
-    val status: Int? = null,
-    val title: String? = null,
-    val detail: String? = null,
-    val instance: String? = null,
-    val extensions: JsonObject = JsonObject(emptyMap()),
+@Deprecated(
+    "Catch at.asitplus.wallet.lib.HttpErrorResponseException, which this class extends; use its status and headers " +
+            "instead of the ktor response. This class no longer extends ktor's ResponseException.",
+    ReplaceWith("HttpErrorResponseException", "at.asitplus.wallet.lib.HttpErrorResponseException"),
 )
+class HttpErrorResponseException : at.asitplus.wallet.lib.HttpErrorResponseException {
 
-/** A non-success HTTP response with its OAuth or RFC 9457 error details, when available. */
-class HttpErrorResponseException(
-    response: HttpResponse,
-    val responseBody: String,
-    val oauth2Error: OAuth2Error?,
-    val problemDetails: ProblemDetails?,
-) : ResponseException(response, responseBody) {
-    override val message = oauth2Error?.errorDescription
-        ?: oauth2Error?.error
-        ?: problemDetails?.detail
-        ?: problemDetails?.title
-        ?: responseBody.takeIf { it.isNotBlank() }
-        ?: "HTTP ${response.status}"
+    /** The ktor response; use [status] and [headers] instead. */
+    val response: HttpResponse
+
+    constructor(
+        response: HttpResponse,
+        responseBody: String,
+        oauth2Error: OAuth2Error?,
+        problemDetails: at.asitplus.wallet.lib.ProblemDetails?,
+    ) : super(response.status, response.headers, responseBody, oauth2Error, problemDetails) {
+        this.response = response
+    }
+
+    /** Parses the OAuth and RFC 9457 error details from [responseBody]. */
+    internal constructor(response: HttpResponse, responseBody: String) :
+            super(response.status, response.headers, responseBody) {
+        this.response = response
+    }
 }
 
 internal fun buildHttpClient(
@@ -69,54 +74,54 @@ internal fun buildHttpClient(
     installResponseValidation()
 }
 
+@Suppress("DEPRECATION") // keeps throwing the ktor subclass until it is removed
 private fun HttpClientConfig<*>.installResponseValidation() {
     expectSuccess = true
     HttpResponseValidator {
         handleResponseExceptionWithRequest { cause, _ ->
             val response = (cause as? ResponseException)?.response
                 ?: return@handleResponseExceptionWithRequest
-            val body = response.bodyAsText()
-            val json = catchingUnwrapped {
-                joseCompliantSerializer.parseToJsonElement(body).jsonObject
-            }.getOrNull()
-
-            throw HttpErrorResponseException(
-                response = response,
-                responseBody = body,
-                oauth2Error = json?.let {
-                    catchingUnwrapped {
-                        joseCompliantSerializer.decodeFromJsonElement<OAuth2Error>(it)
-                    }.getOrNull()
-                },
-                problemDetails = json?.takeIf {
-                    response.contentType()?.withoutParameters() == ContentType.Application.ProblemJson
-                }?.toProblemDetails(),
-            )
+            throw HttpErrorResponseException(response, response.bodyAsText())
         }
     }
 }
 
-private object SerialNames {
-    const val TYPE = "type"
-    const val TITLE = "title"
-    const val STATUS = "status"
-    const val DETAIL = "detail"
-    const val INSTANCE = "instance"
-    val AllMembers = setOf(TYPE, TITLE, STATUS, DETAIL, INSTANCE)
+/**
+ * Sends all requests of [exchange] with this client, and returns its result.
+ *
+ * Failures because of a non-success response are thrown as the deprecated [HttpErrorResponseException] of this module
+ * (built from the last ktor response), so that callers catching it keep catching everything until it is removed.
+ */
+@Suppress("DEPRECATION")
+internal suspend fun <T> HttpClient.execute(exchange: HttpExchange<T>): T {
+    var lastResponse: HttpResponse? = null
+    try {
+        var step = exchange.next().getOrThrow()
+        while (step is HttpStep.Send) {
+            val response = send(step.request.http)
+            lastResponse = response
+            step = exchange.next(ReceivedHttpResponse(response.status, response.headers, response.bodyAsText()))
+                .getOrThrow()
+        }
+        return (step as HttpStep.Done).value
+    } catch (error: at.asitplus.wallet.lib.HttpErrorResponseException) {
+        throw lastResponse
+            ?.let { HttpErrorResponseException(it, error.responseBody, error.oauth2Error, error.problemDetails) }
+            ?: error
+    }
 }
 
-private fun JsonObject.toProblemDetails() = ProblemDetails(
-    type = string(SerialNames.TYPE) ?: "about:blank",
-    status = (get(SerialNames.STATUS) as? JsonPrimitive)
-        ?.takeUnless { it.isString }
-        ?.intOrNull
-        ?.takeIf { it in 100..599 },
-    title = string(SerialNames.TITLE),
-    detail = string(SerialNames.DETAIL),
-    instance = string(SerialNames.INSTANCE),
-    extensions = JsonObject(filterKeys { it !in SerialNames.AllMembers }),
-)
-
-private fun JsonObject.string(name: String) = (get(name) as? JsonPrimitive)
-    ?.takeIf { it.isString }
-    ?.contentOrNull
+/** Sends [prepared] without ktor's response validation, so that every status code reaches the exchange. */
+private suspend fun HttpClient.send(prepared: PreparedHttpRequest): HttpResponse = request(prepared.url) {
+    method = prepared.method
+    expectSuccess = false
+    prepared.headers.forEach { name, values ->
+        // the content type is set with the body, see below
+        if (!name.equals(HttpHeaders.ContentType, ignoreCase = true)) values.forEach { headers.append(name, it) }
+    }
+    prepared.body?.let { body ->
+        val contentType = prepared.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
+            ?: ContentType.Text.Plain
+        setBody(TextContent(body, contentType))
+    }
+}

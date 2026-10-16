@@ -3,14 +3,11 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
@@ -18,11 +15,8 @@ import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.engine.*
 import io.ktor.client.plugins.cookies.*
-import io.ktor.client.request.*
-import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -63,17 +57,8 @@ class RemoteOAuth2AuthorizationServerAdapter(
 ) : OAuth2AuthorizationServerAdapter {
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
-        catching { loadOauthASMetadata() }
-            .getOrElse { loadOpenidConfiguration() }
+        oauth2Client.client.execute(oauth2Client.protocolClient.loadAuthorizationServerMetadata(publicContext))
     }
-
-    private suspend fun loadOauthASMetadata() =
-        oauth2Client.client.get(insertWellKnownPath(publicContext, WellKnownPaths.OauthAuthorizationServer))
-            .body<OAuth2AuthorizationServerMetadata>()
-
-    private suspend fun loadOpenidConfiguration() =
-        oauth2Client.client.get(insertWellKnownPath(publicContext, WellKnownPaths.OpenidConfiguration))
-            .body<OAuth2AuthorizationServerMetadata>()
 
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata.await()
 
@@ -90,7 +75,6 @@ class RemoteOAuth2AuthorizationServerAdapter(
         oauth2Client.callTokenIntrospection(
             oauthMetadata = oauthMetadata,
             request = request,
-            token = token,
             popAudience = publicContext
         ).toTokenInfo(token)
     }
@@ -106,32 +90,15 @@ class RemoteOAuth2AuthorizationServerAdapter(
     ): KmmResult<JsonObject> = catching {
         val userInfoEndpoint = _metadata.await().userInfoEndpoint
             ?: throw InvalidToken("No UserInfo Endpoint found in Authorization Server metadata")
-        oauth2Client.requestTokenWithTokenExchange(
+        val tokenResponse = oauth2Client.requestTokenWithTokenExchange(
             oauthMetadata = _metadata.await(),
             authorizationServer = publicContext,
             subjectToken = authorizationHeader.split(" ").last(),
             resource = userInfoEndpoint,
-        ).getOrThrow().let {
-            fetchUserInfo(userInfoEndpoint, it.params, it.dpopNonce)
-        }
-    }
-
-    private suspend fun fetchUserInfo(
-        userInfoEndpoint: String,
-        params: TokenResponseParameters,
-        dpopNonce: String?,
-        retryCount: Int = 0,
-    ): JsonObject = try {
-        oauth2Client.client.request {
-            url(userInfoEndpoint)
-            method = HttpMethod.Get
-            oauth2Client.applyToken(params, userInfoEndpoint, HttpMethod.Get, dpopNonce)()
-        }.body()
-    } catch (error: HttpErrorResponseException) {
-        error.dpopNonce()
-            ?.takeIf { retryCount == 0 }
-            ?.let { fetchUserInfo(userInfoEndpoint, params, it, retryCount + 1) }
-            ?: throw error
+        ).getOrThrow()
+        oauth2Client.client.execute(
+            oauth2Client.protocolClient.userInfoRequest(userInfoEndpoint, tokenResponse.params)
+        )
     }
 
     override suspend fun validateAccessToken(
