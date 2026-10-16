@@ -42,6 +42,7 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondResourceServerError
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifyIsoMdocCredential
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.verifySdJwtCredential
 import at.asitplus.wallet.lib.oauth2.AttestationBasedClientAuthenticationService
@@ -49,11 +50,13 @@ import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
+import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
+import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -158,18 +161,18 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             when {
                 request.url.toString().startsWith(issuerPublicContext) &&
                         request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.CredentialIssuer ->
-                    respond(openId4VciServer.metadata)
+                    respond(openId4VciServer.metadataHttpResponse(request.headers[HttpHeaders.Accept]).getOrThrow())
 
                 request.url.toString().startsWith(authServerPublicContext) &&
                         request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.OauthAuthorizationServer ->
-                    respond(externalAuthorizationServer.metadata())
+                    respond(externalAuthorizationServer.metadata().toHttpResponse())
 
                 request.url.toString() == "$authServerPublicContext$parEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: RequestParameters =
                         RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
-                    externalAuthorizationServer.par(authnRequest, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
+                    externalAuthorizationServer.parWithDpopNonce(authnRequest, request.toRequestInfo()).fold(
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -182,7 +185,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                         if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
                         else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
                     externalAuthorizationServer.authorize(authnRequest) { catching { dummyUser() } }.fold(
-                        onSuccess = { respondRedirect(it.url) },
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -190,17 +193,17 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                 request.url.toString() == "$authServerPublicContext$tokenEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromFormUrlEncoded<TokenRequestParameters>()
-                    externalAuthorizationServer.token(params, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
+                    externalAuthorizationServer.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
                 request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
                     val authn = request.headers[HttpHeaders.Authorization]
-                    externalAuthorizationServer.userInfo(authn!!, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
-                        onFailure = { respondOAuth2Error(it) }
+                    externalAuthorizationServer.userInfoWithDpopNonce(authn!!, request.toRequestInfo()).fold(
+                        onSuccess = { respond(it.toHttpResponse()) },
+                        onFailure = { respondResourceServerError(it, authn) }
                     )
                 }
 
@@ -208,17 +211,18 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params = requestBody.decodeFromFormUrlEncoded<TokenIntrospectionRequest>()
                     externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it) },
+                        onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
 
                 request.url.toString() == "$issuerPublicContext$nonceEndpointPath" -> {
-                    respond(openId4VciServer.nonceWithDpopNonce().getOrThrow())
+                    respond(openId4VciServer.nonceWithDpopNonce().getOrThrow().toHttpResponse())
                 }
 
                 request.url.toString() == "$authServerPublicContext$challengeEndpointPath" -> {
-                    respond(externalAuthorizationServer.attestationChallenge().getOrThrow())
+                    externalAuthorizationServer.attestationChallenge().getOrThrow().shouldNotBeNull()
+                        .let { respond(it.toHttpResponse()) }
                 }
 
                 request.url.toString() == "$issuerPublicContext$credentialEndpointPath" -> {
@@ -231,8 +235,8 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                         credentialDataProvider = credentialDataProvider,
                         request = request.toRequestInfo(),
                     ).fold(
-                        onSuccess = { respond(it) },
-                        onFailure = { respondOAuth2Error(it) }
+                        onSuccess = { respond(it.toHttpResponse()) },
+                        onFailure = { respondResourceServerError(it, authn) }
                     )
                 }
 
