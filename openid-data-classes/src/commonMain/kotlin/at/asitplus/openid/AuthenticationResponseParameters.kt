@@ -70,4 +70,26 @@ data class AuthenticationResponseParameters(
      */
     @SerialName("response")
     val response: String? = null,
+
+    /**
+     * OAuth2.0: REQUIRED in an authorization error response. A single ASCII error code, e.g. `invalid_request`.
+     * OID4VP: Error codes of OAuth 2.0 and OpenID4VP 1.0, 8.5, the set is open. Over the Digital Credentials API, the
+     * only parameter of an error response (OpenID4VP 1.0, A.4).
+     */
+    @SerialName("error")
+    val error: String? = null,
+
+    /**
+     * OAuth2.0: OPTIONAL in an authorization error response. Human-readable ASCII text providing additional
+     * information, MUST NOT include characters outside the set `%x20-21` / `%x23-5B` / `%x5D-7E`.
+     */
+    @SerialName("error_description")
+    val errorDescription: String? = null,
+
+    /**
+     * OAuth2.0: OPTIONAL in an authorization error response. A URI identifying a human-readable web page with
+     * information about the error, MUST NOT include characters outside the set `%x21` / `%x23-5B` / `%x5D-7E`.
+     */
+    @SerialName("error_uri")
+    val errorUri: String? = null,
 )

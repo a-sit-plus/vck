@@ -4,11 +4,9 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.ResponseParametersFrom
-import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.wallet.lib.DefaultNonceService
@@ -36,7 +34,6 @@ import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 
 /**
@@ -94,6 +91,7 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         stateToAuthnRequestStore = stateToAuthnRequestStore,
         supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
     )
+    private val responseProcessor = AuthnResponseProcessor(requestFactory, nonceAwareVerifier)
     private val vpTokenValidator = VpTokenValidator(
         mdocDeviceSignatureVerifier = MdocDeviceSignatureVerifier(verifyCoseSignature = verifyCoseSignature),
         createSessionTranscript = UrlSessionTranscriptCalculator(),
@@ -184,8 +182,15 @@ class OpenId4VpVerifier @JvmOverloads constructor(
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      *
-     * For the response modes `direct_post` and `direct_post.jwt`, answer the posted response with
-     * [directPostHttpResponse] once it has been processed.
+     * Succeeds if the response has been processed, see [AuthnResponseResult]: it is a presentation
+     * ([AuthnResponseResult.Success], valid or not) or an authorization error response of the wallet
+     * ([AuthnResponseResult.Error]). Either one ends the request, so a second response to it fails. Fails if the
+     * response has not been processed, i.e. it is malformed, can't be correlated with a request, or violates the
+     * protection its request requires.
+     *
+     * For the response modes `direct_post` and `direct_post.jwt`, answer a processed response with
+     * [directPostHttpResponse] (OpenID4VP 1.0, 8.2), and one that has not been processed with a non-success status,
+     * e.g. 400.
      */
     suspend fun validateAuthnResponse(
         input: String,
@@ -197,46 +202,37 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     /**
      * Validates an Authentication Response from the Wallet,
      * in case it has been parsed into [ResponseParametersFrom] with [ResponseParser].
+     *
+     * See [validateAuthnResponse] for the outcomes.
      */
     suspend fun validateAuthnResponse(
         input: ResponseParametersFrom,
-    ) = catching {
+    ): KmmResult<AuthnResponseResult> = catching {
         Napier.d("validateAuthnResponse: $input")
-        val authnRequest = requestFactory.loadAuthnRequest(input)
-
-        // the request has been consumed above, and an authentication response is not retryable,
-        // so end the challenge's lifecycle here, no matter how validating the response turns out
-        val session = nonceAwareVerifier.consumeChallenge(
-            authnRequest.nonce ?: throw IllegalArgumentException("nonce not present in $authnRequest")
-        )
-
-        val responseType = authnRequest.responseType?.let { ResponseType(it) }
-        require(responseType != null) {
-            "No response type was specified in the original authentication request."
+        with(responseProcessor.consume(input, externalId = null)) {
+            // the request has been consumed, so a response over the wrong transport ends it, too
+            validateTransport(input)
+            error?.let { AuthnResponseResult.Error(it, request) } ?: AuthnResponseResult.Success(
+                vpTokenResult = validateVpToken(request, input, session),
+                request = request,
+            )
         }
-        require(OpenIdConstants.VP_TOKEN in responseType) {
-            "Response type must contain `vp_token`"
-        }
-
-        AuthnResponseResult(
-            vpTokenValidationResult = validateVpToken(authnRequest, input, session),
-            request = authnRequest,
-        )
     }
 
-    /**
-     * Validates the `vp_token` of the response with the shared [VpTokenValidator],
-     * enforcing this verifier's transport: URL/QR, i.e. anything but the Digital Credentials API.
-     */
-    @Throws(IllegalArgumentException::class, CancellationException::class)
+    /** Enforces this verifier's transport: URL/QR, i.e. anything but the Digital Credentials API. */
+    @Throws(IllegalArgumentException::class)
+    private fun validateTransport(responseParameters: ResponseParametersFrom) {
+        require(responseParameters.originalResponseParameters !is ResponseParametersFrom.DcApi) {
+            "DCAPI verification is not supported, use DcApiVerifier"
+        }
+    }
+
+    /** Validates the `vp_token` of the response with the shared [VpTokenValidator]. */
     private suspend fun validateVpToken(
         authnRequest: AuthenticationRequestParameters,
         responseParameters: ResponseParametersFrom,
         session: ChallengeSession,
     ): KmmResult<VpTokenValidationResult> = catching {
-        require(responseParameters.originalResponseParameters !is ResponseParametersFrom.DcApi) {
-            "DCAPI verification is not supported, use DcApiVerifier"
-        }
         vpTokenValidator.validateVpToken(
             authnRequest = authnRequest,
             responseParameters = responseParameters,

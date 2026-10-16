@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.FakeHttpStack
 import at.asitplus.wallet.lib.oauth2.scripted
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
 /**
@@ -47,3 +48,7 @@ fun requestUriEndpoint(
         body = serve(request.body?.decodeFromFormUrlEncoded<RequestObjectParameters>()),
     ) else ReceivedHttpResponse(HttpStatusCode.NotFound, Headers.Empty, "")
 }
+
+/** The `vp_token` of a processed presentation, failing for an authorization error response or an invalid one. */
+fun AuthnResponseResult.vpTokenOrThrow(): VpTokenValidationResult =
+    shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.getOrThrow()
