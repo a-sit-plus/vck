@@ -20,7 +20,6 @@ import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
@@ -28,6 +27,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyUserProvider.user
+import at.asitplus.wallet.lib.validation.ClientAttestationValidator
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
@@ -75,8 +75,8 @@ val OAuth2ClientAttestationDpopCombinedTest by matrixSuite {
                     tokenService = TokenService.jwt(dpopNonceService = proofNonceService),
                     clientAuthenticationService = AttestationBasedClientAuthenticationService(
                         issuerIdentifier = AUTHORIZATION_SERVER,
-                        verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                            trustedIssuers = { setOf(walletProviderCaCert) }
+                        clientAttestationValidator = ClientAttestationValidator(
+                            walletProviderAnchors = { setOf(walletProviderCaCert) },
                         ),
                         nonceService = proofNonceService,
                         acceptedPopMethods = popMethods.toSet(),

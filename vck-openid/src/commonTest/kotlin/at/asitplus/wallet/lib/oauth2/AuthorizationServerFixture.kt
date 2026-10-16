@@ -11,10 +11,10 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ReceivedHttpResponse
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
@@ -28,8 +28,10 @@ import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
+import at.asitplus.wallet.lib.validation.ClientAttestationValidator
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.ktor.http.*
+import kotlinx.coroutines.runBlocking
 
 /**
  * An authorization server (with attestation-based client authentication and DPoP) and a credential issuer (issuing
@@ -56,6 +58,10 @@ class AuthorizationServerFixture(
     val clientAuthKeyMaterial = EphemeralKeyWithoutCert()
     val clientId = "https://example.com/rp"
 
+    /** Signs the client attestations, with a certificate issued by an anchor of [authorizationService]. */
+    private val walletProvider = runBlocking { TestCertificateAuthority() }
+    private val walletProviderKeyMaterial = runBlocking { walletProvider.issue() }
+
     // In DPoP combined mode the attestation challenge is carried in the DPoP proof's nonce, so both stores
     // must be the same instance for a challenge to be accepted as a DPoP nonce
     private val proofNonceService = DefaultNonceService()
@@ -69,6 +75,9 @@ class AuthorizationServerFixture(
         clientAuthenticationService = popMethods?.let {
             AttestationBasedClientAuthenticationService(
                 acceptedPopMethods = it,
+                clientAttestationValidator = ClientAttestationValidator(
+                    walletProviderAnchors = { setOf(walletProvider.certificate) },
+                ),
                 nonceService = proofNonceService,
             )
         } ?: NoopClientAuthenticationService,
@@ -107,7 +116,7 @@ class AuthorizationServerFixture(
             captureAttestationInput?.invoke(it)
             catching {
                 BuildClientAttestationJwt(
-                    SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                    SignJwt(walletProviderKeyMaterial, JwsHeaderCertOrJwk()),
                     clientId = clientId,
                     clientKey = clientAuthKeyMaterial.jsonWebKey
                 )

@@ -37,8 +37,6 @@ import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
@@ -59,6 +57,7 @@ import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.kotest.engine.runBlocking
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.*
@@ -93,6 +92,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
         attributes: Map<String, String>,
         validatePopAudience: Boolean = false,
     ): Context {
+        val walletProvider = runBlocking { TestWalletProvider() }
         val credentialKeyMaterial = EphemeralKeyWithoutCert()
         val walletClientAuthKeyMaterial = EphemeralKeyWithoutCert()
         val issuerClientAuthKeyMaterial = EphemeralKeyWithoutCert()
@@ -147,6 +147,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             introspectionEndpointPath = introspectionEndpointPath,
             challengeEndpointPath = challengeEndpointPath,
             clientAuthenticationService = AttestationBasedClientAuthenticationService(
+                clientAttestationValidator = walletProvider.clientAttestationValidator,
                 issuerIdentifier = if (validatePopAudience) authServerPublicContext else null,
             ),
             tokenService = tokenService,
@@ -254,7 +255,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                 clientAttestation = ClientAttestation(issuerClientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
-                            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                            walletProvider.signJwt,
                             clientId = issuerPublicContext,
                             clientKey = issuerClientAuthKeyMaterial.jsonWebKey
                         )
@@ -282,7 +283,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                 clientAttestation = ClientAttestation(walletClientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
-                            SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
+                            walletProvider.signJwt,
                             clientId = walletClientId,
                             clientKey = walletClientAuthKeyMaterial.jsonWebKey
                         )

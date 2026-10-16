@@ -6,11 +6,8 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.TimeScope
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
-import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
 import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
@@ -72,20 +69,21 @@ class KeyAttestationValidator @JvmOverloads constructor(
             signature = if (verification.certificateChain == null) {
                 Failed(IllegalArgumentException("The key attestation transports no certificate in x5c"))
             } else verification.outcome,
-            trust = TrustValidation(
-                outcome = checkTrust(
-                    chain = verification.certificateChain,
-                    anchors = walletProviderAnchors?.invoke(),
-                    at = evaluatedAt,
-                    rule = TrustRule.ISSUED_BY_ANCHOR,
-                ),
-                source = WALLET_PROVIDERS,
-            ),
+            trust = walletProviderTrust(verification.certificateChain, walletProviderAnchors, evaluatedAt),
             timeliness = payload.timeliness(timeScope),
             status = StatusValidation(NotApplicable, emptyList(), NotApplicable),
             nonce = nonce,
         )
-        val checks = withoutStatus.copy(status = status(payload, withoutStatus, policy, evaluatedAt))
+        val status = walletProviderStatus(
+            status = payload.keyStorageStatus?.status,
+            artifact = "key attestation",
+            otherwiseAccepted = withoutStatus.meets(policy.copy(status = StatusPolicy.Skip)),
+            statusValidator = statusValidator,
+            statusAnchors = walletProviderStatusAnchors,
+            policy = policy,
+            evaluatedAt = evaluatedAt,
+        )
+        val checks = withoutStatus.copy(status = status)
         val report = ValidationReport.keyAttestation(checks, policy, evaluatedAt)
         val attestedKeys = if (report.decision == ValidationDecision.ACCEPTED) {
             payload.attestedKeys.map { it.toCryptoPublicKey().getOrThrow() }
@@ -123,39 +121,6 @@ class KeyAttestationValidator @JvmOverloads constructor(
 
             else -> Passed
         }
-    }
-
-    private suspend fun status(
-        payload: KeyAttestationJwt,
-        withoutStatus: KeyAttestationChecks,
-        policy: ValidationPolicy,
-        evaluatedAt: Instant,
-    ): StatusValidation {
-        val status = payload.keyStorageStatus?.status
-        val otherwiseAccepted = withoutStatus.meets(policy.copy(status = StatusPolicy.Skip))
-        if (policy.status != StatusPolicy.Skip && status != null && !otherwiseAccepted) {
-            return StatusValidation(
-                claim = Blocked(IllegalStateException("The status of an invalid key attestation is not resolved")),
-                agreement = NotApplicable,
-            )
-        }
-        val statusInfo = status?.let {
-            catching { joseCompliantSerializer.decodeFromJsonElement(TokenStatusInfo.serializer(), it) }.getOrElse {
-                return StatusValidation(claim = Failed(it), agreement = NotApplicable)
-            }
-        }
-        return statusValidator.validate(
-            status = statusInfo,
-            signerAnchors = StatusSignerAnchors.OfArtifactKind(walletProviderStatusAnchors, WALLET_PROVIDER_STATUS),
-            policy = policy.status,
-            timeLeeway = policy.timeLeeway,
-            evaluatedAt = evaluatedAt,
-        )
-    }
-
-    private companion object {
-        const val WALLET_PROVIDERS = "wallet providers"
-        const val WALLET_PROVIDER_STATUS = "status list signers of wallet providers"
     }
 }
 

@@ -23,13 +23,13 @@ import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyUserProvider.user
+import at.asitplus.wallet.lib.validation.ClientAttestationValidator
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.comparables.shouldBeLessThan
@@ -68,8 +68,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 strategy = DummyAuthorizationServiceStrategy(scope),
                 clientAuthenticationService = AttestationBasedClientAuthenticationService(
                     issuerIdentifier = AUTHORIZATION_SERVER,
-                    verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                        trustedIssuers = { setOf(walletProviderCa.certificate) }
+                    clientAttestationValidator = ClientAttestationValidator(
+                        walletProviderAnchors = { setOf(walletProviderCa.certificate) },
                     ),
                 )
             )
@@ -327,8 +327,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 tokenService = TokenService.bearer(issueRefreshTokens = true),
                 clientAuthenticationService = AttestationBasedClientAuthenticationService(
                     issuerIdentifier = AUTHORIZATION_SERVER,
-                    verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                        trustedIssuers = { setOf(it.walletProviderCaCert) },
+                    clientAttestationValidator = ClientAttestationValidator(
+                        walletProviderAnchors = { setOf(it.walletProviderCaCert) },
                     ),
                 ),
             )
@@ -533,9 +533,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                 publicContext = AUTHORIZATION_SERVER,
                 strategy = DummyAuthorizationServiceStrategy(it.scope),
                 clientAuthenticationService = AttestationBasedClientAuthenticationService(
-
-                    verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                        trustedIssuers = { setOf(TestCertificateAuthority().certificate) }
+                    clientAttestationValidator = ClientAttestationValidator(
+                        walletProviderAnchors = { setOf(TestCertificateAuthority().certificate) },
                     ),
                 ),
             )
