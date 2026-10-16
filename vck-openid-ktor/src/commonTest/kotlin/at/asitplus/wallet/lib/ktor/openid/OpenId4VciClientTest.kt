@@ -45,9 +45,9 @@ import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.ProofValidator
-import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.toFormParameters
@@ -63,18 +63,18 @@ import io.ktor.http.*
 import io.ktor.util.*
 
 /**
- * Tests [OpenId4VciClient] against [CredentialIssuer] with our own internal [SimpleAuthorizationService].
+ * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] with our own internal [SimpleAuthorizationService].
  */
-val OpenId4VciClientTest by matrixSuite {
+val OpenId4VciKtorClientTest by matrixSuite {
 
     data class Context(
         val credentialKeyMaterial: KeyMaterial,
         val clientAuthKeyMaterial: KeyMaterial,
         val mockEngine: MockEngine,
-        val credentialIssuer: CredentialIssuer,
+        val openId4VciServer: OpenId4VciServer,
         val authorizationService: SimpleAuthorizationService,
         val statusListIssuer: StatusListAgent,
-        val client: OpenId4VciClient,
+        val client: OpenId4VciKtorClient,
     )
 
     fun setup(
@@ -113,7 +113,7 @@ val OpenId4VciClientTest by matrixSuite {
             randomSource = RandomSource.Default
         )
         val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-        val credentialIssuer = CredentialIssuer(
+        val openId4VciServer = OpenId4VciServer(
             authorizationService = authorizationService,
             issuer = issuer,
             credentialSchemes = credentialSchemes,
@@ -127,7 +127,7 @@ val OpenId4VciClientTest by matrixSuite {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.CredentialIssuer ->
-                    respond(credentialIssuer.metadata)
+                    respond(openId4VciServer.metadata)
 
                 request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.OauthAuthorizationServer ->
                     respond(authorizationService.metadata())
@@ -165,7 +165,7 @@ val OpenId4VciClientTest by matrixSuite {
                 }
 
                 request.url.fullPath.startsWith(nonceEndpointPath) -> {
-                    respond(credentialIssuer.nonceWithDpopNonce().getOrThrow())
+                    respond(openId4VciServer.nonceWithDpopNonce().getOrThrow())
                 }
 
                 request.url.fullPath.startsWith(challengeEndpointPath) -> {
@@ -175,9 +175,9 @@ val OpenId4VciClientTest by matrixSuite {
                 request.url.fullPath.startsWith(credentialEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
-                    credentialIssuer.credential(
+                    openId4VciServer.credential(
                         authorizationHeader = authn,
-                        params = WalletService.CredentialRequest.parse(requestBody).getOrThrow(),
+                        params = OpenId4VciClient.CredentialRequest.parse(requestBody).getOrThrow(),
                         credentialDataProvider = credentialDataProviderFun(
                             scheme = scheme,
                             representation = representation,
@@ -201,12 +201,12 @@ val OpenId4VciClientTest by matrixSuite {
             credentialKeyMaterial = credentialKeyMaterial,
             clientAuthKeyMaterial = clientAuthKeyMaterial,
             mockEngine = mockEngine,
-            credentialIssuer = credentialIssuer,
+            openId4VciServer = openId4VciServer,
             authorizationService = authorizationService,
             statusListIssuer = statusListIssuer,
-            client = OpenId4VciClient(
+            client = OpenId4VciKtorClient(
                 engine = mockEngine,
-                oid4vciService = WalletService(
+                oid4vciService = OpenId4VciClient(
                     clientId = clientId,
                     keyMaterial = credentialKeyMaterial,
                 ),
@@ -288,7 +288,7 @@ val OpenId4VciClientTest by matrixSuite {
 
             val offer = authorizationService.offerWithPreAuthnForUserForSchemes(
                 user = dummyUser(),
-                credentialIssuer = credentialIssuer.metadata.credentialIssuer,
+                credentialIssuer = openId4VciServer.metadata.credentialIssuer,
                 schemes = setOf(euPidScheme to ISO_MDOC),
             )
             val issuedCredential = client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null)
@@ -332,7 +332,7 @@ val OpenId4VciClientTest by matrixSuite {
 
             val offer = authorizationService.offerWithPreAuthnForUserForSchemes(
                 user = dummyUser(),
-                credentialIssuer = credentialIssuer.metadata.credentialIssuer,
+                credentialIssuer = openId4VciServer.metadata.credentialIssuer,
                 schemes = setOf(euPidScheme to ISO_MDOC),
             )
             client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {

@@ -29,7 +29,7 @@ import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.RequestParametersSerializer
@@ -50,7 +50,7 @@ val OAuth2KtorClientTest by matrixSuite {
         val clientAuthKeyMaterial: KeyMaterial,
         val mockEngine: MockEngine,
         val authorizationService: SimpleAuthorizationService,
-        val credentialIssuer: CredentialIssuer,
+        val openId4VciServer: OpenId4VciServer,
         val client: OAuth2KtorClient,
     )
 
@@ -84,7 +84,7 @@ val OAuth2KtorClientTest by matrixSuite {
             requestObjectSigningAlgorithms = requestObjectSigningAlgorithms,
             requirePushedAuthorizationRequests = requirePAR,
         )
-        val credentialIssuer = CredentialIssuer(
+        val openId4VciServer = OpenId4VciServer(
             issuer = IssuerAgent(
                 identifier = "https://issuer.example.com/".toUri(),
                 randomSource = RandomSource.Default
@@ -156,7 +156,7 @@ val OAuth2KtorClientTest by matrixSuite {
             clientAuthKeyMaterial = clientAuthKeyMaterial,
             mockEngine = mockEngine,
             authorizationService = authorizationService,
-            credentialIssuer = credentialIssuer,
+            openId4VciServer = openId4VciServer,
             client = OAuth2KtorClient(
                 engine = mockEngine,
                 loadInstanceAttestation = {

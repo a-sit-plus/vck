@@ -88,17 +88,20 @@ Important areas:
   `DcApiVerifier`, request parsing/factories, response creation/validation, verifier attestation, DCQL, and ISO/IEC
   18013-7 Annex C integration.
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oidvci`
-  OpenID4VCI wallet and issuer behavior: `WalletService`, `CredentialIssuer`, `ProofValidator`, credential scheme
-  mapping, credential request creation, proof validation, encryption handling.
+  OpenID4VCI wallet and issuer behavior: `OpenId4VciClient`, `OpenId4VciServer`, `ProofValidator`, credential scheme
+  mapping, credential request creation, proof validation, encryption handling, and `OpenId4VciProtocolClient` for the
+  wallet's requests to the credential issuer (see [Client-Side HTTP Exchanges](#client-side-http-exchanges)).
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oauth2`
   OAuth2 authorization server/client helpers, token generation/verification, DPoP, client authentication, PAR, and
-  authorization service strategy interfaces.
+  authorization service strategy interfaces. `OAuth2ProtocolClient` implements the client side, including DPoP proofs
+  and nonces and attestation-based client authentication (see [Client-Side HTTP Exchanges](#client-side-http-exchanges)).
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/rqes`
   RQES and CSC authorization/signature request integration built on top of OAuth2/OpenID4VP.
 
 Refactor here when changing protocol state, request/response construction, validation policy, proof handling, or
 client/server OAuth2 behavior. Keep raw HTTP client/server mechanics out of this module; use callback abstractions
-for remote resource retrieval and transport-specific integration.
+for remote resource retrieval and transport-specific integration. The wallet-side OAuth2 and OpenID4VCI clients do not
+send requests at all, but return `HttpExchange`s.
 
 ### `vck-openid-ktor`
 
@@ -109,12 +112,14 @@ Important areas:
 
 - `vck-openid-ktor/src/commonMain/kotlin/at/asitplus/wallet/lib/ktor/openid`
   Ktor-backed OpenID4VCI and OpenID4VP clients, shared HTTP-client configuration and error mapping, plus remote
-  credential-metadata retrieval.
+  credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciKtorClient` and `RemoteOAuth2AuthorizationServerAdapter`
+  only send the requests of the exchanges of `OAuth2ProtocolClient` and `OpenId4VciProtocolClient` (`execute` in
+  `HttpClient.kt`), and run the exchanges of each flow in order; they contain no protocol logic and no DPoP handling.
 
 Put Ktor engine selection, request execution, response body handling, cache policy, and Ktor-specific test doubles
-here. Reuse the shared client setup so non-success responses remain `HttpErrorResponseException` instances carrying
-OAuth errors, RFC 9457 problem details, and the raw body. If a rule must also apply without Ktor, move that rule down
-into `vck-openid`.
+here. Non-success responses are `HttpErrorResponseException` instances (defined in `vck-openid`, so that exchanges
+can fail with them too) carrying OAuth errors, RFC 9457 problem details, and the raw body; reuse the shared client
+setup for that. If a rule must also apply without Ktor, move that rule down into `vck-openid`.
 
 ### `vck-longfellow`
 `vck-longfellow` provides an ISO mDoc Zero-Knowledge Proof (ZKP) backend for VC-K using the 
@@ -303,6 +308,36 @@ Credential issuance and status-list publication are also separate responsibiliti
 `ReferencedTokenStore` owns status-list indices, identifiers, and revocation state. Keep custom persistence adapters at
 those interfaces instead of coupling status-list generation back to credential signing.
 
+### Client-Side HTTP Exchanges
+
+The wallet-side OAuth2 and OpenID4VCI clients in `vck-openid` never send HTTP requests themselves, so they work with
+any HTTP stack. Code is placed by where its output goes:
+
+- Everything inside a request or response body stays in the parameter builders `OAuth2Client` and `OpenId4VciClient`:
+  PKCE, JAR, scope and authorization details, credential request proofs, key attestations, encryption.
+- Everything that ends up in an HTTP header or depends on HTTP responses lives in `OAuth2ProtocolClient` and
+  `OpenId4VciProtocolClient`: `Authorization`, DPoP proofs and nonces, client attestation and its PoP, attestation
+  challenges, retries, and response parsing.
+
+Each call of the protocol clients returns an `HttpExchange` (`vck-openid/.../lib/HttpExchange.kt`). The caller calls
+`next()`, sends each request it gets (`HttpStep.Send`), and passes the response back, until the exchange is done. The
+caller also runs the exchanges of a flow in order (metadata, authorization, token, nonce, credential); the Ktor
+clients are such callers. Every request is one of the kinds of `ProtocolRequest`, and the KDoc of each method lists
+the kinds, order and retry limit of its exchange, e.g. `([AttestationChallenge] Token){1,3}`.
+
+Rules to keep when changing these clients:
+
+- A new kind of HTTP request needs a new `ProtocolRequest` subclass and a sequence test; the exhaustive `kinds()` in
+  `ExchangeTestUtils.kt` fails to compile until the tests handle it.
+- Build a request body once per exchange, and only rebuild headers for retries: the PKCE verifier and the signed JAR
+  must not be consumed or created twice.
+- DPoP nonces are kept per origin and per role: nonces from the authorization server for requests with client
+  authentication, nonces from resource servers (credential issuer, userinfo, the nonce endpoint) for requests with an
+  access token. RFC 9449 9. says they "are different and should not be confused with one another", even on one
+  origin. Attestation challenges are single-use.
+- Load the client attestation, and check its key, before any request of an attempt, so that a request that cannot
+  authenticate is never sent.
+
 ### Key Material and Crypto
 
 VC-K uses Signum for crypto, ASN.1, JOSE, and COSE types. Do not introduce parallel crypto representations unless an
@@ -360,6 +395,8 @@ Common starting points:
   `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oidvci`
 - OAuth2/DPoP/PAR/client authentication:
   `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oauth2`
+- Wallet-side OAuth2/OpenID4VCI requests without Ktor:
+  `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/{HttpExchange.kt,oauth2/OAuth2ProtocolClient.kt,oidvci/OpenId4VciProtocolClient.kt}`
 - Ktor clients/wallet transport:
   `vck-openid-ktor/src/commonMain/kotlin/at/asitplus/wallet/lib/ktor/openid`
 
@@ -419,6 +456,8 @@ Useful focused tests:
   `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/openid/OpenId4Vp*Test.kt`
 - OpenID4VCI:
   `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/oidvci`
+- Wallet-side OAuth2/OpenID4VCI exchanges without Ktor, against `AuthorizationServerFixture` through `FakeHttpStack`:
+  `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/{oauth2/OAuth2ProtocolClientTest,oidvci/OpenId4VciProtocolClientTest}.kt`
 - Ktor OpenID clients and wallet flows:
   `vck-openid-ktor/src/commonTest/kotlin/at/asitplus/wallet/lib/ktor/openid`
 - Credential metadata:

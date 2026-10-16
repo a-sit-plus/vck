@@ -30,8 +30,8 @@ import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
-import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.toFormParameters
@@ -47,20 +47,20 @@ import io.ktor.http.*
 import io.ktor.util.*
 
 /**
- * Tests [OpenId4VciClient] against [CredentialIssuer] with our own internal [SimpleAuthorizationService].
+ * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] with our own internal [SimpleAuthorizationService].
  *
- * Makes sure that the [OpenId4VciClient] and [OAuth2KtorClient] use the DPoP nonce provided in success responses too.
+ * Makes sure that the [OpenId4VciKtorClient] and [OAuth2KtorClient] use the DPoP nonce provided in success responses too.
  */
-val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
+val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
 
     data class Context(
         val attributes: Map<String, String>,
         val credentialKeyMaterial: KeyMaterial,
         val clientAuthKeyMaterial: KeyMaterial,
         val mockEngine: MockEngine,
-        val credentialIssuer: CredentialIssuer,
+        val openId4VciServer: OpenId4VciServer,
         val authorizationService: SimpleAuthorizationService,
-        val client: OpenId4VciClient,
+        val client: OpenId4VciKtorClient,
     )
 
     fixture {
@@ -96,7 +96,7 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
                 identifier = "https://issuer.example.com/".toUri(),
                 randomSource = RandomSource.Default
             )
-            val credentialIssuer = CredentialIssuer(
+            val openId4VciServer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = issuer,
                 credentialSchemes = credentialSchemes,
@@ -107,7 +107,7 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
             val mockEngine = MockEngine { request ->
                 when {
                     request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.CredentialIssuer ->
-                        respond(credentialIssuer.metadata)
+                        respond(openId4VciServer.metadata)
 
                     request.url.rawSegments.drop(1) == OpenIdConstants.WellKnownPaths.OauthAuthorizationServer ->
                         respond(authorizationService.metadata())
@@ -145,7 +145,7 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
                     }
 
                     request.url.fullPath.startsWith(nonceEndpointPath) -> {
-                        respond(credentialIssuer.nonceWithDpopNonce().getOrThrow())
+                        respond(openId4VciServer.nonceWithDpopNonce().getOrThrow())
                     }
 
                     request.url.fullPath.startsWith(challengeEndpointPath) -> {
@@ -155,9 +155,9 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
                     request.url.fullPath.startsWith(credentialEndpointPath) -> {
                         val requestBody = request.body.toByteArray().decodeToString()
                         val authn = request.headers[HttpHeaders.Authorization].shouldNotBeNull()
-                        credentialIssuer.credential(
+                        openId4VciServer.credential(
                             authorizationHeader = authn,
-                            params = WalletService.CredentialRequest.parse(requestBody).getOrThrow(),
+                            params = OpenId4VciClient.CredentialRequest.parse(requestBody).getOrThrow(),
                             credentialDataProvider = TestUtils.credentialDataProviderFun(
                                 scheme,
                                 representation,
@@ -180,11 +180,11 @@ val OpenId4VciClientIntegratedDPoPTest by matrixSuite {
                 credentialKeyMaterial = credentialKeyMaterial,
                 clientAuthKeyMaterial = clientAuthKeyMaterial,
                 mockEngine = mockEngine,
-                credentialIssuer = credentialIssuer,
+                openId4VciServer = openId4VciServer,
                 authorizationService = authorizationService,
-                client = OpenId4VciClient(
+                client = OpenId4VciKtorClient(
                     engine = mockEngine,
-                    oid4vciService = WalletService(
+                    oid4vciService = OpenId4VciClient(
                         clientId = clientId,
                         keyMaterial = credentialKeyMaterial,
                     ),
