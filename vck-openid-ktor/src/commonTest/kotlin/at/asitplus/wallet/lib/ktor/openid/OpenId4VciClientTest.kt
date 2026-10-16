@@ -259,11 +259,13 @@ val OpenId4VciKtorClientTest by matrixSuite {
             client.startProvisioningWithAuthRequestReturningResult(
                 credentialIssuerUrl = "https://issuer.example.com",
                 credentialIdentifierInfo = selectedCredential,
+                reissuingStoreEntryId = 42L,
             ).getOrThrow().also {
                 // Simulates the browser, handling authorization to get the authCode
                 val httpClient = HttpClient(mockEngine) { followRedirects = false }
                 val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
                 client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
+                    it.reissuingStoreEntryId shouldBe 42L
                     refreshTokenStore = it.refreshToken!!
                     it.verifySdJwtCredential(
                         expectedAttributeName,
