@@ -66,6 +66,10 @@ class StatusValidator @JvmOverloads constructor(
     private val zlibService: ZlibService = DefaultZlibService(),
 ) {
 
+    /** Whether status list tokens can be retrieved, i.e. whether a status claim can be checked at all. */
+    internal val resolvesStatus: Boolean
+        get() = statusListTokenResolver != null
+
     /**
      * Validates [status], the status claim of an artifact (`null` if it has none), under [policy], at [evaluatedAt]
      * with [timeLeeway]. Every mechanism is resolved, concurrently, and reported.

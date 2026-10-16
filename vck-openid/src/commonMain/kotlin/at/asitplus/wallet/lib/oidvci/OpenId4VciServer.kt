@@ -30,6 +30,8 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
+import at.asitplus.wallet.lib.validation.KeyAttestationValidator
+import at.asitplus.wallet.lib.validation.StatusValidator
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlin.jvm.JvmOverloads
@@ -48,7 +50,7 @@ typealias CredentialIssuer = OpenId4VciServer
  * 1.0 from 2025-09-16.
  */
 class OpenId4VciServer @JvmOverloads constructor(
-    /** Used to verify the validity of a unit attestation */
+    /** Used to verify the status of key attestations, for the default [proofValidator]. */
     private val statusListTokenResolver: StatusListTokenResolver? = null,
     /** Used to get the user data, and access tokens. */
     private val authorizationService: OAuth2AuthorizationServerAdapter,
@@ -78,7 +80,7 @@ class OpenId4VciServer @JvmOverloads constructor(
     private val proofValidator: ProofValidator = ProofValidator(
         publicContext = publicContext,
         requireKeyAttestation = requireKeyAttestation,
-        statusListTokenResolver = statusListTokenResolver
+        keyAttestationValidator = KeyAttestationValidator(statusValidator = StatusValidator(statusListTokenResolver)),
     ),
     /** Used to provide signed metadata in [signedMetadata]. */
     private val signMetadata: SignJwtFun<IssuerMetadata> = SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
