@@ -81,13 +81,16 @@ data class CredentialValidationResult @JvmOverloads constructor(
 }
 
 /**
- * The [validation] of a credential to store, and the [storedEntry] if it has been accepted and stored.
+ * The [validation] of a credential to store, and the [storedEntry] if it has been stored: because it has been
+ * accepted, or because the user accepted its report, see [CredentialValidationResult.unacceptedCredential].
  */
 data class CredentialStorageResult(
     val validation: CredentialValidationResult,
     val storedEntry: SubjectCredentialStore.StoreEntry?,
 ) {
     init {
-        require(storedEntry == null || validation.credential != null) { "Only an accepted credential is stored" }
+        require(storedEntry == null || validation.unacceptedCredential != null) {
+            "Only an accepted or intact credential is stored"
+        }
     }
 }

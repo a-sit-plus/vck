@@ -26,6 +26,7 @@ import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialStorageResult
 import at.asitplus.wallet.lib.validation.CredentialTrustAnchors
+import at.asitplus.wallet.lib.validation.CredentialValidationResult
 import at.asitplus.wallet.lib.validation.CredentialValidationContext
 import at.asitplus.wallet.lib.validation.CredentialValidationInput
 import at.asitplus.wallet.lib.validation.CredentialValidator
@@ -131,6 +132,8 @@ class HolderAgent @JvmOverloads constructor(
      * Validates [credential] under [policy], bound to the key of this holder whatever [ValidationPolicy.holderBinding]
      * says, and of the type of its scheme, and stores it only if it is accepted, see [CredentialStorageResult].
      * A rejected credential is a successful result with its report; only persisting fails.
+     *
+     * To let the user decide about a rejected credential, use [prepareCredentialStorage] instead.
      */
     @JvmOverloads
     suspend fun storeCredentialWithReport(
@@ -138,8 +141,63 @@ class HolderAgent @JvmOverloads constructor(
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
     ): KmmResult<CredentialStorageResult> = catching {
+        storeAccepted(prepareCredentialStorage(credential, policy, renewalInfo).getOrThrow()).getOrThrow()
+    }
+
+    /**
+     * Validates [credential] like [storeCredentialWithReport], but stores nothing yet, e.g. as the last step of
+     * issuance, so that the wallet can show the report to the user, e.g. an untrusted issuer or missing required
+     * claims (see [ValidationPolicy.requiredClaims]). Then store it with [storeAccepted], or, if the user accepts a
+     * rejected report, with [storeAfterUserConsent]. Fails only if the credential can not be validated at all.
+     */
+    @JvmOverloads
+    suspend fun prepareCredentialStorage(
+        credential: Holder.StoreCredentialInput,
+        policy: ValidationPolicy,
+        renewalInfo: CredentialRenewalInfo? = null,
+    ): KmmResult<PreparedCredentialStorage> = catching {
+        PreparedCredentialStorage(credential, validate(credential, policy), renewalInfo, keyMaterial.publicKey)
+    }
+
+    /**
+     * Stores the credential of [prepared] only if its report is accepted, see [CredentialStorageResult]. A rejected
+     * credential is a successful result without a stored entry; only persisting fails.
+     */
+    suspend fun storeAccepted(
+        prepared: PreparedCredentialStorage,
+    ): KmmResult<CredentialStorageResult> = catching {
+        prepared.requireHolder()
+        val stored = prepared.validation.credential?.let { store(prepared.credential, it, prepared.renewalInfo) }
+        CredentialStorageResult(prepared.validation, stored)
+    }
+
+    /**
+     * Stores the credential of [prepared] after the user has seen and accepted its report, also if it is rejected, as
+     * long as only checks the policy may relax are not satisfied, i.e. its
+     * [unacceptedCredential][at.asitplus.wallet.lib.validation.CredentialValidationResult.unacceptedCredential] is
+     * present: its issuer may be untrusted, it may be expired or revoked, or miss required claims. Fails for a
+     * credential that is not intact, e.g. with an invalid signature or bound to another key, which no user can accept.
+     */
+    suspend fun storeAfterUserConsent(
+        prepared: PreparedCredentialStorage,
+    ): KmmResult<CredentialStorageResult> = catching {
+        prepared.requireHolder()
+        val intact = prepared.validation.unacceptedCredential
+            ?: throw prepared.validation.report.firstRejection()
+            ?: IllegalArgumentException("The credential is not intact")
+        CredentialStorageResult(prepared.validation, store(prepared.credential, intact, prepared.renewalInfo))
+    }
+
+    private fun PreparedCredentialStorage.requireHolder() = require(holderKey == keyMaterial.publicKey) {
+        "The credential has been prepared for another holder"
+    }
+
+    private suspend fun validate(
+        credential: Holder.StoreCredentialInput,
+        policy: ValidationPolicy,
+    ): CredentialValidationResult {
         val bound = policy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey)
-        val validation = when (credential) {
+        return when (credential) {
             is Holder.StoreCredentialInput.Vc -> credentialValidator.validate(
                 input = CredentialValidationInput.VcJwt(credential.vcJws),
                 policy = bound,
@@ -159,7 +217,6 @@ class HolderAgent @JvmOverloads constructor(
                 context = context(credential.scheme.isoDocType),
             )
         }
-        CredentialStorageResult(validation, validation.credential?.let { store(credential, it, renewalInfo) })
     }
 
     private fun context(credentialIdentifier: String) = CredentialValidationContext(
@@ -169,11 +226,11 @@ class HolderAgent @JvmOverloads constructor(
 
     private suspend fun store(
         credential: Holder.StoreCredentialInput,
-        accepted: ValidatedCredential,
+        validated: ValidatedCredential,
         renewalInfo: CredentialRenewalInfo?,
     ): StoreEntry = when (credential) {
         is Holder.StoreCredentialInput.Vc -> subjectCredentialStore.storeCredential(
-            vc = (accepted as ValidatedCredential.VcJwt).credential,
+            vc = (validated as ValidatedCredential.VcJwt).credential,
             vcSerialized = credential.vcJws,
             scheme = credential.scheme,
             renewalInfo = renewalInfo,
@@ -181,16 +238,16 @@ class HolderAgent @JvmOverloads constructor(
         )
 
         is Holder.StoreCredentialInput.SdJwt -> subjectCredentialStore.storeCredential(
-            vc = (accepted as ValidatedCredential.SdJwtVc).credential,
+            vc = (validated as ValidatedCredential.SdJwtVc).credential,
             vcSerialized = credential.vcSdJwt,
-            disclosures = accepted.disclosures,
+            disclosures = validated.disclosures,
             scheme = credential.scheme,
             renewalInfo = renewalInfo,
             issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf
         )
 
         is Holder.StoreCredentialInput.Iso -> subjectCredentialStore.storeCredential(
-            issuerSigned = (accepted as ValidatedCredential.IsoMdoc).issuerSigned,
+            issuerSigned = (validated as ValidatedCredential.IsoMdoc).issuerSigned,
             scheme = credential.scheme,
             renewalInfo = renewalInfo,
             issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)
