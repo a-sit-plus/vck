@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.catching
+import at.asitplus.csc.api.serializers.Base64X509CertificateSerializer
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.etsi.relyingParty.WrpRegistrarDataset
 import at.asitplus.openid.IssuerMetadata
@@ -9,12 +10,13 @@ import at.asitplus.openid.OpenIdConstants.IssuerInfo.REGISTRAR_DATASET_FORMAT
 import at.asitplus.openid.OpenIdConstants.IssuerInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.pki.CertificateChain
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate.WrpJwtRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
 import at.asitplus.wallet.lib.validation.CheckOutcome.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.jvm.JvmOverloads
@@ -229,11 +231,12 @@ data class IssuerMetadataValidation(
 
 /**
  * A PID or attestation provider whose signed metadata passed every required check, e.g. to show it to the user
- * before authorization.
+ * before authorization. Serializable, so that a wallet can keep it during the authorization in the browser.
  */
+@Serializable
 data class ValidatedCredentialIssuer(
     /** The access certificate (WRPAC) the metadata are signed with. */
-    val accessCertificateChain: CertificateChain,
+    val accessCertificateChain: List<@Serializable(with = Base64X509CertificateSerializer::class) X509Certificate>,
     /** The identifier of the provider in its WRPAC, which its WRPRC is issued to. */
     val identifier: WrpacIdentifier,
     /** The registration information of the provider, as the provider states it in `issuer_info`. */
