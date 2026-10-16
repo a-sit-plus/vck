@@ -50,25 +50,34 @@ data class PresentationContext @JvmOverloads constructor(
  * A presentation that passed every required check, with the credentials it contains.
  */
 sealed interface ValidatedPresentation {
+    /** Every credential of this presentation, e.g. to display their claims. */
+    val credentials: List<ValidatedCredential>
+
     data class VpJwt(
         val presentation: VerifiablePresentationJws,
-        val credentials: List<ValidatedCredential.VcJwt>,
+        override val credentials: List<ValidatedCredential.VcJwt>,
     ) : ValidatedPresentation
 
     data class VcJwt(
         val credential: ValidatedCredential.VcJwt
-    ) : ValidatedPresentation
+    ) : ValidatedPresentation {
+        override val credentials get() = listOf(credential)
+    }
 
     data class SdJwt(
         val credential: ValidatedCredential.SdJwtVc,
         /** Present if the holder proved possession of the bound key. */
         val keyBinding: KeyBindingJws?,
-    ) : ValidatedPresentation
+    ) : ValidatedPresentation {
+        override val credentials get() = listOf(credential)
+    }
 
     data class MdocDocument(
         val document: Document,
         val credential: ValidatedCredential.IsoMdoc,
-    ) : ValidatedPresentation
+    ) : ValidatedPresentation {
+        override val credentials get() = listOf(credential)
+    }
 }
 
 /**
@@ -87,10 +96,9 @@ data class PresentationValidationResult(
     }
 
     /**
-     * Why the presentation is rejected under [policy], the policy it has been validated under: the cause of its first
-     * check that does not pass, otherwise of the first rejecting check of its first rejected credential; `null` if it
-     * is accepted. For callers reporting a single error, e.g. the legacy results of verifiers.
+     * Why the presentation is rejected: the cause of its first check that does not pass, otherwise of the first
+     * rejecting check of its first rejected credential, see [ValidationReport.namedChecks]; `null` if it is accepted.
+     * For callers reporting a single error, e.g. the legacy results of verifiers.
      */
-    fun rejection(policy: ValidationPolicy): Throwable? =
-        if (report.decision == ValidationDecision.ACCEPTED) null else report.presentationRejection(policy)
+    fun rejection(): Throwable? = report.firstRejection()
 }

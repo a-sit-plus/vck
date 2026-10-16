@@ -51,7 +51,7 @@ private suspend fun Issuance.validate(
     validator: CredentialValidator = validator(),
     holderBinding: HolderBindingPolicy = HolderBindingPolicy.RequireExpectedKey,
     context: CredentialValidationContext = context(),
-) = validator.validate(issued.input(), policy, holderBinding, context)
+) = validator.validate(issued.input(), policy.copy(holderBinding = holderBinding), context)
 
 private val CredentialValidationResult.checks get() = report.checks.shouldBeInstanceOf<CredentialChecks>()
 
@@ -169,7 +169,7 @@ val CredentialValidatorTest by matrixSuite {
                         CredentialRepresentation.SD_JWT -> CredentialValidationInput.SdJwtVc("not an sd-jwt~")
                         CredentialRepresentation.ISO_MDOC -> CredentialValidationInput.IsoMdoc(byteArrayOf(1, 2, 3))
                     }
-                    val result = issuance().validator().validate(input, strictPolicy, HolderBindingPolicy.None)
+                    val result = issuance().validator().validate(input, strictPolicy)
 
                     result.report.decision shouldBe REJECTED
                     result.checks.parsing.shouldBeInstanceOf<Failed>()
@@ -184,7 +184,7 @@ val CredentialValidatorTest by matrixSuite {
         val vc = issuance.issue(CredentialRepresentation.PLAIN_JWT) as Issuer.IssuedCredential.VcJwt
         val otherVc = issuance.issue(CredentialRepresentation.PLAIN_JWT) as Issuer.IssuedCredential.VcJwt
         val forgedVc = vc.signedVcJws.jws.toString().withPayloadOf(otherVc.signedVcJws.jws.toString())
-        issuance.validator().validate(CredentialValidationInput.VcJwt(forgedVc), strictPolicy, HolderBindingPolicy.None)
+        issuance.validator().validate(CredentialValidationInput.VcJwt(forgedVc), strictPolicy)
             .checks.let {
                 it.issuerSignature.shouldBeInstanceOf<Failed>()
                 it.semantics.shouldBeInstanceOf<Blocked>()
@@ -195,7 +195,7 @@ val CredentialValidatorTest by matrixSuite {
         val forgedJws = sdJwt.signedSdJwtVc.jws.toString().withPayloadOf(otherSdJwt.signedSdJwtVc.jws.toString())
         val forgedSdJwt = sdJwt.signedSdJwtVc.serialize().replaceBefore("~", forgedJws)
         issuance.validator()
-            .validate(CredentialValidationInput.SdJwtVc(forgedSdJwt), strictPolicy, HolderBindingPolicy.None)
+            .validate(CredentialValidationInput.SdJwtVc(forgedSdJwt), strictPolicy)
             .checks.issuerSignature.shouldBeInstanceOf<Failed>()
     }
 
@@ -205,8 +205,7 @@ val CredentialValidatorTest by matrixSuite {
         suspend fun Issuance.validateSdJwt(compact: String) =
             validator().validate(
                 CredentialValidationInput.SdJwtVc(compact),
-                strictPolicy,
-                HolderBindingPolicy.RequireExpectedKey,
+                strictPolicy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey),
                 context(),
             )
 
@@ -288,8 +287,7 @@ val CredentialValidatorTest by matrixSuite {
 
         suspend fun Issuance.validateMdoc(issuerSigned: IssuerSigned) = validator().validate(
             CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(issuerSigned)),
-            strictPolicy,
-            HolderBindingPolicy.RequireExpectedKey,
+            strictPolicy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey),
             context(),
         )
 

@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.PresentationValidationResult
 import at.asitplus.wallet.lib.validation.StatusValidation
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
-import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.ValidationReport
 
 /*
@@ -30,16 +29,15 @@ import at.asitplus.wallet.lib.validation.ValidationReport
 /**
  * The legacy result of the [validations] of one presentation of a `vp_token`, transported as [compact]: one
  * validation, or one per document of an mdoc `DeviceResponse`, whose accepted documents form one result. A rejected
- * presentation fails with the cause of its first rejecting check under [policy].
+ * presentation fails with the cause of its first rejecting check.
  */
 internal fun legacyPresentationResult(
     compact: String,
     validations: List<PresentationValidationResult>,
-    policy: ValidationPolicy,
 ): KmmResult<VerifyPresentationResult> = catching {
     val accepted = validations.filter { it.presentation != null }
     if (accepted.isEmpty()) {
-        throw validations.firstNotNullOfOrNull { it.rejection(policy) }
+        throw validations.firstNotNullOfOrNull { it.rejection() }
             ?: IllegalArgumentException("The presentation contains no document")
     }
     val documents = accepted.mapNotNull { validation ->

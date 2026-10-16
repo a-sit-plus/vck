@@ -47,7 +47,7 @@ private data class Case<S>(
 private fun CredentialChecks.decisionUnder(
     policy: ValidationPolicy = strictPolicy,
     holderBinding: HolderBindingPolicy = HolderBindingPolicy.RequireExpectedKey,
-) = ValidationReport.credential(this, policy, holderBinding, evaluatedAt).decision
+) = ValidationReport.credential(this, policy.copy(holderBinding = holderBinding), evaluatedAt).decision
 
 private val passingPresentation = PresentationChecks(
     parsing = Passed,
@@ -67,7 +67,11 @@ private val passingResponse = ProtocolResponseChecks(
 )
 
 private fun credentialReport(checks: CredentialChecks) =
-    ValidationReport.credential(checks, strictPolicy, HolderBindingPolicy.RequireExpectedKey, evaluatedAt)
+    ValidationReport.credential(
+        checks,
+        strictPolicy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey),
+        evaluatedAt,
+    )
 
 private val acceptedCredentialReport = credentialReport(passingChecks)
 
@@ -191,8 +195,10 @@ val ValidationRulesTest by matrixSuite {
                 val checks = passingChecks.copy(timeliness = TimelinessValidation(case.outcome, details = null))
                 val report = ValidationReport.credential(
                     checks = checks,
-                    policy = strictPolicy.copy(requireTimeliness = case.setting),
-                    holderBinding = HolderBindingPolicy.RequireExpectedKey,
+                    policy = strictPolicy.copy(
+                        requireTimeliness = case.setting,
+                        holderBinding = HolderBindingPolicy.RequireExpectedKey,
+                    ),
                     evaluatedAt = evaluatedAt,
                 )
                 report.decision shouldBe case.expected

@@ -69,6 +69,12 @@ data class ValidationPolicy(
      * e.g. the `iat` of a key binding JWT, are always required: relaxing them would relax replay protection.
      */
     val requireTimeliness: Boolean,
+    /**
+     * Whether a credential validated on its own has to be bound to [CredentialValidationContext.expectedHolderKey].
+     * In a presentation, the presentation decides the holder binding of its credentials, e.g. a VC-JWT in a VP has to
+     * be bound to the key of the VP, and other artifacts have no holder, so it does not apply to them.
+     */
+    val holderBinding: HolderBindingPolicy = HolderBindingPolicy.None,
 ) {
     init {
         require(timeLeeway.isFinite() && !timeLeeway.isNegative()) { "Time leeway has to be finite and not negative" }
