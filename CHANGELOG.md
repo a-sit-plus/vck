@@ -172,9 +172,10 @@ Release 9.0.0 (unreleased):
       `x5c` has to sign key attestations (EUDI TS3, 2.2.2.2), and a status list token resolver for
       `key_storage_status`. Without anchors, key attestations are rejected, as before
     - Add `ProofValidator.validateProofs(params, policy)`, reporting every proof with its key attestation;
-      `validateProofExtractSubjectPublicKeys` delegates to it. A key attestation embedded in a `jwt` proof needs a
-      server-provided `c_nonce` and `exp` (OpenID4VCI 1.0, F.1, D.1), a `jwt` proof at most one of `kid`, `jwk`, and
-      `x5c`; a key attestation no longer needs `user_authentication`, and may contain `iss` (EUDI TS3, 2.3.2)
+      `validateProofExtractSubjectPublicKeys` delegates to it. A key attestation embedded in a `jwt` proof needs an
+      `exp`, and its optional `nonce` must be a server-provided `c_nonce` (OpenID4VCI 1.0, F.1, D.1), a `jwt` proof
+      at most one of `kid`, `jwk`, and `x5c`; a key attestation no longer needs `user_authentication`, and may
+      contain `iss` (EUDI TS3, 2.3.2)
 - OAuth 2.0 authorization server:
     - BREAKING: `AttestationBasedClientAuthenticationService` takes a `ClientAttestationValidator` (in `vck`) instead
       of `verifyJwsObject`: configure it with the anchors of the wallet providers, which have to issue the
