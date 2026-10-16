@@ -318,6 +318,7 @@ private suspend fun dcapiFixture(
             redirectUri = "https://verifier.example.com/callback",
         ),
         ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(ephemeralKeyStore),
+        presentationPolicy = testPresentationPolicy,
     )
     val presentationRequestBuilder = CredentialPresentationRequestBuilder(requestOptions)
     val isoRequest = verifier.createAuthnRequest(

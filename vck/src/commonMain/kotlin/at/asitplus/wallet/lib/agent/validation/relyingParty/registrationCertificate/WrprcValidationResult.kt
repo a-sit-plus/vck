@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate
 
 import at.asitplus.KmmResult
@@ -11,6 +13,7 @@ import kotlin.jvm.JvmOverloads
  * A failed [KmmResult] marks the registration certificate or the credential request as invalid and carries the cause,
  * e.g. a certificate chain that could not be parsed or a credential request that could not be checked.
  */
+@Deprecated("Validate relying parties with at.asitplus.wallet.lib.validation.RelyingPartyValidator. To be removed in the next major release.")
 data class WrprcValidationResult(
     val certificateValidationResults: Map<WrpRegistrationCertificate, KmmResult<WrpRegistrationCertificateValidation>>,
     val requestDataValidationResults: RequestDataValidationResults,
@@ -58,6 +61,7 @@ data class WrprcValidationResult(
 }
 
 
+@Deprecated("Validate relying parties with at.asitplus.wallet.lib.validation.RelyingPartyValidator. To be removed in the next major release.")
 data class WrpRegistrationCertificateValidation @JvmOverloads constructor(
     val validHeader: Boolean,
     val validSignature: Boolean,

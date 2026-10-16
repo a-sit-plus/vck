@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
 import at.asitplus.KmmResult
@@ -25,6 +27,7 @@ import kotlin.time.Instant
  * Not validated: `pathLenConstraint`, `keyUsage`, and revocation.
  **/
 
+@Deprecated("Validate relying parties with at.asitplus.wallet.lib.validation.RelyingPartyValidator. To be removed in the next major release.")
 object WrpChainValidator {
     suspend operator fun invoke(
         chain: CertificateChain,

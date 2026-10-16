@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.iso.IssuerSigned
@@ -9,10 +11,12 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 fun interface TokenStatusValidator {
     suspend operator fun invoke(status: RevocationListInfo): TokenStatusValidationResult
 }
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 fun TokenStatusResolver.toTokenStatusValidator(
     acceptedTokenStatuses: Set<TokenStatus> = setOf(TokenStatus.Valid)
 ) = TokenStatusValidator {
@@ -31,6 +35,7 @@ fun TokenStatusResolver.toTokenStatusValidator(
  * Validates every advertised status mechanism. Invalid status takes precedence over resolution failures;
  * otherwise, all mechanisms must resolve successfully and agree.
  */
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 suspend fun TokenStatusValidator.validate(status: TokenStatusInfo): TokenStatusValidationResult {
     val results = status.mechanisms.map { invoke(it) }
     results.filterIsInstance<TokenStatusValidationResult.Invalid>().firstOrNull()?.let { return it }
@@ -46,24 +51,29 @@ suspend fun TokenStatusValidator.validate(status: TokenStatusInfo): TokenStatusV
     }
 }
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 suspend operator fun TokenStatusValidator.invoke(issuerSigned: IssuerSigned) = invoke(
     CredentialWrapper.Mdoc(issuerSigned)
 )
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 suspend operator fun TokenStatusValidator.invoke(sdJwt: VerifiableCredentialSdJwt) = invoke(
     CredentialWrapper.SdJwt(sdJwt)
 )
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 suspend operator fun TokenStatusValidator.invoke(vcJws: VerifiableCredentialJws) = invoke(
     CredentialWrapper.VcJws(vcJws)
 )
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 suspend operator fun TokenStatusValidator.invoke(storeEntry: SubjectCredentialStore.StoreEntry) = when (storeEntry) {
     is SubjectCredentialStore.StoreEntry.Iso -> invoke(CredentialWrapper.Mdoc(storeEntry.issuerSigned))
     is SubjectCredentialStore.StoreEntry.SdJwt -> invoke(CredentialWrapper.SdJwt(storeEntry.sdJwt))
     is SubjectCredentialStore.StoreEntry.Vc -> invoke(CredentialWrapper.VcJws(storeEntry.vc))
 }
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 suspend operator fun TokenStatusValidator.invoke(credentialWrapper: CredentialWrapper) = when (credentialWrapper) {
     is CredentialWrapper.Mdoc -> credentialWrapper.issuerSigned.issuerAuth.payload?.status
     is CredentialWrapper.SdJwt -> credentialWrapper.sdJwt.statusElement

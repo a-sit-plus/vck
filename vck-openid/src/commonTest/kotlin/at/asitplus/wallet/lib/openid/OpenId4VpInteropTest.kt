@@ -9,7 +9,6 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -19,9 +18,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
-import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toIanaName
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -33,7 +30,6 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.openid.formUrlEncode
 import com.benasher44.uuid.uuid4
@@ -95,19 +91,9 @@ val OpenId4VpInteropTest by matrixSuite {
                 val verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
                 val verifierOid4vp = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
-                    verifier = VerifierAgent(
-                        identifier = clientIdScheme.clientId,
-                        validatorSdJwt = ValidatorSdJwt(
-                            verifyJwsObject = VerifyJwsObjectTrusted(
-                                trustedKeys = {
-                                    setOf(
-                                        issuerKeyMaterial.publicKey.toJsonWebKey(),
-                                        holderKeyMaterial.publicKey.toJsonWebKey(),
-                                    )
-                                })
-                        )
-                    ),
                     clientIdScheme = clientIdScheme,
+                    // the issuer key has no certificate to put on a trust list
+                    presentationPolicy = testPresentationPolicy,
                 )
             }
         }

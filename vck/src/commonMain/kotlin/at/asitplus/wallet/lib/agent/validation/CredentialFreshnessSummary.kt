@@ -1,7 +1,10 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 
+@Deprecated("Freshness is reported by at.asitplus.wallet.lib.validation.CredentialValidator as CredentialChecks.timeliness and CredentialChecks.status. To be removed in the next major release.")
 sealed interface CredentialFreshnessSummary {
     val isFresh: Boolean
         get() = timelinessValidationSummary.isTimely && tokenStatusValidationResult is TokenStatusValidationResult.Valid

@@ -20,6 +20,11 @@ sealed interface Iso180137AnnexCResult : DcApiResponseResult
  * and [DcApiCreationOptions.Iso180137AnnexC]
  */
 data class Iso180137AnnexCWrapper(
+    /** The accepted documents of [presentationValidations]. */
+    @Deprecated(
+        "Projected from presentationValidations, use them and validationReport. " +
+                "To be removed in the next major release."
+    )
     val documents: Collection<IsoDocumentParsed>,
     /** Every document of the device response, validated with a [CredentialValidator]. */
     val presentationValidations: List<PresentationValidationResult>,

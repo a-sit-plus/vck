@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.sdJwt
 
 import at.asitplus.KmmResult
@@ -16,6 +18,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+@Deprecated("Validate with at.asitplus.wallet.lib.validation.CredentialValidator, whose report holds every check. To be removed in the next major release.")
 data class SdJwtInputValidator @JvmOverloads constructor(
     private val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,

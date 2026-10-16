@@ -58,6 +58,7 @@ val OpenId4VpX509SanDnsTest by matrixSuite {
                     clientId,
                     clientId
                 ),
+                presentationPolicy = testPresentationPolicy,
             )
             object {
                 val verifierOid4vp = verifierOid4vp

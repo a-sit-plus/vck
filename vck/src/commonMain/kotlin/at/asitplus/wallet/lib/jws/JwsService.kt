@@ -616,6 +616,7 @@ class VerifyJwsSignatureWithCnf @JvmOverloads constructor(
  * The X.509 certificate of the trust anchor MUST NOT be included in the x5c JOSE header of the Status List Token.
  * The X.509 certificate signing the request MUST NOT be self-signed.
  */
+@Deprecated("Status list tokens are validated by at.asitplus.wallet.lib.validation.StatusValidator, which requires their signers to be issued by an anchor (OpenID4VC HAIP 1.0, 6.1). To be removed in the next major release.")
 class VerifyStatusListTokenHAIP @JvmOverloads constructor(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
     /** Certificates of trusted issuers of status list tokens, if trust in the issuer shall be evaluated */
