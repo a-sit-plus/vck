@@ -121,7 +121,9 @@ Important areas:
   credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciKtorClient`, `OpenId4VpKtorHolder` and
   `RemoteOAuth2AuthorizationServerAdapter` only send the requests of the exchanges of `OAuth2ProtocolClient`,
   `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient` (`execute` in `HttpClient.kt`), and run the exchanges of
-  each flow in order; they contain no protocol logic and no DPoP handling.
+  each flow in order; they contain no protocol logic and no DPoP handling. Received credentials are stored by the
+  wallet's `HolderAgent`, not by the Ktor client: `CredentialIssuanceResult.Success.prepareCredentialStorage` hands
+  them to `HolderAgent.prepareCredentialStorage`, see *Validation*.
 
 Put Ktor engine selection, request execution, response body handling, cache policy, and Ktor-specific test doubles
 here. Non-success responses are `HttpErrorResponseException` instances (defined in `vck-openid`, so that exchanges
