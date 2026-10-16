@@ -6,9 +6,11 @@ import kotlin.jvm.JvmInline
 @Serializable
 @JvmInline
 value class SchemeName(
+    /** Localized names under which the scheme operates, prefixed with its territory code (TS 119 602, 6.3.6). */
     private val list: List<MultilingualCharacterString>
 ) : List<MultilingualCharacterString> by list {
     init {
+        require(list.isNotEmpty()) { "Expected at least one SchemeName entry." }
         // TODO: implement proper child validation?
     }
 

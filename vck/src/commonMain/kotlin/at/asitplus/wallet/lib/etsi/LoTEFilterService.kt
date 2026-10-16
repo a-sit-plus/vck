@@ -80,7 +80,7 @@ class LoTEFilterService {
                 .filter { service ->
                     matcher(service.serviceInformation.serviceTypeIdentifier?.string)
                 }
-                .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates }
+                .flatMap { service -> service.serviceInformation.serviceDigitalIdentity.x509Certificates.orEmpty() }
                 .filter { cert -> cert?.hasMatchingOrganization(providerNames) == true }
                 .map { cert -> TrustedCertificate(cert, entity.trustedEntityInformation.teName, targetServiceType) }
         }

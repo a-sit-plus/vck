@@ -9,9 +9,12 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 
 class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
+    /** Serializer for the JSON surrogate wrapping a Base64-encoded X.509 certificate. */
     private val delegate = EtsiX509CertificateSerializationSurrogate.serializer()
+    /** Serialization descriptor for the JSON certificate surrogate. */
     override val descriptor: SerialDescriptor
         get() = SerialDescriptor(
             serialName = EtsiX509CertificateSerializer::class.qualifiedName!!,
@@ -49,12 +52,15 @@ class EtsiX509CertificateSerializer : KSerializer<X509Certificate?> {
     }
 
     @Serializable
+    @JsonIgnoreUnknownKeys
     private data class EtsiX509CertificateSerializationSurrogate(
+        /** X.509 certificate represented as a Base64 string in the JSON surrogate (TS 119 602, 6.6.3.1). */
         @SerialName(SerialNames.VALUE)
         @Serializable(with = X509CertificateBase64Serializer::class)
         val value: X509Certificate
     ) {
         object SerialNames {
+            /** Wire member name `val`. */
             const val VALUE = "val"
         }
     }

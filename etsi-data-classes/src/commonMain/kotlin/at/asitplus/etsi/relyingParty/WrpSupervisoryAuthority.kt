@@ -8,12 +8,15 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WrpSupervisoryAuthority(
+    /** Email address of the competent data protection authority (Table 7). */
     @SerialName("email")
     val email: String? = null,
 
+    /** Telephone number of the competent data protection authority (Table 7). */
     @SerialName("phone")
     val phone: String? = null,
 
+    /** URL of the web form provided by the competent data protection authority (Table 7). */
     @SerialName("uri")
     val uri: String? = null,
 )
