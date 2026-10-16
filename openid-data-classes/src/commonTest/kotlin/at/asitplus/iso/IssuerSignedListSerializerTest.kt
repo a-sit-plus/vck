@@ -104,6 +104,47 @@ val IssuerSignedListSerializerTest by matrixSuite {
         }
     }
 
+    "serializes a deserialized item with the bytes it was decoded from" {
+        val namespace = uuid4().toString()
+        val item = IssuerSignedItem(
+            digestId = 1u,
+            random = Random.nextBytes(16),
+            elementIdentifier = uuid4().toString(),
+            elementValue = uuid4().toString(),
+        )
+        // Another key order than this library encodes, e.g. the one of the EUDI reference issuer
+        val issued = CborObject.orderedMap(
+            CborText(PROP_RANDOM) to CborObject.value(item.random),
+            CborText(PROP_DIGEST_ID) to CborObject.positive(item.digestId),
+            CborText(PROP_ELEMENT_VALUE) to CborText(item.elementValue as String),
+            CborText(PROP_ELEMENT_ID) to CborText(item.elementIdentifier),
+        ).wrapInIssuerSignedListSerialized()
+
+        val parsed = coseCompliantSerializer.decodeFromHexString(IssuerSignedListSerializer(namespace), issued)
+
+        parsed.entries.single().value shouldBe item
+        coseCompliantSerializer.encodeToHexString(IssuerSignedListSerializer(namespace), parsed)
+            .lowercase() shouldBe issued.lowercase()
+    }
+
+    "serializes items created from their values with the bytes they carry" {
+        val namespace = uuid4().toString()
+        val item = IssuerSignedItem(
+            digestId = 1u,
+            random = Random.nextBytes(16),
+            elementIdentifier = uuid4().toString(),
+            elementValue = uuid4().toString(),
+        )
+        val list = IssuerSignedList.fromIssuerSignedItems(listOf(item), namespace)
+
+        val parsed = coseCompliantSerializer.decodeFromByteArray(
+            IssuerSignedListSerializer(namespace),
+            coseCompliantSerializer.encodeToByteArray(IssuerSignedListSerializer(namespace), list),
+        )
+
+        parsed.entries.single().serialized shouldBe list.entries.single().serialized
+    }
+
     "deserializes IssuerSignedItem with elementValue being a nested object before elementIdentifier" {
         val namespace = uuid4().toString()
         val elementIdentifier = uuid4().toString()

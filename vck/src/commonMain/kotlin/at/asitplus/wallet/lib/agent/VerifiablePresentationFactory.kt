@@ -24,6 +24,7 @@ import at.asitplus.iso.DeviceSignedItem
 import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.ZkDocument
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
@@ -247,11 +248,11 @@ class VerifiablePresentationFactory(
             .groupBy { it.first }
             .mapValues { it.value.map { it.second } }
         val disclosedItems = namespaceToAttributesMap.mapValues { entry ->
-            entry.value.map {
-                discloseItem(entry.key, it)
+            IssuerSignedList(entry.value.map {
+                discloseIssuedItem(entry.key, it)
                     .mapFailure { PresentationException(it) }
                     .getOrThrow()
-            }
+            })
         }
 
         val approvalDigest = request.qesApprovalDigest(encodedTransactionData = false)
@@ -283,7 +284,7 @@ class VerifiablePresentationFactory(
 
         Document(
             docType = schemeIdentifier,
-            issuerSigned = IssuerSigned.fromIssuerSignedItems(
+            issuerSigned = IssuerSigned.fromIssuerSignedLists(
                 namespacedItems = disclosedItems,
                 issuerAuth = issuerSigned.issuerAuth
             ),

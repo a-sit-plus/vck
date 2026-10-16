@@ -19,11 +19,13 @@ import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.sha256
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -236,7 +238,9 @@ class Verifier {
         val issuerSignedItem = issuerSignedItems.entries.first { it.value.elementIdentifier == key }
         //val elementValue = issuerSignedItem.value.elementValue.toString().shouldNotBeNull()
         val issuerHash = mdlItems.entries.first { it.key == issuerSignedItem.value.digestId }.shouldNotBeNull().value
-        val verifierHash = issuerSignedItem.serialized.sha256()
+        // The digest is over IssuerSignedItemBytes, i.e. the encoded item as a byte string wrapped in CBOR tag 24
+        val verifierHash = coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), issuerSignedItem.serialized)
+            .wrapInCborTag(24).sha256()
         verifierHash.encodeToString(Base16(true)) shouldBe issuerHash.encodeToString(Base16(true))
     }
 }

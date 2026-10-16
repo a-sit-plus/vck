@@ -2,9 +2,15 @@ package at.asitplus.wallet.lib.validation
 
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.MobileSecurityObject
+import at.asitplus.iso.ValueDigest
+import at.asitplus.iso.ValueDigestList
+import at.asitplus.iso.wrapInCborTag
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider
@@ -15,6 +21,9 @@ import at.asitplus.wallet.lib.agent.StatusListAgent
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
+import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -36,12 +45,17 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
+import net.orandja.obor.codec.Cbor
+import net.orandja.obor.data.CborMap
+import net.orandja.obor.data.CborObject
 
 private val integrityOnly = strictPolicy.copy(trust = TrustPolicy.IntegrityOnly, status = StatusPolicy.Skip)
 
@@ -305,6 +319,28 @@ val CredentialValidatorTest by matrixSuite {
             result.checks.disclosedItems.size shouldBe issuerSigned.items().values.sumOf { it.size }
         }
 
+        "items encoded in another key order than this library uses match their digests" {
+            val issuance = issuance()
+            val issued = issuance.mdoc()
+            val mso = issued.issuerAuth.payload.shouldNotBeNull()
+            val namespaces = issued.namespaces.shouldNotBeNull().mapValues { (_, list) ->
+                IssuerSignedList(list.entries.map { ByteStringWrapper(it.value, it.serialized.inReversedKeyOrder()) })
+            }
+            val digests = namespaces.mapValues { (_, list) ->
+                ValueDigestList(list.entries.map { ValueDigest(it.value.digestId, mso.digest.digest(it.itemBytes())) })
+            }
+            val reissued = IssuerSigned.fromIssuerSignedLists(
+                namespacedItems = namespaces,
+                issuerAuth = SignCose<MobileSecurityObject>(
+                    issuance.issuer.keyMaterial,
+                    CoseHeaderNone(),
+                    CoseHeaderCertificate()
+                ).invoke(null, null, mso.copy(valueDigests = digests), MobileSecurityObject.serializer()).getOrThrow(),
+            )
+
+            issuance.validateMdoc(reissued).report.decision shouldBe ACCEPTED
+        }
+
         "a withheld item is fine" {
             val issuance = issuance()
             issuance.validateMdoc(issuance.mdoc().mapItems { it.drop(1) }).report.decision shouldBe ACCEPTED
@@ -348,3 +384,16 @@ val CredentialValidatorTest by matrixSuite {
         }
     }
 }
+
+/** This encoded issuer-signed item with its keys in reverse order, as CBOR does not mandate an order. */
+private fun ByteArray.inReversedKeyOrder(): ByteArray {
+    val item = Cbor.decodeFromByteArray<CborObject>(this) as CborMap
+    val reversed = item.toList().asReversed().map { it.key to it.value }
+    return Cbor.encodeToByteArray<CborMap>(CborObject.orderedMap(*reversed.toTypedArray()))
+        .also { it.contentEquals(this) shouldBe false }
+}
+
+/** `IssuerSignedItemBytes`, the input of its digest (ISO/IEC 18013-5:2021, 9.1.2.5). */
+private fun ByteStringWrapper<IssuerSignedItem>.itemBytes() =
+    coseCompliantSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24)
+
