@@ -218,14 +218,21 @@ class RelyingPartyValidator @JvmOverloads constructor(
             val evaluation = evaluateRegistrationCertificate(
                 certificate = certificate,
                 accessIdentifier = access.identifier,
-                requests = requests,
+                purpose = RegistrationPurpose.Presentation(requests),
                 anchors = trust.registrationCertificates,
                 source = REGISTRATION_CERTIFICATE_PROVIDERS,
                 signatureCheck = signatureCheck,
                 maxValidity = maxRegistrationValidity,
                 timeScope = timeScope,
             )
-            val checks = evaluation.checks(status(evaluation, policy, timeScope))
+            val status = registrationStatus(
+                evaluation = evaluation,
+                policy = policy,
+                now = timeScope.now,
+                statusValidator = statusValidator,
+                anchors = trust.registrationStatus,
+            )
+            val checks = evaluation.checks(status)
             certificate to ValidationReport.registrationCertificate(checks, policy, timeScope.now)
         }
         val report = ValidationReport.relyingParty(
@@ -242,32 +249,6 @@ class RelyingPartyValidator @JvmOverloads constructor(
             )
         } else null
         return RelyingPartyValidationResult(report, relyingParty)
-    }
-
-    /**
-     * The status is only resolved for a WRPRC that is valid otherwise, as for credentials (draft-ietf-oauth-status-
-     * list-21, 8.3); its signer has to be authorized by [RelyingPartyTrustAnchors.registrationStatus] (ETSI TS 119 475
-     * V1.2.1, 6.2.6.2).
-     */
-    private suspend fun status(
-        evaluation: RegistrationCertificateEvaluation,
-        policy: ValidationPolicy,
-        timeScope: TimeScope,
-    ): StatusValidation {
-        val withoutStatus = evaluation.checks(StatusValidation(NotApplicable, emptyList(), NotApplicable))
-        if (policy.status != StatusPolicy.Skip && !withoutStatus.meets(policy.copy(status = StatusPolicy.Skip))) {
-            return StatusValidation(
-                claim = Blocked(IllegalStateException("The status of an invalid WRPRC is not resolved")),
-                agreement = NotApplicable,
-            )
-        }
-        return statusValidator.validate(
-            status = evaluation.status,
-            signerAnchors = StatusSignerAnchors.OfArtifactKind(trust.registrationStatus, REGISTRATION_STATUS_SIGNERS),
-            policy = policy.status,
-            timeLeeway = policy.timeLeeway,
-            evaluatedAt = timeScope.now,
-        )
     }
 
     /** A JAR, signed with the leaf of its `x5c`, with one WRPRC in `verifier_info` for its DCQL query. */
@@ -359,7 +340,6 @@ class RelyingPartyValidator @JvmOverloads constructor(
     private companion object {
         const val ACCESS_CERTIFICATE_PROVIDERS = "WRPAC providers"
         const val REGISTRATION_CERTIFICATE_PROVIDERS = "WRPRC providers"
-        const val REGISTRATION_STATUS_SIGNERS = "WRPRC status list signers"
         const val VERIFIER_ATTESTERS = "verifier attesters"
         const val PRE_REGISTERED_CLIENTS = "pre-registered clients"
         const val CLIENT_IDENTIFIER_PREFIXES = "client identifier prefixes"

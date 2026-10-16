@@ -155,15 +155,17 @@ data class RegistrationCertificateChecks(
 ) : ValidationChecks
 
 /**
- * The checks of signed credential issuer metadata, as received by a wallet.
+ * The checks of signed credential issuer metadata, as received by a wallet, signed with the access certificate (WRPAC)
+ * of the credential issuer.
  */
 data class IssuerMetadataChecks(
-    /** `typ`, decoding, and required claims. */
+    /** `typ`, decoding, required claims, and the identifier in the access certificate. */
     val parsing: CheckOutcome,
+    /** With the access certificate in `x5c`. */
     val signature: CheckOutcome,
-    /** Whether the signer is authorized. */
+    /** Whether the access certificate leads to an anchor of the WRPAC providers. */
     val trust: TrustValidation,
-    /** `iat` and `exp`, if present. */
+    /** `iat`, `exp` if present, and the validity of the certificate chain. */
     val timeliness: CheckOutcome,
     /** `sub` and `credential_issuer` are the identifier the metadata was requested for. */
     val subject: CheckOutcome,
