@@ -5,6 +5,9 @@ import kotlinx.serialization.Serializable
 
 /**
  * [RFC 7662: OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662): Request.
+ *
+ * A JWT response ([RFC 9701](https://www.rfc-editor.org/rfc/rfc9701)) is requested with the header
+ * `Accept: application/token-introspection+jwt`, not with a parameter.
  */
 @Serializable
 data class TokenIntrospectionRequest(
@@ -28,19 +31,9 @@ data class TokenIntrospectionRequest(
      * authorization server MAY ignore this parameter, particularly if it
      * is able to detect the token type automatically.  Values for this
      * field are defined in the "OAuth Token Type Hints" registry defined
-     * in OAuth Token Revocation (RFC7009).
+     * in OAuth Token Revocation (RFC7009), i.e. [OpenIdConstants.TOKEN_TYPE_HINT_ACCESS_TOKEN] or
+     * [OpenIdConstants.TOKEN_TYPE_HINT_REFRESH_TOKEN], not the token type, such as `DPoP`.
      */
     @SerialName("token_type_hint")
     val tokenTypeHint: String? = null,
-
-    /**
-     * OPTIONAL. Response format, see RFC 9701. Use `jwt` to request a JWT response.
-     */
-    @SerialName("response_format")
-    val responseFormat: ResponseFormat? = null,
-) {
-    enum class ResponseFormat {
-        @SerialName("jwt")
-        JWT
-    }
-}
+)

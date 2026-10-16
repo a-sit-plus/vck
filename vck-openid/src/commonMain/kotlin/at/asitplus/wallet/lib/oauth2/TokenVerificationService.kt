@@ -9,6 +9,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_PREFIX_DPOP
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -120,7 +121,10 @@ class JwtTokenVerificationService(
             TokenInfo(
                 token = accessToken,
                 authorizationDetails = authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.toSet(),
-                scope = scope
+                scope = scope,
+                // RFC 9449 6.: the token is bound to the DPoP key with this thumbprint
+                confirmationClaim = confirmationClaim?.jsonWebKeyThumbprint
+                    ?.let { ConfirmationClaim(jsonWebKeyThumbprint = it) },
             )
         }
     }

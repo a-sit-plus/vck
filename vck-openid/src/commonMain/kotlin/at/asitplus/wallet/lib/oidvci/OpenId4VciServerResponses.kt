@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.wallet.lib.PreparedHttpResponse
+import at.asitplus.wallet.lib.acceptsOverJson
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jsonHttpResponse
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
@@ -43,17 +44,8 @@ fun OpenId4VciServer.CredentialResponse.toHttpResponse(): PreparedHttpResponse =
 }
 
 /**
- * Whether the `Accept` header [acceptHeader] asks for signed issuer metadata, i.e. lists `application/jwt`
- * explicitly, with a quality not below the one of `application/json` (or `application/*`, `*/*`).
- * Wildcards alone never select signed metadata, as unsigned metadata is the one every client understands
+ * Whether the `Accept` header [acceptHeader] asks for signed issuer metadata, see [acceptsOverJson]
  * ([OID4VCI 1.0 12.2.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.2)).
  */
-internal fun acceptsSignedMetadata(acceptHeader: String?): Boolean {
-    val accepted = parseHeaderValue(acceptHeader).associate { it.value.trim().lowercase() to it.quality }
-    val jwtQuality = accepted[MediaTypes.Application.JWT] ?: return false
-    val jsonQuality = accepted[MediaTypes.Application.JSON]
-        ?: accepted["application/*"]
-        ?: accepted["*/*"]
-        ?: 0.0
-    return jwtQuality > 0.0 && jwtQuality >= jsonQuality
-}
+internal fun acceptsSignedMetadata(acceptHeader: String?): Boolean =
+    acceptsOverJson(acceptHeader, MediaTypes.Application.JWT)

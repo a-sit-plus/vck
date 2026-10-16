@@ -3,17 +3,23 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.openid.AttestationChallengeResponse
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.PushedAuthenticationResponseParameters
+import at.asitplus.openid.TokenIntrospectionJwtPayload
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.PreparedHttpResponse
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import io.kotest.matchers.shouldBe
 import io.ktor.http.*
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 private const val NONCE = "server-nonce"
@@ -102,13 +108,23 @@ val AuthorizationServerResponsesTest by matrixSuite {
             }
         }
 
-        test("JWT response keeps its wire format") {
-            val introspection = TokenIntrospectionJwtResponse(jwt = "header.payload.signature")
+        test("JWT response as application/token-introspection+jwt") {
+            val jwt = SignJwt<TokenIntrospectionJwtPayload>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
+                JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
+                TokenIntrospectionJwtPayload(
+                    issuer = "https://as.example.com",
+                    audience = setOf("https://rs.example.com"),
+                    issuedAt = Clock.System.now(),
+                    tokenIntrospection = TokenIntrospectionResponse(active = true),
+                ),
+                TokenIntrospectionJwtPayload.serializer(),
+            ).getOrThrow()
 
-            introspection.toHttpResponse().apply {
+            TokenIntrospectionJwtResponse(jwt).toHttpResponse().apply {
                 status shouldBe HttpStatusCode.OK
-                shouldBeJson()
-                body shouldBe """{"jwt":"header.payload.signature"}"""
+                headers.names() shouldBe setOf(HttpHeaders.ContentType)
+                headers[HttpHeaders.ContentType] shouldBe "application/token-introspection+jwt"
+                body shouldBe jwt.jws.toString()
             }
         }
     }
