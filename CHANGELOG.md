@@ -66,6 +66,12 @@ Release 9.0.0 (unreleased):
       taking `validator`, `validatorVcJws`, `validatorSdJwt`, `validatorMdoc` (which no longer take effect), and
       `trustedIssuers` (adapted as anchors for every credential type)
     - Add `OpenId4VciClient.validateCredentialResponse(...)`, reporting every credential of a (batch) response
+    - Add `ValidationPolicy.requiredClaims` (`RequiredClaimsPolicy.Skip` by default, or `RequireMandatory`) and the
+      check `CredentialChecks.requiredClaims` (`RequiredClaimsValidation`, failing with `MissingRequiredClaimException`): whether a
+      credential received on its own contains every claim the metadata of its signed type describe as `mandatory`
+      (draft-ietf-oauth-sd-jwt-vc-19, 5.6.3), resolved by the new `requiredClaimsResolver` of `CredentialValidator`
+      (`RequiredClaimsResolver.Default` uses the credential metadata registries and schemes of `AttributeIndex`, and
+      blocks the check for a type without metadata). Not applicable to presented credentials
     - Add `RelyingPartyValidator` with `RelyingPartyTrustAnchors` (WRPAC and WRPRC anchors, status list signers of
       WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a

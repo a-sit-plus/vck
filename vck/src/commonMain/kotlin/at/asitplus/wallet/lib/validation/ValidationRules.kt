@@ -49,7 +49,7 @@ fun CheckOutcome.cause(): Throwable? = when (this) {
  * `issuerTrust`, `disclosedItems[2].digest`, `status.claim`, `status.mechanisms[0]`, or `status.agreement`, and carry
  * what they refer to, without claim values: the
  * [trust] decision with the selected credential identifier and trust source, the [statusMechanism] with its reference,
- * observed status, and status list token report, or the [disclosedItem].
+ * observed status, and status list token report, the [disclosedItem], or the [claims] of `requiredClaims`.
  *
  * Names follow these conventions, so that applications can key labels or their own handling of checks by the type of
  * [ValidationChecks] and the name, e.g. to let the user continue past some unsatisfied checks only:
@@ -59,6 +59,7 @@ fun CheckOutcome.cause(): Throwable? = when (this) {
  *  - `timeliness` is always the validity period of the artifact the report is about, including its certificates; the
  *    time of a proof of possession by the holder is `proofTime` or `popTime`;
  *  - the parts of the status of an artifact start with `status.`;
+ *  - `requiredClaims` is whether a credential contains the claims its type requires, and carries [claims];
  *  - `registration` is the registration information of a credential issuer, or the registration certificates
  *    (WRPRCs) a relying party transports, `linkage` and `requestAuthorization` are checks of a WRPRC, and
  *    `requestData` the extraction of the credentials a relying party requests.
@@ -70,6 +71,7 @@ data class NamedCheck(
     val trust: TrustValidation? = null,
     val statusMechanism: StatusMechanismValidation? = null,
     val disclosedItem: DisclosedItemReference? = null,
+    val claims: RequiredClaimsValidation? = null,
 ) {
     /** Whether [outcome] satisfies [requirement], i.e. this check does not reject the report. */
     val satisfied: Boolean
@@ -106,6 +108,7 @@ internal fun credentialChecksWithoutPrerequisites(
         issuerTrust = TrustValidation(Blocked()),
         semantics = Blocked(),
         disclosedItems = emptyList(),
+        requiredClaims = RequiredClaimsValidation(Blocked()),
         holderBinding = Blocked(),
         timeliness = TimelinessValidation(Blocked(), details = null),
         status = StatusValidation(claim = Blocked(), agreement = Blocked()),
@@ -120,8 +123,8 @@ private fun List<NamedCheck>.firstRejection(): Throwable? =
         ?.let { it.outcome.cause() ?: IllegalArgumentException("The ${it.name} check did not pass: ${it.outcome}") }
 
 /**
- * Every supplied item has to be valid, there is no partial acceptance of a credential. The holder binding is required
- * as [ValidationPolicy.holderBinding] says.
+ * Every supplied item has to be valid, there is no partial acceptance of a credential. The required claims and the
+ * holder binding are required as [ValidationPolicy.requiredClaims] and [ValidationPolicy.holderBinding] say.
  */
 internal fun CredentialChecks.named(policy: ValidationPolicy) =
     listOf(
@@ -135,6 +138,7 @@ internal fun CredentialChecks.named(policy: ValidationPolicy) =
                 NamedCheck("disclosedItems[$index].$part", outcome, REQUIRED, disclosedItem = item.reference)
             }
     } + listOf(
+        NamedCheck("requiredClaims", requiredClaims.outcome, policy.requiredClaims.requirement, claims = requiredClaims),
         NamedCheck("holderBinding", holderBinding, policy.holderBinding.requirement),
         NamedCheck("timeliness", timeliness.outcome, policy.timelinessRequirement),
     ) + status.named(policy.status)
@@ -398,6 +402,13 @@ private val TrustPolicy.requirement: Requirement
     get() = when (this) {
         TrustPolicy.IntegrityOnly -> OPTIONAL
         TrustPolicy.RequireAuthorizedSigner -> REQUIRED
+    }
+
+/** The requirement on the claims a credential type requires. */
+private val RequiredClaimsPolicy.requirement: Requirement
+    get() = when (this) {
+        RequiredClaimsPolicy.Skip -> OPTIONAL
+        RequiredClaimsPolicy.RequireMandatory -> REQUIRED
     }
 
 /** The requirement on the holder binding of a credential. */

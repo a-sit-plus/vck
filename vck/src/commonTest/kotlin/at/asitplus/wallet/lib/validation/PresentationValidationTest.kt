@@ -148,6 +148,19 @@ val PresentationValidationTest by matrixSuite {
             result.presentation.shouldBeInstanceOf<ValidatedPresentation.SdJwt>().keyBinding.shouldNotBeNull()
         }
 
+        "a withheld disclosure does not count as a missing claim, as presentations disclose selectively" {
+            val issuance = issuance()
+            val sdJwt = issuance.presentedSdJwt()
+            val result = issuance.validatePresentation(
+                PresentationValidationInput.SdJwt(sdJwt + keyBinding(sdJwt, issuance.holderKey)),
+                policy = strictPolicy.copy(requiredClaims = RequiredClaimsPolicy.RequireMandatory),
+            )
+
+            result.report.decision shouldBe ACCEPTED
+            result.report.children.single().checks.shouldBeInstanceOf<CredentialChecks>()
+                .requiredClaims.outcome shouldBe NotApplicable
+        }
+
         "without a key binding JWT is rejected if holder binding is required" {
             val issuance = issuance()
             val result = issuance.validatePresentation(PresentationValidationInput.SdJwt(issuance.presentedSdJwt()))

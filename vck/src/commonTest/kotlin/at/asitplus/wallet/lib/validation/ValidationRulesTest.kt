@@ -10,10 +10,7 @@ import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
@@ -21,7 +18,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonObject
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 private val passingChecks = CredentialChecks(
     parsing = Passed,
@@ -31,6 +27,7 @@ private val passingChecks = CredentialChecks(
     disclosedItems = listOf(
         DisclosedItemValidation(DisclosedItemReference.SdJwt(0, "given_name"), Passed, Passed, Passed)
     ),
+    requiredClaims = RequiredClaimsValidation(NotApplicable),
     holderBinding = Passed,
     timeliness = TimelinessValidation(Passed, details = null),
     status = validStatus,
