@@ -205,6 +205,28 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
     }
 
     /**
+     * Parses the metadata of [loaded] like [parseCredentialMetadata], but also for signed metadata that have been
+     * rejected, e.g. as their signer is not trusted, using [LoadedIssuerMetadata.Signed.untrustedMetadata] without a
+     * validated credential issuer. Such metadata are no more trustworthy than unsigned ones: use this only to continue
+     * after showing the report to the user. Fails for signed metadata whose signature or subject did not pass.
+     */
+    fun parseCredentialMetadataIgnoringTrust(
+        loaded: LoadedIssuerMetadata,
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
+        when (loaded) {
+            is LoadedIssuerMetadata.Unsigned -> parseCredentialMetadata(loaded.metadata).getOrThrow()
+            is LoadedIssuerMetadata.Signed -> if (loaded.metadata != null) {
+                parseCredentialMetadata(loaded).getOrThrow()
+            } else {
+                val metadata = loaded.untrustedMetadata ?: throw IllegalArgumentException(
+                    "The signed metadata are not authenticated for the credential issuer, see their report"
+                )
+                parseCredentialMetadata(metadata).getOrThrow()
+            }
+        }
+    }
+
+    /**
      * The authorization server to use for [issuerMetadata], i.e. the first entry of
      * [IssuerMetadata.authorizationServers], or [credentialIssuer] itself.
      */
@@ -354,6 +376,10 @@ sealed interface LoadedIssuerMetadata {
     data class Signed(val validation: IssuerMetadataValidation) : LoadedIssuerMetadata {
         override val metadata: IssuerMetadata?
             get() = validation.metadata
+
+        /** The metadata whatever the decision, if signed for the credential issuer, see [IssuerMetadataValidation]. */
+        val untrustedMetadata: IssuerMetadata?
+            get() = validation.untrustedMetadata
     }
 
     /** Unsigned metadata, which are not authenticated by the credential issuer. */

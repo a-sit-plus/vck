@@ -181,6 +181,15 @@ class OpenId4VciKtorClient private constructor(
     ): KmmResult<Collection<CredentialIdentifierInfo>> = vci.parseCredentialMetadata(loaded)
 
     /**
+     * Parses the metadata of [loaded] also if signed metadata have been rejected, without a validated credential
+     * issuer, see [OpenId4VciProtocolClient.parseCredentialMetadataIgnoringTrust]: only to continue after showing the
+     * report to the user.
+     */
+    fun parseCredentialMetadataIgnoringTrust(
+        loaded: LoadedIssuerMetadata,
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = vci.parseCredentialMetadataIgnoringTrust(loaded)
+
+    /**
      * Starts the issuing process at [credentialIssuerUrl].
      * Clients need to handle the result, i.e. open the URL for user authentication or store the credentials.
      * Clients need to call [resumeWithAuthCode] after getting the authorization code back from the authorization
