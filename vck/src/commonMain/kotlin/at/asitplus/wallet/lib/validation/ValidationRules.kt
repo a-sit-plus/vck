@@ -72,6 +72,36 @@ internal fun CredentialChecks.meets(policy: ValidationPolicy, holderBindingPolic
             && timeliness.outcome.satisfies(policy.timelinessRequirement)
             && status.meets(policy.status)
 
+/**
+ * Why a credential is rejected under [policy] and [holderBindingPolicy]: the cause of the first check that does not
+ * meet its requirement, in the order of [CredentialChecks], or a description of it if the check has no cause.
+ * `null` if the credential is accepted.
+ */
+internal fun CredentialChecks.firstRejection(
+    policy: ValidationPolicy,
+    holderBindingPolicy: HolderBindingPolicy,
+): Throwable? {
+    fun rejection(check: String, outcome: CheckOutcome, requirement: Requirement): Throwable? =
+        if (outcome.satisfies(requirement)) null
+        else outcome.cause() ?: IllegalArgumentException("The $check check did not pass: $outcome")
+
+    return rejection("parsing", parsing, REQUIRED)
+        ?: rejection("issuer signature", issuerSignature, REQUIRED)
+        ?: rejection("issuer trust", issuerTrust.outcome, policy.trust.requirement)
+        ?: rejection("semantics", semantics, REQUIRED)
+        ?: disclosedItems.firstNotNullOfOrNull { item ->
+            listOf(item.parsing, item.digest, item.structure)
+                .firstNotNullOfOrNull { rejection("disclosed item ${item.reference}", it, REQUIRED) }
+        }
+        ?: rejection("holder binding", holderBinding, holderBindingPolicy.requirement)
+        ?: rejection("timeliness", timeliness.outcome, policy.timelinessRequirement)
+        ?: status.takeUnless { it.meets(policy.status) }?.let { status ->
+            (listOf(status.claim) + status.mechanisms.map { it.outcome } + status.agreement)
+                .firstNotNullOfOrNull { it.cause() }
+                ?: IllegalArgumentException("The status check did not pass")
+        }
+}
+
 /** Every supplied item has to be valid, there is no partial acceptance of a credential. */
 private fun DisclosedItemValidation.meetsRequirements() =
     parsing.satisfies(REQUIRED) && digest.satisfies(REQUIRED) && structure.satisfies(REQUIRED)

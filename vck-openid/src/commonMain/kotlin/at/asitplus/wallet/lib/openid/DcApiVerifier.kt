@@ -34,6 +34,7 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
@@ -45,7 +46,6 @@ import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier
-import at.asitplus.wallet.lib.agent.NonceChallengeVerifier.ChallengeSession
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -61,8 +61,17 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.PresentationContext
+import at.asitplus.wallet.lib.validation.PresentationValidationInput
+import at.asitplus.wallet.lib.validation.PresentationValidationResult
+import at.asitplus.wallet.lib.validation.ProtocolResponseChecks
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.ktor.utils.io.core.*
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -119,6 +128,17 @@ class DcApiVerifier @JvmOverloads constructor(
         keyMaterial = keyMaterial,
         unprotectedHeaderModifier = CoseHeaderClientIdScheme(clientIdScheme),
     ),
+    /**
+     * Validates every presentation of a response for its report, see [AuthnResponseResult.Success.validationReport]
+     * and [Iso180137AnnexCWrapper.validationReport]: configure it with the trust anchors per credential type and the
+     * status list token resolver.
+     */
+    private val credentialValidator: CredentialValidator = CredentialValidator(),
+    /**
+     * The policy presentations are validated under, by default [defaultPresentationPolicy], which rejects every
+     * presentation unless [credentialValidator] has trust anchors for its issuer.
+     */
+    private val presentationPolicy: ValidationPolicy = defaultPresentationPolicy,
 ) {
     private val mdocDeviceSignatureVerifier = MdocDeviceSignatureVerifier(verifyCoseSignature = verifyCoseSignature)
 
@@ -145,6 +165,8 @@ class DcApiVerifier @JvmOverloads constructor(
         mdocDeviceSignatureVerifier = mdocDeviceSignatureVerifier,
         createSessionTranscript = DcApiSessionTranscriptCalculator(),
         decryptionKeyMaterial = decryptionKeyMaterial,
+        credentialValidator = credentialValidator,
+        presentationPolicy = presentationPolicy,
     )
     private val responseParser = ResponseParser(
         decryptJwe = DecryptJweWithEphemeralKey(ephemeralEncryptionKeyService, decryptionKeyMaterial),
@@ -354,10 +376,14 @@ class DcApiVerifier @JvmOverloads constructor(
         with(responseProcessor.consume(input, externalId)) {
             // the request has been consumed, so a response over the wrong transport or origin ends it, too
             validateTransport(request, input, expectedOrigin)
-            error?.let { AuthnResponseResult.Error(it, request) } ?: AuthnResponseResult.Success(
-                vpTokenResult = validateVpToken(request, input, expectedOrigin, session),
-                request = request,
-            )
+            error?.let { AuthnResponseResult.Error(it, request) } ?: vpTokenValidator.validateVpToken(
+                authnRequest = request,
+                responseParameters = input,
+                origin = expectedOrigin,
+                // validateTransport rejects a signed request from an origin not in its expected_origins
+                expectedOrigin = if (input.clientIdRequired) CheckOutcome.Passed else CheckOutcome.NotApplicable,
+                session = session,
+            ).let { AuthnResponseResult.Success(it.result, request, it.report) }
         }
     }
 
@@ -415,7 +441,45 @@ class DcApiVerifier @JvmOverloads constructor(
             }
         }
 
-        Iso180137AnnexCWrapper(documents)
+        val context = PresentationContext(
+            // Not checked for mdoc documents: the session transcript binds them to the request and the origin
+            challenge = isoMdocRequest.encryptionInfo.encryptionParameters.nonce?.encodeToString(Base64UrlStrict) ?: "",
+            audience = "origin:$expectedOrigin",
+            sessionTranscript = sessionTranscript,
+        )
+        val presentationValidations = deviceResponse.documents.orEmpty().map {
+            credentialValidator.validate(PresentationValidationInput.MdocDocument(it), context, presentationPolicy)
+        }
+        Iso180137AnnexCWrapper(
+            documents = documents,
+            presentationValidations = presentationValidations,
+            validationReport = credentialValidator.reportResponse(
+                checks = ProtocolResponseChecks(
+                    parsing = CheckOutcome.Passed,
+                    // HPKE with the session transcript as info, which contains the origin
+                    // (ISO/IEC DTS 18013-7, C.4, C.5)
+                    encryption = CheckOutcome.Passed,
+                    expectedOrigin = CheckOutcome.Passed,
+                    requestState = CheckOutcome.Passed,
+                    submissionRequirements = requestedDocTypes.submissionRequirements(presentationValidations),
+                ),
+                presentations = presentationValidations.map { it.report },
+            ),
+        )
+    }
+
+    /**
+     * Every requested document has to be answered by an accepted one: the mdoc may return only some of the requested
+     * documents (ISO/IEC 18013-5:2021, 8.3.2.1.2.2), which does not satisfy the request.
+     */
+    private fun Set<String>.submissionRequirements(presentations: List<PresentationValidationResult>): CheckOutcome {
+        val accepted = presentations.mapNotNull { it.presentation as? ValidatedPresentation.MdocDocument }
+            .map { it.document.docType }.toSet()
+        val missing = this - accepted
+        return if (missing.isEmpty())
+            CheckOutcome.Passed
+        else
+            CheckOutcome.Failed(IllegalArgumentException("No accepted document of the requested types $missing"))
     }
 
     /**
@@ -438,21 +502,6 @@ class DcApiVerifier @JvmOverloads constructor(
                 "expected origin '$expectedOrigin' does not match expected_origins"
             }
         }
-    }
-
-    /** Validates the `vp_token` of the response with the shared [VpTokenValidator]. */
-    private suspend fun validateVpToken(
-        authnRequest: AuthenticationRequestParameters,
-        responseParameters: ResponseParametersFrom,
-        expectedOrigin: String,
-        session: ChallengeSession,
-    ): KmmResult<VpTokenValidationResult> = catching {
-        vpTokenValidator.validateVpToken(
-            authnRequest = authnRequest,
-            responseParameters = responseParameters,
-            origin = expectedOrigin,
-            session = session,
-        ).getOrThrow()
     }
 
     fun createDcApiSessionTranscriptAnnexC(

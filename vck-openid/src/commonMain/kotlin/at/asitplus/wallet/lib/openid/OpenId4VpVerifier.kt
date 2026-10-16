@@ -7,6 +7,7 @@ import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.ResponseParametersFrom
+import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.wallet.lib.DefaultNonceService
@@ -16,7 +17,6 @@ import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier
-import at.asitplus.wallet.lib.agent.NonceChallengeVerifier.ChallengeSession
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
@@ -26,12 +26,12 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.openid.encodeToParameters
-import at.asitplus.wallet.lib.openid.ClientIdScheme.CertificateHash
-import at.asitplus.wallet.lib.openid.ClientIdScheme.CertificateSanDns
-import at.asitplus.wallet.lib.openid.ClientIdScheme.RedirectUri
+import at.asitplus.wallet.lib.openid.ClientIdScheme.*
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlin.jvm.JvmOverloads
@@ -75,6 +75,16 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
     /** Algorithms supported to decrypt responses from wallets, for [metadataWithEncryption]. */
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
+    /**
+     * Validates every presentation of a response for its report, see [AuthnResponseResult.Success.validationReport]:
+     * configure it with the trust anchors per credential type and the status list token resolver.
+     */
+    private val credentialValidator: CredentialValidator = CredentialValidator(),
+    /**
+     * The policy presentations are validated under, by default [defaultPresentationPolicy], which rejects every
+     * presentation unless [credentialValidator] has trust anchors for its issuer.
+     */
+    private val presentationPolicy: ValidationPolicy = defaultPresentationPolicy,
 ) {
     private val nonceAwareVerifier = NonceChallengeVerifier(
         verifierId = clientIdScheme.clientId,
@@ -95,7 +105,9 @@ class OpenId4VpVerifier @JvmOverloads constructor(
     private val vpTokenValidator = VpTokenValidator(
         mdocDeviceSignatureVerifier = MdocDeviceSignatureVerifier(verifyCoseSignature = verifyCoseSignature),
         createSessionTranscript = UrlSessionTranscriptCalculator(),
-        decryptionKeyMaterial = decryptionKeyMaterial
+        decryptionKeyMaterial = decryptionKeyMaterial,
+        credentialValidator = credentialValidator,
+        presentationPolicy = presentationPolicy,
     )
 
     private val responseParser = ResponseParser(
@@ -212,10 +224,18 @@ class OpenId4VpVerifier @JvmOverloads constructor(
         with(responseProcessor.consume(input, externalId = null)) {
             // the request has been consumed, so a response over the wrong transport ends it, too
             validateTransport(input)
-            error?.let { AuthnResponseResult.Error(it, request) } ?: AuthnResponseResult.Success(
-                vpTokenResult = validateVpToken(request, input, session),
-                request = request,
-            )
+            if (error != null) {
+                AuthnResponseResult.Error(error, request)
+            } else {
+                val validation = vpTokenValidator.validateVpToken(
+                    authnRequest = request,
+                    responseParameters = input,
+                    origin = null,
+                    expectedOrigin = CheckOutcome.NotApplicable,
+                    session = session,
+                )
+                AuthnResponseResult.Success(validation.result, request, validation.report)
+            }
         }
     }
 
@@ -226,20 +246,4 @@ class OpenId4VpVerifier @JvmOverloads constructor(
             "DCAPI verification is not supported, use DcApiVerifier"
         }
     }
-
-    /** Validates the `vp_token` of the response with the shared [VpTokenValidator]. */
-    private suspend fun validateVpToken(
-        authnRequest: AuthenticationRequestParameters,
-        responseParameters: ResponseParametersFrom,
-        session: ChallengeSession,
-    ): KmmResult<VpTokenValidationResult> = catching {
-        vpTokenValidator.validateVpToken(
-            authnRequest = authnRequest,
-            responseParameters = responseParameters,
-            origin = null,
-            session = session,
-        ).getOrThrow()
-    }
 }
-
-

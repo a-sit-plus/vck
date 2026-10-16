@@ -2,13 +2,13 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
-import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtInputValidator
-import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsInputValidator
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
@@ -22,11 +22,27 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.CredentialChecks
+import at.asitplus.wallet.lib.validation.CredentialStorageResult
+import at.asitplus.wallet.lib.validation.CredentialTrustAnchors
+import at.asitplus.wallet.lib.validation.CredentialValidationContext
+import at.asitplus.wallet.lib.validation.CredentialValidationInput
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.HolderBindingPolicy
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidatedCredential
+import at.asitplus.wallet.lib.validation.ValidationPolicy
+import at.asitplus.wallet.lib.validation.firstRejection
+import at.asitplus.wallet.lib.validation.sameForAllTypes
 import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.joinAll
+import kotlinx.serialization.encodeToByteArray
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * An agent that only implements [Holder], i.e. it can receive credentials from other agents
@@ -35,95 +51,155 @@ import kotlin.jvm.JvmOverloads
 class HolderAgent @JvmOverloads constructor(
     override val keyMaterial: KeyMaterial,
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-    private val validator: Validator = Validator(),
-    /**
-     * Certificates of the issuers we trust, e.g. extracted from an ETSI trust list. When set, credentials whose
-     * issuer certificate is not signed by one of these are rejected on [storeCredential]. When null, issuer
-     * signatures are only verified against the key the credential asserts itself, i.e. no trust decision is made.
-     */
-    trustedIssuers: TrustedCertificates? = null,
-    private val validatorVcJws: ValidatorVcJws = ValidatorVcJws(
-        vcJwsInputValidator = VcJwsInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
-        validator = validator,
-    ),
-    private val validatorSdJwt: ValidatorSdJwt = ValidatorSdJwt(
-        sdJwtInputValidator = SdJwtInputValidator(verifyJwsObject = issuerJwsVerifier(trustedIssuers)),
-        validator = validator,
-    ),
-    private val validatorMdoc: ValidatorMdoc = ValidatorMdoc(
-        verifyCoseSignature = issuerCoseVerifier(trustedIssuers),
-        validator = validator,
-    ),
-    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
-        SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-    private val signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
-    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
-        keyMaterial = keyMaterial,
-        protectedHeaderModifier = CoseHeaderNone(),
-        unprotectedHeaderModifier = CoseHeaderNone()
-    ),
-    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
-        VerifiablePresentationFactory(
+        VerifiablePresentationFactory(keyMaterial = keyMaterial),
+    /**
+     * Validates credentials before they are stored, see [storeCredentialWithReport], and orders stored credentials by
+     * their time and status, see [getValidCredentialsByPriority]. Configure it with the trust anchors per credential
+     * type and the status list token resolver; without trust anchors, [storeCredential] checks integrity only.
+     */
+    private val credentialValidator: CredentialValidator = CredentialValidator(),
+) : Holder {
+
+    @Deprecated(
+        "The validator parameters no longer take effect, and trustedIssuers trusts every issuer for every credential" +
+                " type: pass a credentialValidator with trust anchors per credential type instead"
+    )
+    constructor(
+        keyMaterial: KeyMaterial,
+        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
+        @Suppress("UNUSED_PARAMETER") validator: Validator? = null,
+        trustedIssuers: TrustedCertificates? = null,
+        @Suppress("UNUSED_PARAMETER") validatorVcJws: ValidatorVcJws? = null,
+        @Suppress("UNUSED_PARAMETER") validatorSdJwt: ValidatorSdJwt? = null,
+        @Suppress("UNUSED_PARAMETER") validatorMdoc: ValidatorMdoc? = null,
+        signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+        signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
+        signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+            keyMaterial = keyMaterial,
+            protectedHeaderModifier = CoseHeaderNone(),
+            unprotectedHeaderModifier = CoseHeaderNone()
+        ),
+        mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
+        verifiablePresentationFactory: VerifiablePresentationFactory = VerifiablePresentationFactory(
             keyMaterial = keyMaterial,
             signVerifiablePresentation = signVerifiablePresentation,
             signKeyBinding = signKeyBinding,
             mdocZkEngine = mdocZkEngine,
             signDeviceAuthDetached = signDeviceAuthDetached
         ),
-) : Holder {
+        credentialValidator: CredentialValidator? = null,
+    ) : this(
+        keyMaterial = keyMaterial,
+        subjectCredentialStore = subjectCredentialStore,
+        verifiablePresentationFactory = verifiablePresentationFactory,
+        credentialValidator = credentialValidator(trustedIssuers, credentialValidator),
+    )
 
     private val presentationResponseCreator = PresentationResponseCreator(verifiablePresentationFactory)
 
     /**
+     * The checks [storeCredential] has always made: issuer trust only if trust anchors are configured, and neither
+     * time nor status, which are checked when credentials are used.
+     */
+    private val compatibilityPolicy = ValidationPolicy(
+        trust = if (credentialValidator.hasTrustAnchors) TrustPolicy.RequireAuthorizedSigner
+        else TrustPolicy.IntegrityOnly,
+        status = StatusPolicy.Skip,
+        timeLeeway = 300.seconds,
+        requireTimeliness = false,
+    )
+
+    /**
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
+     *
+     * Validates with [storeCredentialWithReport] under the checks this has always made, see [compatibilityPolicy], and
+     * fails with the cause of the first check that rejects the credential.
      */
     override suspend fun storeCredential(
         credential: Holder.StoreCredentialInput,
         renewalInfo: CredentialRenewalInfo?
     ) = catching {
-        when (credential) {
-            is Holder.StoreCredentialInput.Vc -> {
-                val validated = validatorVcJws.verifyVcJws(credential.signedVcJws, keyMaterial.publicKey).getOrThrow()
-                subjectCredentialStore.storeCredential(
-                    vc = validated.jws,
-                    vcSerialized = credential.vcJws,
-                    scheme = credential.scheme,
-                    renewalInfo = renewalInfo,
-                    issuer = credential.signedVcJws.jws.jwsHeader.certificateChain?.leaf
-                )
-            }
-
-            is Holder.StoreCredentialInput.SdJwt -> {
-                if (credential.signedSdJwtVc.keyBindingJws != null) {
-                    throw Throwable("Issued SD-JWT credentials must not contain a KB")
-                }
-                val validated = validatorSdJwt.verifySdJwt(credential.signedSdJwtVc, keyMaterial.publicKey).getOrThrow()
-                subjectCredentialStore.storeCredential(
-                    vc = validated.verifiableCredentialSdJwt,
-                    vcSerialized = credential.vcSdJwt,
-                    disclosures = validated.disclosures,
-                    scheme = credential.scheme,
-                    renewalInfo = renewalInfo,
-                    issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf
-                )
-            }
-
-            is Holder.StoreCredentialInput.Iso -> {
-                val validated = validatorMdoc.verifyIsoCred(credential.issuerSigned).getOrThrow()
-                subjectCredentialStore.storeCredential(
-                    issuerSigned = validated.issuerSigned,
-                    scheme = credential.scheme,
-                    renewalInfo = renewalInfo,
-                    issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)
-                        ?.let { X509Certificate.decodeFromDer(it) }
-                )
-            }
-        }
+        val result = storeCredentialWithReport(credential, compatibilityPolicy, renewalInfo).getOrThrow()
+        result.storedEntry ?: throw (result.validation.report.checks as CredentialChecks)
+            .firstRejection(compatibilityPolicy, HolderBindingPolicy.RequireExpectedKey)
+            ?: IllegalStateException("The credential has not been stored")
     }
 
+    /**
+     * Validates [credential] under [policy], bound to the key of this holder and of the type of its scheme, and stores
+     * it only if it is accepted, see [CredentialStorageResult]. A rejected credential is a successful result with
+     * its report; only persisting fails.
+     */
+    @JvmOverloads
+    suspend fun storeCredentialWithReport(
+        credential: Holder.StoreCredentialInput,
+        policy: ValidationPolicy,
+        renewalInfo: CredentialRenewalInfo? = null,
+    ): KmmResult<CredentialStorageResult> = catching {
+        val binding = HolderBindingPolicy.RequireExpectedKey
+        val validation = when (credential) {
+            is Holder.StoreCredentialInput.Vc -> credentialValidator.validate(
+                input = CredentialValidationInput.VcJwt(credential.vcJws),
+                policy = policy,
+                holderBinding = binding,
+                context = context(credential.scheme.vcType)
+            )
 
+            is Holder.StoreCredentialInput.SdJwt -> credentialValidator.validate(
+                input = CredentialValidationInput.SdJwtVc(credential.vcSdJwt),
+                policy = policy,
+                holderBinding = binding,
+                context = context(credential.scheme.sdJwtType),
+            )
+
+            // Validates the encoding, which is what presentations of the credential carry
+            is Holder.StoreCredentialInput.Iso -> credentialValidator.validate(
+                input = CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(credential.issuerSigned)),
+                policy = policy,
+                holderBinding = binding,
+                context = context(credential.scheme.isoDocType),
+            )
+        }
+        CredentialStorageResult(validation, validation.credential?.let { store(credential, it, renewalInfo) })
+    }
+
+    private fun context(credentialIdentifier: String) = CredentialValidationContext(
+        expectedHolderKey = keyMaterial.publicKey,
+        expectedCredentialIdentifier = credentialIdentifier,
+    )
+
+    private suspend fun store(
+        credential: Holder.StoreCredentialInput,
+        accepted: ValidatedCredential,
+        renewalInfo: CredentialRenewalInfo?,
+    ): StoreEntry = when (credential) {
+        is Holder.StoreCredentialInput.Vc -> subjectCredentialStore.storeCredential(
+            vc = (accepted as ValidatedCredential.VcJwt).credential,
+            vcSerialized = credential.vcJws,
+            scheme = credential.scheme,
+            renewalInfo = renewalInfo,
+            issuer = credential.signedVcJws.jws.jwsHeader.certificateChain?.leaf
+        )
+
+        is Holder.StoreCredentialInput.SdJwt -> subjectCredentialStore.storeCredential(
+            vc = (accepted as ValidatedCredential.SdJwtVc).credential,
+            vcSerialized = credential.vcSdJwt,
+            disclosures = accepted.disclosures,
+            scheme = credential.scheme,
+            renewalInfo = renewalInfo,
+            issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf
+        )
+
+        is Holder.StoreCredentialInput.Iso -> subjectCredentialStore.storeCredential(
+            issuerSigned = (accepted as ValidatedCredential.IsoMdoc).issuerSigned,
+            scheme = credential.scheme,
+            renewalInfo = renewalInfo,
+            issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)
+                ?.let { X509Certificate.decodeFromDer(it) }
+        )
+    }
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
@@ -131,28 +207,52 @@ class HolderAgent @JvmOverloads constructor(
     override suspend fun getCredentials(): Collection<StoreEntry>? =
         subjectCredentialStore.getCredentials().getOrNull()
 
-    /** Gets a list of all valid stored credentials sorted by preference, possibly filtered by [filterByIds]. */
+    /**
+     * Gets a list of all stored credentials sorted by preference, possibly filtered by [filterByIds]: credentials that
+     * are verifiably expired, not yet valid, or of a status that is not accepted come last, see [hasVerifiedProblem].
+     */
     private suspend fun getValidCredentialsByPriority(filterByIds: Collection<String>? = null): List<StoreEntry>? {
         val availableCredentials = getCredentials() ?: return null
-
         val presortedCredentials = availableCredentials
             .filter { filterByIds == null || filterByIds.contains(it.getDcApiId()) }
             .sortedBy { it.sortKey() }
+        val demoted = coroutineScope {
+            presortedCredentials.map { async { it.hasVerifiedProblem() } }.awaitAll()
+        }
+        return presortedCredentials.indices
+            .sortedBy { if (demoted[it]) 1 else 0 }
+            .map { presortedCredentials[it] }
+    }
 
-        val withRevocationStatusQueryIssued = presortedCredentials.map {
-            it to coroutineScope {
-                async {
-                    validator.checkCredentialFreshness(it)
-                }
-            }
+    /**
+     * The checks for ordering stored credentials, see [hasVerifiedProblem]: they have been validated when stored, so
+     * this checks time and status only, with status list signers trusted as when storing, see [compatibilityPolicy].
+     */
+    private val orderingPolicy = ValidationPolicy(
+        trust = TrustPolicy.IntegrityOnly,
+        status = StatusPolicy.ValidateIfPresent(signerTrust = compatibilityPolicy.trust),
+        timeLeeway = compatibilityPolicy.timeLeeway,
+        requireTimeliness = true,
+    )
+
+    /**
+     * Whether this credential is verifiably expired or not yet valid, or has a verified status that is not accepted,
+     * or conflicting statuses. A status that could not be verified, e.g. because the status list token is not
+     * available, does not count, as it would demote every credential while offline.
+     */
+    private suspend fun StoreEntry.hasVerifiedProblem(): Boolean {
+        val input = when (this) {
+            is StoreEntry.Vc -> CredentialValidationInput.VcJwt(vcSerialized)
+            is StoreEntry.SdJwt -> CredentialValidationInput.SdJwtVc(vcSerialized)
+            is StoreEntry.Iso ->
+                CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(issuerSigned))
         }
-        withRevocationStatusQueryIssued.map { it.second }.joinAll()
-        val withRevocationStatusAvailable = withRevocationStatusQueryIssued.map {
-            it.first to it.second.await()
-        }
-        return withRevocationStatusAvailable.sortedBy {
-            if (it.second.isFresh) 0 else 1
-        }.map { it.first }
+        val checks = catchingUnwrapped {
+            credentialValidator.validate(input, orderingPolicy, HolderBindingPolicy.None).report.checks
+        }.getOrNull() as? CredentialChecks ?: return false
+        return checks.timeliness.outcome is CheckOutcome.Failed ||
+                checks.status.mechanisms.any { it.outcome is CheckOutcome.Failed } ||
+                checks.status.agreement is CheckOutcome.Failed
     }
 
     /** Prefer credentials with support for selective disclosure. */
@@ -192,7 +292,6 @@ class HolderAgent @JvmOverloads constructor(
         }
     }
 
-    @Suppress("DEPRECATION")
     override suspend fun createPresentation(
         request: PresentationRequestParameters,
         credentialPresentation: CredentialPresentation,
@@ -229,4 +328,19 @@ class HolderAgent @JvmOverloads constructor(
         )
     }
 
+}
+
+/** The validator the deprecated [HolderAgent] constructor uses: [trustedIssuers] for every credential type. */
+private fun credentialValidator(
+    trustedIssuers: TrustedCertificates?,
+    credentialValidator: CredentialValidator?,
+): CredentialValidator {
+    require(trustedIssuers == null || credentialValidator == null) {
+        "Set either trustedIssuers or credentialValidator, not both"
+    }
+    return credentialValidator ?: CredentialValidator(
+        trustAnchors = trustedIssuers?.let {
+            CredentialTrustAnchors.sameForAllTypes(issuance = it, status = null, source = "trustedIssuers")
+        }
+    )
 }

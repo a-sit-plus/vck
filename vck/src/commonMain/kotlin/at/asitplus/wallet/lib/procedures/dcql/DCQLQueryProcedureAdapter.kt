@@ -16,8 +16,10 @@ package at.asitplus.wallet.lib.procedures.dcql
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.KmmResult
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLIsoMdocCredential
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryMatchingResult
@@ -43,6 +45,7 @@ import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import kotlin.jvm.JvmInline
 
 @JvmInline
@@ -63,6 +66,77 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         parseVcJwsCredential = { it.toDCQLVcJwsCredential() },
         parseIsoMdocCredential = { it.toDCQLIsoMdocCredential() },
     )
+
+    /**
+     * Checks the submission requirements of the query, i.e. its credential sets and every credential query, over the
+     * [accepted] presentations only, by the credential query they answer: a rejected presentation counts as if it had
+     * not been submitted, like a credential that does not match its query (OpenID4VP 1.0, 6.4.2), so the response is
+     * only rejected if the request can not be satisfied without it.
+     */
+    fun checkAcceptedSubmissions(
+        accepted: Map<DCQLCredentialQueryIdentifier, List<ValidatedPresentation>>,
+    ): KmmResult<Unit> = dcqlQuery.checkSubmissionRequirements(
+        dcqlQueryResponse = DCQLQueryResponse(accepted.filterValues { it.isNotEmpty() }),
+        parseSdJwtCredential = { it.toDCQLSdJwtCredential() },
+        parseVcJwsCredential = { it.toDCQLVcJwsCredential() },
+        parseIsoMdocCredential = { it.toDCQLIsoMdocCredential() },
+    )
+
+    private fun ValidatedPresentation.toDCQLSdJwtCredential(): DCQLSdJwtCredential = when (this) {
+        is ValidatedPresentation.SdJwt -> DCQLSdJwtCredential(
+            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(credential.reconstructedJsonObject),
+            satisfiesCryptographicHolderBinding = credential.credential.confirmationClaim != null,
+            authorityKeyIdentifiers = credential.sdJwtSigned.jws.jwsHeader.certificateChain
+                ?.flatMap { it.getAuthorityKeyIdentifier() } ?: listOf(),
+            type = credential.credential.verifiableCredentialType,
+        )
+
+        else -> throw IllegalArgumentException("Presentation is no SD-JWT VC")
+    }
+
+    // The issuer's certificate chain is not kept for VC-JWTs, so trusted_authorities can not be matched for them.
+    private fun ValidatedPresentation.toDCQLVcJwsCredential(): DCQLVcJwsCredential = when (this) {
+        is ValidatedPresentation.VpJwt -> {
+            require(credentials.size == 1) {
+                "Expected one verifiable credential per presentation, but got ${credentials.size}"
+            }
+            credentials.single().credential.toDCQLCredential(satisfiesCryptographicHolderBinding = null)
+        }
+
+        is ValidatedPresentation.VcJwt ->
+            credential.credential.toDCQLCredential(satisfiesCryptographicHolderBinding = false)
+        else -> throw IllegalArgumentException("Presentation is no VC-JWT")
+    }
+
+    private fun VerifiableCredentialJws.toDCQLCredential(satisfiesCryptographicHolderBinding: Boolean?) =
+        DCQLVcJwsCredential(
+            satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding ?: !subject.isNullOrEmpty(),
+            types = vc.type,
+            authorityKeyIdentifiers = listOf(),
+            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
+                CredentialToJsonConverter.toJsonElement(this)
+            ),
+        )
+
+    // Every item of an accepted document has been validated, there is no partial acceptance.
+    private fun ValidatedPresentation.toDCQLIsoMdocCredential(): DCQLIsoMdocCredential = when (this) {
+        is ValidatedPresentation.MdocDocument -> with(credential.issuerSigned) {
+            DCQLIsoMdocCredential(
+                claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
+                    namespaces?.mapValues { namespace ->
+                        namespace.value.entries.associate { it.value.elementIdentifier to it.value.elementValue }
+                    } ?: mapOf()
+                ),
+                documentType = document.docType,
+                satisfiesCryptographicHolderBinding = issuerAuth.payload?.deviceKeyInfo != null,
+                authorityKeyIdentifiers = issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
+                    X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
+                } ?: listOf(),
+            )
+        }
+
+        else -> throw IllegalArgumentException("Presentation is no mdoc document")
+    }
 
     private fun VerifyPresentationResult.toDCQLSdJwtCredential(): DCQLSdJwtCredential = when (this) {
         is VerifyPresentationResult.SuccessSdJwt -> toDCQLCredential()

@@ -53,7 +53,8 @@ private fun notApplicable(parsing: CheckOutcome = Passed) = PresentationChecks(
     presentationBinding = NotApplicable,
 )
 
-private fun blocked(parsing: CheckOutcome) = PresentationChecks(
+/** The checks of a presentation whose [parsing] did not pass, which blocks every other check. */
+internal fun blockedPresentationChecks(parsing: CheckOutcome) = PresentationChecks(
     parsing = parsing,
     signature = Blocked(),
     proofTime = Blocked(),
@@ -80,7 +81,7 @@ internal suspend fun evaluateSdJwtPresentation(
 ): PresentationEvaluation {
     if (!input.compact.contains("~")) {
         val failure = IllegalArgumentException("Invalid format for an SD-JWT, contains no ~")
-        return PresentationEvaluation(blocked(Failed(failure)))
+        return PresentationEvaluation(blockedPresentationChecks(Failed(failure)))
     }
     // The SD-JWT without the key binding JWT is the input of sd_hash (RFC 9901, 4.3.1)
     val sdJwt = input.compact.substringBeforeLast("~") + "~"
@@ -110,7 +111,7 @@ internal suspend fun evaluateSdJwtPresentation(
             requireNotNull(it.payload.issuedAt) { "The key binding JWT has no iat" }
         }
     }.getOrElse {
-        return PresentationEvaluation(blocked(Failed(it)), credential)
+        return PresentationEvaluation(blockedPresentationChecks(Failed(it)), credential)
     }
     val issuerSigned = (evaluation as? FormatEvaluation.Evaluated)?.credential as? ValidatedCredential.SdJwtVc
     // The key binding JWT is verified with the key the issuer bound the credential to (RFC 9901, 7.3 step 5.a),
@@ -195,7 +196,7 @@ internal suspend fun evaluateVpJwtPresentation(
             require(it.payload.vp.verifiableCredential.isNotEmpty()) { "The presentation contains no credential" }
         }
     }.getOrElse {
-        return PresentationEvaluation(blocked(Failed(it)))
+        return PresentationEvaluation(blockedPresentationChecks(Failed(it)))
     }
     val payload = vpJws.payload
     val verification = signatureCheck.verify(vpJws.jws)

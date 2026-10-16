@@ -49,6 +49,16 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.CredentialTrustScope
+import at.asitplus.wallet.lib.validation.CredentialTrustScopes
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.ProtocolResponseChecks
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
+import at.asitplus.wallet.lib.validation.ValidationDecision
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -61,6 +71,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToByteArray
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Tests [DcApiVerifier] against a simulated wallet performing an ISO/IEC 18013-7 Annex C
@@ -83,8 +94,9 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
     fixture {
         runBlocking {
             val holderKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert()
+            val issuerKey = EphemeralKeyWithSelfSignedCert()
             val issuer = IssuerAgent(
-                keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                keyMaterial = issuerKey,
                 identifier = "https://issuer.example.com/".toUri(),
                 randomSource = RandomSource.Default,
             )
@@ -101,6 +113,23 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                     ),
                     stateToIsoMdocRequestStore = stateToIsoMdocRequestStore,
                     ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(ephemeralKeyStore),
+                    credentialValidator = CredentialValidator(
+                        trustAnchors = CredentialTrustScopes(
+                            CredentialTrustScope(
+                                credentialIdentifiers = setOf(AtomicAttribute2023.isoDocType),
+                                source = "test issuer",
+                                issuance = { setOfNotNull(issuerKey.getCertificate()) },
+                                status = { emptySet() },
+                            )
+                        ),
+                    ),
+                    // The status list of the issuer is not published in this test
+                    presentationPolicy = ValidationPolicy(
+                        trust = TrustPolicy.RequireAuthorizedSigner,
+                        status = StatusPolicy.Skip,
+                        timeLeeway = 5.minutes,
+                        requireTimeliness = true,
+                    ),
                 )
 
                 /** Extracts the Annex C request from the browser-facing [CredentialRequestOptions]. */
@@ -179,6 +208,28 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                     .shouldNotBeNull().elementValue shouldBe "Susanne"
                 validItems.firstOrNull { it.elementIdentifier == CLAIM_DATE_OF_BIRTH }
                     .shouldNotBeNull().elementValue shouldBe LocalDate(1990, 1, 1)
+            }
+            result.validationReport.decision shouldBe ValidationDecision.ACCEPTED
+            result.presentationValidations.shouldBeSingleton().first().presentation
+                .shouldBeInstanceOf<ValidatedPresentation.MdocDocument>()
+                .document.docType shouldBe AtomicAttribute2023.isoDocType
+        }
+
+        test("the report rejects a response without a requested document") { f ->
+            val transactionId = uuid4().toString()
+            val isoMdocRequest = f.createIsoMdocRequest(transactionId)
+            val withoutDocuments = f.deviceResponse(isoMdocRequest).copy(documents = emptyArray())
+
+            val result = f.verifier.validateIsoResponse(
+                receivedData = sealDeviceResponse(isoMdocRequest, callingOrigin, withoutDocuments),
+                externalId = transactionId,
+                expectedOrigin = callingOrigin,
+            ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>()
+
+            result.validationReport.apply {
+                decision shouldBe ValidationDecision.REJECTED
+                checks.shouldBeInstanceOf<ProtocolResponseChecks>().submissionRequirements
+                    .shouldBeInstanceOf<CheckOutcome.Failed>()
             }
         }
 
