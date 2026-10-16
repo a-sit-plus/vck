@@ -37,6 +37,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalMatchingResult
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.UnsupportedWrpRequestException
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -309,12 +310,43 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             .documents.shouldNotBeEmpty()
     }
 
-    test("DC API holder reports no relying party for an Annex C request without registration certificates") {
+    test("DC API holder reports the reader of an Annex C request with reader authentication only") {
         val fixture = dcapiFixture()
         val holderKey = EphemeralKeyWithoutCert()
 
         DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
             .startAuthorizationResponsePreparation(fixture.walletRequest, testPresentationPolicy).getOrThrow().apply {
+                validationReport.shouldNotBeNull().apply {
+                    checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
+                        requestData shouldBe CheckOutcome.Passed
+                        registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                            .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+                    }
+                    // authenticated, but by a reader the default validator does not trust
+                    children.first().checks.shouldBeInstanceOf<AccessCertificateChecks>().signature shouldBe
+                            CheckOutcome.Passed
+                }
+                relyingParty.shouldNotBeNull().report shouldBe validationReport
+                preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()
+            }
+    }
+
+    test("DC API holder reports no relying party for an Annex C request without reader authentication") {
+        val fixture = dcapiFixture()
+        val holderKey = EphemeralKeyWithoutCert()
+        val deviceRequest = fixture.walletRequest.parameters.isoMdocRequest.deviceRequest
+        val unauthenticated = deviceRequest.copy(
+            readerAuthAll = null,
+            docRequests = deviceRequest.docRequests.map { it.copy(readerAuth = null) }.toTypedArray(),
+        )
+        val request = fixture.walletRequest.copy(
+            parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(
+                fixture.walletRequest.parameters.isoMdocRequest.copy(deviceRequest = unauthenticated)
+            )
+        )
+
+        DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
+            .startAuthorizationResponsePreparation(request, testPresentationPolicy).getOrThrow().apply {
                 validationReport.shouldBeNull()
                 relyingParty.shouldBeNull()
                 preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()
