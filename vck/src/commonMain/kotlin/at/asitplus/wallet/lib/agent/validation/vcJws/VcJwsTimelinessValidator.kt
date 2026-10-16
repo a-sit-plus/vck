@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import io.github.aakira.napier.Napier
 
-class VcJwsTimelinessValidator {
+object VcJwsTimelinessValidator {
     operator fun invoke(
         vcJws: VerifiableCredentialJws,
         timeScope: TimeScope,

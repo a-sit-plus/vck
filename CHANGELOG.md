@@ -80,6 +80,11 @@ Release 9.0.0 (unreleased):
       `issuerCoseVerifier`, and `VerifyStatusListTokenHAIP` (use trust anchors of `CredentialValidator`);
       `WrpacValidator`, `WrprcValidator`, `WrpAuthenticationRequestValidator`, `WrpChainValidator`, their results,
       and `IsoMdocDcApi.validateWrpAuthenticationRequest()` (use `RelyingPartyValidator`)
+    - BREAKING: `VcJwsTimelinessValidator`, `SdJwtTimelinessValidator`, `MdocTimelinessValidator`, and
+      `MobileSecurityObjectTimelinessValidator` are objects, as they hold no state and take the time per call
+      (`TimeScope`): call `VcJwsTimelinessValidator(vcJws, timeScope)` instead of
+      `VcJwsTimelinessValidator()(vcJws, timeScope)`; `MdocTimelinessValidator` no longer takes a
+      `MobileSecurityObjectTimelinessValidator`
     - Known limitations:
         - Certificate paths: trust is evaluated for single-hop paths (issuers, status list signers, attestations)
           or by walking the WRP chain, without RFC 5280 path building, `pathLenConstraint` or `keyUsage`, and
