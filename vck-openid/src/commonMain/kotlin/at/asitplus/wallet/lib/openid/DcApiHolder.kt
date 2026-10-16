@@ -36,8 +36,9 @@ class DcApiHolder @JvmOverloads constructor(
         holder = holder,
     ),
     /**
-     * Validates the relying party behind ISO/IEC 18013-7 Annex C requests that carry registration certificates, see
-     * [RelyingPartyValidator]; configure the one for OpenID4VP requests on [openId4VpHolder].
+     * Validates the relying party behind ISO/IEC 18013-7 Annex C requests that carry reader authentication or
+     * registration certificates, see [RelyingPartyValidator]; configure the one for OpenID4VP requests on
+     * [openId4VpHolder].
      */
     private val relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
 ) {
@@ -73,7 +74,9 @@ class DcApiHolder @JvmOverloads constructor(
      * Validates [request] under [policy] and prepares credential selection like the overload without a policy, also
      * for a rejected request: check the decision of [DcApiRequestValidation.validationReport] before presenting.
      * For an ISO/IEC 18013-7 Annex C request, which has no request object, the report is the one of its relying
-     * party if it carries registration certificates, else `null`.
+     * party if it carries reader authentication or registration certificates, else `null`. A request with reader
+     * authentication but without registration certificates is reported like a proximity request, see
+     * [RelyingPartyValidator.validate], with the WRPAC validated and the `registration` failing.
      */
     suspend fun startAuthorizationResponsePreparation(
         request: DcApiRequest,
@@ -90,7 +93,7 @@ class DcApiHolder @JvmOverloads constructor(
                 .getOrThrow().toDcApi()
 
             is IsoMdocDcApi -> {
-                val relyingParty = request.takeIf { it.carriesRegistrationCertificate() }
+                val relyingParty = request.takeIf { it.identifiesRelyingParty() }
                     ?.validateRelyingParty(relyingPartyValidator, policy)
                 DcApiRequestValidation(
                     validationReport = relyingParty?.report,
@@ -104,8 +107,12 @@ class DcApiHolder @JvmOverloads constructor(
         }
     }
 
-    private fun IsoMdocDcApi.carriesRegistrationCertificate() =
-        parameters.isoMdocRequest.deviceRequest.docRequests.any { it.itemsRequest.value.requestInfo?.euWrprc != null }
+    /** Whether this request carries reader authentication or a registration certificate of its relying party. */
+    private fun IsoMdocDcApi.identifiesRelyingParty() = with(parameters.isoMdocRequest.deviceRequest) {
+        !readerAuthAll.isNullOrEmpty() || docRequests.any {
+            it.readerAuth != null || it.itemsRequest.value.requestInfo?.euWrprc != null
+        }
+    }
 
     private fun AuthorizationRequestValidation.toDcApi() =
         DcApiRequestValidation(validationReport, DcApiPreparationState.OpenId4Vp(preparationState), relyingParty)
@@ -193,12 +200,15 @@ sealed class DcApiPreparationState {
  * with, also if the request is rejected, see [DcApiHolder.startAuthorizationResponsePreparation].
  */
 data class DcApiRequestValidation(
-    /** `null` only for an ISO/IEC 18013-7 Annex C request without registration certificates. */
+    /**
+     * `null` only for an ISO/IEC 18013-7 Annex C request without reader authentication and registration certificates.
+     */
     val validationReport: ValidationReport?,
     val preparationState: DcApiPreparationState,
     /**
-     * The result of validating the relying party of a request carrying registration certificates (WRPRCs), with the
-     * relying party if accepted, and what its WRPRCs say in any case, see
+     * The result of validating the relying party of a request carrying registration certificates (WRPRCs), or of an
+     * Annex C request carrying reader authentication, with the relying party if accepted, and what its WRPRCs say in
+     * any case, see
      * [RelyingPartyValidationResult.untrustedRegistrations]. Its report is the
      * [at.asitplus.wallet.lib.validation.RelyingPartyChecks] child of [validationReport] for an OpenID4VP request,
      * and [validationReport] itself for an Annex C request. `null` for a request without one.
