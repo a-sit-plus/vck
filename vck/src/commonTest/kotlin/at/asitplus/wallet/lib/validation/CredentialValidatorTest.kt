@@ -43,71 +43,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
-private val scheme = ConstantIndex.AtomicAttribute2023
-
 private val integrityOnly = strictPolicy.copy(trust = TrustPolicy.IntegrityOnly, status = StatusPolicy.Skip)
-
-/** An issuer and a status list issuer, each with a certificate of their own authority, and a holder. */
-private class Issuance(
-    val issuerCa: TestCertificateAuthority,
-    val statusCa: TestCertificateAuthority,
-) {
-    val holderKey = EphemeralKeyWithoutCert()
-    private val store = InMemoryIssuerCredentialStore()
-    lateinit var statusListAgent: StatusListAgent
-    lateinit var issuer: IssuerAgent
-
-    suspend fun setUp() = apply {
-        statusListAgent = StatusListAgent(keyMaterial = statusCa.issue(), issuerCredentialStore = store)
-        issuer = IssuerAgent(
-            keyMaterial = issuerCa.issue(),
-            issuerCredentialStore = store,
-            identifier = "https://issuer.example.com/".toUri(),
-            statusListAgent = statusListAgent,
-        )
-    }
-
-    val trustAnchors
-        get() = CredentialTrustScopes(
-            CredentialTrustScope(
-                credentialIdentifiers = setOf(scheme.sdJwtType, scheme.isoDocType),
-                source = "test issuers",
-                issuance = { setOf(issuerCa.certificate) },
-                status = { setOf(statusCa.certificate) },
-            )
-        )
-
-    val statusTokens
-        get() = StatusListTokenResolver { StatusListJwt(statusListAgent.issueStatusListJwt(), Clock.System.now()) }
-
-    fun validator(clock: Clock = Clock.System) = CredentialValidator(
-        trustAnchors = trustAnchors,
-        statusValidator = StatusValidator(statusTokens),
-        clock = clock,
-    )
-
-    suspend fun issue(representation: CredentialRepresentation): Issuer.IssuedCredential = issuer.issueCredential(
-        DummyCredentialDataProvider.getCredential(holderKey.publicKey, scheme, representation).getOrThrow()
-    ).getOrThrow()
-
-    fun context(identifier: String? = null) =
-        CredentialValidationContext(expectedHolderKey = holderKey.publicKey, expectedCredentialIdentifier = identifier)
-}
-
-private suspend fun issuance() = Issuance(TestCertificateAuthority(), TestCertificateAuthority()).setUp()
-
-private fun Issuer.IssuedCredential.input(): CredentialValidationInput = when (this) {
-    is Issuer.IssuedCredential.VcJwt -> CredentialValidationInput.VcJwt(signedVcJws.jws.toString())
-    is Issuer.IssuedCredential.VcSdJwt -> CredentialValidationInput.SdJwtVc(signedSdJwtVc.serialize())
-    is Issuer.IssuedCredential.Iso ->
-        CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(issuerSigned))
-}
-
-private fun Issuer.IssuedCredential.status(): RevocationListInfo = when (this) {
-    is Issuer.IssuedCredential.VcJwt -> vc.credentialStatus
-    is Issuer.IssuedCredential.VcSdJwt -> sdJwtVc.statusElement
-    is Issuer.IssuedCredential.Iso -> issuerSigned.issuerAuth.payload?.status
-}.shouldNotBeNull()
 
 private suspend fun Issuance.validate(
     issued: Issuer.IssuedCredential,

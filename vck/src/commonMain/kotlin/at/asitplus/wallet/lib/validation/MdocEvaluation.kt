@@ -28,6 +28,17 @@ internal suspend fun evaluateIsoMdoc(
 ): FormatEvaluation {
     val issuerSigned = catching { coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.issuerSignedCbor) }
         .getOrElse { return FormatEvaluation.WithoutPrerequisites(Failed(it), issuerSignature = Passed) }
+    return evaluateIssuerSigned(issuerSigned, signatureCheck, holderBinding, context, timeScope)
+}
+
+/** Evaluates a decoded [issuerSigned], e.g. of a `Document` in a presentation, see [evaluateIsoMdoc]. */
+internal suspend fun evaluateIssuerSigned(
+    issuerSigned: IssuerSigned,
+    signatureCheck: SignatureCheck,
+    holderBinding: HolderBindingPolicy,
+    context: CredentialValidationContext,
+    timeScope: TimeScope,
+): FormatEvaluation {
     val mso = issuerSigned.issuerAuth.payload
         ?: return FormatEvaluation.WithoutPrerequisites(
             parsing = Failed(IllegalArgumentException("The issuerAuth carries no MSO")),

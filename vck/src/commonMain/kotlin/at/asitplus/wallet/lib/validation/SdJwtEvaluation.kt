@@ -99,11 +99,14 @@ private fun parseIssued(compact: String): ParsedSdJwt {
     val signedPayload = jws.getPayload<JsonObject>().getOrThrow()
     val credential = jws.getPayload<VerifiableCredentialSdJwt>().getOrThrow()
     // A hash algorithm that is not understood rejects the SD-JWT (RFC 9901, 7.1 step 2.d), SHA-256 by default (4.1.1)
-    val digest = when (val algorithm = credential.selectiveDisclosureAlgorithm?.lowercase()) {
-        null, SdJwtConstants.SHA_256 -> Digest.SHA256
-        SdJwtConstants.SHA_384 -> Digest.SHA384
-        SdJwtConstants.SHA_512 -> Digest.SHA512
-        else -> throw IllegalArgumentException("Unsupported hash algorithm $algorithm")
-    }
+    val digest = sdJwtDigest(credential.selectiveDisclosureAlgorithm)
     return ParsedSdJwt(SdJwtSigned.issued(jws, disclosures), signedPayload, credential, digest)
+}
+
+/** The hash function of `_sd_alg`, SHA-256 by default (RFC 9901, 4.1.1); one that is not understood throws. */
+internal fun sdJwtDigest(algorithm: String?): Digest = when (algorithm?.lowercase()) {
+    null, SdJwtConstants.SHA_256 -> Digest.SHA256
+    SdJwtConstants.SHA_384 -> Digest.SHA384
+    SdJwtConstants.SHA_512 -> Digest.SHA512
+    else -> throw IllegalArgumentException("Unsupported hash algorithm $algorithm")
 }

@@ -213,7 +213,9 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 )
 
                 ISO_MDOC -> CredentialToBeIssued.Iso(
-                    issuerSignedItems = attributes.map { it.toIssuerSignedItem() },
+                    // Digest IDs are unique per namespace, as the MSO signs one digest per ID
+                    issuerSignedItems = attributes.entries
+                        .mapIndexed { index, it -> it.toIssuerSignedItem(index.toUInt()) },
                     expiration = Clock.System.now().plus(1.minutes).truncateToSeconds(),
                     scheme = scheme as IsoMdocCredentialScheme,
                     subjectPublicKey = keyMaterial.publicKey,
@@ -766,8 +768,8 @@ private fun List<KmmResult<AuthnResponseResult>>.shouldBeProcessedAccessDenied()
 private fun Map.Entry<DCQLClaimsPathPointer, Any>.toClaimToBeIssued(): ClaimToBeIssued =
     ClaimToBeIssued(key.getFirstName(), value)
 
-private fun Map.Entry<DCQLClaimsPathPointer, Any>.toIssuerSignedItem(): IssuerSignedItem =
-    IssuerSignedItem(0U, Random.nextBytes(16), key.getFirstName(), value)
+private fun Map.Entry<DCQLClaimsPathPointer, Any>.toIssuerSignedItem(digestId: UInt): IssuerSignedItem =
+    IssuerSignedItem(digestId, Random.nextBytes(16), key.getFirstName(), value)
 
 
 private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean =
