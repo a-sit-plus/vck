@@ -9,7 +9,9 @@ import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.PreparedCredentialStorage
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
@@ -191,13 +193,16 @@ class OpenId4VciKtorClient private constructor(
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
-     * Clients need to handle the result, i.e. open the URL for user authentication or store the credentials.
+     * Clients need to handle the result, i.e. open the URL for user authentication or store the credentials, see
+     * [CredentialIssuanceResult.Success.prepareCredentialStorage].
      * Clients need to call [resumeWithAuthCode] after getting the authorization code back from the authorization
      * server, e.g. by the Wallet app getting opened (see `redirectUrl` at [oid4vciClient]) after the browser being
      * redirecting back from the authorization server.
      *
      * @param credentialIssuerUrl URL of the credential issuer service
      * @param credentialIdentifierInfo credential to request, i.e. picked by user selection
+     * @param reissuingStoreEntryId the stored credential the new one replaces, if any, kept in the [ProvisioningContext]
+     * and returned in [CredentialIssuanceResult.Success.reissuingStoreEntryId]
      */
     suspend fun startProvisioningWithAuthRequestReturningResult(
         credentialIssuerUrl: String,
@@ -274,6 +279,7 @@ class OpenId4VciKtorClient private constructor(
             credentialIdentifier = context.credential.credentialIdentifier,
             credentialScheme = credentialScheme,
             previouslyRequestedScope = context.credential.supportedCredentialFormat.scope,
+            reissuingStoreEntryId = context.reissuingStoreEntryId,
         )
     }
 
@@ -322,8 +328,8 @@ class OpenId4VciKtorClient private constructor(
     }
 
     /**
-     * Will use the [tokenResponse] to request a credential and store it with
-     * [at.asitplus.wallet.lib.agent.HolderAgent.storeCredential]
+     * Will use the [tokenResponse] to request the credentials, for the caller to store them, see
+     * [CredentialIssuanceResult.Success.prepareCredentialStorage].
      */
     @Throws(Exception::class)
     private suspend fun postCredentialRequestAndStore(
@@ -334,6 +340,7 @@ class OpenId4VciKtorClient private constructor(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         credentialIdentifier: String,
         previouslyRequestedScope: String?,
+        reissuingStoreEntryId: Long? = null,
     ): CredentialIssuanceResult.Success {
         Napier.i("postCredentialRequestAndStore: ${issuerMetadata.credentialEndpointUrl}")
         Napier.d("postCredentialRequestAndStore: $tokenResponse")
@@ -361,14 +368,15 @@ class OpenId4VciKtorClient private constructor(
             )
         }
         return CredentialIssuanceResult.Success(
-            storeCredentialInputs,
-            CredentialRenewalInfo(
+            credentials = storeCredentialInputs,
+            refreshToken = CredentialRenewalInfo(
                 refreshToken = tokenResponse.params.refreshToken,
                 issuerMetadata = issuerMetadata,
                 oauthMetadata = oauthMetadata,
                 credentialFormat = credentialFormat,
                 credentialIdentifier = credentialIdentifier,
-            )
+            ),
+            reissuingStoreEntryId = reissuingStoreEntryId,
         )
     }
 
@@ -466,12 +474,37 @@ data class ProvisioningContext(
  */
 sealed interface CredentialIssuanceResult {
     /**
-     * Store credentials in [credentials], and optionally the [refreshToken] for a later renewal of those credentials.
+     * Store credentials in [credentials], and optionally the [refreshToken] for a later renewal of those credentials,
+     * e.g. with [prepareCredentialStorage].
      */
     data class Success(
         val credentials: Collection<Holder.StoreCredentialInput>,
         val refreshToken: CredentialRenewalInfo? = null,
-    ) : CredentialIssuanceResult
+        /**
+         * The stored credential the [credentials] replace, as passed to
+         * [OpenId4VciKtorClient.startProvisioningWithAuthRequestReturningResult] and kept in the [ProvisioningContext],
+         * for the wallet to remove once it stored the new ones.
+         */
+        val reissuingStoreEntryId: Long? = null,
+    ) : CredentialIssuanceResult {
+
+        /**
+         * Validates every credential of [credentials] for storage by [holder] under [policy], with [refreshToken] for
+         * their renewal, see [HolderAgent.prepareCredentialStorage], and stores nothing yet. Show the reports to the
+         * user, then store each credential with [HolderAgent.storeAccepted], or, if the user accepts a rejected
+         * report, e.g. of an untrusted issuer or a credential missing claims its type requires (see
+         * [ValidationPolicy.requiredClaims]), with [HolderAgent.storeAfterUserConsent].
+         *
+         * The credentials of a batch are of the same issuer and type, so one decision of the user usually covers all.
+         * Fails only if a credential can not be validated at all.
+         */
+        suspend fun prepareCredentialStorage(
+            holder: HolderAgent,
+            policy: ValidationPolicy,
+        ): KmmResult<List<PreparedCredentialStorage>> = catching {
+            credentials.map { holder.prepareCredentialStorage(it, policy, refreshToken).getOrThrow() }
+        }
+    }
 
     /**
      * Open the [url] in a browser (so the user can authenticate at the AS), and store [context] to use in next call

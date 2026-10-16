@@ -36,6 +36,8 @@ Release 9.0.0 (unreleased):
   constructor is retained; deprecate `normalizedJsonPath`, which cannot represent wildcards. Its JSON member name
   remains `normalizedJsonPath`
 - WRPRC authorization exempts only the root `vct` claim; nested claims named `vct` must be registered
+- Add `IsoMdocCredentialScheme.isoQualifiedClaimDescriptions` in `vck`, the claim descriptions of a scheme with their
+  paths qualified by its ISO namespace, as the ISO mdoc credential configurations of `DefaultCredentialSchemeMapper` use
 - ISO mdoc data classes:
     - Encode issuer-signed items with the bytes they were decoded from (`ByteStringWrapper.serialized`) instead of
       re-encoding their value, so items an issuer encoded differently, e.g. in another key order like the EUDI
@@ -59,6 +61,20 @@ Release 9.0.0 (unreleased):
       taking `validator`, `validatorVcJws`, `validatorSdJwt`, `validatorMdoc` (which no longer take effect), and
       `trustedIssuers` (adapted as anchors for every credential type)
     - Add `OpenId4VciClient.validateCredentialResponse(...)`, reporting every credential of a (batch) response
+    - Add `ValidationPolicy.requiredClaims` (`RequiredClaimsPolicy.Skip` by default, or `RequireMandatory`) and the
+      check `CredentialChecks.requiredClaims` (`RequiredClaimsValidation`, failing with `MissingRequiredClaimException`): whether a
+      credential received on its own contains every claim the metadata of its signed type describe as `mandatory`
+      (draft-ietf-oauth-sd-jwt-vc-19, 5.6.3), resolved by the new `requiredClaimsResolver` of `CredentialValidator`
+      (`RequiredClaimsResolver.Default` uses the credential metadata registries and schemes of `AttributeIndex`, and
+      blocks the check for a type without metadata). Not applicable to presented credentials
+    - Add `CredentialValidationResult.unacceptedCredential` and `ValidationReport.isIntactCredential()`: the
+      credential whatever the decision, if only checks a policy may relax are not satisfied (issuer trust, timeliness,
+      required claims, status), so that a wallet can store it after the user accepts the report
+    - Add `HolderAgent.prepareCredentialStorage(credential, policy, renewalInfo)`, validating a received credential
+      without storing it, e.g. as the last step of issuance, returning a `PreparedCredentialStorage` to keep while the
+      user looks at the report, then `HolderAgent.storeAccepted(prepared)`, storing only an accepted credential, as
+      `storeCredentialWithReport` does, or `HolderAgent.storeAfterUserConsent(prepared)`, storing also a rejected but
+      intact credential. `CredentialStorageResult.storedEntry` may thus be present for a rejected report
     - Add `RelyingPartyValidator` with `RelyingPartyTrustAnchors` (WRPAC and WRPRC anchors, status list signers of
       WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
@@ -234,6 +250,12 @@ Release 9.0.0 (unreleased):
     - Form-encoded requests (PAR, token, token introspection) are sent as `application/x-www-form-urlencoded` without
       `charset` in the `Content-Type`, as the media type defines no such parameter
 - OpenID for Verifiable Credential Issuance client:
+    - Add `CredentialIssuanceResult.Success.reissuingStoreEntryId`, the stored credential the new ones replace, as
+      passed to `startProvisioningWithAuthRequestReturningResult` and kept in the `ProvisioningContext`
+    - Add `CredentialIssuanceResult.Success.prepareCredentialStorage(holder, policy)`, validating the received
+      credentials with their renewal info by `HolderAgent.prepareCredentialStorage`, for the wallet to show the reports
+      and store them with `HolderAgent.storeAccepted`, or `HolderAgent.storeAfterUserConsent` after the user accepts a
+      rejected report, e.g. of a credential missing claims its type requires (`ValidationPolicy.requiredClaims`)
     - Add `OpenId4VciProtocolClient.loadIssuerMetadata(credentialIssuer, policy)` and
       `OpenId4VciKtorClient.loadIssuerMetadata(credentialIssuer, policy)`, asking for signed metadata
       (`application/jwt`) over unsigned ones (OpenID4VCI 1.0, 12.2.2), and returning `LoadedIssuerMetadata`: `Signed`

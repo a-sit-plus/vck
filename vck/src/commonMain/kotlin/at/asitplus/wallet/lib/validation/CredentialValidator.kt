@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.wallet.lib.agent.validation.TimeScope
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
@@ -15,7 +16,7 @@ import kotlin.time.Clock
 /**
  * Validates a single credential, in the format it declares, under an explicit [ValidationPolicy], and reports every
  * check: parsing, the issuer signature, issuer trust per credential type, semantics, every supplied disclosed item,
- * holder binding, time, and status.
+ * the claims its type requires, holder binding, time, and status.
  *
  * The validated credential is only returned for an accepted report, see [CredentialValidationResult].
  */
@@ -26,6 +27,11 @@ class CredentialValidator @JvmOverloads constructor(
     private val statusValidator: StatusValidator = StatusValidator(),
     private val signatureCheck: SignatureCheck = SignatureCheck(),
     private val clock: Clock = Clock.System,
+    /**
+     * Resolves the claims a credential type requires, by the signed identifier of the credential, for
+     * [RequiredClaimsPolicy.RequireMandatory]. Without metadata of the type, the check is blocked.
+     */
+    private val requiredClaimsResolver: RequiredClaimsResolver = RequiredClaimsResolver.Default,
 ) {
 
     /** Whether issuer trust can be decided, i.e. whether [TrustPolicy.RequireAuthorizedSigner] can accept anything. */
@@ -56,7 +62,8 @@ class CredentialValidator @JvmOverloads constructor(
      * Validates the presentation [input] against the request it answers, see [PresentationContext], under [policy]:
      * the holder's proof (key binding JWT, VP-JWT, or mdoc device authentication), and every credential it contains.
      * The clock is read once, all checks use that time. The presentation decides the holder binding of its
-     * credentials, so [ValidationPolicy.holderBinding] does not apply.
+     * credentials, so [ValidationPolicy.holderBinding] does not apply, and it discloses claims selectively, so
+     * [ValidationPolicy.requiredClaims] does not either.
      */
     suspend fun validate(
         input: PresentationValidationInput,
@@ -65,7 +72,8 @@ class CredentialValidator @JvmOverloads constructor(
     ): PresentationValidationResult {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
         val complete = CredentialValidationCompletion { evaluation, holderBinding ->
-            complete(evaluation, policy.copy(holderBinding = holderBinding), timeScope)
+            val credentialPolicy = policy.copy(holderBinding = holderBinding, requiredClaims = RequiredClaimsPolicy.Skip)
+            complete(evaluation, credentialPolicy, timeScope)
         }
         val evaluation = when (input) {
             is PresentationValidationInput.SdJwt ->
@@ -140,9 +148,9 @@ class CredentialValidator @JvmOverloads constructor(
             is Evaluated -> checks(evaluation, policy, timeScope)
         }
         val report = ValidationReport.credential(checks, policy, timeScope.now)
-        val credential = (evaluation as? Evaluated)?.credential
-            ?.takeIf { report.decision == ValidationDecision.ACCEPTED }
-        return CredentialValidationResult(report, credential)
+        val unaccepted = (evaluation as? Evaluated)?.credential?.takeIf { report.isIntactCredential() }
+        val credential = unaccepted?.takeIf { report.decision == ValidationDecision.ACCEPTED }
+        return CredentialValidationResult(report, credential, unaccepted)
     }
 
     private suspend fun checks(
@@ -163,6 +171,13 @@ class CredentialValidator @JvmOverloads constructor(
             issuerTrust = issuerTrust,
             semantics = evaluation.semantics,
             disclosedItems = evaluation.disclosedItems,
+            requiredClaims = requiredClaimsResolver.check(
+                policy = policy.requiredClaims,
+                identifier = identifier,
+                representation = evaluation.credential.representation,
+                disclosedItems = evaluation.disclosedItems,
+                claims = { CredentialToJsonConverter.toJsonElement(evaluation.credential) },
+            ),
             holderBinding = evaluation.holderBinding,
             timeliness = evaluation.timeliness,
             status = StatusValidation(NotApplicable, emptyList(), NotApplicable),
@@ -174,7 +189,8 @@ class CredentialValidator @JvmOverloads constructor(
      * The status is only resolved for a credential that is valid otherwise: a Relying Party must not resolve the
      * status of a token it has found invalid already, unless the use case requires it (draft-ietf-oauth-status-list-21,
      * 8.3). So the status is blocked when any other check the policy requires did not pass. With timeliness not
-     * required, the status of an expired credential is still resolved.
+     * required, the status of an expired credential is still resolved, and so is the status of a credential missing
+     * required claims, which is not invalid as a token, so that a wallet can show its status when asking the user.
      */
     private suspend fun status(
         evaluation: Evaluated,
@@ -182,7 +198,9 @@ class CredentialValidator @JvmOverloads constructor(
         policy: ValidationPolicy,
         timeScope: TimeScope,
     ): StatusValidation {
-        val otherwiseAccepted = withoutStatus.meets(policy.copy(status = StatusPolicy.Skip))
+        val otherwiseAccepted = withoutStatus.meets(
+            policy.copy(status = StatusPolicy.Skip, requiredClaims = RequiredClaimsPolicy.Skip)
+        )
         if (policy.status != StatusPolicy.Skip && evaluation.status != null && !otherwiseAccepted) {
             return StatusValidation(
                 claim = Blocked(IllegalStateException("The status of an invalid credential is not resolved")),

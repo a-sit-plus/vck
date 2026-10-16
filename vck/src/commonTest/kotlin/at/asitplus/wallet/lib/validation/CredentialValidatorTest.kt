@@ -85,6 +85,7 @@ val CredentialValidatorTest by matrixSuite {
 
                     result.report.decision shouldBe ACCEPTED
                     result.credential.shouldNotBeNull()
+                    result.unacceptedCredential shouldBe result.credential
                     result.checks.issuerTrust.outcome shouldBe Passed
                     result.checks.issuerTrust.source shouldBe "test issuers"
                     result.checks.holderBinding shouldBe Passed
@@ -103,6 +104,17 @@ val CredentialValidatorTest by matrixSuite {
                     result.checks.issuerTrust.outcome.shouldBeInstanceOf<Failed>()
                     result.checks.status.claim.shouldBeInstanceOf<Blocked>()
                     result.checks.status.mechanisms.shouldBeEmpty()
+                }
+
+                "a credential of an untrusted issuer is left to the user to accept nonetheless" {
+                    val issuance = issuance()
+                    val other = issuance()
+                    val result = issuance.validate(other.issue(representation), context = other.context())
+
+                    result.report.decision shouldBe REJECTED
+                    result.credential.shouldBeNull()
+                    result.report.isIntactCredential() shouldBe true
+                    result.unacceptedCredential.shouldNotBeNull()
                 }
 
                 "without trust anchors trust is blocked, unless the policy only requires integrity" {
@@ -124,7 +136,10 @@ val CredentialValidatorTest by matrixSuite {
                     val issued = issuance.issue(representation)
                     val otherKey = CredentialValidationContext(expectedHolderKey = EphemeralKeyWithoutCert().publicKey)
 
-                    issuance.validate(issued, context = otherKey).checks.holderBinding.shouldBeInstanceOf<Failed>()
+                    issuance.validate(issued, context = otherKey).let {
+                        it.checks.holderBinding.shouldBeInstanceOf<Failed>()
+                        it.unacceptedCredential.shouldBeNull()
+                    }
                     issuance.validate(issued, holderBinding = HolderBindingPolicy.None, context = otherKey).let {
                         it.report.decision shouldBe ACCEPTED
                         it.checks.holderBinding shouldBe NotApplicable
@@ -140,6 +155,7 @@ val CredentialValidatorTest by matrixSuite {
 
                     result.report.decision shouldBe REJECTED
                     result.checks.semantics.shouldBeInstanceOf<Failed>()
+                    result.unacceptedCredential.shouldBeNull()
                 }
 
                 "a revoked credential fails its status" {
@@ -151,6 +167,7 @@ val CredentialValidatorTest by matrixSuite {
                     val result = issuance.validate(issued)
                     result.report.decision shouldBe REJECTED
                     result.checks.status.mechanisms.single().observed shouldBe TokenStatus.Invalid
+                    result.unacceptedCredential.shouldNotBeNull()
                 }
 
                 "an expired credential is accepted only if timeliness is not required, and its status is resolved" {
@@ -166,6 +183,7 @@ val CredentialValidatorTest by matrixSuite {
 
                     issuance.validate(issued, policy, issuance.validator(later)).let {
                         it.report.decision shouldBe REJECTED
+                        it.unacceptedCredential.shouldNotBeNull()
                         it.checks.timeliness.outcome.shouldBeInstanceOf<Failed>()
                             .throwable.shouldBeInstanceOf<TimelinessException>()
                         it.checks.status.claim.shouldBeInstanceOf<Blocked>()
@@ -186,6 +204,7 @@ val CredentialValidatorTest by matrixSuite {
                     val result = issuance().validator().validate(input, strictPolicy)
 
                     result.report.decision shouldBe REJECTED
+                    result.unacceptedCredential.shouldBeNull()
                     result.checks.parsing.shouldBeInstanceOf<Failed>()
                     result.checks.issuerSignature.shouldBeInstanceOf<Blocked>()
                     result.checks.issuerTrust.outcome.shouldBeInstanceOf<Blocked>()
@@ -198,11 +217,11 @@ val CredentialValidatorTest by matrixSuite {
         val vc = issuance.issue(CredentialRepresentation.PLAIN_JWT) as Issuer.IssuedCredential.VcJwt
         val otherVc = issuance.issue(CredentialRepresentation.PLAIN_JWT) as Issuer.IssuedCredential.VcJwt
         val forgedVc = vc.signedVcJws.jws.toString().withPayloadOf(otherVc.signedVcJws.jws.toString())
-        issuance.validator().validate(CredentialValidationInput.VcJwt(forgedVc), strictPolicy)
-            .checks.let {
-                it.issuerSignature.shouldBeInstanceOf<Failed>()
-                it.semantics.shouldBeInstanceOf<Blocked>()
-            }
+        issuance.validator().validate(CredentialValidationInput.VcJwt(forgedVc), strictPolicy).let {
+            it.checks.issuerSignature.shouldBeInstanceOf<Failed>()
+            it.checks.semantics.shouldBeInstanceOf<Blocked>()
+            it.unacceptedCredential.shouldBeNull()
+        }
 
         val sdJwt = issuance.issue(CredentialRepresentation.SD_JWT) as Issuer.IssuedCredential.VcSdJwt
         val otherSdJwt = issuance.issue(CredentialRepresentation.SD_JWT) as Issuer.IssuedCredential.VcSdJwt
@@ -252,6 +271,7 @@ val CredentialValidatorTest by matrixSuite {
             val result = issuance.validateSdJwt(issued.serialize() + "$unreferenced~")
 
             result.report.decision shouldBe REJECTED
+            result.unacceptedCredential.shouldBeNull()
             result.checks.disclosedItems.last().let {
                 it.parsing shouldBe Passed
                 it.digest.shouldBeInstanceOf<Failed>()

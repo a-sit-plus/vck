@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.validation
 
+import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.RequestDataValidity
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -28,3 +29,11 @@ class TimelinessException(
 class UnregisteredRequestException(
     val requests: List<Pair<WrpCredentialRequest, RequestDataValidity>>,
 ) : IllegalArgumentException("${requests.size} credential request(s) are not registered")
+
+/**
+ * A credential does not contain claims its type requires: [missing] holds their paths, never claim values, e.g. to
+ * tell the user which claims the issuer left out.
+ */
+class MissingRequiredClaimException(
+    val missing: List<OpenId4VciClaimsPathPointer>,
+) : IllegalArgumentException("${missing.size} required claim(s) are missing")
