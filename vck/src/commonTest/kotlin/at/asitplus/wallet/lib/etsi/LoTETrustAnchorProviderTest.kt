@@ -1923,9 +1923,8 @@ private fun List<X509Certificate>.containsCert(cert: X509Certificate): Boolean {
 private fun provider(
     lists: Collection<ListOfTrustedEntities> = listOf(pidLote, wrpacLote),
     trustListsFor: (suspend (String) -> Collection<ListOfTrustedEntities>)? = null,
-    additionalAnchors: List<X509Certificate> = emptyList(),
-) = trustListsFor?.let { LoTETrustAnchorProvider({ lists }, it, additionalAnchors) }
-    ?: LoTETrustAnchorProvider(trustLists = { lists }, additionalAnchors = additionalAnchors)
+) = trustListsFor?.let { LoTETrustAnchorProvider({ lists }, it) }
+    ?: LoTETrustAnchorProvider(trustLists = { lists })
 
 val LoTETrustAnchorProviderTest by matrixSuite {
 
@@ -1962,8 +1961,22 @@ val LoTETrustAnchorProviderTest by matrixSuite {
                 provider().issuanceAnchors("urn:eudi:pid:1")
     }
 
-    "an unknown credential identifier maps to EAA, for which no list is configured" {
+    "an unknown credential identifier has no list, not even the Pub-EAA one" {
+        LoteProfile.fromSchemeIdentifier("urn:example:loyalty-card:1") shouldBe null
         provider().issuanceAnchors("urn:example:loyalty-card:1") shouldBe emptyList()
+        provider().revocationAnchors("urn:example:loyalty-card:1") shouldBe emptyList()
+    }
+
+    "credential identifiers select their list case-sensitively, the mDL docType exactly" {
+        LoteProfile.fromSchemeIdentifier("urn:eudi:pid:1") shouldBe LoteProfile.PID
+        LoteProfile.fromSchemeIdentifier("urn:eudi:pid:de:1") shouldBe LoteProfile.PID
+        LoteProfile.fromSchemeIdentifier("eu.europa.ec.eudi.pid.1") shouldBe LoteProfile.PID
+        LoteProfile.fromSchemeIdentifier("org.iso.18013.5.1.mDL") shouldBe LoteProfile.mDL
+        LoteProfile.fromSchemeIdentifier("URN:EUDI:PID:1") shouldBe null
+        LoteProfile.fromSchemeIdentifier("org.iso.18013.5.1.mdl") shouldBe null
+        LoteProfile.fromSchemeIdentifier("org.iso.18013.5.1.mDLanything") shouldBe null
+        LoteProfile.fromSchemeIdentifier("") shouldBe null
+        LoteProfile.fromSchemeIdentifier(null) shouldBe null
     }
 
     "a custom trustListsFor overrides the default mapping" {
@@ -2003,15 +2016,7 @@ val LoTETrustAnchorProviderTest by matrixSuite {
         provider(lists = listOf(pidLote)).revocationAnchors(LoteProfile.WALLET) shouldBe emptyList()
     }
 
-    "additional anchors are part of every result" {
-        val p = provider(lists = emptyList(), additionalAnchors = listOf(asitCert))
-        p.issuanceAnchors("urn:eudi:pid:1") shouldBe listOf(asitCert)
-        p.revocationAnchors("urn:eudi:pid:1") shouldBe listOf(asitCert)
-        p.issuanceAnchors(LoteProfile.PID) shouldBe listOf(asitCert)
-        p.revocationAnchors(LoteProfile.PID) shouldBe listOf(asitCert)
-    }
-
-    "without lists and without additional anchors the result is empty" {
+    "without lists the result is empty" {
         provider(lists = emptyList()).issuanceAnchors("urn:eudi:pid:1") shouldBe emptyList()
     }
 }
