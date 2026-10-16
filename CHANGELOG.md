@@ -70,6 +70,11 @@ Release 9.0.0 (unreleased):
     - Add `CredentialValidationResult.unacceptedCredential` and `ValidationReport.isIntactCredential()`: the
       credential whatever the decision, if only checks a policy may relax are not satisfied (issuer trust, timeliness,
       required claims, status), so that a wallet can store it after the user accepts the report
+    - Add `HolderAgent.prepareCredentialStorage(credential, policy, renewalInfo)`, validating a received credential
+      without storing it, e.g. as the last step of issuance, returning a `PreparedCredentialStorage` to keep while the
+      user looks at the report, then `HolderAgent.storeAccepted(prepared)`, storing only an accepted credential, as
+      `storeCredentialWithReport` does, or `HolderAgent.storeAfterUserConsent(prepared)`, storing also a rejected but
+      intact credential. `CredentialStorageResult.storedEntry` may thus be present for a rejected report
     - Add `RelyingPartyValidator` with `RelyingPartyTrustAnchors` (WRPAC and WRPRC anchors, status list signers of
       WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
