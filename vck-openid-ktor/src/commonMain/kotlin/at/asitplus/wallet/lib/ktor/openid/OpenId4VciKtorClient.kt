@@ -7,13 +7,16 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
-import at.asitplus.wallet.lib.oidvci.OpenId4VciProtocolClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
+import at.asitplus.wallet.lib.oidvci.OpenId4VciProtocolClient
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -37,38 +40,80 @@ typealias OpenId4VciClient = OpenId4VciKtorClient
  *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  *  * [OAuth 2.0 Pushed Authorization Requests](https://datatracker.ietf.org/doc/html/rfc9126)
  */
-class OpenId4VciKtorClient(
-    /** ktor engine to use to make requests to issuing service. */
-    engine: HttpClientEngine,
+class OpenId4VciKtorClient private constructor(
     /**
-     * Callers are advised to implement a persistent cookie storage,
-     * to keep the session at the issuing service alive after receiving the auth code.
+     * Implements OID4VCI protocol, i.e. creates credential requests with proofs of possession for the credential key
+     * material, and parses the credential responses.
      */
-    cookiesStorage: CookiesStorage? = null,
-    /** Additional configuration for building the HTTP client, e.g. callers may enable logging. */
-    httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    /**
-     * Implements OID4VCI protocol, `redirectUrl` needs to be registered by the OS for this application, so redirection
-     * back from browser works, `cryptoService` provides proof of possession for credential key material.
-     */
-    private val oid4vciService: OpenId4VciClient = OpenId4VciClient(),
-    /** Internal OAuth 2.0 client passed on to [oauth2Client] with the `clientId` from [oid4vciService] */
-    private val oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciService.clientId),
-    /** OAuth 2.0 client to use during the protocol run. */
-    private val oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
-        engine = engine,
-        cookiesStorage = cookiesStorage,
-        httpClientConfig = httpClientConfig,
-        oAuth2Client = oauth2InternalClient,
-    ),
+    private val oid4vciClient: OpenId4VciClient,
+    /** OAuth 2.0 client to use during the protocol run, which sends all requests. */
+    private val oauth2Client: OAuth2KtorClient,
 ) {
 
-    /** Sends the requests of all exchanges, sharing the cookies and DPoP nonces of [oauth2Client]. */
-    private val client = oauth2Client.client
+    /**
+     * @param httpClient the app's ktor client, i.e. with its engine, cookie storage (advised to be persistent, to keep
+     * the session at the issuing service alive after receiving the auth code) and logging. The requests are sent with a
+     * copy that does not follow redirects, see [OAuth2KtorClient] for the plugins it must not have.
+     * @param oauth2Client implements OAuth 2.0, holding the `client_id` (also the issuer of credential proofs), the
+     * `redirectUrl`, which needs to be registered by the OS for this application, so redirection back from browser
+     * works, and the state of authorization requests
+     * @param vciClient implements OID4VCI protocol, i.e. creates credential requests with proofs of possession for the
+     * credential key material, and parses the credential responses
+     * @param clientAttestation authenticates the client with
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html),
+     * e.g. with a Wallet Instance Attestation (WIA), or `null` to not use it
+     * @param dpopKeyMaterial the key material the access tokens and refresh tokens get bound to, by default the key of
+     * [clientAttestation], else an ephemeral key, see [OAuth2KtorClient]
+     */
+    constructor(
+        httpClient: HttpClient,
+        oauth2Client: OAuth2Client,
+        vciClient: OpenId4VciClient = OpenId4VciClient(),
+        clientAttestation: ClientAttestation? = null,
+        dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
+    ) : this(
+        oid4vciClient = vciClient,
+        oauth2Client = OAuth2KtorClient(
+            httpClient = httpClient,
+            oAuth2Client = oauth2Client,
+            clientAttestation = clientAttestation,
+            dpopKeyMaterial = dpopKeyMaterial,
+        ),
+    )
 
-    private val oauth2 = oauth2Client.protocolClient
+    /**
+     * @param engine ktor engine to use to make requests to issuing service.
+     * @param cookiesStorage Callers are advised to implement a persistent cookie storage,
+     * to keep the session at the issuing service alive after receiving the auth code.
+     * @param httpClientConfig Additional configuration for building the HTTP client, e.g. callers may enable logging.
+     * @param oid4vciClient Implements OID4VCI protocol, `cryptoService` provides proof of possession for credential
+     * key material.
+     * @param oauth2InternalClient Internal OAuth 2.0 client passed on to [oauth2Client], with the (deprecated)
+     * `clientId` from [oid4vciClient]. The `client_id` of the OAuth 2.0 client in [oauth2Client] is the issuer of
+     * credential proofs.
+     * @param oauth2Client OAuth 2.0 client to use during the protocol run.
+     */
+    @Deprecated(
+        "Pass the app's HttpClient instead of engine, cookiesStorage and httpClientConfig, the OAuth2Client, which " +
+                "holds the client ID for credential proofs too, and the client attestation as ClientAttestation"
+    )
+    @Suppress("DEPRECATION") // in the default values
+    constructor(
+        engine: HttpClientEngine,
+        cookiesStorage: CookiesStorage? = null,
+        httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+        oid4vciClient: OpenId4VciClient = OpenId4VciClient(),
+        oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciClient.clientId),
+        oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
+            engine = engine,
+            cookiesStorage = cookiesStorage,
+            httpClientConfig = httpClientConfig,
+            oAuth2Client = oauth2InternalClient,
+        ),
+    ) : this(oid4vciClient = oid4vciClient, oauth2Client = oauth2Client)
 
-    private val vci = OpenId4VciProtocolClient(vciClient = oid4vciService, oauth2Client = oauth2)
+    /** Shares the DPoP nonces of [oauth2Client], which sends all requests. */
+    private val vci = OpenId4VciProtocolClient(vciClient = oid4vciClient, oauth2Client = oauth2Client.protocolClient)
 
     /**
      * Loads the [CredentialOffer] from [input], i.e. the content of a QR code or deep link: a JSON-encoded credential
@@ -78,7 +123,7 @@ class OpenId4VciKtorClient(
     suspend fun loadCredentialOffer(
         input: String,
     ): KmmResult<CredentialOffer> = catching {
-        client.execute(vci.loadCredentialOffer(input))
+        oauth2Client.execute(vci.loadCredentialOffer(input))
     }
 
     /**
@@ -89,7 +134,7 @@ class OpenId4VciKtorClient(
         host: String,
     ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
         Napier.i("loadCredentialMetadata: $host")
-        val issuerMetadata = client.execute(vci.loadIssuerMetadata(host))
+        val issuerMetadata = oauth2Client.execute(vci.loadIssuerMetadata(host))
         vci.parseCredentialMetadata(issuerMetadata).also {
             Napier.i("loadCredentialMetadata for $host returns $it")
         }.getOrThrow()
@@ -98,14 +143,15 @@ class OpenId4VciKtorClient(
     /**
      * Parses IssuerMetadata and returns a list of [CredentialIdentifierInfo].
      */
-    fun parseCredentialMetadata(issuerMetadata: IssuerMetadata): KmmResult<Collection<CredentialIdentifierInfo>> =
-        vci.parseCredentialMetadata(issuerMetadata)
+    fun parseCredentialMetadata(
+        issuerMetadata: IssuerMetadata
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = vci.parseCredentialMetadata(issuerMetadata)
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].
      * Clients need to handle the result, i.e. open the URL for user authentication or store the credentials.
      * Clients need to call [resumeWithAuthCode] after getting the authorization code back from the authorization
-     * server, e.g. by the Wallet app getting opened (see `redirectUrl` at [oid4vciService]) after the browser being
+     * server, e.g. by the Wallet app getting opened (see `redirectUrl` at [oid4vciClient]) after the browser being
      * redirecting back from the authorization server.
      *
      * @param credentialIssuerUrl URL of the credential issuer service
@@ -119,20 +165,18 @@ class OpenId4VciKtorClient(
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfo")
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = vci.selectAuthorizationServer(issuerMetadata, credentialIssuerUrl)
-        val oauthMetadata = client.execute(oauth2.loadAuthorizationServerMetadata(authorizationServer))
+        val oauthMetadata = oauth2Client.loadAuthorizationServerMetadata(authorizationServer)
 
-        client.execute(
-            oauth2.startAuthorization(
-                oauthMetadata = oauthMetadata,
-                authorizationServer = authorizationServer,
-                authorizationDetails = oid4vciService.buildAuthorizationDetails(
-                    credentialIdentifierInfo.credentialIdentifier,
-                    issuerMetadata.authorizationServers
-                ),
-                scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-                issuerMetadata = issuerMetadata,
-            )
-        ).let {
+        oauth2Client.startAuthorization(
+            oauthMetadata = oauthMetadata,
+            authorizationServer = authorizationServer,
+            authorizationDetails = oid4vciClient.buildAuthorizationDetails(
+                credentialIdentifierInfo.credentialIdentifier,
+                issuerMetadata.authorizationServers
+            ),
+            scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+            issuerMetadata = issuerMetadata,
+        ).getOrThrow().let {
             CredentialIssuanceResult.OpenUrlForAuthnRequest(
                 url = it.url,
                 context = ProvisioningContext(
@@ -164,20 +208,18 @@ class OpenId4VciKtorClient(
         Napier.i("resumeWithAuthCode")
         Napier.d("resumeWithAuthCode: $url, $context")
 
-        val tokenResponse = client.execute(
-            oauth2.requestTokenWithAuthCode(
-                oauthMetadata = context.oauthMetadata,
-                url = url,
-                authorizationServer = context.oauthMetadata.issuer,
-                state = context.state,
-                scope = context.credential.supportedCredentialFormat.scope,
-                authorizationDetails = oid4vciService.buildAuthorizationDetails(
-                    context.credential.credentialIdentifier,
-                    context.issuerMetadata.authorizationServers
-                ),
-                issuerMetadata = context.issuerMetadata,
-            )
-        )
+        val tokenResponse = oauth2Client.requestTokenWithAuthCode(
+            oauthMetadata = context.oauthMetadata,
+            url = url,
+            authorizationServer = context.oauthMetadata.issuer,
+            state = context.state,
+            scope = context.credential.supportedCredentialFormat.scope,
+            authorizationDetails = oid4vciClient.buildAuthorizationDetails(
+                context.credential.credentialIdentifier,
+                context.issuerMetadata.authorizationServers
+            ),
+            issuerMetadata = context.issuerMetadata,
+        ).getOrThrow()
 
         val credentialScheme = vci.resolveCredentialScheme(context.credential.supportedCredentialFormat)
             ?: throw Exception("Unknown credential scheme in ${context.credential}")
@@ -209,20 +251,18 @@ class OpenId4VciKtorClient(
         with(refreshTokenInfo) {
             Napier.i("refreshCredential")
             Napier.d("refreshCredential: $refreshToken, $credentialFormat, $credentialIdentifier")
-            val tokenResponse = client.execute(
-                oauth2.requestTokenWithRefreshToken(
-                    oauthMetadata = oauthMetadata,
-                    credentialIssuer = issuerMetadata.credentialIssuer,
-                    refreshToken = refreshToken
-                        ?: throw IllegalArgumentException("Refresh token is missing in RefreshTokenInfo"),
-                    scope = credentialFormat.scope,
-                    authorizationDetails = oid4vciService.buildAuthorizationDetails(
-                        credentialIdentifier,
-                        issuerMetadata.authorizationServers
-                    ),
-                    issuerMetadata = issuerMetadata,
-                )
-            )
+            val tokenResponse = oauth2Client.requestTokenWithRefreshToken(
+                oauthMetadata = oauthMetadata,
+                credentialIssuer = issuerMetadata.credentialIssuer,
+                refreshToken = refreshToken
+                    ?: throw IllegalArgumentException("Refresh token is missing in RefreshTokenInfo"),
+                scope = credentialFormat.scope,
+                authorizationDetails = oid4vciClient.buildAuthorizationDetails(
+                    credentialIdentifier,
+                    issuerMetadata.authorizationServers
+                ),
+                issuerMetadata = issuerMetadata,
+            ).getOrThrow()
 
             val credentialScheme = vci.resolveCredentialScheme(credentialFormat)
                 ?: throw Exception("Unknown credential scheme in $credentialFormat")
@@ -256,10 +296,10 @@ class OpenId4VciKtorClient(
         Napier.i("postCredentialRequestAndStore: ${issuerMetadata.credentialEndpointUrl}")
         Napier.d("postCredentialRequestAndStore: $tokenResponse")
 
-        val clientNonce = vci.nonceRequest(issuerMetadata)?.let { client.execute(it) }
+        val clientNonce = vci.nonceRequest(issuerMetadata)?.let { oauth2Client.execute(it) }
             .also { Napier.i("postCredentialRequestAndStore: uses nonce $it") }
 
-        val requests = oid4vciService.createCredential(
+        val requests = vci.createCredential(
             tokenResponse = tokenResponse.params,
             metadata = issuerMetadata,
             credentialFormat = credentialFormat,
@@ -268,7 +308,7 @@ class OpenId4VciKtorClient(
         ).getOrThrow()
 
         val storeCredentialInputs = requests.flatMap {
-            client.execute(
+            oauth2Client.execute(
                 vci.credentialRequest(
                     request = it,
                     issuerMetadata = issuerMetadata,
@@ -308,27 +348,25 @@ class OpenId4VciKtorClient(
         val issuerMetadata = credentialIdentifierInfo.issuerMetadata
         val authorizationServer = vci.selectAuthorizationServer(issuerMetadata, credentialOffer.credentialIssuer)
         val oauthMetadata = authorizationServerMetadata
-            ?: client.execute(oauth2.loadAuthorizationServerMetadata(authorizationServer))
+            ?: oauth2Client.loadAuthorizationServerMetadata(authorizationServer)
         val state = uuid4().toString()
         val preAuthorizedCode = credentialOffer.grants?.preAuthorizedCode
         if (preAuthorizedCode != null) {
             val credentialScheme = vci.resolveCredentialScheme(credentialIdentifierInfo.supportedCredentialFormat)
                 ?: throw Exception("Unknown credential scheme in $credentialIdentifierInfo")
 
-            val tokenResponse = client.execute(
-                oauth2.requestTokenWithPreAuthorizedCode(
-                    oauthMetadata = oauthMetadata,
-                    authorizationServer = preAuthorizedCode.authorizationServer ?: issuerMetadata.credentialIssuer,
-                    preAuthorizedCode = preAuthorizedCode.preAuthorizedCode,
-                    transactionCode = transactionCode,
-                    scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-                    authorizationDetails = oid4vciService.buildAuthorizationDetails(
-                        credentialIdentifierInfo.credentialIdentifier,
-                        issuerMetadata.authorizationServers
-                    ),
-                    issuerMetadata = issuerMetadata,
-                )
-            )
+            val tokenResponse = oauth2Client.requestTokenWithPreAuthorizedCode(
+                oauthMetadata = oauthMetadata,
+                authorizationServer = preAuthorizedCode.authorizationServer ?: issuerMetadata.credentialIssuer,
+                preAuthorizedCode = preAuthorizedCode.preAuthorizedCode,
+                transactionCode = transactionCode,
+                scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+                authorizationDetails = oid4vciClient.buildAuthorizationDetails(
+                    credentialIdentifierInfo.credentialIdentifier,
+                    issuerMetadata.authorizationServers
+                ),
+                issuerMetadata = issuerMetadata,
+            ).getOrThrow()
 
             postCredentialRequestAndStore(
                 issuerMetadata = issuerMetadata,
@@ -340,21 +378,19 @@ class OpenId4VciKtorClient(
                 previouslyRequestedScope = credentialIdentifierInfo.supportedCredentialFormat.scope,
             )
         } else {
-            client.execute(
-                oauth2.startAuthorization(
-                    oauthMetadata = oauthMetadata,
-                    authorizationServer = credentialOffer.grants?.authorizationCode?.authorizationServer
-                        ?: authorizationServer,
-                    state = state,
-                    issuerState = credentialOffer.grants?.authorizationCode?.issuerState,
-                    authorizationDetails = oid4vciService.buildAuthorizationDetails(
-                        credentialIdentifierInfo.credentialIdentifier,
-                        issuerMetadata.authorizationServers
-                    ),
-                    scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-                    issuerMetadata = issuerMetadata,
-                )
-            ).let {
+            oauth2Client.startAuthorization(
+                oauthMetadata = oauthMetadata,
+                authorizationServer = credentialOffer.grants?.authorizationCode?.authorizationServer
+                    ?: authorizationServer,
+                state = state,
+                issuerState = credentialOffer.grants?.authorizationCode?.issuerState,
+                authorizationDetails = oid4vciClient.buildAuthorizationDetails(
+                    credentialIdentifierInfo.credentialIdentifier,
+                    issuerMetadata.authorizationServers
+                ),
+                scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+                issuerMetadata = issuerMetadata,
+            ).getOrThrow().let {
                 CredentialIssuanceResult.OpenUrlForAuthnRequest(
                     url = it.url,
                     context = ProvisioningContext(

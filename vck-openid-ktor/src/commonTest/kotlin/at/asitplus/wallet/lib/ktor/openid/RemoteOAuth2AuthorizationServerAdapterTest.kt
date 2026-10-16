@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.oidvci.TokenInfo
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
@@ -93,6 +94,8 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             }
         }
 
+        // Also covers the deprecated constructor, which builds its own HTTP client
+        @Suppress("DEPRECATION")
         val adapter = RemoteOAuth2AuthorizationServerAdapter(
             publicContext = issuer,
             engine = mockEngine,
@@ -130,7 +133,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
 
         val adapter = RemoteOAuth2AuthorizationServerAdapter(
             publicContext = issuer,
-            engine = mockEngine,
+            httpClient = HttpClient(mockEngine),
             internalTokenVerificationService = tokenVerificationService,
         )
 
@@ -162,7 +165,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
 
         val adapter = RemoteOAuth2AuthorizationServerAdapter(
             publicContext = issuer,
-            engine = mockEngine,
+            httpClient = HttpClient(mockEngine),
             internalTokenVerificationService = tokenVerificationService,
         )
 
@@ -202,7 +205,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
 
         val adapter = RemoteOAuth2AuthorizationServerAdapter(
             publicContext = issuer,
-            engine = mockEngine,
+            httpClient = HttpClient(mockEngine),
             internalTokenVerificationService = tokenVerificationService,
         )
 
@@ -259,7 +262,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
 
         val adapter = RemoteOAuth2AuthorizationServerAdapter(
             publicContext = issuer,
-            engine = mockEngine,
+            httpClient = HttpClient(mockEngine),
             internalTokenVerificationService = tokenVerificationService,
         )
 

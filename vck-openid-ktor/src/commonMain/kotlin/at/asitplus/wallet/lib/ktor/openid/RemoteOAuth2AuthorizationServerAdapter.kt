@@ -5,8 +5,10 @@ import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
+import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
@@ -27,37 +29,101 @@ import kotlinx.serialization.json.JsonObject
  * Uses an external OAuth 2.0 Authorization Server with a [at.asitplus.wallet.lib.oidvci.OpenId4VciServer],
  * i.e., delegate authorization to the external AS, and load user info from there
  * (after performing token exchange with the Wallet's access token to get a fresh one).
- * Make sure to configure [oauth2Client] to use the correct [OAuth2KtorClient.loadInstanceAttestation].
+ * Authenticates with the `clientAttestation` the remote authorization server expects, if any.
  */
-class RemoteOAuth2AuthorizationServerAdapter(
+class RemoteOAuth2AuthorizationServerAdapter private constructor(
     /** Base URL of the remote Authorization Server. */
     override val publicContext: String,
-    /** ktor engine to make requests to the verifier. */
-    private val engine: HttpClientEngine,
-    /**
-     * Callers are advised to implement a persistent cookie storage,
-     * to keep the session at the issuing service alive after receiving the auth code.
-     */
-    private val cookiesStorage: CookiesStorage? = null,
-    /** Additional configuration for building the HTTP client, e.g., callers may enable logging. */
-    private val httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-    /** [CoroutineScope] to fetch the authorization server's metadata. */
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
     /** OAuth 2.0 client to use when exchanging Wallet's token for a fresh access token. */
-    private val oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
-        engine = engine,
-        cookiesStorage = cookiesStorage,
-        httpClientConfig = httpClientConfig,
-        oAuth2Client = OAuth2Client(),
-    ),
+    private val oauth2Client: OAuth2KtorClient,
     /** Validates access tokens received in [validateAccessToken]. */
     val internalTokenVerificationService: TokenVerificationService,
     /** Used to provide DPoP nonces for credential requests, which will be verified by [internalTokenVerificationService]. */
-    val dpopNonceService: NonceService = DefaultNonceService(),
+    val dpopNonceService: NonceService,
+    /** [CoroutineScope] to fetch the authorization server's metadata. */
+    private val scope: CoroutineScope,
 ) : OAuth2AuthorizationServerAdapter {
 
+    /**
+     * @param publicContext base URL of the remote Authorization Server
+     * @param httpClient the app's ktor client, i.e. with its engine and logging. The requests are sent with a copy that
+     * does not follow redirects, see [OAuth2KtorClient] for the plugins it must not have.
+     * @param internalTokenVerificationService validates access tokens received in [validateAccessToken]
+     * @param oauth2Client implements OAuth 2.0 when exchanging Wallet's token for a fresh access token
+     * @param clientAttestation authenticates with
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
+     * at the remote Authorization Server, or `null` to not use it
+     * @param verifyTokenIntrospectionJwt verifies signed token introspection responses of the remote Authorization
+     * Server; by default, every syntactically valid JWS is accepted
+     * @param dpopNonceService used to provide DPoP nonces for credential requests, which will be verified by
+     * [internalTokenVerificationService]
+     * @param scope [CoroutineScope] to fetch the authorization server's metadata
+     */
+    constructor(
+        publicContext: String,
+        httpClient: HttpClient,
+        internalTokenVerificationService: TokenVerificationService,
+        oauth2Client: OAuth2Client = OAuth2Client(),
+        clientAttestation: ClientAttestation? = null,
+        verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+        dpopNonceService: NonceService = DefaultNonceService(),
+        scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+    ) : this(
+        publicContext = publicContext,
+        oauth2Client = OAuth2KtorClient(
+            httpClient = httpClient,
+            oAuth2Client = oauth2Client,
+            clientAttestation = clientAttestation,
+            verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
+        ),
+        internalTokenVerificationService = internalTokenVerificationService,
+        dpopNonceService = dpopNonceService,
+        scope = scope,
+    )
+
+    /**
+     * @param publicContext Base URL of the remote Authorization Server.
+     * @param engine ktor engine to make requests to the verifier.
+     * @param cookiesStorage Callers are advised to implement a persistent cookie storage,
+     * to keep the session at the issuing service alive after receiving the auth code.
+     * @param httpClientConfig Additional configuration for building the HTTP client, e.g., callers may enable logging.
+     * @param scope [CoroutineScope] to fetch the authorization server's metadata.
+     * @param oauth2Client OAuth 2.0 client to use when exchanging Wallet's token for a fresh access token, make sure
+     * to configure it to use the correct [OAuth2KtorClient.clientAttestation].
+     * @param internalTokenVerificationService Validates access tokens received in [validateAccessToken].
+     * @param dpopNonceService Used to provide DPoP nonces for credential requests, which will be verified by
+     * [internalTokenVerificationService].
+     */
+    @Deprecated(
+        "Pass the app's HttpClient instead of engine, cookiesStorage and httpClientConfig, which oauth2Client " +
+                "ignored when passed, and configure the OAuth 2.0 client with oauth2Client, clientAttestation and " +
+                "verifyTokenIntrospectionJwt"
+    )
+    constructor(
+        publicContext: String,
+        engine: HttpClientEngine,
+        cookiesStorage: CookiesStorage? = null,
+        httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
+        scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        @Suppress("DEPRECATION")
+        oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
+            engine = engine,
+            cookiesStorage = cookiesStorage,
+            httpClientConfig = httpClientConfig,
+            oAuth2Client = OAuth2Client(),
+        ),
+        internalTokenVerificationService: TokenVerificationService,
+        dpopNonceService: NonceService = DefaultNonceService(),
+    ) : this(
+        publicContext = publicContext,
+        oauth2Client = oauth2Client,
+        internalTokenVerificationService = internalTokenVerificationService,
+        dpopNonceService = dpopNonceService,
+        scope = scope,
+    )
+
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
-        oauth2Client.client.execute(oauth2Client.protocolClient.loadAuthorizationServerMetadata(publicContext))
+        oauth2Client.loadAuthorizationServerMetadata(publicContext)
     }
 
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata.await()
@@ -96,9 +162,7 @@ class RemoteOAuth2AuthorizationServerAdapter(
             subjectToken = authorizationHeader.split(" ").last(),
             resource = userInfoEndpoint,
         ).getOrThrow()
-        oauth2Client.client.execute(
-            oauth2Client.protocolClient.userInfoRequest(userInfoEndpoint, tokenResponse.params)
-        )
+        oauth2Client.requestUserInfo(userInfoEndpoint, tokenResponse.params)
     }
 
     override suspend fun validateAccessToken(

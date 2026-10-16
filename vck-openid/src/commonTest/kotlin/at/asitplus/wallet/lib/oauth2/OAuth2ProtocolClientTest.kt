@@ -72,9 +72,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
         keyMaterial: KeyMaterial = attestedKey,
     ) = OAuth2ProtocolClient(
         oAuth2Client = OAuth2Client(clientId = clientId),
-        keyMaterial = keyMaterial,
-        randomSource = RandomSource.Default,
-        loadInstanceAttestation = {
+        clientAttestation = ClientAttestation(keyMaterial) {
             captureAttestationInput?.invoke(it)
             catching {
                 BuildClientAttestationJwt(
@@ -84,6 +82,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
                 )
             }
         },
+        randomSource = RandomSource.Default,
     )
 
     fun OAuth2ProtocolClient.preAuthTokenRequest(metadata: OAuth2AuthorizationServerMetadata) =
@@ -169,6 +168,19 @@ val OAuth2ProtocolClientTest by matrixSuite {
         http.execute(clientWithoutAttestation().preAuthTokenRequest(scriptedMetadata()))
 
         http.sent.kinds() shouldBe listOf("Token(0)")
+    }
+
+    /** [EUDI TS3 Wallet Unit Attestation](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md) */
+    test("DPoP proofs use the key of the client attestation by default") {
+        val attestedKey = EphemeralKeyWithoutCert()
+        val http = FakeHttpStack(scripted(challengeResponse("c1"), tokenResponse()))
+
+        val tokenRequest = http.firstRequest<ProtocolRequest.Token>(
+            clientWithAttestation(attestedKey = attestedKey).preAuthTokenRequest(scriptedMetadata())
+        ).toRequestInfo()
+
+        tokenRequest.dpop.shouldNotBeNull().jws.jwsHeader.jsonWebKey.shouldNotBeNull().jwkThumbprint shouldBe
+                attestedKey.jsonWebKey.jwkThumbprint
     }
 
     test("token request with client attestation fetches an attestation challenge first") {
@@ -429,7 +441,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
                 popMethods = setOf(ClientAttestationPopMethod.DpopCombined),
             )
         ) {
-            // No loadInstanceAttestation, and the two keys are independent because none of them is attested
+            // No client attestation, so the DPoP key is independent, as no key is attested
             val plainDpopClient = OAuth2ProtocolClient(
                 oAuth2Client = OAuth2Client(clientId = "https://example.com/rp-no-attestation"),
                 randomSource = RandomSource.Default,
