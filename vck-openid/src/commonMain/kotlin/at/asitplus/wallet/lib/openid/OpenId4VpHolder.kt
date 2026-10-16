@@ -373,9 +373,11 @@ class OpenId4VpHolder @JvmOverloads constructor(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
         policy: ValidationPolicy,
     ): KmmResult<AuthorizationRequestValidation> = catching {
+        val validation = authorizationRequestValidator.validate(params, policy)
         AuthorizationRequestValidation(
-            validationReport = authorizationRequestValidator.validate(params, policy),
+            validationReport = validation.report,
             preparationState = prepare(params),
+            relyingParty = validation.relyingParty,
         )
     }
 

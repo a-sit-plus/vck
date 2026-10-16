@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.LazyExchange
 import at.asitplus.wallet.lib.oauth2.PlainExchange
 import at.asitplus.wallet.lib.oauth2.ValueExchange
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -68,6 +69,42 @@ class OpenId4VpProtocolClient(
                 parse = {
                     openId4VpHolder.startAuthorizationResponsePreparation(
                         openId4VpHolder.resolveFetchedRequestObject(parsed, it.body)
+                    ).getOrThrow()
+                },
+            )
+        }
+    }
+
+    /**
+     * Parses [input], loads the request object as [prepareAuthorizationResponse] does, and validates the request with
+     * [OpenId4VpHolder.startAuthorizationResponsePreparation] of [openId4VpHolder] under [policy], returning its report
+     * next to the state. A rejected request still finishes the exchange with its report and state, so the wallet can
+     * show why, answer with an error response, or continue after the user decided to; the exchange fails only for
+     * transport errors and input that can not be parsed.
+     *
+     * The `wallet_nonce` of a request object is consumed by validating it, so validate a request once, either with
+     * this method or with [prepareAuthorizationResponse], never with both.
+     *
+     * Sends `[RequestObject]`, i.e. `RequestObject` for a request object passed by reference only.
+     */
+    fun prepareAuthorizationResponse(
+        input: String,
+        policy: ValidationPolicy,
+    ): HttpExchange<AuthorizationRequestValidation> = LazyExchange {
+        when (val parsed = openId4VpHolder.parseWithoutFetching(input)) {
+            is RequestParser.ParsedRequest.Resolved -> ValueExchange(
+                openId4VpHolder.startAuthorizationResponsePreparation(
+                    parsed.request.requireAuthenticationRequest(),
+                    policy,
+                ).getOrThrow()
+            )
+
+            is RequestParser.ParsedRequest.ByReference -> PlainExchange(
+                candidates = listOf(ProtocolRequest.RequestObject(parsed.toHttpRequest())),
+                parse = {
+                    openId4VpHolder.startAuthorizationResponsePreparation(
+                        openId4VpHolder.resolveFetchedRequestObject(parsed, it.body),
+                        policy,
                     ).getOrThrow()
                 },
             )

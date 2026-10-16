@@ -43,10 +43,18 @@ Release 9.0.0 (unreleased):
       WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
       request in one report; `IsoMdocDcApi.validateRelyingParty(validator, policy)` in `vck-openid`. An unregistered
-      request fails with an `UnregisteredRequestException`
+      request fails with an `UnregisteredRequestException`. `RelyingPartyValidator.validate(deviceRequest, sessionTranscript, policy)`
+      validates the reader of a proximity presentation, e.g. over BLE or NFC (ISO/IEC 18013-5:2021, 9.1.4)
     - Add `AuthorizationRequestValidator.validate(request, policy)`, and
       `OpenId4VpHolder.startAuthorizationResponsePreparation(input, policy)` and its `DcApiHolder` overload,
-      returning the report of the request next to the preparation state, also for a rejected request.
+      returning the report of the request next to the preparation state, also for a rejected request; also
+      `OpenId4VpProtocolClient.prepareAuthorizationResponse(input, policy)`, loading a request object by reference,
+      and in `OpenId4VpKtorHolder` `startAuthorizationResponsePreparation(input, policy)`, its overload for parsed
+      requests, and `prepareDcApiRequest(request, policy)`.
+      `AuthorizationRequestValidation.relyingParty` and `DcApiRequestValidation.relyingParty` carry the
+      `RelyingPartyValidationResult` of a request with a WRPRC, and `RelyingPartyValidationResult.untrustedRegistrations`
+      the payloads of its WRPRCs whose parsing passed, whatever the decision, to show them next to a warning instead of
+      parsing them with the deprecated `WrpAuthenticationRequestValidator`.
       `OpenId4VpHolder`, `OpenId4VpKtorHolder`, and `DcApiHolder` take a `relyingPartyValidator`; deprecate
       `RelyingPartyTrust` and the constructors taking `relyingPartyTrust` (mapped by `toRelyingPartyValidator()`;
       `RelyingPartyTrust.Custom` no longer takes effect) or the unused `keyMaterial`
@@ -69,6 +77,10 @@ Release 9.0.0 (unreleased):
           chains; a WRPRC no longer needs `alg` ES256 or to lack `kid`, which ETSI TS 119 475 does not require
         - A signed authorization request whose signature can not be verified, as no key is established for its
           client identifier prefix and it asserts none, is rejected (OpenID4VP 1.0, 5.9.3)
+        - An ISO mdoc request without any reader authentication, and an unsigned request, are reported as unsigned:
+          the `signature` and `parsing` of the WRPAC are not applicable, `requestData` fails with an
+          `UnsupportedWrpRequestException`, and their WRPRCs are not evaluated, while a reader authentication that does
+          not verify fails the `signature`, so that a wallet can tell an unauthenticated reader from a forged one
     - Deprecate the superseded validation API, to be removed in the next major release: `Validator`,
       `ValidatorVcJws`, `ValidatorSdJwt`, `ValidatorMdoc`, `VerifierAgent`, and the presentation methods of `Verifier`
       (use `CredentialValidator`); `VcJwsInputValidator`, `SdJwtInputValidator`, `MdocInputValidator` and their
