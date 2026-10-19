@@ -7,6 +7,7 @@ import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.PreparedHttpRequest
@@ -32,6 +33,10 @@ import at.asitplus.wallet.lib.validation.ClientAttestationValidator
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /**
  * An authorization server (with attestation-based client authentication and DPoP) and a credential issuer (issuing
@@ -118,7 +123,8 @@ class AuthorizationServerFixture(
                 BuildClientAttestationJwt(
                     SignJwt(walletProviderKeyMaterial, JwsHeaderCertOrJwk()),
                     clientId = clientId,
-                    clientKey = clientAuthKeyMaterial.jsonWebKey
+                    clientKey = clientAuthKeyMaterial.jsonWebKey,
+                    clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
                 )
             }
         },

@@ -32,6 +32,7 @@ import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.encodeToParameters
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -171,6 +172,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Requires [tokenService] with support for it.
      */
     private val supportTokenExchange: Boolean = false,
+    /** Clock to use for timestamps in the tokens generated. */
+    private val clock: Clock = Clock.System,
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
     init {
@@ -874,7 +877,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                     TokenIntrospectionJwtPayload(
                         issuer = publicContext,
                         audience = setOf(resourceServer),
-                        issuedAt = Clock.System.now(),
+                        issuedAt = clock.now().truncateToSeconds(),
                         tokenIntrospection = response,
                     ),
                     TokenIntrospectionJwtPayload.serializer()

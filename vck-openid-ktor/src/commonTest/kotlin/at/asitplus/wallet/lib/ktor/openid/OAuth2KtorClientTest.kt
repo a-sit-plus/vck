@@ -8,6 +8,7 @@ import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.toFormParameters
+import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultNonceService
@@ -42,6 +43,10 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
+import kotlinx.serialization.json.buildJsonObject
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 val OAuth2KtorClientTest by matrixSuite {
 
@@ -161,7 +166,8 @@ val OAuth2KtorClientTest by matrixSuite {
                         BuildClientAttestationJwt(
                             walletProvider.signJwt,
                             clientId = clientId,
-                            clientKey = clientAuthKeyMaterial.jsonWebKey
+                            clientKey = clientAuthKeyMaterial.jsonWebKey,
+                            clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
                         )
                     }
                 },
