@@ -47,7 +47,7 @@ val IsoMdocZkEngineTest by matrixSuite {
         val (keyMaterial, storedCredential) = runBlocking { issueAndStoreIsoMdocCredential() }
 
         object {
-            val sessionTranscript = SessionTranscript.forQr(byteArrayOf(), byteArrayOf())
+            val sessionTranscript = SessionTranscript.Qr(byteArrayOf(), byteArrayOf())
             val zkRegistry = IsoMdocZkBackendRegistry().also { runBlocking { it.register(MockIsoMdocZkBackend) } }
             val zkEngine = IsoMdocZkEngine(registry = zkRegistry)
 

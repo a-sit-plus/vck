@@ -507,7 +507,7 @@ private suspend fun createWalletResponse(
     createDeviceResponse(holder, isoMdocRequest, origin, requestedCredential),
 )
 
-private fun sessionTranscriptFor(isoMdocRequest: IsoMdocRequest, origin: String) = SessionTranscript.forDcApi(
+private fun sessionTranscriptFor(isoMdocRequest: IsoMdocRequest, origin: String) = SessionTranscript.DcApi(
     DCAPIHandover(
         type = TYPE_DCAPI,
         hash = coseCompliantSerializer.encodeToByteArray(

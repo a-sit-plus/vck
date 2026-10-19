@@ -8,9 +8,24 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.HMAC
+import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
+import at.asitplus.signum.indispensable.KeyAgreementPublicValue
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseMac
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.kdf.HKDF
+import at.asitplus.signum.indispensable.misc.bit
+import at.asitplus.signum.supreme.agree.Ephemeral
+import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.supreme.kdf.deriveKey
+import at.asitplus.signum.supreme.mac.mac
+import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.wallet.lib.sessionTranscriptBytes
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -39,6 +54,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
@@ -115,7 +131,7 @@ private suspend fun Issuance.vpJwt(
 private suspend fun Issuance.vcJwt() =
     (issue(CredentialRepresentation.PLAIN_JWT) as Issuer.IssuedCredential.VcJwt).signedVcJws.jws.toString()
 
-private fun sessionTranscript() = SessionTranscript.forQr(Random.nextBytes(16), Random.nextBytes(16))
+private fun sessionTranscript() = SessionTranscript.Qr(Random.nextBytes(16), Random.nextBytes(16))
 
 /** A document of the issued mdoc, its device signature over [signedTranscript], signed by [signer]. */
 private suspend fun Issuance.document(
@@ -130,6 +146,35 @@ private suspend fun Issuance.document(
         null, null, unsigned.deviceAuthenticationBytes(signedTranscript), ByteArraySerializer()
     ).getOrThrow()
     return unsigned.copy(deviceSigned = DeviceSigned(namespaces, DeviceAuth(deviceSignature = deviceSignature)))
+}
+
+/**
+ * A document of the issued mdoc, authenticated by a device MAC over [transcript] (ISO/IEC 18013-5:2021, 9.1.3.5), with
+ * the key the holder's device key [holder] agrees with the reader's ephemeral key [eReaderKey].
+ */
+private suspend fun Issuance.macDocument(
+    transcript: SessionTranscript,
+    eReaderKey: KeyAgreementPublicValue.ECDH,
+    holder: KeyMaterial = holderKey,
+): Document {
+    val issuerSigned = (issue(CredentialRepresentation.ISO_MDOC) as Issuer.IssuedCredential.Iso).issuerSigned
+    val namespaces = ByteStringWrapper(DeviceNameSpaces(emptyMap()))
+    val unsigned = Document(scheme.isoDocType, issuerSigned, DeviceSigned(namespaces, DeviceAuth()))
+    val sharedSecret = (holder.getUnderLyingSigner() as Signer.ECDSA).keyAgreement(eReaderKey).getOrThrow()
+    val eMacKey = HKDF.SHA256(info = "EMacKey".encodeToByteArray()).deriveKey(
+        salt = Digest.SHA256.digest(transcript.sessionTranscriptBytes()),
+        ikm = sharedSecret,
+        derivedKeyLength = 256.bit,
+    ).getOrThrow()
+    val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.MAC.HS256)
+    val macInput = CoseMac.prepare(
+        protectedHeader = protectedHeader,
+        payload = unsigned.deviceAuthenticationBytes(transcript),
+        payloadSerializer = ByteArraySerializer(),
+    )
+    val tag = HMAC.SHA256.mac(eMacKey, coseCompliantSerializer.encodeToByteArray(macInput)).getOrThrow()
+    val deviceMac = CoseMac.create(protectedHeader, null, null, tag, ByteArraySerializer())
+    return unsigned.copy(deviceSigned = DeviceSigned(namespaces, DeviceAuth(deviceMac = deviceMac)))
 }
 
 val PresentationValidationTest by matrixSuite {
@@ -355,6 +400,51 @@ val PresentationValidationTest by matrixSuite {
                 .checks.signature.shouldBeInstanceOf<Blocked>()
         }
 
+        "with a device MAC agreed with the reader's ephemeral key over the session transcript is accepted" {
+            val issuance = issuance()
+            val transcript = sessionTranscript()
+            val eReaderKey = KeyAgreementPrivateValue.ECDH.Ephemeral().getOrThrow()
+            val result = issuance.validatePresentation(
+                PresentationValidationInput.MdocDocument(issuance.macDocument(transcript, eReaderKey.publicValue)),
+                PresentationContext.forMdoc(transcript, eReaderKey),
+            )
+
+            result.report.decision shouldBe ACCEPTED
+            result.checks.signature shouldBe Passed
+            result.checks.challenge shouldBe NotApplicable
+            result.checks.audience shouldBe NotApplicable
+            result.presentation.shouldBeInstanceOf<ValidatedPresentation.MdocDocument>()
+        }
+
+        "a device MAC agreed with another reader key, over another session transcript, or by another key, fails" {
+            val issuance = issuance()
+            val transcript = sessionTranscript()
+            val eReaderKey = KeyAgreementPrivateValue.ECDH.Ephemeral().getOrThrow()
+            val otherReaderKey = KeyAgreementPrivateValue.ECDH.Ephemeral().getOrThrow()
+
+            listOf(
+                issuance.macDocument(transcript, otherReaderKey.publicValue),
+                issuance.macDocument(sessionTranscript(), eReaderKey.publicValue),
+                issuance.macDocument(transcript, eReaderKey.publicValue, EphemeralKeyWithoutCert()),
+            ).forEach { document ->
+                issuance.validatePresentation(
+                    PresentationValidationInput.MdocDocument(document),
+                    PresentationContext.forMdoc(transcript, eReaderKey),
+                ).checks.signature.shouldBeInstanceOf<Failed>()
+            }
+        }
+
+        "without the reader's ephemeral key the device MAC is blocked" {
+            val issuance = issuance()
+            val transcript = sessionTranscript()
+            val eReaderKey = KeyAgreementPrivateValue.ECDH.Ephemeral().getOrThrow()
+
+            issuance.validatePresentation(
+                PresentationValidationInput.MdocDocument(issuance.macDocument(transcript, eReaderKey.publicValue)),
+                PresentationContext.forMdoc(transcript),
+            ).checks.signature.shouldBeInstanceOf<Blocked>()
+        }
+
         "a document type other than the one of the MSO fails the credential's semantics" {
             val issuance = issuance()
             val transcript = sessionTranscript()
@@ -367,6 +457,19 @@ val PresentationValidationTest by matrixSuite {
             result.report.children.single().checks.shouldBeInstanceOf<CredentialChecks>().semantics
                 .shouldBeInstanceOf<Failed>()
         }
+    }
+
+    "a context for mdoc device authentication rejects a key binding JWT, even one without nonce and audience" {
+        val issuance = issuance()
+        val sdJwt = issuance.presentedSdJwt()
+        val result = issuance.validatePresentation(
+            PresentationValidationInput.SdJwt(sdJwt + keyBinding(sdJwt, issuance.holderKey, challenge = "", audience = "")),
+            PresentationContext.forMdoc(sessionTranscript()),
+        )
+
+        result.report.decision shouldBe REJECTED
+        result.checks.challenge.shouldBeInstanceOf<Failed>()
+        result.checks.audience.shouldBeInstanceOf<Failed>()
     }
 
     "a context of a challenge session carries the consumed challenge" {
