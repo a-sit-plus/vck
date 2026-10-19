@@ -80,9 +80,3 @@ To also release the artifacts to Maven Central run:
 ```shell
 ./gradlew clean publishToSonatype closeAndReleaseSonatypeStagingRepository
 ```
-
-To publish locally for testing, one can skip the signing tasks:
-
-```shell
-./gradlew clean publishToMavenLocal -x signJvmPublication -x signKotlinMultiplatformPublication -x signIosArm64Publication -x signIosSimulatorArm64Publication -x signIosX64Publication
-```
