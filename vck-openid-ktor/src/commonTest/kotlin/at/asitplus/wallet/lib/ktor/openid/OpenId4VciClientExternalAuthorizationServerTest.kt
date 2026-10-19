@@ -15,6 +15,7 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
@@ -65,9 +66,11 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
+import kotlinx.serialization.json.buildJsonObject
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /**
  * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] that uses [RemoteOAuth2AuthorizationServerAdapter]
@@ -257,7 +260,8 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                         BuildClientAttestationJwt(
                             walletProvider.signJwt,
                             clientId = issuerPublicContext,
-                            clientKey = issuerClientAuthKeyMaterial.jsonWebKey
+                            clientKey = issuerClientAuthKeyMaterial.jsonWebKey,
+                            clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
                         )
                     }
                 },
@@ -285,7 +289,8 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                         BuildClientAttestationJwt(
                             walletProvider.signJwt,
                             clientId = walletClientId,
-                            clientKey = walletClientAuthKeyMaterial.jsonWebKey
+                            clientKey = walletClientAuthKeyMaterial.jsonWebKey,
+                            clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
                         )
                     }
                 },

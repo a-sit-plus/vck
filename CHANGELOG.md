@@ -268,6 +268,7 @@ Release 9.0.0 (unreleased):
     - Add `OAuth2KtorClient.clientAttestation`, deprecate `OAuth2KtorClient.loadInstanceAttestation`
     - Form-encoded requests (PAR, token, token introspection) are sent as `application/x-www-form-urlencoded` without
       `charset` in the `Content-Type`, as the media type defines no such parameter
+    - Change: `BuildDPoPHeader`/`BuildClientAttestationJwt`/`BuildClientAttestationPoPJwt` get a parameter `issuedAt` that is set without applying the clock skew, so callers need to set it on their own
 - OpenID for Verifiable Credential Issuance client:
     - Add `CredentialIssuanceResult.Success.reissuingStoreEntryId`, the stored credential the new ones replace, as
       passed to `startProvisioningWithAuthRequestReturningResult` and kept in the `ProvisioningContext`
@@ -504,6 +505,8 @@ Release 9.0.0 (unreleased):
       JWK SHA-256 thumbprint in `jkt`, and `token_type` `DPoP` (RFC 9449, 6.2), and
       `RemoteOAuth2AuthorizationServerAdapter.getTokenInfo` passes it on, so that a resource server can check that the
       DPoP proof of a request is signed with that key (RFC 9449, 7.1)
+- ISO mDoc Zero-Knowledge Proofs:
+    - In `IsoMdocZkBackend.generate()` add a `timestamp` to pass as the creation timestamp of the proof
 
 Release 8.0.0:
 

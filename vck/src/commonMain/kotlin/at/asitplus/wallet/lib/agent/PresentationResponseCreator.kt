@@ -32,22 +32,14 @@ internal class PresentationResponseCreator(
     ): KmmResult<PresentationResponseParameters> = catching {
         when (credentialPresentation) {
             is CredentialPresentation.DCQLPresentation ->
-                createDcql(
-                    request,
-                    credentialPresentation,
-                    matchDCQLQuery
-                )
+                createDcqlResponse(request, credentialPresentation, matchDCQLQuery)
 
             is CredentialPresentation.IsoDeviceRetrievalPresentation ->
-                createDeviceResponse(
-                    request,
-                    credentialPresentation,
-                    matchDeviceRequest
-                )
+                createDeviceResponse(request, credentialPresentation, matchDeviceRequest)
         }
     }
 
-    private suspend fun createDcql(
+    private suspend fun createDcqlResponse(
         request: PresentationRequestParameters,
         presentation: CredentialPresentation.DCQLPresentation,
         matchDCQLQuery: suspend (DCQLQuery) -> KmmResult<HolderDCQLQueryMatchingResult<StoreEntry>>,

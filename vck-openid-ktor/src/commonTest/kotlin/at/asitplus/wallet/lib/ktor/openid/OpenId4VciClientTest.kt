@@ -23,6 +23,7 @@ import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.toFormParameters
+import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupid.EuPidDataElements
@@ -79,6 +80,10 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
+import kotlinx.serialization.json.buildJsonObject
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /**
  * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] with our own internal [SimpleAuthorizationService].
@@ -235,7 +240,8 @@ val OpenId4VciKtorClientTest by matrixSuite {
                         BuildClientAttestationJwt(
                             walletProvider.signJwt,
                             clientId = clientId,
-                            clientKey = clientAuthKeyMaterial.jsonWebKey
+                            clientKey = clientAuthKeyMaterial.jsonWebKey,
+                            clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
                         )
                     }
                 },

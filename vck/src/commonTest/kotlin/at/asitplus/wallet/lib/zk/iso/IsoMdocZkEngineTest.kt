@@ -40,6 +40,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.KSerializer
 import kotlin.random.Random
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 val IsoMdocZkEngineTest by matrixSuite {
     fixture {
@@ -167,7 +168,8 @@ private object MockIsoMdocZkBackend: IsoMdocZkBackend {
         credential: StoreEntry.Iso,
         requestedClaims: Collection<NormalizedJsonPath>,
         requestedZkSystemSpecs: List<ZkSystemSpec>,
-        keyMaterial: KeyMaterial
+        keyMaterial: KeyMaterial,
+        timestamp: Instant,
     ): KmmResult<IsoMdocZkProof> = catching {
         val selectedSpec = requestedZkSystemSpecs.firstOrNull { supports(it) }
             ?: throw IllegalArgumentException("No ZK system spec available")
@@ -201,7 +203,7 @@ private object MockIsoMdocZkBackend: IsoMdocZkBackend {
                 ZkDocumentData(
                     docType = credential.schemeIdentifier,
                     zkSystemId = selectedSpec.id,
-                    timestamp = Clock.System.now().truncateToSeconds(),
+                    timestamp = timestamp.truncateToSeconds(),
                     issuerSigned = issuerSigned
                 )
             )

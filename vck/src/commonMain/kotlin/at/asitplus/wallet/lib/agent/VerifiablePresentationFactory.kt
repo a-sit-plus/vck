@@ -80,7 +80,9 @@ class VerifiablePresentationFactory(
         keyMaterial = keyMaterial,
         protectedHeaderModifier = CoseHeaderNone(),
         unprotectedHeaderModifier = CoseHeaderNone()
-    )
+    ),
+    /** Clock to use for timestamps in the presentations generated. */
+    private val clock: Clock = Clock.System,
 ) {
     /**
      * Creates one Device Response while preserving every selected document and its order. A collection is used rather
@@ -96,6 +98,7 @@ class VerifiablePresentationFactory(
         )
     }
 
+    @Deprecated("Internal function, used previously for Presentation Exchange presentations")
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         credential: StoreEntry,
@@ -151,7 +154,9 @@ class VerifiablePresentationFactory(
                 request = request,
                 isoPresentationParameters = listOf(
                     IsoPresentationParameters.create(
-                        credential, disclosedAttributes.toRequestedIsoClaims(credential), zkMetadata
+                        credential = credential,
+                        claims = disclosedAttributes.toRequestedIsoClaims(credential),
+                        zkMetadata = zkMetadata
                     ).getOrThrow()
                 ),
             )
@@ -208,7 +213,7 @@ class VerifiablePresentationFactory(
         isoPresentationParameters.forEach { param ->
             val zkMetadata = param.zkMetadata
             if (zkMetadata is ZkMetadata.IsoMdocZk) {
-                mdocZkEngine.generate(request, param, keyMaterial).fold(
+                mdocZkEngine.generate(request, param, keyMaterial, clock.now()).fold(
                     onSuccess = { zkDocuments += it.zkDocument },
                     onFailure = { error ->
                         if (zkMetadata.zkRequest.zkRequired) throw error
@@ -438,7 +443,7 @@ class VerifiablePresentationFactory(
     ): JwsCompactTyped<KeyBindingJws> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
-            issuedAt = Clock.System.now().truncateToSeconds(),
+            issuedAt = clock.now().truncateToSeconds(),
             audience = request.audience,
             challenge = request.nonce,
             sdHash = digest.digest(hashInput.encodeToByteArray()),
