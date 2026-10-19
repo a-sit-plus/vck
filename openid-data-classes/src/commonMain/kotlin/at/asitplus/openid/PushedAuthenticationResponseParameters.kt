@@ -2,7 +2,9 @@ package at.asitplus.openid
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Contents of a response to a pushed authorization request,
@@ -27,4 +29,20 @@ data class PushedAuthenticationResponseParameters(
     @SerialName("expires_in")
     @Serializable(with = DurationSecondsIntSerializer::class)
     val expires: Duration? = null,
-)
+) {
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [Duration].
+     */
+    @JvmOverloads
+    internal constructor(
+        requestUri: String?,
+        expiresSeconds: Long? = null,
+    ) : this(
+        requestUri = requestUri,
+        expires = expiresSeconds?.seconds,
+    )
+
+    /** Java-safe accessor for [expires], in seconds. */
+    val expiresSeconds: Long?
+        get() = expires?.inWholeSeconds
+}

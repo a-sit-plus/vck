@@ -10,6 +10,18 @@ Release 9.0.0 (unreleased):
     - Bind each approval transaction to one selected DCQL credential submission, allowing separate approvals for distinct queries without adding approvals to unrelated identity presentations
     - Treat multiple `credential_ids` as alternatives and reject missing, empty, or unknown query references in OpenID4VP transaction data with `invalid_transaction_data`
     - Add optional `PresentationRequestParameters.qesApprovalTransactionData` for selecting approval data independently of the general SD-JWT transaction-data integrity hashes
+- Java interop: Java could not instantiate data classes whose constructor takes a `kotlin.time.Duration` or an
+  unsigned integer, because the Kotlin compiler hides such constructors from Java. Add Java-safe constructors, and
+  accessors for the hidden properties, taking durations in seconds (`…Seconds`) or milliseconds (`…Milliseconds`), and
+  unsigned integers as `Long` (`…AsLong`, values outside of `UInt` are rejected):
+    - `KeyAttestationRequired` (`preferredTtlSeconds`), `TokenResponseParameters` (`expiresSeconds`,
+      `intervalSeconds`), `CredentialResponseParameters` (`intervalSeconds`), `PushedAuthenticationResponseParameters`
+      (`expiresSeconds`), and the accessor `IssuerMetadata.preferredClientStatusPeriodSeconds`
+    - `ValidationPolicy` and `TimeScope` (`timeLeewayMilliseconds`), whose Java constructors take the leeway at a
+      different position to keep their JVM signatures distinct
+    - CSC `KeyParameters` (`lenAsLong`) and `CredentialInfo` (`multisignAsLong`)
+    - `EuPidCredential` (`sexAsLong`) and `MobileDrivingLicence` (`heightAsLong`, `weightAsLong`, `ageInYearsAsLong`,
+      `ageBirthYearAsLong`)
 - CSC data classes:
     - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
     - Implement CSC Data Model 1.0.0

@@ -2,8 +2,10 @@ package at.asitplus.wallet.eupid
 
 import at.asitplus.catchingUnwrapped
 import at.asitplus.wallet.lib.data.LocalDateOrInstant
+import at.asitplus.wallet.lib.data.toUIntFromJava
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlin.jvm.JvmOverloads
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.serializers.LocalDateIso8601Serializer
 import kotlinx.serialization.SerialName
@@ -159,6 +161,73 @@ data class EuPidCredential(
     @SerialName(EuPidDataElements.LOCATION_STATUS)
     val locationStatus: String? = null,
 ) {
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [UInt].
+     */
+    @JvmOverloads
+    internal constructor(
+        id: String,
+        familyName: String,
+        givenName: String,
+        birthDate: LocalDate,
+        familyNameBirth: String? = null,
+        givenNameBirth: String? = null,
+        placeOfBirth: PlaceOfBirth? = null,
+        residentAddress: String? = null,
+        residentCountry: String? = null,
+        residentState: String? = null,
+        residentCity: String? = null,
+        residentPostalCode: String? = null,
+        residentStreet: String? = null,
+        residentHouseNumber: String? = null,
+        sex: Long? = null,
+        nationalityElement: JsonElement? = null,
+        issuanceDate: LocalDateOrInstant,
+        expiryDate: LocalDateOrInstant,
+        issuingAuthority: String,
+        documentNumber: String? = null,
+        issuingCountry: String,
+        issuingJurisdiction: String? = null,
+        personalAdministrativeNumber: String? = null,
+        portrait: ByteArray? = null,
+        emailAddress: String? = null,
+        mobilePhoneNumber: String? = null,
+        trustAnchor: String? = null,
+        locationStatus: String? = null,
+    ) : this(
+        id = id,
+        familyName = familyName,
+        givenName = givenName,
+        birthDate = birthDate,
+        familyNameBirth = familyNameBirth,
+        givenNameBirth = givenNameBirth,
+        placeOfBirth = placeOfBirth,
+        residentAddress = residentAddress,
+        residentCountry = residentCountry,
+        residentState = residentState,
+        residentCity = residentCity,
+        residentPostalCode = residentPostalCode,
+        residentStreet = residentStreet,
+        residentHouseNumber = residentHouseNumber,
+        sex = sex?.toUIntFromJava("sex"),
+        nationalityElement = nationalityElement,
+        issuanceDate = issuanceDate,
+        expiryDate = expiryDate,
+        issuingAuthority = issuingAuthority,
+        documentNumber = documentNumber,
+        issuingCountry = issuingCountry,
+        issuingJurisdiction = issuingJurisdiction,
+        personalAdministrativeNumber = personalAdministrativeNumber,
+        portrait = portrait,
+        emailAddress = emailAddress,
+        mobilePhoneNumber = mobilePhoneNumber,
+        trustAnchor = trustAnchor,
+        locationStatus = locationStatus,
+    )
+
+    /** Java-safe accessor for [sex]. */
+    val sexAsLong: Long?
+        get() = sex?.toLong()
 
     /** Values shall be one of the following: 0 = not known; 1 = male; 2 = female; 3 = other; 4 = inter; 5 = diverse;
      * 6 = open; 9 = not applicable. For values 0, 1, 2 and 9, ISO/IEC 5218 applies. */
