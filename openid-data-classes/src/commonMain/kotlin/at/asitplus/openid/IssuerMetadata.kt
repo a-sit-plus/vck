@@ -190,4 +190,8 @@ data class IssuerMetadata(
         issuedAt = issuedAtEpochSeconds?.let(Instant::fromEpochSeconds),
         expiration = expirationEpochSeconds?.let(Instant::fromEpochSeconds),
     )
+
+    /** Java-safe accessor for [preferredClientStatusPeriod], in seconds. */
+    val preferredClientStatusPeriodSeconds: Long?
+        get() = preferredClientStatusPeriod?.inWholeSeconds
 }

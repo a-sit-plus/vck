@@ -1,11 +1,13 @@
 package at.asitplus.csc.api.collection_entries
 
 import at.asitplus.csc.api.CredentialInfo
+import at.asitplus.csc.api.toUIntFromJava
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifierStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
 
 /**
  * CSC-API v2.0.0.2
@@ -43,6 +45,26 @@ data class KeyParameters(
     @Serializable(with = ObjectIdentifierStringSerializer::class)
     val curve: ObjectIdentifier? = null,
 ) {
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [UInt].
+     */
+    @JvmOverloads
+    internal constructor(
+        status: KeyStatusOptions,
+        algo: Set<ObjectIdentifier>,
+        len: Long,
+        curve: ObjectIdentifier? = null,
+    ) : this(
+        status = status,
+        algo = algo,
+        len = len.toUIntFromJava("len"),
+        curve = curve,
+    )
+
+    /** Java-safe accessor for [len]. */
+    val lenAsLong: Long
+        get() = len.toLong()
+
     init {
         require(
             algo.intersect(

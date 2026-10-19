@@ -3,7 +3,9 @@ package at.asitplus.openid
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 @Serializable
 data class TokenResponseParameters(
@@ -81,6 +83,39 @@ data class TokenResponseParameters(
     @SerialName("credentialID")
     val credentialId: String? = null,
 ) {
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [Duration].
+     */
+    @JvmOverloads
+    internal constructor(
+        accessToken: String,
+        tokenType: String,
+        refreshToken: String? = null,
+        expiresSeconds: Long? = null,
+        scope: String? = null,
+        authorizationPending: Boolean? = null,
+        intervalSeconds: Long? = null,
+        authorizationDetails: Set<AuthorizationDetails>? = null,
+        credentialId: String? = null,
+    ) : this(
+        accessToken = accessToken,
+        refreshToken = refreshToken,
+        tokenType = tokenType,
+        expires = expiresSeconds?.seconds,
+        scope = scope,
+        authorizationPending = authorizationPending,
+        interval = intervalSeconds?.seconds,
+        authorizationDetails = authorizationDetails,
+        credentialId = credentialId,
+    )
+
+    /** Java-safe accessor for [expires], in seconds. */
+    val expiresSeconds: Long?
+        get() = expires?.inWholeSeconds
+
+    /** Java-safe accessor for [interval], in seconds. */
+    val intervalSeconds: Long?
+        get() = interval?.inWholeSeconds
 
     fun toHttpHeaderValue() = "$tokenType $accessToken"
     fun toHttpHeader() = "${HttpHeaders.Authorization}: $tokenType $accessToken"
