@@ -6,8 +6,6 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -26,14 +24,13 @@ import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialStorageResult
 import at.asitplus.wallet.lib.validation.CredentialTrustAnchors
-import at.asitplus.wallet.lib.validation.CredentialValidationResult
 import at.asitplus.wallet.lib.validation.CredentialValidationContext
 import at.asitplus.wallet.lib.validation.CredentialValidationInput
+import at.asitplus.wallet.lib.validation.CredentialValidationResult
 import at.asitplus.wallet.lib.validation.CredentialValidator
 import at.asitplus.wallet.lib.validation.HolderBindingPolicy
 import at.asitplus.wallet.lib.validation.StatusPolicy
 import at.asitplus.wallet.lib.validation.TrustPolicy
-import at.asitplus.wallet.lib.validation.ValidatedCredential
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.firstRejection
 import at.asitplus.wallet.lib.validation.sameForAllTypes
@@ -167,8 +164,13 @@ class HolderAgent @JvmOverloads constructor(
         prepared: PreparedCredentialStorage,
     ): KmmResult<CredentialStorageResult> = catching {
         prepared.requireHolder()
-        val stored = prepared.validation.credential?.let { store(prepared.credential, it, prepared.renewalInfo) }
-        CredentialStorageResult(prepared.validation, stored)
+        CredentialStorageResult(
+            validation = prepared.validation,
+            storedEntry = prepared.validation.credential?.let {
+                subjectCredentialStore.storeCredential(
+                    StoreEntry.fromPreparedCredential(prepared).getOrThrow()
+                ).getOrThrow()
+            })
     }
 
     /**
@@ -182,10 +184,15 @@ class HolderAgent @JvmOverloads constructor(
         prepared: PreparedCredentialStorage,
     ): KmmResult<CredentialStorageResult> = catching {
         prepared.requireHolder()
-        val intact = prepared.validation.unacceptedCredential
+        prepared.validation.unacceptedCredential
             ?: throw prepared.validation.report.firstRejection()
-            ?: IllegalArgumentException("The credential is not intact")
-        CredentialStorageResult(prepared.validation, store(prepared.credential, intact, prepared.renewalInfo))
+                ?: IllegalArgumentException("The credential is not intact")
+        CredentialStorageResult(
+            validation = prepared.validation,
+            storedEntry = subjectCredentialStore.storeCredential(
+                StoreEntry.fromPreparedCredential(prepared).getOrThrow()
+            ).getOrThrow()
+        )
     }
 
     private fun PreparedCredentialStorage.requireHolder() = require(holderKey == keyMaterial.publicKey) {
@@ -223,37 +230,6 @@ class HolderAgent @JvmOverloads constructor(
         expectedHolderKey = keyMaterial.publicKey,
         expectedCredentialIdentifier = credentialIdentifier,
     )
-
-    private suspend fun store(
-        credential: Holder.StoreCredentialInput,
-        validated: ValidatedCredential,
-        renewalInfo: CredentialRenewalInfo?,
-    ): StoreEntry = when (credential) {
-        is Holder.StoreCredentialInput.Vc -> subjectCredentialStore.storeCredential(
-            vc = (validated as ValidatedCredential.VcJwt).credential,
-            vcSerialized = credential.vcJws,
-            scheme = credential.scheme,
-            renewalInfo = renewalInfo,
-            issuer = credential.signedVcJws.jws.jwsHeader.certificateChain?.leaf
-        )
-
-        is Holder.StoreCredentialInput.SdJwt -> subjectCredentialStore.storeCredential(
-            vc = (validated as ValidatedCredential.SdJwtVc).credential,
-            vcSerialized = credential.vcSdJwt,
-            disclosures = validated.disclosures,
-            scheme = credential.scheme,
-            renewalInfo = renewalInfo,
-            issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf
-        )
-
-        is Holder.StoreCredentialInput.Iso -> subjectCredentialStore.storeCredential(
-            issuerSigned = (validated as ValidatedCredential.IsoMdoc).issuerSigned,
-            scheme = credential.scheme,
-            renewalInfo = renewalInfo,
-            issuer = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.getOrNull(0)
-                ?.let { X509Certificate.decodeFromDer(it) }
-        )
-    }
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
