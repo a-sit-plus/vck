@@ -7,7 +7,7 @@ import io.kotest.matchers.shouldBe
 import kotlinx.serialization.encodeToByteArray
 
 val ReaderAuthenticationAllSerializerTest by matrixSuite {
-    val transcript = SessionTranscript.forDcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+    val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
     val itemsRequestBytesAll = TaggedCborBytesList(listOf(byteArrayOf(0xA0.toByte())))
     // ["ReaderAuthenticationAll", SessionTranscript, ItemsRequestBytesAll, ...] without the last element
     val prefix = byteArrayOf(0x84.toByte()) +

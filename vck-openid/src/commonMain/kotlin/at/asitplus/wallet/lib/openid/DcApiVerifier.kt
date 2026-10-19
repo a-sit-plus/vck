@@ -554,7 +554,7 @@ class DcApiVerifier @JvmOverloads constructor(
 
     fun createDcApiSessionTranscriptAnnexC(
         toBeHashed: SessionTranscriptContentHashable,
-    ): SessionTranscript = SessionTranscript.forDcApi(
+    ): SessionTranscript = SessionTranscript.DcApi(
         DCAPIHandover(
             type = TYPE_DCAPI,
             hash = coseCompliantSerializer.encodeToByteArray(

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.iso.Document
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.TransactionDataBase64Url
+import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import kotlin.jvm.JvmOverloads
@@ -34,17 +35,50 @@ sealed interface PresentationValidationInput {
 /**
  * What the request expects of the holder's proof. Create it from the challenge session of the request, so that the
  * challenge is always the one that has been consumed.
+ *
+ * For mdoc presentations of an ISO/IEC 18013-5 proximity session, use [forMdoc].
  */
 data class PresentationContext @JvmOverloads constructor(
+    /** The nonce the holder's proof has to contain. A blank challenge is never answered, see [forMdoc]. */
     val challenge: String,
-    /** The OpenID4VP client identifier, or `origin:<origin>` over the Digital Credentials API. */
+    /**
+     * The OpenID4VP client identifier, or `origin:<origin>` over the Digital Credentials API. A blank audience is never
+     * answered, see [forMdoc].
+     */
     val audience: String,
     /** The transport-specific session transcript, required for mdoc device authentication. */
     val sessionTranscript: SessionTranscript? = null,
     val transactionData: List<TransactionDataBase64Url>? = null,
     /** Whether the request requires a holder proof, i.e. DCQL `require_cryptographic_holder_binding`. */
     val requireHolderBinding: Boolean = true,
-)
+    /**
+     * The mdoc reader's ephemeral private key `EReaderKey.Priv` of the session of [sessionTranscript], required for
+     * mdoc MAC authentication (ISO/IEC 18013-5:2021, 9.1.3.5). Without it, documents authenticated with a `deviceMac`
+     * can not be verified, only those with a `deviceSignature`.
+     */
+    val eReaderKey: KeyAgreementPrivateValue.ECDH? = null,
+) {
+    companion object {
+        /**
+         * The context of mdoc device authentication, e.g. as an ISO/IEC 18013-5 proximity reader: the device signature
+         * or MAC covers the [sessionTranscript], which binds the request, but neither a challenge nor an audience.
+         * Presentations of other formats are therefore rejected with this context.
+         *
+         * @param eReaderKey the reader's ephemeral private key of the session, to verify documents authenticated with a
+         * `deviceMac`
+         */
+        @JvmOverloads
+        fun forMdoc(
+            sessionTranscript: SessionTranscript,
+            eReaderKey: KeyAgreementPrivateValue.ECDH? = null,
+        ) = PresentationContext(
+            challenge = "",
+            audience = "",
+            sessionTranscript = sessionTranscript,
+            eReaderKey = eReaderKey,
+        )
+    }
+}
 
 /**
  * A presentation that passed every required check, with the credentials it contains.

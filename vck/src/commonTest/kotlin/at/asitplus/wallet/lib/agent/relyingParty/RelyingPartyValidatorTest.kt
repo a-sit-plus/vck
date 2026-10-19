@@ -278,8 +278,8 @@ val RelyingPartyValidatorTest by matrixSuite {
             val itemsRequest = it.itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = wrprc))
             it.copy(itemsRequest = ByteStringWrapper(itemsRequest))
         }
-        val transcript = SessionTranscript.forDcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
-        val otherTranscript = SessionTranscript.forDcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32) { 1 }))
+        val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+        val otherTranscript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32) { 1 }))
         val request = fixture.isoRequest(docRequest, transcript)
 
         fixture.validator().validate(request, transcript, policy).apply {
@@ -587,10 +587,10 @@ private fun RelyingPartyValidationResult.registrationChecks() =
     report.children.drop(1).shouldBeSingleton().first().checks.shouldBeInstanceOf<RegistrationCertificateChecks>()
 
 /** The session transcript of a proximity presentation with NFC engagement (ISO/IEC 18013-5:2021, 9.1.5.1). */
-private fun nfcTranscript(handoverSelect: ByteArray = byteArrayOf(1)) = SessionTranscript.forNfc(
+private fun nfcTranscript(handoverSelect: ByteArray = byteArrayOf(1)) = SessionTranscript.Nfc(
     deviceEngagementBytes = byteArrayOf(0x0a),
     eReaderKeyBytes = byteArrayOf(0x0b),
-    nfcHandover = NFCHandover(handoverSelect = handoverSelect, handoverRequest = null),
+    handover = NFCHandover(handoverSelect = handoverSelect, handoverRequest = null),
 )
 
 /** A document request carrying the WRPRC of the relying party in `euWrprc`. */

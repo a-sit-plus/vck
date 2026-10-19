@@ -196,7 +196,7 @@ private suspend fun isoRequest(
     vararg docRequests: DocRequest,
     wrpacSigner: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
 ): Pair<RequestParametersFrom.IsoMdocDcApi, SessionTranscript> {
-    val transcript = SessionTranscript.forDcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+    val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
     val unsigned = DeviceRequest(Version(1, 1), docRequests = arrayOf(*docRequests))
     val readerAuth = SignCoseDetached<ByteArray>(
         wrpacSigner, unprotectedHeaderModifier = CoseHeaderCertificate()

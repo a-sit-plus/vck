@@ -64,6 +64,14 @@ Release 9.0.0 (unreleased):
       tag-24-wrapped `IssuerSignedItemBytes`
     - Add `IssuerSigned.fromIssuerSignedLists(...)` and `StoreEntry.Iso.discloseIssuedItem(...)`; mdoc presentations
       disclose items with the bytes they were issued with
+    - BREAKING: `SessionTranscript` is a sealed interface with one subtype per handover: `SessionTranscript.Qr` and
+      `SessionTranscript.Nfc` (both `SessionTranscript.Proximity`, with `deviceEngagementBytes` and
+      `eReaderKeyBytes`), `SessionTranscript.DcApi`, and `SessionTranscript.OpenId4Vp`, each with its `handover`. Its
+      new `SessionTranscriptSerializer` decodes every kind of handover by its shape, also an NFC transcript, which could
+      not be decoded before, and re-encodes the canonical encoding to the same bytes. The properties
+      `deviceEngagementBytesOid`, `eReaderKeyBytesOid`, `nfcHandover`, `dcapiHandover`, and `openId4VpHandover` are
+      removed; deprecate `SessionTranscript.forQr`, `forNfc`, `forDcApi`, and `forOpenId` in favor of the constructors
+      of the subtypes. The encoding is unchanged
 - Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
     - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations
       (`PresentationValidationInput` in a `PresentationContext`) under a `ValidationPolicy` (`TrustPolicy`,
@@ -73,6 +81,13 @@ Release 9.0.0 (unreleased):
       configured per credential type (`CredentialTrustAnchors`, `CredentialTrustScopes`, adapters for LoTEs and
       `TrustAnchorProvider`), status with a `StatusValidator` and a `StatusListTokenResolver`, signatures with a
       `SignatureCheck`
+    - Verify mdoc documents authenticated with a `deviceMac` (ISO/IEC 18013-5:2021, 9.1.3.5) with the reader's
+      ephemeral private key, the new `PresentationContext.eReaderKey`, which was rejected as not supported before.
+      Without that key, the device authentication of such a document is blocked. A document with both a device
+      signature and a device MAC fails
+    - Add `PresentationContext.forMdoc(sessionTranscript, eReaderKey)`, the context of mdoc device authentication,
+      e.g. of an ISO/IEC 18013-5 proximity reader, without challenge and audience. A blank challenge or audience of a
+      context is never answered, so presentations of other formats are rejected with it
     - Add `HolderAgent.storeCredentialWithReport(credential, policy, renewalInfo)`, and the parameter
       `credentialValidator` of `HolderAgent`, which validates every credential before storing it, and orders stored
       credentials in `getValidCredentialsByPriority()`, demoting only verified problems. Deprecate the constructor

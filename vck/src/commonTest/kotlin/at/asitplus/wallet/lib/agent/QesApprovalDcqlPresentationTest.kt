@@ -225,7 +225,7 @@ private fun presentationRequest(transactionData: List<JsonPrimitive>) = Presenta
     audience = "https://verifier.example.org",
     transactionData = transactionData,
     calcIsoSessionTranscript = {
-        SessionTranscript.forQr(deviceEngagementBytes = byteArrayOf(), eReaderKeyBytes = byteArrayOf())
+        SessionTranscript.Qr(deviceEngagementBytes = byteArrayOf(), eReaderKeyBytes = byteArrayOf())
     },
 )
 

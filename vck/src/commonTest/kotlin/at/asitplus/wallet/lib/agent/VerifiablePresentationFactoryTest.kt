@@ -382,7 +382,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
 
 // Simple Session Transcript (mostly empty)
 private val simpleTranscriptCallback: () -> SessionTranscript = {
-    SessionTranscript.forQr(
+    SessionTranscript.Qr(
         deviceEngagementBytes = byteArrayOf(),
         eReaderKeyBytes = byteArrayOf(),
     )
