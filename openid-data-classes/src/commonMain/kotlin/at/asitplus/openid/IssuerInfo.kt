@@ -16,8 +16,9 @@ data class IssuerInfo(
     val format: String,
 
     /**
-     * REQUIRED. An object or string containing the attestation, e.g. the registration certificate as a JWT, or the
-     * registration information of the registrar as a JSON object (ISS-MDATA-REG_CERT-4.2.3-06, -09).
+     * REQUIRED. An object or string containing the attestation, e.g. the registration certificate as a JWT
+     * (ISS-MDATA-REG_CERT-4.2.3-06). CIR (EU) 2026/1731, Annex XI voids the registration information of the
+     * registrar (`registrar_dataset`, -07 to -13).
      */
     @SerialName("data")
     val data: JsonElement,

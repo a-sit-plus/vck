@@ -64,7 +64,9 @@ class IssuerMetadataValidator @JvmOverloads constructor(
      *  - `subject`: `sub` (12.2.3) and `credential_issuer` (12.2.4) are [credentialIssuer], compared as strings
      *    without normalization (12.2.4);
      *  - `registration`: `issuer_info` is present (ETSI TS 119 472-3 V1.1.1, ISS-MDATA-REG_CERT-4.2.3-01), with
-     *    exactly one `registration_cert`, a JWT (-04 to -06), required although -04 only allows it.
+     *    exactly one `registration_cert`, a JWT (-04 to -06): "One of the elements in the issuer_info array
+     *    parameter shall contain the PID/EAA Provider's registration certificate" (-04, as adapted by CIR (EU)
+     *    2026/1731, Annex XI, which voids the `registrar_dataset` of -07 to -13).
      *
      * So metadata outside of the EUDI Wallet ecosystem, e.g. signed with a `jwk` and without `issuer_info`, pass
      * `parsing`, `signature`, and `subject`, and are reported as not trusted and not registered, see
@@ -185,7 +187,7 @@ class IssuerMetadataValidator @JvmOverloads constructor(
 
     /**
      * The only `registration_cert` of `issuer_info`, a JWT (ETSI TS 119 472-3 V1.1.1, ISS-MDATA-REG_CERT-4.2.3-01,
-     * -04 to -06), required although -04 only allows it.
+     * -04 to -06), required by -04 as adapted by CIR (EU) 2026/1731, Annex XI.
      */
     private fun IssuerMetadata.registrationCertificate(): WrpJwtRegistrationCertificate {
         val issuerInfo = requireNotNull(issuerInfo) { "The signed metadata contains no issuer_info" }
