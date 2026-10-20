@@ -372,20 +372,29 @@ class RelyingPartyValidator @JvmOverloads constructor(
             if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
                 throw MissingRegistrationCertificateException("No DocRequest contains a registration certificate")
             }
-            deviceRequest.docRequests.map { docRequest ->
-                val encoded = docRequest.itemsRequest.value.requestInfo?.euWrprc
-                    ?: throw InvalidRegistrationCertificateException(
-                        "A DocRequest has no registration certificate, while others have one"
-                    )
-                val certificate = catchingUnwrapped {
-                    val cose = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(encoded)
-                    WrpRegistrationCertificate.WrpCwtRegistrationCertificate(
-                        cose = cose,
-                        payload = parseWrprcCose(cose),
-                    )
-                }.getOrElse { throw InvalidRegistrationCertificateException("A WRPRC can not be parsed", it) }
-                certificate to WrpCredentialRequest.WrpDocRequest(docRequest)
-            }.groupBy({ it.first }, { it.second })
+            val certificates: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>> =
+                deviceRequest.docRequests.map { docRequest ->
+                    val encoded = docRequest.itemsRequest.value.requestInfo?.euWrprc
+                        ?: throw InvalidRegistrationCertificateException(
+                            "A DocRequest has no registration certificate, while others have one"
+                        )
+                    val certificate = catchingUnwrapped {
+                        val cose = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(encoded)
+                        WrpRegistrationCertificate.WrpCwtRegistrationCertificate(
+                            cose = cose,
+                            payload = parseWrprcCose(cose),
+                        )
+                    }.getOrElse { throw InvalidRegistrationCertificateException("A WRPRC can not be parsed", it) }
+                    certificate to WrpCredentialRequest.WrpDocRequest(docRequest)
+                }.groupBy({ it.first }, { it.second })
+            // The WRPAC of an intermediary is associated to the one relying party it acts for (CIR (EU) 2025/848,
+            // Annex I, point 16, and Annex IV, point 3(k), as amended by CIR (EU) 2026/1730), and without an
+            // intermediary, every WRPRC is issued to the subject of the WRPAC
+            if (certificates.keys.map { it.payload.subjectIdentifier }.distinct().size > 1)
+                throw InvalidRegistrationCertificateException(
+                    "The WRPRCs of the request identify different relying parties"
+                )
+            certificates
         }
         return ExtractedRequest(
             accessCertificateChains = reader.getOrNull()?.chains.orEmpty(),

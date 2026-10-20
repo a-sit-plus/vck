@@ -56,6 +56,9 @@ Release 9.0.0 (unreleased):
       the relying party it acts for (ETSI TS 119 475 V1.2.1, 4.5, Table 10), for requests and issuer metadata;
       `act.sub` of GEN-5.2.4-09 contradicts Table 10 and is not supported. Add `ValidatedRelyingParty.intermediated`
       and `ValidatedCredentialIssuer.intermediated`, telling whether the WRPAC is the one of that intermediary
+    - An ISO mdoc request whose WRPRCs identify different relying parties fails `registration`, as the WRPAC of an
+      intermediary is associated to one relying party (CIR (EU) 2025/848, Annex I, point 16, as amended by CIR (EU)
+      2026/1730)
     - BREAKING: Remove `DocRequestInfo.euWrpRegistrarInfo` and the classes `WrpRegistrarInfo` and `WrpIdentifier`:
       CIR (EU) 2026/1731, Annex XII voids the registrar information of ETSI TS 119 472-2 V1.2.1 (ISO/IEC
       18013-REQ-08 to -11), so an ISO mdoc request carries only `euWrprc`
