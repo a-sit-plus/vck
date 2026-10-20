@@ -148,6 +148,24 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
+    "an mdoc request with WRPRCs of different relying parties fails the registration" {
+        val fixture = buildWrpFixture(wrpIdentifier = INTERMEDIARY)
+        val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+        val other = buildWrpPayload("LEIXG-ANOTHER-RELYING-PARTY").copy(intermediary = WrpIntermediary(INTERMEDIARY))
+        val request = fixture.isoRequest(
+            fixture.docRequestWithWrprc(payload = intermediatedPayload()),
+            transcript,
+            fixture.docRequestWithWrprc(payload = other),
+        )
+
+        fixture.validator().validate(request, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                .shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+        }
+    }
+
     "a WRPRC registering all elements of an array authorizes requests for each of them, not for the array" {
         val fixture = buildWrpFixture()
         val nationalities = WrpCredential(
@@ -672,9 +690,10 @@ private suspend fun WrpFixture.proximityRequest(transcript: SessionTranscript): 
 private suspend fun WrpFixture.isoRequest(
     docRequest: DocRequest,
     transcript: SessionTranscript,
+    vararg otherDocRequests: DocRequest,
     signingKey: KeyMaterial = wrpKey,
 ): RequestParametersFrom.IsoMdocDcApi {
-    val unsigned = DeviceRequest(Version(1, 1), docRequests = arrayOf(docRequest))
+    val unsigned = DeviceRequest(Version(1, 1), docRequests = arrayOf(docRequest, *otherDocRequests))
     val readerAuth = readerAuthAll(unsigned, transcript, signingKey, wrpacChain)
     return RequestParametersFrom.IsoMdocDcApi(
         parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(
