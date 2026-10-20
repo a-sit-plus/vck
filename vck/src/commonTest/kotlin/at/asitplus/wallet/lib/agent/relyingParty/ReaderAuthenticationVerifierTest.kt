@@ -15,6 +15,9 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthentication
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import io.github.z4kn4fein.semver.Version
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.builtins.ByteArraySerializer
 
@@ -59,16 +62,16 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
         val request =
             DeviceRequest(parsedVersion = Version(1, 1), docRequests = requests, readerAuthAll = arrayOf(signed))
 
-        ReaderAuthenticationVerifier()(request, transcript).isSuccess shouldBe true
-        ReaderAuthenticationVerifier()(request, changedTranscript).isFailure shouldBe true
-        ReaderAuthenticationVerifier()(
+        ReaderAuthenticationVerifier().authenticate(request, transcript).isSuccess shouldBe true
+        ReaderAuthenticationVerifier().authenticate(request, changedTranscript).isFailure shouldBe true
+        ReaderAuthenticationVerifier().authenticate(
             DeviceRequest(
                 parsedVersion = Version(1, 1),
                 docRequests = arrayOf(requests[0], mdocDocRequest())
             ), transcript
         )
             .isFailure shouldBe true
-        ReaderAuthenticationVerifier()(
+        ReaderAuthenticationVerifier().authenticate(
             DeviceRequest(
                 parsedVersion = Version(1, 1),
                 docRequests = requests,
@@ -85,7 +88,7 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
             signature = signed.signature,
             payloadSerializer = ByteArraySerializer(),
         )
-        ReaderAuthenticationVerifier()(
+        ReaderAuthenticationVerifier().authenticate(
             DeviceRequest(
                 parsedVersion = Version(1, 1),
                 docRequests = requests,
@@ -101,7 +104,7 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
             signature = signed.signature,
             payloadSerializer = ByteArraySerializer(),
         )
-        ReaderAuthenticationVerifier()(
+        ReaderAuthenticationVerifier().authenticate(
             DeviceRequest(
                 parsedVersion = Version(1, 1),
                 docRequests = requests,
@@ -111,7 +114,7 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
         ).isFailure shouldBe true
     }
 
-    "a later valid readerAuthAll is selected instead of the first asserted chain" {
+    "every readerAuthAll that verifies yields its chain, one that does not is ignored" {
         val signer = EphemeralKeyWithSelfSignedCert()
         val other = EphemeralKeyWithSelfSignedCert()
         val requests = arrayOf(mdocDocRequest())
@@ -140,11 +143,36 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
             readerAuthAll = arrayOf(invalidFirst, second)
         )
 
-        val chain = ReaderAuthenticationVerifier()(request, transcript).getOrThrow()
-        chain.first().encodeToDer() shouldBe signer.getCertificate()!!.encodeToDer()
+        ReaderAuthenticationVerifier().authenticate(request, transcript).getOrThrow().apply {
+            chains.shouldBeSingleton().first().first().encodeToDer() shouldBe signer.getCertificate()!!.encodeToDer()
+            unauthenticatedDocRequests.shouldBeEmpty()
+        }
+        // e.g. one for each trust framework the reader takes part in, of which the wallet trusts one
+        val leaves = listOf(other, signer).map { it.getCertificate()!!.encodeToDer().toList() }
+        ReaderAuthenticationVerifier().authenticate(request.copy(readerAuthAll = arrayOf(first, second)), transcript)
+            .getOrThrow().chains.map { it.first().encodeToDer().toList() } shouldBe leaves
     }
 
-    "individual readerAuth must cover every document with one WRPAC" {
+    "a readerAuthAll that does not verify is reported as such, and readerAuth is not used instead" {
+        val signer = EphemeralKeyWithSelfSignedCert()
+        val request = mdocDocRequest()
+        suspend fun sign(payload: ByteArray) = SignCoseDetached<ByteArray>(
+            signer, unprotectedHeaderModifier = CoseHeaderCertificate()
+        )(
+            protectedHeader = null,
+            unprotectedHeader = CoseHeader(),
+            payload = payload,
+            serializer = ByteArraySerializer(),
+        ).getOrThrow()
+        val signedDoc = request.copy(readerAuth = sign(ReaderAuthentication.detachedPayload(request, transcript)))
+        val unsigned = DeviceRequest(parsedVersion = Version(1, 1), docRequests = arrayOf(signedDoc))
+        val readerAuthAll = sign(ReaderAuthenticationAll.detachedPayload(unsigned, changedTranscript))
+
+        ReaderAuthenticationVerifier().authenticate(unsigned.copy(readerAuthAll = arrayOf(readerAuthAll)), transcript)
+            .exceptionOrNull().shouldNotBeNull().message shouldBe "No readerAuthAll signature verifies"
+    }
+
+    "individual readerAuth may cover some documents, all with one reader certificate" {
         val signer = EphemeralKeyWithSelfSignedCert()
         val otherSigner = EphemeralKeyWithSelfSignedCert()
         suspend fun signedRequest(index: Int, useOtherSigner: Boolean = false) = mdocDocRequest(
@@ -164,19 +192,21 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
 
         val first = signedRequest(1)
         val second = signedRequest(2)
-        ReaderAuthenticationVerifier()(
+        ReaderAuthenticationVerifier().authenticate(
             DeviceRequest(
                 parsedVersion = Version(1, 1),
                 docRequests = arrayOf(first, second)
             ), transcript
         )
             .isSuccess shouldBe true
-        ReaderAuthenticationVerifier()(
-            DeviceRequest(parsedVersion = Version(1, 1), docRequests = arrayOf(first, mdocDocRequest())),
+        ReaderAuthenticationVerifier().authenticate(
+            DeviceRequest(parsedVersion = Version(1, 1), docRequests = arrayOf(mdocDocRequest(), first)),
             transcript
-        )
-            .isFailure shouldBe true
-        ReaderAuthenticationVerifier()(
+        ).getOrThrow().apply {
+            chains.shouldBeSingleton().first().first().encodeToDer() shouldBe signer.getCertificate()!!.encodeToDer()
+            unauthenticatedDocRequests shouldBe listOf(0)
+        }
+        ReaderAuthenticationVerifier().authenticate(
             DeviceRequest(
                 parsedVersion = Version(1, 1),
                 docRequests = arrayOf(first, signedRequest(2, true))
