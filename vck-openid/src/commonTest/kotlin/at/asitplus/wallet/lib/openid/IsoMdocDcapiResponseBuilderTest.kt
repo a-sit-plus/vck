@@ -47,6 +47,7 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.validation.AccessCertificateChecks
 import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.RegistrationPolicy
 import at.asitplus.wallet.lib.validation.RelyingPartyChecks
 import at.asitplus.wallet.lib.validation.ValidationDecision
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -316,13 +317,14 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
 
         DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
             .startAuthorizationResponsePreparation(fixture.walletRequest, testPresentationPolicy).getOrThrow().apply {
-                validationReport.shouldNotBeNull().apply {
+                validationReport.apply {
+                    // registration certificates are required by default
+                    decision shouldBe ValidationDecision.REJECTED
                     checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
                         requestData shouldBe CheckOutcome.Passed
                         registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
                             .shouldBeInstanceOf<MissingRegistrationCertificateException>()
                     }
-                    // authenticated, but by a reader the default validator does not trust
                     children.first().checks.shouldBeInstanceOf<AccessCertificateChecks>().signature shouldBe
                             CheckOutcome.Passed
                 }
@@ -331,7 +333,23 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             }
     }
 
-    test("DC API holder reports no relying party for an Annex C request without reader authentication") {
+    test("DC API holder accepts the reader of an Annex C request without registration certificates if allowed") {
+        val fixture = dcapiFixture()
+        val holderKey = EphemeralKeyWithoutCert()
+        val policy = testPresentationPolicy.copy(registration = RegistrationPolicy.ValidateIfPresent)
+
+        DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
+            .startAuthorizationResponsePreparation(fixture.walletRequest, policy).getOrThrow().apply {
+                validationReport.apply {
+                    decision shouldBe ValidationDecision.ACCEPTED
+                    checks.shouldBeInstanceOf<RelyingPartyChecks>().registration shouldBe CheckOutcome.NotApplicable
+                }
+                // the reader certificate of the verifier is no WRPAC
+                relyingParty.shouldNotBeNull().relyingParty.shouldNotBeNull().identifier.shouldBeNull()
+            }
+    }
+
+    test("DC API holder reports an Annex C request without reader authentication as unsigned") {
         val fixture = dcapiFixture()
         val holderKey = EphemeralKeyWithoutCert()
         val deviceRequest = fixture.walletRequest.parameters.isoMdocRequest.deviceRequest
@@ -347,8 +365,15 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
 
         DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
             .startAuthorizationResponsePreparation(request, testPresentationPolicy).getOrThrow().apply {
-                validationReport.shouldBeNull()
-                relyingParty.shouldBeNull()
+                validationReport.apply {
+                    decision shouldBe ValidationDecision.REJECTED
+                    checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                        .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                        .shouldBeInstanceOf<UnsupportedWrpRequestException>()
+                    children.first().checks.shouldBeInstanceOf<AccessCertificateChecks>().signature shouldBe
+                            CheckOutcome.NotApplicable
+                }
+                relyingParty.shouldNotBeNull().report shouldBe validationReport
                 preparationState.shouldBeInstanceOf<DcApiPreparationState.Iso180137AnnexC>()
             }
     }
@@ -359,7 +384,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
 
         DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
             .startAuthorizationResponsePreparation(fixture.walletRequest, testPresentationPolicy).getOrThrow().apply {
-                validationReport.shouldNotBeNull().apply {
+                validationReport.apply {
                     decision shouldBe ValidationDecision.REJECTED
                     checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
                         .shouldBeInstanceOf<CheckOutcome.Failed>()
@@ -390,7 +415,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
 
         DcApiHolder(keyMaterial = holderKey, holder = HolderAgent(holderKey))
             .startAuthorizationResponsePreparation(request, testPresentationPolicy).getOrThrow().apply {
-                validationReport.shouldNotBeNull().apply {
+                validationReport.apply {
                     decision shouldBe ValidationDecision.REJECTED
                     checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
                         .shouldBeInstanceOf<CheckOutcome.Failed>().throwable

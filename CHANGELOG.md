@@ -90,8 +90,8 @@ Release 9.0.0 (unreleased):
       and in `OpenId4VpKtorHolder` `startAuthorizationResponsePreparation(input, policy)`, its overload for parsed
       requests, and `prepareDcApiRequest(request, policy)`.
       `AuthorizationRequestValidation.relyingParty` and `DcApiRequestValidation.relyingParty` carry the
-      `RelyingPartyValidationResult` of a request with a WRPRC, or of an Annex C request with reader authentication
-      (its WRPAC validated like for a proximity request, its `registration` failing without a WRPRC), and `RelyingPartyValidationResult.untrustedRegistrations`
+      `RelyingPartyValidationResult` of a request with a WRPRC, or of every Annex C request, validated like a
+      proximity request, whose report is `DcApiRequestValidation.validationReport`, and `RelyingPartyValidationResult.untrustedRegistrations`
       the payloads of its WRPRCs whose parsing passed, whatever the decision, to show them next to a warning instead of
       parsing them with the deprecated `WrpAuthenticationRequestValidator`.
       `OpenId4VpHolder`, `OpenId4VpKtorHolder`, and `DcApiHolder` take a `relyingPartyValidator`; deprecate
