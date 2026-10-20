@@ -212,7 +212,7 @@ internal suspend fun evaluateRegistrationCertificate(
         timeliness = payload.timeliness(maxValidity, timeScope),
         linkage = when {
             accessIdentifier == null -> Blocked(IllegalStateException("The identifier of the WRPAC is unknown"))
-            accessIdentifier.identifier == payload.subjectIdentifier -> Passed
+            payload.isLinkedTo(accessIdentifier) -> Passed
             else -> Failed(IllegalArgumentException("The sub of the WRPRC is not the identifier of the WRPAC"))
         },
         requestAuthorization = catching {
@@ -228,6 +228,13 @@ internal suspend fun evaluateRegistrationCertificate(
         ),
     )
 }
+
+/**
+ * Whether this WRPRC links to the WRPAC with [accessIdentifier]: it is issued to the subject of the WRPAC, see
+ * `linkage` of [evaluateRegistrationCertificate].
+ */
+internal fun WrpPayload.isLinkedTo(accessIdentifier: WrpacIdentifier): Boolean =
+    accessIdentifier.identifier == subjectIdentifier
 
 /**
  * The status of the WRPRC of [evaluation], only resolved for a WRPRC that is valid otherwise, as for credentials

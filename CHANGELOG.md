@@ -69,7 +69,15 @@ Release 9.0.0 (unreleased):
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
       request in one report; `IsoMdocDcApi.validateRelyingParty(validator, policy)` in `vck-openid`. An unregistered
       request fails with an `UnregisteredRequestException`. `RelyingPartyValidator.validate(deviceRequest, sessionTranscript, policy)`
-      validates the reader of a proximity presentation, e.g. over BLE or NFC (ISO/IEC 18013-5:2021, 9.1.4)
+      validates the reader of a proximity presentation, e.g. over BLE or NFC (ISO/IEC 18013-5:2021, 9.1.4): of
+      several `readerAuthAll` signatures, the report is about the first whose WRPAC is accepted and links to every
+      WRPRC, and a request that authenticates only some of its document requests fails `requestData` with an
+      `UnsupportedWrpRequestException`, while its `signature` passes
+    - Add `ReaderAuthenticationVerifier.authenticate(request, transcript)`, returning an `AuthenticatedReader` with the
+      chain of every `readerAuthAll` signature that verifies, and the document requests without reader
+      authentication (ISO/IEC DIS 18013-5:2025, 12.5.4). Deprecate its `invoke`, which returns only the first chain.
+      A `readerAuthAll` that does not verify fails as such, instead of falling back to the `readerAuth` of document
+      requests
     - Add `AuthorizationRequestValidator.validate(request, policy)`, and
       `OpenId4VpHolder.startAuthorizationResponsePreparation(input, policy)` and its `DcApiHolder` overload,
       returning the report of the request next to the preparation state, also for a rejected request; also
