@@ -6,6 +6,7 @@ import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpLangString
@@ -212,7 +213,7 @@ fun buildWrpPayload(
     wrpIdentifier: String,
     name: String? = WRP_NAME,
     intendedUseId: String? = "urn:uuid:${Uuid.generateV4()}",
-    credentials: List<WrpCredential> = listOf(defaultMdocCredential()),
+    credentials: List<WrpCredential>? = listOf(defaultMdocCredential()),
     iat: Instant = Instant.fromEpochSeconds(System.now().epochSeconds),
     exp: Instant? = Instant.fromEpochSeconds((System.now() + 30.days).epochSeconds),
     statusListIdx: Int = 0,
@@ -224,11 +225,12 @@ fun buildWrpPayload(
     country = "AT",
     registryUri = "https://localhost/wrp",
     srvDescription = listOf(listOf(WrpLangString(lang = "en", value = "Service description"))),
-    entitlements = listOf("access-service"),
+    entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
     privacyPolicy = "https://localhost/privacy",
-    infoUri = "",
+    infoUri = "https://localhost/info",
     supportUri = "https://localhost/support",
     supervisoryAuthority = WrpSupervisoryAuthority(),
+    policyId = listOf(WrpConstants.POLICY_IDENTIFIER),
     certificatePolicy = "https://localhost/certificate-policy",
     iat = iat,
     exp = exp,
@@ -236,7 +238,6 @@ fun buildWrpPayload(
     purpose = listOf(WrpLangString(lang = "en", value = "Purpose description.")),
     credentials = credentials,
     intendedUseId = intendedUseId,
-    providesAttestations = emptyList(),
     publicBody = false,
 )
 

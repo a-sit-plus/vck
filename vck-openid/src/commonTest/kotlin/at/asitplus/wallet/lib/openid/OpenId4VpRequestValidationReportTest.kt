@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpLangString
@@ -213,11 +214,12 @@ private fun registration() = WrpPayload(
     country = "AT",
     registryUri = "https://registrar.example.com",
     srvDescription = listOf(listOf(WrpLangString(lang = "en", value = "Sells things"))),
-    entitlements = listOf("https://uri.etsi.org/19475/Entitlement/Service_Provider"),
+    entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
     privacyPolicy = "https://shop.example.com/privacy",
     infoUri = "https://shop.example.com",
     supportUri = "https://shop.example.com/support",
     supervisoryAuthority = WrpSupervisoryAuthority(),
+    policyId = listOf(WrpConstants.POLICY_IDENTIFIER),
     certificatePolicy = "https://registrar.example.com/policy",
     iat = Clock.System.now().truncateToSeconds(),
     exp = (Clock.System.now() + 30.days).truncateToSeconds(),
@@ -231,7 +233,6 @@ private fun registration() = WrpPayload(
         )
     ),
     intendedUseId = "urn:uuid:${uuid4()}",
-    providesAttestations = emptyList(),
     publicBody = false,
 )
 
