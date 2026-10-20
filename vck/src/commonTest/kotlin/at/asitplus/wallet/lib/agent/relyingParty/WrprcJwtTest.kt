@@ -139,6 +139,33 @@ val WrprcJwtTest by matrixSuite {
         result.isSuccess.shouldBe(true)
     }
 
+    "WRPRC payload missing optional name still validates" {
+        val fixture = buildWrpFixture()
+        val payload = buildWrpPayload(fixture.wrpIdentifier, name = null)
+
+        val result = fixture.validateWrprc(payload = payload)
+        result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validPayload shouldBe true
+    }
+
+    "WRPRC payload not meeting a requirement of TS 119 475 fails payload validation" - {
+        listOf(
+            "without an entitlement of A.2" to { payload: WrpPayload ->
+                payload.copy(entitlements = listOf("https://example.com/entitlement"))
+            },
+            "providing attestations without their entitlement" to { payload: WrpPayload ->
+                payload.copy(providesAttestations = listOf(defaultMdocCredential()))
+            },
+            "of a service provider without purpose" to { payload: WrpPayload -> payload.copy(purpose = null) },
+            "of a service provider without credentials" to { payload: WrpPayload -> payload.copy(credentials = null) },
+        ).asData(nameFn = { it.first }) test { case ->
+            val fixture = buildWrpFixture()
+            val payload = case.second(buildWrpPayload(fixture.wrpIdentifier))
+
+            val result = fixture.validateWrprc(payload = payload)
+            result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validPayload shouldBe false
+        }
+    }
+
     "WRPRC payload missing optional exp still validates" {
         val fixture = buildWrpFixture()
         val payload = buildWrpPayload(fixture.wrpIdentifier, exp = null)

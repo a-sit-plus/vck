@@ -273,14 +273,19 @@ internal const val WRPRC_CWT_TYPE = "rc-wrp+cwt"
 
 /**
  * The payload includes the fields the registry provides (ETSI TS 119 475 V1.2.1, 5.2.4, GEN-5.2.4-01, Table 7),
- * as far as [WrpPayload] cannot enforce them: `name` and the `policy_id` of a WRPRC (6.1.3), and, for
- * [RegistrationPurpose.Presentation], the credentials it is registered for (EUDI TS5). Value constraints of claims
- * are not evaluated, so a WRPRC with them is not supported for presentation: authorizing its paths would widen a
- * value-restricted registration.
+ * as far as [WrpPayload] cannot enforce them: an entitlement of A.2 (GEN-5.2.4-03), `provides_attestations` only
+ * for attestation providers (B.2.1), the `policy_id` of a WRPRC (6.1.3), and, for
+ * [RegistrationPurpose.Presentation], the `purpose` and `credentials` of a service provider (GEN-5.2.4-06,
+ * Table 9). Value constraints of claims are not evaluated, so a WRPRC with them is not supported for presentation:
+ * authorizing its paths would widen a value-restricted registration.
  */
 private fun WrpPayload.requireClaims(purpose: RegistrationPurpose) {
-    requireNotNull(name) { "The WRPRC has no name" }
+    require(entitlements.any { it in WrpConstants.ENTITLEMENTS }) { "The WRPRC has no entitlement of A.2" }
+    require(providesAttestations == null || entitlements.any { it in WrpConstants.ATTESTATION_PROVIDER_ENTITLEMENTS }) {
+        "The WRPRC provides attestations without the entitlement of an attestation provider"
+    }
     if (purpose is RegistrationPurpose.Presentation) {
+        requireNotNull(this.purpose) { "The WRPRC has no purpose" }
         val credentials = requireNotNull(this.credentials) { "The WRPRC has no credentials" }
         require(credentials.none { credential -> credential.claim.orEmpty().any { it.values != null } }) {
             "WRPRC claim values are not supported for authorization"
