@@ -50,6 +50,11 @@ Release 9.0.0 (unreleased):
       providers or attestation providers carry them; `WrpCredential.claim` is `null` when absent;
       `WrpIntermediary.sub` is required. Empty `srv_description`, `entitlements`, `purpose`, `credentials`,
       `claim` and claim `values` are rejected. Add `WrpConstants.ENTITLEMENTS` (A.2)
+    - BREAKING: Model the WRPRC fields for which the register allows several values (ETSI TS 119 475 V1.2.1,
+      Annex B) as lists: `WrpPayload.subjectLegalNames`, `privacyPolicies`, `infoUris`, `supportUris`, and
+      `WrpSupervisoryAuthority.emails`, `phones`, `uris`. They are always encoded as arrays, and also decoded from a
+      single string, as in Annex C, in JSON and CWT; empty arrays are rejected. Deprecate `subjectLegalName`,
+      `privacyPolicy`, `infoUri`, `supportUri`, `email`, `phone`, and `uri`, which return the first entry
     - WRPRC validation no longer requires `name` (B.2.1), but requires an entitlement of A.2 (GEN-5.2.4-03),
       `provides_attestations` only for attestation providers (B.2.1), and `purpose` for presentation (GEN-5.2.4-06)
     - WRPRC linkage also accepts the WRPAC of the intermediary named in `intermediary.sub`, who presents the WRPRC of
