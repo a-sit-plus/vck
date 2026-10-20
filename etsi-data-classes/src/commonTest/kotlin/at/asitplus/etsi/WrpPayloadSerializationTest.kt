@@ -1,13 +1,17 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package at.asitplus.etsi
 
 import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.etsi.relyingParty.WrpSupervisoryAuthority
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 
@@ -75,6 +79,51 @@ val WrpPayloadSerializationTest by matrixSuite {
         payload.intermediary?.sname.shouldBeNull()
     }
 
+    "decodes the single strings of Annex C as lists, and keeps the first one in the deprecated fields" {
+        val payload = decode(annexCObject)
+
+        payload.subjectLegalNames shouldBe listOf("Example Company GmbH")
+        payload.privacyPolicies shouldBe listOf("https://example.com/privacy-policy")
+        payload.infoUris shouldBe listOf("https://example.com/info")
+        payload.supportUris shouldBe listOf("https://example.com/support")
+        payload.supervisoryAuthority shouldBe WrpSupervisoryAuthority(
+            emails = listOf("supervisory@dpa.com"),
+            phones = listOf("+49 123 4567890"),
+            uris = listOf("https://dpa.com/supervisory-authority"),
+        )
+        @Suppress("DEPRECATION")
+        payload.supportUri shouldBe "https://example.com/support"
+    }
+
+    "decodes arrays of several strings, and always encodes arrays" {
+        val several = """["https://example.com/support","mailto:support@example.com"]"""
+        val payload = decode(annexCObject.with("support_uri", several))
+        payload.supportUris shouldBe listOf("https://example.com/support", "mailto:support@example.com")
+
+        val encoded = joseCompliantSerializer.encodeToString(WrpPayload.serializer(), decode(annexCObject))
+        encoded shouldContain """"sub_ln":["Example Company GmbH"]"""
+        encoded shouldContain """"privacy_policy":["https://example.com/privacy-policy"]"""
+        encoded shouldContain """"info_uri":["https://example.com/info"]"""
+        encoded shouldContain """"support_uri":["https://example.com/support"]"""
+        encoded shouldContain """"email":["supervisory@dpa.com"]"""
+    }
+
+    "rejects an empty array or other values than strings" - {
+        listOf("[]", "1", "[1]", "{}", "null").asData() test { value ->
+            shouldThrowAny { decode(annexCObject.with("support_uri", value)) }
+        }
+    }
+
+    "CBOR decodes a single string or an array, and encodes an array" {
+        val serializer = WrpSupervisoryAuthority.serializer()
+        val expected = WrpSupervisoryAuthority(emails = listOf("a"))
+        // {"email": "a"}
+        Cbor.CoseCompliant.decodeFromByteArray(serializer, "a165656d61696c6161".hexToByteArray()) shouldBe expected
+        // {"email": ["a"]}
+        Cbor.CoseCompliant.decodeFromByteArray(serializer, "a165656d61696c816161".hexToByteArray()) shouldBe expected
+        Cbor.CoseCompliant.encodeToByteArray(serializer, expected).toHexString() shouldContain "65656d61696c816161"
+    }
+
     "encodes policy_id, which has no default" {
         joseCompliantSerializer.encodeToString(WrpPayload.serializer(), decode(annexCObject)) shouldContain
                 """"policy_id":["${WrpConstants.POLICY_IDENTIFIER}"]"""
@@ -86,7 +135,7 @@ val WrpPayloadSerializationTest by matrixSuite {
             .let { decode(it) }
 
         payload.name.shouldBeNull()
-        payload.infoUri.shouldBeNull()
+        payload.infoUris.shouldBeNull()
         payload.purpose.shouldBeNull()
         payload.credentials.shouldBeNull()
         payload.providesAttestations.shouldBeNull()
