@@ -75,6 +75,8 @@ data class ValidationPolicy(
      * be bound to the key of the VP, and other artifacts have no holder, so it does not apply to them.
      */
     val holderBinding: HolderBindingPolicy = HolderBindingPolicy.None,
+    /** Whether a relying party has to transport registration certificates (WRPRCs) with its request. */
+    val registration: RegistrationPolicy = RegistrationPolicy.Require,
 ) {
     init {
         require(timeLeeway.isFinite() && !timeLeeway.isNegative()) { "Time leeway has to be finite and not negative" }
@@ -92,6 +94,26 @@ sealed interface HolderBindingPolicy {
 
     /** The credential has to be bound to [CredentialValidationContext.expectedHolderKey]. */
     data object RequireExpectedKey : HolderBindingPolicy
+}
+
+/**
+ * Whether a wallet-relying party has to transport registration certificates (WRPRCs) with its request, see
+ * [RelyingPartyChecks.registration]. A WRPRC that is transported has to be valid under every policy.
+ */
+sealed interface RegistrationPolicy {
+    /**
+     * The request has to carry WRPRCs, as every relying party registered in the Union has them: Member States
+     * authorise certificate authorities to issue them to every registered relying party (CIR (EU) 2025/848,
+     * Article 8(1), as amended by CIR (EU) 2026/1730).
+     */
+    data object Require : RegistrationPolicy
+
+    /**
+     * A request without WRPRCs passes, e.g. of an ISO/IEC 18013-5 mdoc reader outside of the EUDI Wallet ecosystem,
+     * like the wallet app of another wallet provider. Its reader certificate need not be a WRPAC, but has to be
+     * trusted as [ValidationPolicy.trust] requires, see [RelyingPartyTrustAnchors.accessCertificates].
+     */
+    data object ValidateIfPresent : RegistrationPolicy
 }
 
 /**

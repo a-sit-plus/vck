@@ -89,7 +89,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
      * Validates the relying party of the ISO mdoc [deviceRequest] under [policy], e.g. of a proximity presentation
      * over BLE or NFC: every document request is authenticated by one WRPAC over [sessionTranscript] (ISO/IEC
      * 18013-5:2021, 9.1.4), see [ReaderAuthenticationVerifier.authenticate], and carries the WRPRC for it in
-     * `euWrprc`. The clock is read once, all checks use that time.
+     * `euWrprc`, as far as [ValidationPolicy.registration] requires one. The clock is read once, all checks use that
+     * time.
      *
      * Reader authentication is optional (9.1.4): a request without any is reported as unsigned, like an unsigned
      * authorization request, with the `signature` of the WRPAC not applicable and `requestData` failing with an
@@ -228,7 +229,17 @@ class RelyingPartyValidator @JvmOverloads constructor(
         policy: ValidationPolicy,
     ): RelyingPartyValidationResult {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
-        val access = selectAccessCertificate(request = request, policy = policy, now = timeScope.now)
+        val registration = request.registration.takeUnless {
+            policy.registration == RegistrationPolicy.ValidateIfPresent &&
+                    it.cause() is MissingRegistrationCertificateException
+        } ?: NotApplicable
+        val access = selectAccessCertificate(
+            request = request,
+            requireIdentifier = request.registrationCertificates.isNotEmpty() ||
+                    policy.registration == RegistrationPolicy.Require,
+            policy = policy,
+            now = timeScope.now,
+        )
         val registrations = request.registrationCertificates.map { (certificate, requests) ->
             val evaluation = evaluateRegistrationCertificate(
                 certificate = certificate,
@@ -251,7 +262,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
             certificate to ValidationReport.registrationCertificate(checks, policy, timeScope.now)
         }
         val report = ValidationReport.relyingParty(
-            checks = RelyingPartyChecks(requestData = request.requestData, registration = request.registration),
+            checks = RelyingPartyChecks(requestData = request.requestData, registration = registration),
             accessCertificate = access.report,
             registrationCertificates = registrations.map { it.second },
             evaluatedAt = timeScope.now,
@@ -262,7 +273,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
             ValidatedRelyingParty(
                 accessCertificateChain = requireNotNull(access.chain),
-                identifier = requireNotNull(access.evaluation.identifier),
+                identifier = access.evaluation.identifier,
                 registrationCertificates = untrustedRegistrations,
             )
         } else null
@@ -275,6 +286,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
      */
     private suspend fun selectAccessCertificate(
         request: ExtractedRequest,
+        requireIdentifier: Boolean,
         policy: ValidationPolicy,
         now: Instant,
     ): AccessCertificateCandidate {
@@ -287,6 +299,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
                 anchors = trust.accessCertificates,
                 source = ACCESS_CERTIFICATE_PROVIDERS,
                 now = now,
+                requireIdentifier = requireIdentifier,
             )
             AccessCertificateCandidate(chain, evaluation, ValidationReport.accessCertificate(evaluation.checks, policy, now))
         }
@@ -413,7 +426,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         val clientId: String?,
         /** Whether the credential requests could be extracted from a request this validator supports. */
         val requestData: CheckOutcome,
-        /** Whether the request carries its WRPRCs as required, and they could be parsed. */
+        /** Whether the request carries its WRPRCs, and they could be parsed. */
         val registration: CheckOutcome,
         val registrationCertificates: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>,
     )
@@ -464,8 +477,11 @@ data class RelyingPartyValidationResult(
 /** A wallet-relying party that passed every required check. */
 data class ValidatedRelyingParty(
     val accessCertificateChain: CertificateChain,
-    /** The identifier of the relying party in its WRPAC, which every WRPRC is issued to. */
-    val identifier: WrpacIdentifier,
+    /**
+     * The identifier of the relying party in its WRPAC, which every WRPRC is issued to. `null` for a reader without
+     * WRPRCs, accepted with [RegistrationPolicy.ValidateIfPresent], whose certificate is no WRPAC.
+     */
+    val identifier: WrpacIdentifier?,
     /** What the relying party is registered for, e.g. to show its name and its purposes to the user. */
     val registrationCertificates: List<WrpPayload>,
 )

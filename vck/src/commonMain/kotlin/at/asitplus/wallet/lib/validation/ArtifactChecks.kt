@@ -125,8 +125,9 @@ data class RelyingPartyChecks(
     /**
      * Whether the request carries its WRPRCs, one in `verifier_info` of an OpenID4VP request, or one in `euWrprc` of
      * every document request of an ISO mdoc request, and they could be parsed, failing with a
-     * `MissingRegistrationCertificateException` or an `InvalidRegistrationCertificateException` otherwise. Blocked
-     * for a request whose `requestData` failed without them being extracted.
+     * `MissingRegistrationCertificateException` or an `InvalidRegistrationCertificateException` otherwise. Not
+     * applicable to a request without WRPRCs under [RegistrationPolicy.ValidateIfPresent]. Blocked for a request
+     * whose `requestData` failed without them being extracted.
      */
     val registration: CheckOutcome,
 ) : ValidationChecks
@@ -135,7 +136,10 @@ data class RelyingPartyChecks(
  * The checks of a wallet-relying party access certificate (WRPAC) and the request it signed.
  */
 data class AccessCertificateChecks(
-    /** The chain is present and the identifier of its leaf parses. Not applicable to an unsigned request. */
+    /**
+     * The chain is present and the identifier of its leaf parses, unless the request has no WRPRCs to link to it
+     * under [RegistrationPolicy.ValidateIfPresent]. Not applicable to an unsigned request.
+     */
     val parsing: CheckOutcome,
     /**
      * The request is signed by the leaf, as JAR or as mdoc reader authentication. Not applicable to an unsigned
