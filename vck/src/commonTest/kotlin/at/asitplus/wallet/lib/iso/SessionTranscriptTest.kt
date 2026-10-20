@@ -441,6 +441,47 @@ val SessionTranscriptTest by matrixSuite {
         }
     }
 
+    "DC API handover with device engagement is rejected" {
+        shouldThrowAny {
+            coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(
+                cborArray(
+                    cborEncodedData(Random.nextBytes(8)),
+                    cborEncodedData(Random.nextBytes(8)),
+                    cborArray(cborText(DCAPIHandover.TYPE_DCAPI), cborBytes(Random.nextBytes(32)))
+                )
+            )
+        }
+    }
+
+    "transcripts with only one of DeviceEngagementBytes and EReaderKeyBytes are rejected" {
+        val null_ = byteArrayOf(0xf6.toByte())
+        listOf(
+            cborArray(cborEncodedData(Random.nextBytes(8)), null_, null_),
+            cborArray(
+                null_,
+                cborEncodedData(Random.nextBytes(8)),
+                cborArray(cborText(DCAPIHandover.TYPE_DCAPI), cborBytes(Random.nextBytes(32)))
+            ),
+        ).forEach {
+            shouldThrowAny { coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(it) }
+        }
+    }
+
+    "malformed handovers are rejected, not decoded as another kind of handover" - {
+        mapOf(
+            // An indefinite-length text string with a byte string chunk, where an NFC handover is expected
+            "malformed text string in NFC handover" to "83d8184100d8184100827f40f6",
+            // The same where a handover without device engagement is expected
+            "malformed text string in DC API handover" to "83f6f6827f405820" + "00".repeat(32),
+        ).forEach { (name, hex) ->
+            name {
+                shouldThrowAny {
+                    coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(hex.decodeToByteArray(Base16))
+                }
+            }
+        }
+    }
+
     "transcripts with other than three elements are rejected" {
         val handover = cborArray(cborText(DCAPIHandover.TYPE_DCAPI), cborBytes(Random.nextBytes(32)))
         shouldThrowAny {
