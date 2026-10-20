@@ -96,6 +96,7 @@ val RelyingPartyValidatorTest by matrixSuite {
         result.relyingParty.shouldNotBeNull().apply {
             identifier.shouldNotBeNull().identifier shouldBe fixture.wrpIdentifier
             registrationCertificates.shouldBeSingleton().first() shouldBe payload
+            intermediated shouldBe false
         }
         result.untrustedRegistrations shouldBe listOf(payload)
     }
@@ -110,6 +111,7 @@ val RelyingPartyValidatorTest by matrixSuite {
         result.relyingParty.shouldNotBeNull().apply {
             identifier.shouldNotBeNull().identifier shouldBe INTERMEDIARY
             registrationCertificates.shouldBeSingleton().first().subjectIdentifier shouldBe RELYING_PARTY
+            intermediated shouldBe true
         }
     }
 
@@ -126,7 +128,10 @@ val RelyingPartyValidatorTest by matrixSuite {
     "a WRPRC naming an intermediary also links to the WRPAC of its own subject" {
         val fixture = buildWrpFixture(wrpIdentifier = RELYING_PARTY)
 
-        fixture.validate(fixture.request(intermediatedPayload())).report.decision shouldBe ACCEPTED
+        fixture.validate(fixture.request(intermediatedPayload())).apply {
+            report.decision shouldBe ACCEPTED
+            relyingParty.shouldNotBeNull().intermediated shouldBe false
+        }
     }
 
     "an mdoc request of an intermediary, with the WRPRC of the relying party naming it, is accepted" {
@@ -136,7 +141,10 @@ val RelyingPartyValidatorTest by matrixSuite {
 
         fixture.validator().validate(request, transcript, policy).apply {
             report.decision shouldBe ACCEPTED
-            relyingParty.shouldNotBeNull().identifier.shouldNotBeNull().identifier shouldBe INTERMEDIARY
+            relyingParty.shouldNotBeNull().apply {
+                identifier.shouldNotBeNull().identifier shouldBe INTERMEDIARY
+                intermediated shouldBe true
+            }
         }
     }
 

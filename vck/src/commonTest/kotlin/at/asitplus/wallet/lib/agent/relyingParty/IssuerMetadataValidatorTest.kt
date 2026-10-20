@@ -61,6 +61,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
                 accessCertificateChain shouldBe fixture.wrpacChain
                 registrationCertificate.providesAttestations shouldBe PROVIDED_ATTESTATIONS
                 registrationCertificate shouldBe untrustedRegistration
+                intermediated shouldBe false
             }
         }
     }
@@ -149,7 +150,10 @@ val IssuerMetadataValidatorTest by matrixSuite {
 
         fixture.validate(fixture.signedMetadata(fixture.metadata(wrprc = throughIntermediary))).apply {
             report.decision shouldBe ACCEPTED
-            issuer.shouldNotBeNull().registrationCertificate.subjectIdentifier shouldBe "LEIXG-PROVIDER"
+            issuer.shouldNotBeNull().apply {
+                registrationCertificate.subjectIdentifier shouldBe "LEIXG-PROVIDER"
+                intermediated shouldBe true
+            }
         }
         fixture.validate(fixture.signedMetadata(fixture.metadata(wrprc = otherIntermediary)))
             .registrationChecks().linkage.shouldBeInstanceOf<CheckOutcome.Failed>()

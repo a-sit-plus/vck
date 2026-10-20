@@ -249,6 +249,13 @@ internal fun WrpPayload.isLinkedTo(accessIdentifier: WrpacIdentifier): Boolean =
     accessIdentifier.identifier == subjectIdentifier || accessIdentifier.identifier == intermediary?.sub
 
 /**
+ * Whether the WRPAC with [accessIdentifier] is not issued to the subject of this WRPRC, but to the intermediary it
+ * names, who presents it for the relying party it acts for (ETSI TS 119 475 V1.2.1, 4.5, Table 10).
+ */
+internal fun WrpPayload.isPresentedByIntermediary(accessIdentifier: WrpacIdentifier): Boolean =
+    subjectIdentifier != accessIdentifier.identifier && intermediary?.sub == accessIdentifier.identifier
+
+/**
  * The status of the WRPRC of [evaluation], only resolved for a WRPRC that is valid otherwise, as for credentials
  * (draft-ietf-oauth-status-list-21, 8.3); its signer has to be authorized by [anchors] (ETSI TS 119 475 V1.2.1,
  * 6.2.6.2).
