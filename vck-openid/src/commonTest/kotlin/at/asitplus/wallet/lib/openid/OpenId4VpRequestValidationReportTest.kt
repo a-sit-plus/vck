@@ -213,7 +213,7 @@ private fun registration() = WrpPayload(
     subjectIdentifier = "LEI-EXAMPLE",
     country = "AT",
     registryUri = "https://registrar.example.com",
-    srvDescription = listOf(listOf(WrpLangString(lang = "en", value = "Sells things"))),
+    serviceDescription = listOf(WrpLangString(lang = "en", value = "Sells things")),
     entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
     privacyPolicies = listOf("https://shop.example.com/privacy"),
     infoUris = listOf("https://shop.example.com"),
