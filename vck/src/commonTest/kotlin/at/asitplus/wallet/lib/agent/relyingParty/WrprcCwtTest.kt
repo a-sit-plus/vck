@@ -127,7 +127,7 @@ val WrprcCwtTest by matrixSuite {
     "a signed CWT with an additional numeric path still authorizes its named claims" {
         val fixture = buildWrpFixture()
         val credential = defaultMdocCredential().let {
-            it.copy(claim = it.claim + WrpClaim(
+            it.copy(claim = it.claim.orEmpty() + WrpClaim(
                 listOf(WrpClaimPathSegment.Name(DEFAULT_DOCTYPE), WrpClaimPathSegment.Index(0u))
             ))
         }

@@ -16,7 +16,14 @@ data class WrpCredential(
     @SerialName("meta")
     val meta: WrpCredentialMeta,
 
-    /** Attributes declared for requesting or providing; absence declares no specific requested attributes (Tables 8 and 9). */
+    /**
+     * Attributes declared for requesting or providing; absence declares no specific requested attributes
+     * (Tables 8 and 9; claim `[0..*]`, clause B.2.9).
+     */
     @SerialName("claim")
-    val claim: List<WrpClaim> = emptyList()
-)
+    val claim: List<WrpClaim>? = null
+) {
+    init {
+        require(claim?.isNotEmpty() != false) { "claim must not be empty" } // B.2.9 refers to OpenID4VP 1.0, 6.1
+    }
+}

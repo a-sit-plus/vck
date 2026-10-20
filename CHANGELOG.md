@@ -43,6 +43,13 @@ Release 9.0.0 (unreleased):
       by coverage: a registered ancestor covers descendants, and `null` covers an index or `null`. JSON and CWT
       decode typed segments and values; empty paths and
       indices above `UInt.MAX_VALUE` are rejected. kotlinx-serialization CBOR also reads an empty map as `null`
+    - BREAKING: Align `WrpPayload` with the multiplicities of ETSI TS 119 475 V1.2.1, Annex B and Tables 7 to 10:
+      `policyId` has no default, so it is always encoded and a WRPRC without `policy_id` no longer passes as
+      carrying the WRPRC policy (6.1.3); `supportUri` and `supervisoryAuthority` are required, `infoUri` is
+      optional; `purpose`, `credentials` and `providesAttestations` are `null` when absent, as only service
+      providers or attestation providers carry them; `WrpCredential.claim` is `null` when absent;
+      `WrpIntermediary.sub` is required. Empty `srv_description`, `entitlements`, `purpose`, `credentials`,
+      `claim` and claim `values` are rejected. Add `WrpConstants.ENTITLEMENTS` (A.2)
     - `WrpPayload.srvDescription` stays an array of arrays (ETSI TS 119 475 V1.2.1, B.2.1), and also decodes from a
       single array of `WrpLangString`s, in JSON and CWT, as one service description; arrays mixed with objects are
       rejected

@@ -22,6 +22,7 @@ data class WrpClaim(
 ) {
     init {
         require(path.isNotEmpty()) { "Claim path must not be empty" } // OpenID4VP 1.0, 7
+        require(values?.isNotEmpty() != false) { "Claim values must not be empty" } // OpenID4VP 1.0, 6.3
     }
 
     companion object {

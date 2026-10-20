@@ -63,7 +63,7 @@ object WrprcRequestValidator {
         metadata: WrpCredentialMetaDomain,
         wrpPayload: WrpPayload
     ): Boolean = run {
-        val metaList = wrpPayload.credentials.map { it.meta }
+        val metaList = wrpPayload.credentials.orEmpty().map { it.meta }
         when (metadata) {
             is WrpCredentialMetaDomain.WrpDocTypeDomain -> metaList.any { meta ->
                 catchingUnwrapped {
@@ -97,7 +97,7 @@ object WrprcRequestValidator {
     private fun matchingCredentialEntries(
         wrpPayload: WrpPayload,
         meta: WrpCredentialMetaDomain,
-    ): List<WrpCredential> = wrpPayload.credentials.filter { credential ->
+    ): List<WrpCredential> = wrpPayload.credentials.orEmpty().filter { credential ->
         catchingUnwrapped {
             when (meta) {
                 is WrpCredentialMetaDomain.WrpDocTypeDomain ->
@@ -117,7 +117,7 @@ object WrprcRequestValidator {
     ): Boolean = when (representation) {
         ISO_MDOC -> {
             val claim = attribute as? MdocClaimReference ?: return false
-            this.claim.any { it.path == listOf(Name(claim.namespace), Name(claim.claimName)) }
+            this.claim.orEmpty().any { it.path == listOf(Name(claim.namespace), Name(claim.claimName)) }
         }
 
         SD_JWT -> {
@@ -125,7 +125,7 @@ object WrprcRequestValidator {
             val segments = claim.path
             // SD-JWT VC: vct is a root claim, never selectively disclosed (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3).
             if (segments.size == 1 && segments.first() == NameSegment("vct")) return true
-            this.claim.any { it.path.covers(segments) }
+            this.claim.orEmpty().any { it.path.covers(segments) }
         }
 
         PLAIN_JWT -> false

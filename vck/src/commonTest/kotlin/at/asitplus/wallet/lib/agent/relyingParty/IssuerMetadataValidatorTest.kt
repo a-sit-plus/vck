@@ -84,8 +84,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
 
     "a WRPRC without an entitlement of attestation providers is rejected" {
         val fixture = buildWrpFixture()
-        val serviceProvider = "https://uri.etsi.org/19475/Entitlement/Service_Provider"
-        val wrprc = fixture.issuerWrprc(entitlements = listOf(serviceProvider))
+        val wrprc = fixture.issuerWrprc(entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER))
 
         fixture.validate(fixture.signedMetadata(fixture.metadata(wrprc = wrprc))).apply {
             report.decision shouldBe REJECTED
@@ -340,8 +339,13 @@ private suspend fun WrpFixture.issuerWrprc(
     entitlements: List<String> = listOf(WrpConstants.ENTITLEMENT_PID_PROVIDER),
     statusListIdx: Int = 0,
 ): String {
-    val payload: WrpPayload = buildWrpPayload(identifier, credentials = emptyList(), statusListIdx = statusListIdx)
-        .copy(entitlements = entitlements, providesAttestations = PROVIDED_ATTESTATIONS)
+    val payload: WrpPayload = buildWrpPayload(identifier, credentials = null, statusListIdx = statusListIdx).copy(
+        entitlements = entitlements,
+        purpose = null,
+        // present only for attestation providers (ETSI TS 119 475 V1.2.1, B.2.1)
+        providesAttestations = PROVIDED_ATTESTATIONS
+            .takeIf { entitlements.any { it in WrpConstants.ATTESTATION_PROVIDER_ENTITLEMENTS } },
+    )
     return signWrprc(wrprcSigningKeyMaterial, payload)
 }
 

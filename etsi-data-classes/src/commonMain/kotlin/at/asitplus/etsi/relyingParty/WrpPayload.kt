@@ -1,6 +1,5 @@
 package at.asitplus.etsi.relyingParty
 
-import at.asitplus.etsi.relyingParty.WrpConstants.POLICY_IDENTIFIER
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -55,21 +54,31 @@ data class WrpPayload(
     @SerialName("privacy_policy")
     val privacyPolicy: String,
 
-    /** General-purpose URL providing public information about the relying party (Table 7; clause B.2.2). */
+    /**
+     * General-purpose URL providing public information about the relying party (Table 7), absent when the registry
+     * provides none (infoURI `[0..*]`, clause B.2.2).
+     */
     @SerialName("info_uri")
-    val infoUri: String,
+    val infoUri: String? = null,
 
-    /** URL or email address for data deletion or portability requests (Table 7). */
+    /** URL or email address for data deletion or portability requests (Table 7; supportURI `[1..*]`, clause B.2.1). */
     @SerialName("support_uri")
-    val supportUri: String? = null,
+    val supportUri: String,
 
-    /** Contact details of the competent data protection supervisory authority (Table 7). */
+    /**
+     * Contact details of the competent data protection supervisory authority (Table 7; supervisoryAuthority `[1..1]`,
+     * clause B.2.1).
+     */
     @SerialName("supervisory_authority")
-    val supervisoryAuthority: WrpSupervisoryAuthority? = null,
+    val supervisoryAuthority: WrpSupervisoryAuthority,
 
-    /** Certificate policy identifiers applicable to the WRPRC (Table 7; clause 6.1.3). */
+    /**
+     * Certificate policy identifiers applicable to the WRPRC (Table 7), which include
+     * [WrpConstants.POLICY_IDENTIFIER] (clause 6.1.3, OVR-6.1.3-01). Without a default, so that it is always
+     * encoded and never assumed when absent.
+     */
     @SerialName("policy_id")
-    val policyId: List<String> = listOf(POLICY_IDENTIFIER),
+    val policyId: List<String>,
 
     /** URL of the certificate policy and certification practice statement (Table 7). */
     @SerialName("certificate_policy")
@@ -84,21 +93,30 @@ data class WrpPayload(
     @SerialName("status")
     val status: WrpStatus,
 
-    /** Localized descriptions of data processing associated with the intended use (Table 9). */
+    /**
+     * Localized descriptions of data processing associated with the intended use, only for service providers
+     * (Table 9, GEN-5.2.4-06); non-empty when present (purpose `[1..*]`, clause B.2.7).
+     */
     @SerialName("purpose")
-    val purpose: List<WrpLangString> = emptyList(),
+    val purpose: List<WrpLangString>? = null,
 
-    /** Credential queries describing what the relying party may request, used for over-asking validation (Table 9). */
+    /**
+     * Credential queries describing what the relying party may request, used for over-asking validation, only for
+     * service providers (Table 9, GEN-5.2.4-06); non-empty when present (credential `[1..*]`, clause B.2.7).
+     */
     @SerialName("credentials")
-    val credentials: List<WrpCredential> = emptyList(),
+    val credentials: List<WrpCredential>? = null,
 
     /** Registry-provided unique identifier used to retrieve the intended use from the registry (Table 9). */
     @SerialName("intended_use_id")
     val intendedUseId: String? = null,
 
-    /** Credentials issued by the relying party with attestation-provider entitlements (Table 8). */
+    /**
+     * Credentials issued by the relying party with attestation-provider entitlements (Table 8), present only for
+     * them (providesAttestations `[0..*]`, clause B.2.1).
+     */
     @SerialName("provides_attestations")
-    val providesAttestations: List<WrpCredential> = emptyList(),
+    val providesAttestations: List<WrpCredential>? = null,
 
     /** Whether the relying party is a public sector body (Table 10). */
     @SerialName("public_body")
@@ -112,4 +130,11 @@ data class WrpPayload(
     @SerialName("exp")
     @Serializable(with = InstantLongSerializer::class)
     val exp: Instant? = null,
-)
+) {
+    init {
+        require(srvDescription.isNotEmpty()) { "srv_description must not be empty" } // B.2.1: [1..*]
+        require(entitlements.isNotEmpty()) { "entitlements must not be empty" } // B.2.1: [1..*]
+        require(purpose?.isNotEmpty() != false) { "purpose must not be empty" } // B.2.7: [1..*]
+        require(credentials?.isNotEmpty() != false) { "credentials must not be empty" } // B.2.7: [1..*]
+    }
+}
