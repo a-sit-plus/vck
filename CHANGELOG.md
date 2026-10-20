@@ -54,7 +54,8 @@ Release 9.0.0 (unreleased):
       `provides_attestations` only for attestation providers (B.2.1), and `purpose` for presentation (GEN-5.2.4-06)
     - WRPRC linkage also accepts the WRPAC of the intermediary named in `intermediary.sub`, who presents the WRPRC of
       the relying party it acts for (ETSI TS 119 475 V1.2.1, 4.5, Table 10), for requests and issuer metadata;
-      `act.sub` of GEN-5.2.4-09 contradicts Table 10 and is not supported
+      `act.sub` of GEN-5.2.4-09 contradicts Table 10 and is not supported. Add `ValidatedRelyingParty.intermediated`
+      and `ValidatedCredentialIssuer.intermediated`, telling whether the WRPAC is the one of that intermediary
     - BREAKING: Remove `DocRequestInfo.euWrpRegistrarInfo` and the classes `WrpRegistrarInfo` and `WrpIdentifier`:
       CIR (EU) 2026/1731, Annex XII voids the registrar information of ETSI TS 119 472-2 V1.2.1 (ISO/IEC
       18013-REQ-08 to -11), so an ISO mdoc request carries only `euWrprc`

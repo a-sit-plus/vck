@@ -271,10 +271,13 @@ class RelyingPartyValidator @JvmOverloads constructor(
             .filter { (it.second.checks as RegistrationCertificateChecks).parsing == Passed }
             .map { it.first.payload }
         val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
+            val identifier = access.evaluation.identifier
             ValidatedRelyingParty(
                 accessCertificateChain = requireNotNull(access.chain),
-                identifier = access.evaluation.identifier,
+                identifier = identifier,
                 registrationCertificates = untrustedRegistrations,
+                intermediated = identifier != null &&
+                        untrustedRegistrations.any { it.isPresentedByIntermediary(identifier) },
             )
         } else null
         return RelyingPartyValidationResult(report, relyingParty, untrustedRegistrations)
@@ -478,10 +481,18 @@ data class RelyingPartyValidationResult(
 data class ValidatedRelyingParty(
     val accessCertificateChain: CertificateChain,
     /**
-     * The identifier of the relying party in its WRPAC, which every WRPRC is issued to. `null` for a reader without
-     * WRPRCs, accepted with [RegistrationPolicy.ValidateIfPresent], whose certificate is no WRPAC.
+     * The identifier in the WRPAC: of the relying party, which every WRPRC is issued to, or of the intermediary that
+     * every WRPRC names, if [intermediated]. `null` for a reader without WRPRCs, accepted with
+     * [RegistrationPolicy.ValidateIfPresent], whose certificate is no WRPAC.
      */
     val identifier: WrpacIdentifier?,
     /** What the relying party is registered for, e.g. to show its name and its purposes to the user. */
     val registrationCertificates: List<WrpPayload>,
+    /**
+     * Whether an intermediary authenticated the request with its own WRPAC ([accessCertificateChain], [identifier]),
+     * on behalf of the relying party of [registrationCertificates] (ETSI TS 119 475 V1.2.1, 4.5, Table 10). A wallet
+     * displays the information of the WRPAC (CIR (EU) 2024/2982, Article 3(5), as amended by CIR (EU) 2026/1731),
+     * but not the trade names of the intermediary (ARF Annex 2, RPI_07), and logs both (ARF Annex 2, DASH_03).
+     */
+    val intermediated: Boolean = false,
 )
