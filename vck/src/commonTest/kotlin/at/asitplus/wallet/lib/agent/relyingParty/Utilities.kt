@@ -224,7 +224,7 @@ fun buildWrpPayload(
     subjectIdentifier = wrpIdentifier,
     country = "AT",
     registryUri = "https://localhost/wrp",
-    srvDescription = listOf(listOf(WrpLangString(lang = "en", value = "Service description"))),
+    serviceDescription = listOf(WrpLangString(lang = "en", value = "Service description")),
     entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
     privacyPolicies = listOf("https://localhost/privacy"),
     infoUris = listOf("https://localhost/info"),

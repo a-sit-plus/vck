@@ -274,7 +274,7 @@ private class SigningIssuer private constructor(
                 subjectIdentifier = IDENTIFIER,
                 country = "AT",
                 registryUri = "https://registrar.example.com",
-                srvDescription = listOf(listOf(WrpLangString(lang = "en", value = "Issues PIDs"))),
+                serviceDescription = listOf(WrpLangString(lang = "en", value = "Issues PIDs")),
                 entitlements = listOf(WrpConstants.ENTITLEMENT_PID_PROVIDER),
                 privacyPolicies = listOf("$ISSUER/privacy"),
                 infoUris = listOf(ISSUER),

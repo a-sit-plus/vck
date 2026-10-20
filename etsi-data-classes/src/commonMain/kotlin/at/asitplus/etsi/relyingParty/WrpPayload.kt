@@ -43,12 +43,12 @@ data class WrpPayload(
     val registryUri: String,
 
     /**
-     * Service descriptions, each containing localized versions of the same description (Table 7; clause B.2.1).
-     * Also decoded from a single array of localized descriptions, as one service description.
+     * Localized versions of the description of the service the WRPRC is issued for (Table 7; clause B.2.1),
+     * encoded as an array, and also decoded from an array of arrays, see [WrpServiceDescriptionSerializer].
      */
     @SerialName("srv_description")
-    @Serializable(with = WrpServiceDescriptionsSerializer::class)
-    val srvDescription: List<List<WrpLangString>>,
+    @Serializable(with = WrpServiceDescriptionSerializer::class)
+    val serviceDescription: List<WrpLangString>,
 
     /** Entitlement identifiers assigned to the relying party as specified in Annex A (Table 7). */
     @SerialName("entitlements")
@@ -145,7 +145,7 @@ data class WrpPayload(
     val exp: Instant? = null,
 ) {
     init {
-        require(srvDescription.isNotEmpty()) { "srv_description must not be empty" } // B.2.1: [1..*]
+        require(serviceDescription.isNotEmpty()) { "srv_description must not be empty" } // B.2.1: [1..*]
         require(entitlements.isNotEmpty()) { "entitlements must not be empty" } // B.2.1: [1..*]
         require(purpose?.isNotEmpty() != false) { "purpose must not be empty" } // B.2.7: [1..*]
         require(credentials?.isNotEmpty() != false) { "credentials must not be empty" } // B.2.7: [1..*]
@@ -154,6 +154,10 @@ data class WrpPayload(
         require(infoUris?.isNotEmpty() != false) { "info_uri must not be empty" } // B.2.2: [0..*], absent if none
         require(supportUris.isNotEmpty()) { "support_uri must not be empty" } // B.2.1: [1..*]
     }
+
+    @Deprecated("A WRPRC is issued for one service", ReplaceWith("serviceDescription"))
+    val srvDescription: List<List<WrpLangString>>
+        get() = listOf(serviceDescription)
 
     @Deprecated("Several legal names may be registered", ReplaceWith("subjectLegalNames?.first()"))
     val subjectLegalName: String?
