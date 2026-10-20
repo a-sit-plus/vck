@@ -1,6 +1,5 @@
 package at.asitplus.iso
 
-import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.NFCHandover
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -24,11 +23,11 @@ import kotlin.reflect.KClass
 
 /**
  * Encodes a [SessionTranscript] as the CBOR array `[DeviceEngagementBytes / null, EReaderKeyBytes / null, Handover]`,
- * and decodes it by the shape of its handover:
- * - `null`: [SessionTranscript.Qr] (ISO/IEC 18013-5:2021, 9.1.5.1)
- * - `[bstr, bstr / null]`: [SessionTranscript.Nfc], i.e. `NFCHandover` (ISO/IEC 18013-5:2021, 9.1.5.1)
- * - `[tstr, bstr]`: by its type, [SessionTranscript.DcApi] (ISO/IEC 18013-7 Annex C, OpenID4VP 1.0 B.2.6.2) or
- *   [SessionTranscript.OpenId4Vp] (OpenID4VP 1.0 B.2.6.1)
+ * and decodes its handover as the kind its first two elements allow:
+ * - With `DeviceEngagementBytes` and `EReaderKeyBytes` (ISO/IEC 18013-5:2021, 9.1.5.1): `null` for
+ *   [SessionTranscript.Qr], or `[bstr, bstr / null]` for [SessionTranscript.Nfc], i.e. `NFCHandover`
+ * - With both `null`: `[tstr, bstr]`, by its type [SessionTranscript.DcApi] (ISO/IEC 18013-7 Annex C, OpenID4VP 1.0
+ *   B.2.6.2) or [SessionTranscript.OpenId4Vp] (OpenID4VP 1.0 B.2.6.1)
  *
  * A transcript decoded from its canonical encoding, as ISO/IEC 18013-5 requires, re-encodes to the same bytes.
  * Encoding does not depend on `encodeDefaults`. CBOR only.
@@ -53,16 +52,6 @@ object SessionTranscriptSerializer : KSerializer<SessionTranscript> {
         val absentEReaderKeyBytes: String?,
     )
 
-    @Serializable
-    @CborArray
-    @Suppress("unused")
-    private class HandoverLayout(
-        @ByteString
-        val first: ByteArray,
-        @ByteString
-        val second: ByteArray?,
-    )
-
     private const val DEVICE_ENGAGEMENT_BYTES = 0
     private const val E_READER_KEY_BYTES = 1
     private const val HANDOVER = 2
@@ -72,10 +61,6 @@ object SessionTranscriptSerializer : KSerializer<SessionTranscript> {
     @OptIn(ExperimentalSerializationApi::class)
     override val descriptor: SerialDescriptor =
         SerialDescriptor("at.asitplus.iso.SessionTranscript", Layout.serializer().descriptor)
-
-    @OptIn(ExperimentalSerializationApi::class)
-    private val handoverDescriptor: SerialDescriptor =
-        SerialDescriptor("at.asitplus.iso.SessionTranscript.Handover", HandoverLayout.serializer().descriptor)
 
     override fun serialize(encoder: Encoder, value: SessionTranscript) {
         encoder.encodeStructure(descriptor) {
@@ -111,6 +96,9 @@ object SessionTranscriptSerializer : KSerializer<SessionTranscript> {
         }
     }
 
+    // The handover is decoded strictly as the kind that DeviceEngagementBytes and EReaderKeyBytes allow, never by trying
+    // one kind and falling back to another: kotlinx-serialization CBOR may consume input, e.g. tags or the header of an
+    // indefinite-length string, before it fails, so a fallback could accept malformed input.
     override fun deserialize(decoder: Decoder): SessionTranscript = decoder.decodeStructure(descriptor) {
         nextElement(DEVICE_ENGAGEMENT_BYTES)
         val deviceEngagementBytes =
@@ -119,28 +107,24 @@ object SessionTranscriptSerializer : KSerializer<SessionTranscript> {
         val eReaderKeyBytes =
             decodeNullableSerializableElement(descriptor, E_READER_KEY_BYTES, ByteArraySerializer().nullable)
         nextElement(HANDOVER)
-        val handover = decodeNullableSerializableElement(descriptor, HANDOVER, HandoverDeserializer.nullable)
+        val transcript = when {
+            deviceEngagementBytes != null && eReaderKeyBytes != null ->
+                decodeNullableSerializableElement(descriptor, HANDOVER, NFCHandover.serializer().nullable)
+                    ?.let { SessionTranscript.Nfc(deviceEngagementBytes, eReaderKeyBytes, it) }
+                    ?: SessionTranscript.Qr(deviceEngagementBytes, eReaderKeyBytes)
+
+            deviceEngagementBytes == null && eReaderKeyBytes == null ->
+                decodeNullableSerializableElement(descriptor, HANDOVER, TypedHandover.serializer().nullable)
+                    ?.toSessionTranscript()
+                    ?: throw SerializationException("SessionTranscript without device engagement has no handover")
+
+            else -> throw SerializationException(
+                "SessionTranscript has to have both DeviceEngagementBytes and EReaderKeyBytes, or neither"
+            )
+        }
         if (decodeElementIndex(descriptor) != CompositeDecoder.DECODE_DONE)
             throw SerializationException("SessionTranscript has more than three elements")
-        when {
-            handover == null -> SessionTranscript.Qr(
-                deviceEngagementBytes ?: throw SerializationException("QR handover without DeviceEngagementBytes"),
-                eReaderKeyBytes ?: throw SerializationException("QR handover without EReaderKeyBytes"),
-            )
-
-            handover is NFCHandover -> SessionTranscript.Nfc(
-                deviceEngagementBytes ?: throw SerializationException("NFC handover without DeviceEngagementBytes"),
-                eReaderKeyBytes ?: throw SerializationException("NFC handover without EReaderKeyBytes"),
-                handover,
-            )
-
-            deviceEngagementBytes != null || eReaderKeyBytes != null ->
-                throw SerializationException("Handover $handover does not have device engagement")
-
-            handover is DCAPIHandover -> SessionTranscript.DcApi(handover)
-            handover is OpenId4VpHandover -> SessionTranscript.OpenId4Vp(handover)
-            else -> throw SerializationException("Unsupported handover $handover")
-        }
+        transcript
     }
 
     private fun CompositeDecoder.nextElement(expected: Int) {
@@ -149,36 +133,18 @@ object SessionTranscriptSerializer : KSerializer<SessionTranscript> {
             throw SerializationException("SessionTranscript has to be an array of three, missing element $expected")
     }
 
-    /** Decodes a non-null handover, i.e. an array of two, by the major type of its first element. */
-    private object HandoverDeserializer : KSerializer<Any> {
-        override val descriptor: SerialDescriptor get() = handoverDescriptor
-
-        override fun serialize(encoder: Encoder, value: Any) =
-            throw UnsupportedOperationException("Only for decoding")
-
-        override fun deserialize(decoder: Decoder): Any = decoder.decodeStructure(descriptor) {
-            if (decodeElementIndex(descriptor) != 0) throw SerializationException("Handover is empty")
-            // Decoding a text string fails before it consumes another data item, e.g. a byte string
-            val type = catchingUnwrapped { decodeStringElement(descriptor, 0) }.getOrNull()
-            val first = if (type == null) decodeSerializableElement(descriptor, 0, ByteArraySerializer()) else null
-            if (decodeElementIndex(descriptor) != 1) throw SerializationException("Handover has one element")
-            val handover = when (type) {
-                null -> NFCHandover(
-                    handoverSelect = first!!,
-                    handoverRequest = decodeNullableSerializableElement(descriptor, 1, ByteArraySerializer().nullable),
-                )
-
-                DCAPIHandover.TYPE_DCAPI, DCAPIHandover.TYPE_OPENID4VP ->
-                    DCAPIHandover(type, decodeSerializableElement(descriptor, 1, ByteArraySerializer()))
-
-                OpenId4VpHandover.TYPE_OPENID4VP ->
-                    OpenId4VpHandover(type, decodeSerializableElement(descriptor, 1, ByteArraySerializer()))
-
-                else -> throw SerializationException("Unsupported handover type $type")
-            }
-            if (decodeElementIndex(descriptor) != CompositeDecoder.DECODE_DONE)
-                throw SerializationException("Handover has more than two elements")
-            handover
+    /** A handover without device engagement, i.e. `[type, hash]`, identified by its type. */
+    @Serializable
+    @CborArray
+    private class TypedHandover(
+        val type: String,
+        @ByteString
+        val hash: ByteArray,
+    ) {
+        fun toSessionTranscript(): SessionTranscript = when (type) {
+            DCAPIHandover.TYPE_DCAPI, DCAPIHandover.TYPE_OPENID4VP -> SessionTranscript.DcApi(DCAPIHandover(type, hash))
+            OpenId4VpHandover.TYPE_OPENID4VP -> SessionTranscript.OpenId4Vp(OpenId4VpHandover(type, hash))
+            else -> throw SerializationException("Unsupported handover type $type")
         }
     }
 
