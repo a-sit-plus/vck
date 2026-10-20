@@ -54,6 +54,7 @@ import at.asitplus.wallet.lib.validation.AccessCertificateChecks
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.NamedCheck
 import at.asitplus.wallet.lib.validation.RegistrationCertificateChecks
+import at.asitplus.wallet.lib.validation.RegistrationPolicy
 import at.asitplus.wallet.lib.validation.RelyingPartyChecks
 import at.asitplus.wallet.lib.validation.RelyingPartyTrustAnchors
 import at.asitplus.wallet.lib.validation.RelyingPartyValidationResult
@@ -92,7 +93,7 @@ val RelyingPartyValidatorTest by matrixSuite {
 
         result.report.decision shouldBe ACCEPTED
         result.relyingParty.shouldNotBeNull().apply {
-            identifier.identifier shouldBe fixture.wrpIdentifier
+            identifier.shouldNotBeNull().identifier shouldBe fixture.wrpIdentifier
             registrationCertificates.shouldBeSingleton().first() shouldBe payload
         }
         result.untrustedRegistrations shouldBe listOf(payload)
@@ -301,7 +302,7 @@ val RelyingPartyValidatorTest by matrixSuite {
             accessChecks().signature shouldBe CheckOutcome.Passed
             report.children.map { it.decision } shouldBe listOf(ACCEPTED, ACCEPTED)
             relyingParty.shouldNotBeNull().apply {
-                identifier.identifier shouldBe fixture.wrpIdentifier
+                identifier.shouldNotBeNull().identifier shouldBe fixture.wrpIdentifier
                 registrationCertificates.shouldBeSingleton().first().subjectIdentifier shouldBe fixture.wrpIdentifier
             }
         }
@@ -420,6 +421,42 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
+    "a device request of a reader without WRPRCs and WRPAC is accepted, if registration certificates are optional" {
+        // e.g. the wallet app of another wallet provider, whose reader certificate carries no WRPAC identifier
+        val fixture = buildWrpFixture(wrpacIdentifier = null)
+        val transcript = nfcTranscript()
+        val deviceRequest = fixture.isoRequest(mdocDocRequest(), transcript).parameters.isoMdocRequest.deviceRequest
+
+        fixture.validator().validate(deviceRequest, transcript, optionalRegistration).apply {
+            report.decision shouldBe ACCEPTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration shouldBe CheckOutcome.NotApplicable
+            relyingParty.shouldNotBeNull().apply {
+                identifier.shouldBeNull()
+                registrationCertificates.shouldBeEmpty()
+                accessCertificateChain.first().encodeToDer() shouldBe fixture.wrpacChain.first().encodeToDer()
+            }
+        }
+        fixture.validator().validate(deviceRequest, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            accessChecks().parsing.shouldBeInstanceOf<CheckOutcome.Failed>()
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+        }
+    }
+
+    "a WRPRC is validated, also if registration certificates are optional" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val docRequest = fixture.docRequestWithWrprc(payload = buildWrpPayload("LEIXG-ANOTHER-RELYING-PARTY"))
+        val deviceRequest = fixture.isoRequest(docRequest, transcript).parameters.isoMdocRequest.deviceRequest
+
+        fixture.validator().validate(deviceRequest, transcript, optionalRegistration).apply {
+            report.decision shouldBe REJECTED
+            registrationChecks().linkage.shouldBeInstanceOf<CheckOutcome.Failed>()
+        }
+    }
+
     "a device request authenticating only some of its document requests fails its request data, not the signature" {
         val fixture = buildWrpFixture()
         val transcript = nfcTranscript()
@@ -493,6 +530,9 @@ private val policy = ValidationPolicy(
     requireTimeliness = true,
 )
 
+/** Accepts a relying party without WRPRCs, e.g. a reader outside of the EUDI Wallet ecosystem. */
+private val optionalRegistration = policy.copy(registration = RegistrationPolicy.ValidateIfPresent)
+
 private fun WrpFixture.statusValidator() =
     StatusValidator(StatusListTokenResolver { buildStatusListToken(it, revokedIndex = 1) })
 
@@ -556,8 +596,8 @@ private fun nfcTranscript(handoverSelect: ByteArray = byteArrayOf(1)) = SessionT
 /** A document request carrying the WRPRC of the relying party in `euWrprc`. */
 private suspend fun WrpFixture.docRequestWithWrprc(
     claimNames: List<String> = listOf("given_name", "family_name", "birth_date"),
+    payload: WrpPayload = buildWrpPayload(wrpIdentifier),
 ): DocRequest {
-    val payload = buildWrpPayload(wrpIdentifier)
     val wrprc = coseCompliantSerializer.encodeToByteArray(signWrprcCose(wrprcSigningKeyMaterial, payload))
     return mdocDocRequest(claimNames = claimNames).let {
         val itemsRequest = it.itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = wrprc))

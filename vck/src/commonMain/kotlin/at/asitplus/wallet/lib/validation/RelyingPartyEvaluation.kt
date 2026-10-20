@@ -48,8 +48,9 @@ internal class AccessCertificateEvaluation(
 
 /**
  * Evaluates the WRPAC [chain] of a request, whose [signature] the caller verified with the leaf of [chain]:
- *  - `parsing`: the chain is present, and the leaf carries the identifier of a legal or natural person
- *    (ETSI TS 119 475 V1.2.1, 5.1);
+ *  - `parsing`: the chain is present, and, if [requireIdentifier], the leaf carries the identifier of a legal or
+ *    natural person (ETSI TS 119 475 V1.2.1, 5.1), which WRPRCs are linked to; the reader certificate of a relying
+ *    party without WRPRCs, accepted with [RegistrationPolicy.ValidateIfPresent], need not be a WRPAC;
  *  - `trust`: every certificate is valid and issued by the next one, and the last one is or is issued by one of
  *    [anchors], see [TrustRule.CHAIN_TO_ANCHOR];
  *  - `timeliness`: every certificate is valid at [now];
@@ -64,6 +65,7 @@ internal suspend fun evaluateAccessCertificate(
     anchors: TrustedCertificates?,
     source: String,
     now: Instant,
+    requireIdentifier: Boolean = true,
 ): AccessCertificateEvaluation {
     if (chain.isNullOrEmpty()) {
         // A reader authentication that did not verify yields no chain, which says nothing about the certificate, and
@@ -87,7 +89,7 @@ internal suspend fun evaluateAccessCertificate(
     val identifier = chain.leaf.getWrpIdentifier()
     return AccessCertificateEvaluation(
         checks = AccessCertificateChecks(
-            parsing = identifier.toOutcome(),
+            parsing = if (requireIdentifier) identifier.toOutcome() else Passed,
             signature = signature,
             trust = TrustValidation(
                 outcome = checkTrust(chain, anchors?.invoke(), now, TrustRule.CHAIN_TO_ANCHOR),

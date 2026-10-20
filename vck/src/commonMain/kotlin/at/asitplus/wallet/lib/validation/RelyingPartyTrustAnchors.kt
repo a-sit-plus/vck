@@ -14,7 +14,8 @@ data class RelyingPartyTrustAnchors(
     /**
      * Anchors of the WRPAC providers, e.g. the issuance anchors of the WRPAC providers list (`LoteProfile.WRPAC`).
      * They also establish trust for the client identifier prefixes `x509_hash` and `x509_san_dns`, whose requests
-     * are signed with the access certificate.
+     * are signed with the access certificate. Add the anchors of mdoc readers without WRPRCs here, e.g. of other
+     * wallet providers, to accept them with [RegistrationPolicy.ValidateIfPresent].
      */
     val accessCertificates: TrustedCertificates? = null,
     /** Anchors of the WRPRC providers. */
