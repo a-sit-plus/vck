@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent.relyingParty
 import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
+import at.asitplus.etsi.relyingParty.WrpIntermediary
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.openid.IssuerInfo
 import at.asitplus.openid.IssuerMetadata
@@ -138,6 +139,20 @@ val IssuerMetadataValidatorTest by matrixSuite {
             registrationChecks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Blocked>()
             untrustedMetadata.shouldNotBeNull()
         }
+    }
+
+    "metadata signed by the intermediary the WRPRC names are accepted, but not by another one" {
+        val fixture = buildWrpFixture()
+        val throughIntermediary =
+            fixture.issuerWrprc(identifier = "LEIXG-PROVIDER", intermediary = fixture.wrpIdentifier)
+        val otherIntermediary = fixture.issuerWrprc(identifier = "LEIXG-PROVIDER", intermediary = "LEIXG-OTHER")
+
+        fixture.validate(fixture.signedMetadata(fixture.metadata(wrprc = throughIntermediary))).apply {
+            report.decision shouldBe ACCEPTED
+            issuer.shouldNotBeNull().registrationCertificate.subjectIdentifier shouldBe "LEIXG-PROVIDER"
+        }
+        fixture.validate(fixture.signedMetadata(fixture.metadata(wrprc = otherIntermediary)))
+            .registrationChecks().linkage.shouldBeInstanceOf<CheckOutcome.Failed>()
     }
 
     "issuer_info has to contain exactly one registration_cert, as JWT, for registration" {
@@ -338,9 +353,11 @@ private suspend fun WrpFixture.issuerWrprc(
     identifier: String = wrpIdentifier,
     entitlements: List<String> = listOf(WrpConstants.ENTITLEMENT_PID_PROVIDER),
     statusListIdx: Int = 0,
+    intermediary: String? = null,
 ): String {
     val payload: WrpPayload = buildWrpPayload(identifier, credentials = null, statusListIdx = statusListIdx).copy(
         entitlements = entitlements,
+        intermediary = intermediary?.let { WrpIntermediary(sub = it) },
         purpose = null,
         // present only for attestation providers (ETSI TS 119 475 V1.2.1, B.2.1)
         providesAttestations = PROVIDED_ATTESTATIONS

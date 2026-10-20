@@ -52,6 +52,9 @@ Release 9.0.0 (unreleased):
       `claim` and claim `values` are rejected. Add `WrpConstants.ENTITLEMENTS` (A.2)
     - WRPRC validation no longer requires `name` (B.2.1), but requires an entitlement of A.2 (GEN-5.2.4-03),
       `provides_attestations` only for attestation providers (B.2.1), and `purpose` for presentation (GEN-5.2.4-06)
+    - WRPRC linkage also accepts the WRPAC of the intermediary named in `intermediary.sub`, who presents the WRPRC of
+      the relying party it acts for (ETSI TS 119 475 V1.2.1, 4.5, Table 10), for requests and issuer metadata;
+      `act.sub` of GEN-5.2.4-09 contradicts Table 10 and is not supported
     - BREAKING: Remove `DocRequestInfo.euWrpRegistrarInfo` and the classes `WrpRegistrarInfo` and `WrpIdentifier`:
       CIR (EU) 2026/1731, Annex XII voids the registrar information of ETSI TS 119 472-2 V1.2.1 (ISO/IEC
       18013-REQ-08 to -11), so an ISO mdoc request carries only `euWrprc`
