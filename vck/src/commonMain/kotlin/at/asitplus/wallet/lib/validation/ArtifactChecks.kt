@@ -166,7 +166,10 @@ data class RegistrationCertificateChecks(
     /** `iat`, `exp`, and the maximum validity. */
     val timeliness: CheckOutcome,
     val status: StatusValidation,
-    /** `sub` is the identifier of the access certificate. */
+    /**
+     * `sub` is the identifier of the access certificate, or the access certificate is issued to the intermediary
+     * named in `intermediary.sub` (ETSI TS 119 475 V1.2.1, 4.5, Table 10).
+     */
     val linkage: CheckOutcome,
     /** The requested credentials and claims are registered. */
     val requestAuthorization: CheckOutcome,
