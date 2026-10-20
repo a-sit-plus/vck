@@ -50,6 +50,8 @@ Release 9.0.0 (unreleased):
       providers or attestation providers carry them; `WrpCredential.claim` is `null` when absent;
       `WrpIntermediary.sub` is required. Empty `srv_description`, `entitlements`, `purpose`, `credentials`,
       `claim` and claim `values` are rejected. Add `WrpConstants.ENTITLEMENTS` (A.2)
+    - WRPRC validation no longer requires `name` (B.2.1), but requires an entitlement of A.2 (GEN-5.2.4-03),
+      `provides_attestations` only for attestation providers (B.2.1), and `purpose` for presentation (GEN-5.2.4-06)
     - `WrpPayload.srvDescription` stays an array of arrays (ETSI TS 119 475 V1.2.1, B.2.1), and also decodes from a
       single array of `WrpLangString`s, in JSON and CWT, as one service description; arrays mixed with objects are
       rejected
