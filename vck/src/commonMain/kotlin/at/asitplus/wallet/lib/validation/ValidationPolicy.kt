@@ -110,7 +110,8 @@ sealed interface RequiredClaimsPolicy {
 
     /**
      * The credential has to contain every claim the metadata of its signed type describe as `mandatory`. Without
-     * metadata of that type, the check is blocked.
+     * metadata of that type, the check is blocked. A registered scheme is metadata, including when its claim
+     * descriptions are empty or all optional, in which case there are no mandatory claims and the check passes.
      */
     data object RequireMandatory : RequiredClaimsPolicy
 }
