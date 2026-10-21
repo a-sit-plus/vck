@@ -1,15 +1,16 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -19,10 +20,13 @@ import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oauth2.toResourceServerHttpResponse
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.ReceivedCredential
+import at.asitplus.wallet.lib.validation.CredentialValidationInput
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -33,6 +37,7 @@ import at.asitplus.wallet.lib.PreparedHttpResponse
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Clock
@@ -118,32 +123,31 @@ object TestUtils {
         expectedClaimValue: String,
         credentialKey: CryptoPublicKey,
     ) {
-        val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
-        credentials.shouldBeSingleton().also {
-            it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>().also {
-                it.scheme shouldBe euPidSdJwtScheme
-                ValidatorSdJwt().verifySdJwt(it.signedSdJwtVc, credentialKey).getOrThrow()
-                    .disclosures.values.any {
-                        it.claimName == claimName &&
-                                it.claimValue.jsonPrimitive.content == expectedClaimValue
-                    }
-                    .shouldBeTrue()
+        scheme shouldBe AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+        val input = receivedCredentials.shouldBeSingleton().first()
+            .shouldBeInstanceOf<ReceivedCredential.Decoded>().input
+            .shouldBeInstanceOf<CredentialValidationInput.SdJwtVc>()
+        ValidatorSdJwt().verifySdJwt(SdJwtSigned.parseCatching(input.compact).getOrThrow(), credentialKey).getOrThrow()
+            .disclosures.values.any {
+                it.claimName == claimName &&
+                        it.claimValue.jsonPrimitive.content == expectedClaimValue
             }
-        }
+            .shouldBeTrue()
     }
 
+    /** Verifies the only credential, an mdoc of the EU PID, carries [claimName], and returns it. */
     suspend fun CredentialIssuanceResult.Success.verifyIsoMdocCredential(
         claimName: String,
         expectedClaimValue: String,
-    ) {
-        val euPidScheme = AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
-        credentials.shouldBeSingleton().also {
-            it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>().also {
-                it.scheme shouldBe euPidScheme
-                it.issuerSigned.namespaces?.values?.flatMap { it.entries }?.map { it.value }
-                    ?.any { it.elementIdentifier == claimName && it.elementValue == expectedClaimValue }
-                    ?.shouldNotBeNull()?.shouldBeTrue()
-            }
+    ): IssuerSigned {
+        scheme shouldBe AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
+        val input = receivedCredentials.shouldBeSingleton().first()
+            .shouldBeInstanceOf<ReceivedCredential.Decoded>().input
+            .shouldBeInstanceOf<CredentialValidationInput.IsoMdoc>()
+        return coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.issuerSignedCbor).also {
+            it.namespaces?.values?.flatMap { it.entries }?.map { it.value }
+                ?.any { it.elementIdentifier == claimName && it.elementValue == expectedClaimValue }
+                ?.shouldNotBeNull()?.shouldBeTrue()
         }
     }
 
