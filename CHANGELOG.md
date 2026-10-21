@@ -2,6 +2,7 @@
 
 Release 9.0.0 (unreleased):
 - `HolderDCQLQueryMatchingResult.toDefaultSubmission` selects the first option of a required credential set whose queries all match a credential, instead of always the first option, which produced an empty submission when no credential matched it; it fails if no option of a required credential set is satisfiable
+- `DCQLClaimsPathPointer.query` processes claims path pointers as OpenID4VP 1.0, 7.1.1 specifies: if any selected element is not an object for a name component, or not an array for an index or `null` component, the result is empty, i.e. the claim does not match, instead of continuing with the other selected elements; other options of `claim_sets` that do not request the claim may still match
 - Reduce certificate trust-check allocations by reusing the BasicConstraints OID and encoding the top certificate once when comparing it with trust anchors.
 - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
