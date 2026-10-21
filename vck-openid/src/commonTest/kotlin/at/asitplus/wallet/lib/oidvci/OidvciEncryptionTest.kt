@@ -86,6 +86,14 @@ val OidvciEncryptionTest by matrixSuite {
                     requireRequestEncryption = true, // this is important
                 )
             )
+
+            // The issuer has no certificate, and its status list is not published in this test
+            val integrityOnly = ValidationPolicy(
+                trust = TrustPolicy.IntegrityOnly,
+                status = StatusPolicy.Skip,
+                timeLeeway = 5.minutes,
+                requireTimeliness = true,
+            )
             val oauth2Client = OAuth2Client()
             suspend fun getToken(scope: String): TokenResponseParameters {
                 val authnRequest = oauth2Client.createAuthRequestJar(
@@ -130,14 +138,19 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().apply {
                 this.shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>()
-                it.client.parseCredentialResponse(this, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
-                    .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>().apply {
-                        signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
-                            .also { credentialSubject ->
-                                shouldNotThrowAny {
-                                    AtomicAttribute2023.fromJsonElement(credentialSubject)
-                                }
+                it.client.validateCredentialResponse(
+                    response = this,
+                    request = request,
+                    representation = PLAIN_JWT,
+                    scheme = ConstantIndex.AtomicAttribute2023,
+                    policy = it.integrityOnly
+                ).getOrThrow().shouldBeSingleton().first().credential
+                    .shouldBeInstanceOf<ValidatedCredential.VcJwt>().apply {
+                        credential.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
+                            shouldNotThrowAny {
+                                AtomicAttribute2023.fromJsonElement(credentialSubject)
                             }
+                        }
                     }
             }
         }
@@ -168,20 +181,13 @@ val OidvciEncryptionTest by matrixSuite {
                     policy = policy,
                 ).getOrThrow().shouldBeSingleton().first()
             }
-            // The issuer has no certificate, and its status list is not published in this test
-            val integrityOnly = ValidationPolicy(
-                trust = TrustPolicy.IntegrityOnly,
-                status = StatusPolicy.Skip,
-                timeLeeway = 5.minutes,
-                requireTimeliness = true,
-            )
 
-            issueAndValidate(integrityOnly).apply {
+            issueAndValidate(f.integrityOnly).apply {
                 report.decision shouldBe ValidationDecision.ACCEPTED
                 credential.shouldBeInstanceOf<ValidatedCredential.VcJwt>()
             }
             // Without trust anchors, the issuer can not be authorized
-            issueAndValidate(integrityOnly.copy(trust = TrustPolicy.RequireAuthorizedSigner)).apply {
+            issueAndValidate(f.integrityOnly.copy(trust = TrustPolicy.RequireAuthorizedSigner)).apply {
                 report.decision shouldBe ValidationDecision.REJECTED
                 credential.shouldBeNull()
             }
@@ -292,8 +298,14 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().apply {
                 shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>()
-                client.parseCredentialResponse(this, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
-                    .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>()
+                client.validateCredentialResponse(
+                    response = this,
+                    request = request,
+                    representation = PLAIN_JWT,
+                    scheme = ConstantIndex.AtomicAttribute2023,
+                    policy = it.integrityOnly
+                ).getOrThrow().shouldBeSingleton().first().credential
+                    .shouldBeInstanceOf<ValidatedCredential.VcJwt>()
             }
         }
 
@@ -422,6 +434,7 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().shouldBeSingleton().first()
+
             suspend fun createResponse(request: OpenId4VciClient.CredentialRequest) = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
                 params = request,
@@ -449,13 +462,17 @@ val OidvciEncryptionTest by matrixSuite {
 
         test("another wallet instance can decrypt through a shared ephemeral key store") {
             val keyStore = DefaultMapStore<String, String>()
+            // Both instances belong to the same wallet, so they share its holder key, to which the credential is bound
+            val holderKey = EphemeralKeyWithoutCert()
             val requestClient = OpenId4VciClient(
+                keyMaterial = holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true,
                     ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(keyStore),
                 )
             )
             val responseClient = OpenId4VciClient(
+                keyMaterial = holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true,
                     ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(keyStore),
@@ -477,9 +494,14 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
 
-            responseClient.parseCredentialResponse(
-                response, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023
-            ).getOrThrow()
+            responseClient.validateCredentialResponse(
+                response = response,
+                request = request,
+                representation = PLAIN_JWT,
+                scheme = ConstantIndex.AtomicAttribute2023,
+                policy = it.integrityOnly
+            ).getOrThrow().shouldBeSingleton().first().credential
+                .shouldBeInstanceOf<ValidatedCredential.VcJwt>()
         }
 
         test("wallet omits optional response encryption when no algorithm is shared") {
