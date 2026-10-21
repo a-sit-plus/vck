@@ -343,7 +343,9 @@ a credential that only fails checks the policy may relax (`isIntactCredential`),
 - The claims a credential type requires come from its metadata, selected by the type signed into the credential
   through a `RequiredClaimsResolver`, by default the `CredentialMetadataRegistry`s and the schemes of
   `AttributeIndex`. A type without metadata blocks `requiredClaims`, it never passes as a type without required claims.
-  Presentations disclose selectively, so the check does not apply to presented credentials.
+  A registered scheme supplies metadata even with empty or entirely optional claim descriptions; it then declares
+  no mandatory claims and the check passes. Presentations disclose selectively, so the check does not apply to
+  presented credentials.
 - Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
   `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy
   results of the OpenID4VP verifiers) delegate to the new validation under a compatibility policy or the configured

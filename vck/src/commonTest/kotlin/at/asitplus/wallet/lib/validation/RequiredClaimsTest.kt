@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ExtractedIsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.StaticCredentialMetadataRegistry
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
@@ -30,6 +31,8 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 
 private val requireMandatory = strictPolicy.copy(requiredClaims = RequiredClaimsPolicy.RequireMandatory)
 
@@ -148,6 +151,87 @@ val RequiredClaimsTest by matrixSuite {
         )
     }
 
+    "mandatory array members are checked in every branch" - {
+        val path = OpenId4VciClaimsPathPointer("degrees") + null + "type"
+        listOf(
+            "all members present" to ("""{"degrees":[{"type":"x"},{"type":"y"}]}""" to true),
+            "missing member" to ("""{"degrees":[{"type":"x"},{}]}""" to false),
+            "null member" to ("""{"degrees":[{"type":"x"},{"type":null}]}""" to false),
+            "wrong member type" to ("""{"degrees":[{"type":"x"},42]}""" to false),
+            "empty array has no members to require" to ("""{"degrees":[]}""" to true),
+            "absent array" to ("""{}""" to false),
+        ).forEach { (name, case) ->
+            name {
+                val result = checkClaims(case.first, RequiredClaim(path))
+                if (case.second) result.outcome shouldBe Passed
+                else {
+                    result.outcome.shouldBeInstanceOf<Failed>()
+                    result.missing shouldContainExactly listOf(path)
+                }
+            }
+        }
+    }
+
+    "nested array branches cannot hide a missing mandatory child" {
+        val path = OpenId4VciClaimsPathPointer("degrees") + null + "courses" + null + "type"
+        val result = checkClaims(
+            """{"degrees":[{"courses":[{"type":"x"}]},{"courses":[{"type":"y"},{}]}]}""",
+            RequiredClaim(path),
+        )
+
+        result.outcome.shouldBeInstanceOf<Failed>()
+        result.missing shouldContainExactly listOf(path)
+    }
+
+    "indexed paths require the specified element even in an empty array" {
+        val path = OpenId4VciClaimsPathPointer("degrees") + 0u + "type"
+        checkClaims("""{"degrees":[]}""", RequiredClaim(path)).outcome.shouldBeInstanceOf<Failed>()
+        checkClaims("""{"degrees":[{"type":"x"}]}""", RequiredClaim(path)).outcome shouldBe Passed
+    }
+
+    "optional ancestors are evaluated separately in each array branch" - {
+        val condition = OpenId4VciClaimsPathPointer("degrees") + null + "address"
+        val path = condition + "country"
+        listOf(
+            "absent optional ancestor in another member" to
+                    ("""{"degrees":[{"address":{"country":"AT"}},{}]}""" to true),
+            "missing mandatory child of a present optional ancestor" to
+                    ("""{"degrees":[{"address":{"country":"AT"}},{"address":{}}]}""" to false),
+            "all optional ancestors absent" to ("""{"degrees":[{},{}]}""" to true),
+        ).forEach { (name, case) ->
+            name {
+                val result = checkClaims(case.first, RequiredClaim(path, condition))
+                if (case.second) result.outcome shouldBe Passed
+                else result.outcome.shouldBeInstanceOf<Failed>()
+            }
+        }
+    }
+
+    "a registered scheme with default-empty descriptions declares no mandatory claims" {
+        val registered = object : SdJwtCredentialScheme {
+            override val sdJwtType = "urn:test:empty-claims:${uuid4()}"
+        }
+        LibraryInitializer.registerExtensionLibrary(registered)
+
+        RequiredClaimsResolver.Default.resolve(registered.sdJwtType, SD_JWT).shouldNotBeNull()
+            .claims.shouldBeEmpty()
+        RequiredClaimsResolver.Default.check(
+            RequiredClaimsPolicy.RequireMandatory, registered.sdJwtType, SD_JWT, emptyList(),
+        ) { Json.parseToJsonElement("{}").jsonObject }.outcome shouldBe Passed
+    }
+
+    "a registered scheme with only optional claims declares no mandatory claims" {
+        val registered = object : SdJwtCredentialScheme {
+            override val sdJwtType = "urn:test:optional-claims:${uuid4()}"
+            override val claimDescriptions = setOf(optional("name"))
+        }
+        LibraryInitializer.registerExtensionLibrary(registered)
+
+        RequiredClaimsResolver.Default.check(
+            RequiredClaimsPolicy.RequireMandatory, registered.sdJwtType, SD_JWT, emptyList(),
+        ) { Json.parseToJsonElement("{}").jsonObject }.outcome shouldBe Passed
+    }
+
     "the default resolver selects the mandatory claims of registered metadata, naming their document" {
         val vct = SdJwtVcType("urn:test:required-claims:${uuid4()}")
         val loadedFrom = "https://metadata.example.test/${uuid4()}/sd-jwt.json"
@@ -184,3 +268,8 @@ private fun claimInformation(name: String, mandatory: Boolean?) = SdJwtTypeMetad
     path = SdJwtTypeMetadataClaimInformationPath(listOf(SdJwtTypeMetadataClaimInformationPathSegmentName(name))),
     isMandatory = mandatory,
 )
+
+private suspend fun checkClaims(json: String, vararg claims: RequiredClaim): RequiredClaimsValidation =
+    RequiredClaimsResolver { identifier, _ -> RequiredClaims(identifier, claims.toList()) }.check(
+        RequiredClaimsPolicy.RequireMandatory, "urn:test:array-claims", SD_JWT, emptyList(),
+    ) { Json.parseToJsonElement(json).jsonObject }

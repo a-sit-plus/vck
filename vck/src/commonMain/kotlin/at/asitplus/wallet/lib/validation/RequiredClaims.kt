@@ -4,8 +4,6 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentIndex
 import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentString
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -19,6 +17,7 @@ import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
 import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -68,7 +67,8 @@ fun CredentialScheme.requiredClaims(
 /**
  * Resolves the claims a credential type requires, by the identifier signed into the credential, see
  * [CredentialValidator]. Returns `null` if no metadata of that type are known, which blocks the check: a type without
- * metadata is not a type without required claims.
+ * metadata is not a type without required claims. A registered scheme supplies metadata even when its claim
+ * descriptions are empty or all optional; in either case it declares no mandatory claims.
  */
 fun interface RequiredClaimsResolver {
     suspend fun resolve(credentialIdentifier: String, representation: CredentialRepresentation): RequiredClaims?
@@ -77,7 +77,8 @@ fun interface RequiredClaimsResolver {
      * Resolves through the [CredentialMetadataRegistry][at.asitplus.wallet.lib.data.CredentialMetadataRegistry]s of
      * [AttributeIndex] first, naming the document the metadata were loaded from as source, then through the schemes
      * registered in code. Matches identifiers exactly, unlike [AttributeIndex.resolveIsoDoctype], and never falls back
-     * to a scheme without metadata.
+     * to a scheme without metadata. Registered schemes with empty or entirely optional claim descriptions declare
+     * no mandatory claims, so the check passes for them.
      */
     object Default : RequiredClaimsResolver {
         override suspend fun resolve(
@@ -135,26 +136,27 @@ internal suspend fun RequiredClaimsResolver.check(
     return RequiredClaimsValidation(outcome, identifier, required.source, missing)
 }
 
-private fun RequiredClaim.isSatisfiedBy(json: JsonElement): Boolean =
-    condition?.let { !it.selectsAny(json) } == true || path.selectsAny(json)
-
 /**
- * Whether this path selects a claim, processed as a claims path pointer (OpenID4VP 1.0, 7), over the complete payload
- * with every disclosure (draft-ietf-oauth-sd-jwt-vc-19, 5.6): a `null` value does not count as included.
+ * Keep array branches separate: every selected element must contain the mandatory descendant unless its optional
+ * ancestor is absent in that same branch. Querying only existing leaves would lose branches with missing claims.
+ * An empty array has no elements whose descendants need checking; requiring an element needs an indexed path.
+ * A JSON null value, like a missing property, does not count as an included claim.
  */
-private fun OpenId4VciClaimsPathPointer.selectsAny(json: JsonElement): Boolean =
-    toDcql().query(json).any { it.value != JsonNull }
+private fun RequiredClaim.isSatisfiedBy(json: JsonElement): Boolean {
+    fun visit(node: JsonElement?, depth: Int): Boolean {
+        if (node == null || node == JsonNull) return condition?.let { depth <= it.size } == true
+        if (depth == path.size) return true
+        return when (val segment = path[depth]) {
+            null -> (node as? JsonArray)?.all { visit(it, depth + 1) } == true
+            is OpenId4VciClaimsPathPointerSegmentString ->
+                node is JsonObject && visit(node[segment.string], depth + 1)
+
+            is OpenId4VciClaimsPathPointerSegmentIndex ->
+                node is JsonArray && visit(node.getOrNull(segment.uint.toInt()), depth + 1)
+        }
+    }
+    return visit(json, 0)
+}
 
 private fun OpenId4VciClaimsPathPointer.isProperPrefixOf(other: OpenId4VciClaimsPathPointer) =
     size < other.size && other.subList(0, size) == this
-
-private fun OpenId4VciClaimsPathPointer.toDcql() = DCQLClaimsPathPointer(
-    *map {
-        when (it) {
-            null -> DCQLClaimsPathPointerSegment.NullSegment
-            is OpenId4VciClaimsPathPointerSegmentString -> DCQLClaimsPathPointerSegment.NameSegment(it.string)
-            is OpenId4VciClaimsPathPointerSegmentIndex -> DCQLClaimsPathPointerSegment.IndexSegment(it.uint)
-            else -> throw IllegalArgumentException("Unknown claims path pointer segment $it")
-        }
-    }.toTypedArray()
-)
