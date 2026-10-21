@@ -59,6 +59,12 @@ internal class Issuance(
         clock = clock,
     )
 
+    /**
+     * A validator trusting only the authorities of another issuance, so that it rejects the credentials of this one for
+     * their untrusted issuer and status list signer, although they are intact.
+     */
+    suspend fun untrustingValidator() = issuance().validator()
+
     suspend fun issue(representation: CredentialRepresentation): IssuedCredential = issuer.issueCredential(
         DummyCredentialDataProvider.getCredential(holderKey.publicKey, scheme, representation).getOrThrow()
     ).getOrThrow()
