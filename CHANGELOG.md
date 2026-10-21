@@ -120,7 +120,10 @@ Release 9.0.0 (unreleased):
       credentials in `getValidCredentialsByPriority()`, demoting only verified problems. Deprecate the constructor
       taking `validator`, `validatorVcJws`, `validatorSdJwt`, `validatorMdoc` (which no longer take effect), and
       `trustedIssuers` (adapted as anchors for every credential type)
-    - Add `OpenId4VciClient.validateCredentialResponse(...)`, reporting every credential of a (batch) response
+    - Add `OpenId4VciClient.decodeCredentialResponse(response, request, representation)`, decoding every credential
+      of a (batch) response into a `ReceivedCredential`, also one that can not be decoded, and
+      `ReceivedCredential.prepareCredentialStorage(holder, scheme, policy, renewalInfo)`, validating it for storage by
+      the `HolderAgent`, which reports a credential that can not be decoded as rejected
     - Add `ValidationPolicy.requiredClaims` (`RequiredClaimsPolicy.Skip` by default, or `RequireMandatory`) and the
       check `CredentialChecks.requiredClaims` (`RequiredClaimsValidation`, failing with `MissingRequiredClaimException`): whether a
       credential received on its own contains every claim the metadata of its signed type describe as `mandatory`
@@ -233,8 +236,8 @@ Release 9.0.0 (unreleased):
       `HolderBindingPolicy.None`): `CredentialValidator.validate(input, policy, context)`,
       `CredentialValidator.rejectUndecodable(cause, policy)`, and `ValidationReport.credential(checks, policy,
       evaluatedAt)` no longer take a `HolderBindingPolicy`. In a presentation, the presentation decides the holder
-      binding of its credentials; `HolderAgent.storeCredentialWithReport` and
-      `OpenId4VciClient.validateCredentialResponse` always require the holder's key
+      binding of its credentials; `HolderAgent.storeCredentialWithReport` and `HolderAgent.prepareCredentialStorage`
+      always require the holder's key
     - `PresentationValidationResult.rejection()` takes the requirements from the report instead of a policy. Rejection
       messages name the check, e.g. "The issuerSignature check did not pass", and disclosed items by index
     - Add `CredentialToJsonConverter.toJsonElement(ValidatedCredential)`, `ValidatedCredential.credentialIdentifier`,
@@ -402,8 +405,9 @@ Release 9.0.0 (unreleased):
       another offer URL or a redirect in its place is rejected
     - Deprecate `WalletService.parseCredentialOffer`, which retrieved offers passed by reference with the
       `remoteResourceRetriever` of `OpenId4VciClient`; that constructor parameter is only used by the deprecated method
-    - Deprecate `OpenId4VciClient.parseCredentialResponse` without the originating `CredentialRequest`, which accepts a
-      plain response even if the request asked for an encrypted one; pass the request
+    - Deprecate `OpenId4VciClient.parseCredentialResponse`, which decodes credentials without validating them: use
+      `decodeCredentialResponse` and `ReceivedCredential.prepareCredentialStorage`. The overloads without the
+      originating `CredentialRequest` also accept a plain response even if the request asked for an encrypted one
     - Add `OpenId4VciProtocolClient.createCredential`, whose proof JWTs name the `client_id` of its `OAuth2Client` as the
       issuer (OID4VCI 1.0 Appendix F.1); `OpenId4VciClient.createCredential` takes it as the new parameter `clientId`
     - Deprecate `OpenId4VciClient.clientId`, which only remains the default for `OpenId4VciClient.createCredential`;

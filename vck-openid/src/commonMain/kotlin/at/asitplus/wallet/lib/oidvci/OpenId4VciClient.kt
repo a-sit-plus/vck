@@ -74,12 +74,7 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer.CredentialResponse
-import at.asitplus.wallet.lib.validation.CredentialValidationContext
 import at.asitplus.wallet.lib.validation.CredentialValidationInput
-import at.asitplus.wallet.lib.validation.CredentialValidationResult
-import at.asitplus.wallet.lib.validation.CredentialValidator
-import at.asitplus.wallet.lib.validation.HolderBindingPolicy
-import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -146,11 +141,6 @@ class OpenId4VciClient @JvmOverloads constructor(
     private val selectProofJwtKeyBinding: (suspend (KeyMaterial) -> Pair<JsonWebKey?, String?>) = { key ->
         Pair(key.jsonWebKey, null)
     },
-    /**
-     * Validates the credentials of a response in [validateCredentialResponse]: configure it with the trust anchors
-     * per credential type and the status list token resolver.
-     */
-    private val credentialValidator: CredentialValidator = CredentialValidator(),
     /** Clock to use for proof generation. */
     private val clock: Clock = Clock.System,
 ) {
@@ -454,7 +444,8 @@ class OpenId4VciClient @JvmOverloads constructor(
      */
     @Deprecated(
         "Without the originating credential request, a plain response is accepted even if the request asked for an " +
-                "encrypted one: pass the CredentialRequest to parseCredentialResponse or validateCredentialResponse",
+                "encrypted one: pass the CredentialRequest to decodeCredentialResponse, and prepare the storage of " +
+                "each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which validates it",
     )
     suspend fun parseCredentialResponse(
         response: String,
@@ -471,6 +462,11 @@ class OpenId4VciClient @JvmOverloads constructor(
     }
 
     /** Parses a response and binds its encryption to the exact [request] that caused it. */
+    @Deprecated(
+        "Decodes the credentials without validating them: decode them with decodeCredentialResponse, and prepare " +
+                "the storage of each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which " +
+                "validates it",
+    )
     suspend fun parseCredentialResponse(
         response: String,
         isEncrypted: Boolean,
@@ -478,6 +474,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         representation: CredentialRepresentation,
         scheme: CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
+        @Suppress("DEPRECATION")
         parseCredentialResponse(
             response = response.toCredentialResponse(isEncrypted),
             request = request,
@@ -487,57 +484,44 @@ class OpenId4VciClient @JvmOverloads constructor(
     }
 
     /**
-     * Parses a response like [parseCredentialResponse], and validates every credential in it with
-     * [credentialValidator] under [policy], bound to [keyMaterial], whose possession the request proved, and of the
-     * type of [scheme] in [representation]. Results in one [CredentialValidationResult] per credential, also for one
-     * that can not be decoded, so that no rejected member of a batch goes unnoticed. Fails only for the response
-     * itself, e.g. if its encryption does not match [request] or it can not be decrypted.
+     * Decodes [response] received from the credential issuer like [decodeCredentialResponse], reading it as a compact
+     * JWE if [isEncrypted], i.e. if its media type is `application/jwt`.
      */
-    suspend fun validateCredentialResponse(
+    suspend fun decodeCredentialResponse(
         response: String,
         isEncrypted: Boolean,
         request: CredentialRequest,
         representation: CredentialRepresentation,
-        scheme: CredentialScheme,
-        policy: ValidationPolicy,
-    ): KmmResult<List<CredentialValidationResult>> = catching {
-        validateCredentialResponse(
+    ): KmmResult<List<ReceivedCredential>> = catching {
+        decodeCredentialResponse(
             response = response.toCredentialResponse(isEncrypted),
             request = request,
-            representation = representation,
-            scheme = scheme,
-            policy = policy
+            representation = representation
         ).getOrThrow()
     }
 
     /**
-     * Parses a response like [parseCredentialResponse], and validates every credential in it with
-     * [credentialValidator] under [policy], bound to [keyMaterial], whose possession the request proved, and of the
-     * type of [scheme] in [representation]. Results in one [CredentialValidationResult] per credential, also for one
-     * that can not be decoded, so that no rejected member of a batch goes unnoticed. Fails only for the response
-     * itself, e.g. if its encryption does not match [request] or it can not be decrypted.
+     * Decodes [response] received from the credential issuer for [request] into one [ReceivedCredential] per
+     * credential, encoded in [representation], also for one that can not be decoded, so that no member of a batch goes
+     * unnoticed.
+     * Validates nothing: prepare the storage of each one with [ReceivedCredential.prepareCredentialStorage], which
+     * validates it with the holder's key and validator.
+     *
+     * Fails only for the response itself: if it is not encrypted exactly when [request] asked for an encrypted
+     * response, or if it can not be decrypted.
      */
-    suspend fun validateCredentialResponse(
+    suspend fun decodeCredentialResponse(
         response: CredentialResponse,
         request: CredentialRequest,
         representation: CredentialRepresentation,
-        scheme: CredentialScheme,
-        policy: ValidationPolicy,
-    ): KmmResult<List<CredentialValidationResult>> = catching {
-        val identifier = when (representation) {
-            PLAIN_JWT -> (scheme as? VcJwtCredentialScheme)?.vcType
-            SD_JWT -> (scheme as? SdJwtCredentialScheme)?.sdJwtType
-            ISO_MDOC -> (scheme as? IsoMdocCredentialScheme)?.isoDocType
-        } ?: throw IllegalArgumentException("Scheme $scheme does not support $representation")
-        val context = CredentialValidationContext(
-            expectedHolderKey = keyMaterial.publicKey,
-            expectedCredentialIdentifier = identifier,
-        )
-        val bound = policy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey)
-        decryptCredentialResponse(response, request).extractCredentials().map { credential ->
-            catchingUnwrapped { credential.toValidationInput(representation) }.fold(
-                onSuccess = { credentialValidator.validate(it, bound, context) },
-                onFailure = { credentialValidator.rejectUndecodable(it, bound) },
+    ): KmmResult<List<ReceivedCredential>> = catching {
+        decryptCredentialResponse(response, request).credentials.orEmpty().map { credential ->
+            catchingUnwrapped {
+                credential.credentialString?.toValidationInput(representation)
+                    ?: throw IllegalArgumentException("Credential is not a string (OpenID4VCI 1.0, Appendix A)")
+            }.fold(
+                onSuccess = { ReceivedCredential.Decoded(it) },
+                onFailure = { ReceivedCredential.Undecodable(it) },
             )
         }
     }
@@ -548,7 +532,8 @@ class OpenId4VciClient @JvmOverloads constructor(
      */
     @Deprecated(
         "Without the originating credential request, a plain response is accepted even if the request asked for an " +
-                "encrypted one: pass the CredentialRequest to parseCredentialResponse or validateCredentialResponse",
+                "encrypted one: pass the CredentialRequest to decodeCredentialResponse, and prepare the storage of " +
+                "each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which validates it",
     )
     suspend fun parseCredentialResponse(
         response: CredentialResponse,
@@ -563,6 +548,11 @@ class OpenId4VciClient @JvmOverloads constructor(
     }
 
     /** Parses a response and binds its encryption to the exact [request] that caused it. */
+    @Deprecated(
+        "Decodes the credentials without validating them: decode them with decodeCredentialResponse, and prepare " +
+                "the storage of each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which " +
+                "validates it",
+    )
     suspend fun parseCredentialResponse(
         response: CredentialResponse,
         request: CredentialRequest,

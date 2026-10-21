@@ -19,6 +19,7 @@ import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -67,7 +68,11 @@ val OidvciEncryptionAlgorithmsTest by matrixSuite {
                 ),
             )
             val state = uuid4().toString()
+            // The client proves possession of the holder's key, so the holder accepts the credentials bound to it
+            val holderKey = EphemeralKeyWithoutCert()
+            val holder = HolderAgent(holderKey)
             val client = OpenId4VciClient(
+                keyMaterial = holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = true, // this is important
@@ -129,13 +134,9 @@ val OidvciEncryptionAlgorithmsTest by matrixSuite {
                 shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>().apply {
                     response.header.encryption shouldBe it.issuerEnc
                 }
-                it.client.validateCredentialResponse(
-                    response = this,
-                    request = request,
-                    representation = PLAIN_JWT,
-                    scheme = ConstantIndex.AtomicAttribute2023,
-                    policy = it.integrityOnly
-                ).getOrThrow().shouldBeSingleton().first().credential
+                it.client.decodeCredentialResponse(this, request, PLAIN_JWT).getOrThrow().shouldBeSingleton().first()
+                    .prepareCredentialStorage(it.holder, ConstantIndex.AtomicAttribute2023, it.integrityOnly)
+                    .getOrThrow().validation.credential
                     .shouldBeInstanceOf<ValidatedCredential.VcJwt>().apply {
                         credential.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                             shouldNotThrowAny {

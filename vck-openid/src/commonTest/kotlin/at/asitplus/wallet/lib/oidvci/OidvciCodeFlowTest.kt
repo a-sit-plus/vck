@@ -27,7 +27,10 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -45,6 +48,10 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidationDecision
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -56,6 +63,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.maps.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeEmpty
@@ -65,6 +73,9 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Duration.Companion.minutes
 
 val OidvciCodeFlowTest by matrixSuite {
 
@@ -690,12 +701,26 @@ val OidvciCodeFlowTest by matrixSuite {
         }
 
         // An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4)
-        "mdoc of a credential response is parsed from base64url" { it ->
+        "every credential of a response is decoded and prepared for storage on its own" { it ->
+            // An mdoc is verified with the certificate in its `x5chain`, so the issuer needs one
+            it.issuer = OpenId4VciServer(
+                authorizationService = it.authorizationService,
+                issuer = IssuerAgent(
+                    keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                    identifier = "https://issuer.example.com".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                credentialSchemes = AttributeIndex.schemeSet,
+                credentialSchemeMapper = it.mapper,
+            )
+            // The client proves possession of the holder's key, so the holder accepts the credentials bound to it
+            val holderKey = EphemeralKeyWithoutCert()
+            val client = OpenId4VciClient(keyMaterial = holderKey)
             val requestOptions = RequestOptions(AttributeIndex.resolveIdentifier(MDL_DOCTYPE, ISO_MDOC), ISO_MDOC)
-            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+            val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
-            val request = it.client.createCredential(
+            val request = client.createCredential(
                 tokenResponse = token,
                 metadata = it.issuer.metadata,
                 credentialFormat = credentialFormat,
@@ -706,11 +731,42 @@ val OidvciCodeFlowTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
+            val issued = response.response.credentials.shouldNotBeNull().shouldBeSingleton().first()
+            // An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4)
+            val batch = OpenId4VciServer.CredentialResponse.Plain(
+                response.response.copy(
+                    credentials = setOf(
+                        issued,
+                        CredentialResponseSingleCredential(JsonPrimitive("%% not base64url %%")),
+                        CredentialResponseSingleCredential(JsonObject(emptyMap())),
+                    )
+                )
+            )
+            // The issuer's certificate is self-signed, and its status list is not published in this test
+            val integrityOnly = ValidationPolicy(
+                trust = TrustPolicy.IntegrityOnly,
+                status = StatusPolicy.Skip,
+                timeLeeway = 5.minutes,
+                requireTimeliness = true,
+            )
 
-            it.client.parseCredentialResponse(response, request, ISO_MDOC, requestOptions.credentialScheme)
-                .getOrThrow().shouldBeSingleton().first()
-                .shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
+            val received = client.decodeCredentialResponse(batch, request, ISO_MDOC).getOrThrow()
+            received.shouldHaveSize(3)
+            received[0].shouldBeInstanceOf<ReceivedCredential.Decoded>()
+            received[1].shouldBeInstanceOf<ReceivedCredential.Undecodable>()
+            received[2].shouldBeInstanceOf<ReceivedCredential.Undecodable>()
+
+            val prepared = received.map {
+                it.prepareCredentialStorage(HolderAgent(holderKey), requestOptions.credentialScheme, integrityOnly)
+                    .getOrThrow()
+            }
+            prepared[0].validation.report.decision shouldBe ValidationDecision.ACCEPTED
+            prepared[0].credential.shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
                 .issuerSigned.issuerAuth.payload.shouldNotBeNull().docType shouldBe MDL_DOCTYPE
+            prepared.drop(1).forEach {
+                it.validation.report.decision shouldBe ValidationDecision.REJECTED
+                it.credential.shouldBeNull()
+            }
         }
     }
 }

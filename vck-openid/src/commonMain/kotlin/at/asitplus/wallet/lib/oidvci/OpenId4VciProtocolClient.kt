@@ -345,6 +345,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         tokenResponse = tokenResponse,
         toProtocolRequest = ProtocolRequest::Credential,
         parse = { response ->
+            @Suppress("DEPRECATION")
             vciClient.parseCredentialResponse(
                 response = response.body,
                 isEncrypted = response.headers.isJwt(),
