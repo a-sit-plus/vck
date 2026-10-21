@@ -27,7 +27,9 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.PreparedCredentialStorage
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -40,7 +42,6 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.utils.DefaultMapStore
-import at.asitplus.wallet.lib.validation.CredentialValidationResult
 import at.asitplus.wallet.lib.validation.StatusPolicy
 import at.asitplus.wallet.lib.validation.TrustPolicy
 import at.asitplus.wallet.lib.validation.ValidatedCredential
@@ -80,7 +81,11 @@ val OidvciEncryptionTest by matrixSuite {
                 ),
             )
             val state = uuid4().toString()
+            // The client proves possession of the holder's key, so the holder accepts the credentials bound to it
+            val holderKey = EphemeralKeyWithoutCert()
+            val holder = HolderAgent(holderKey)
             val client = OpenId4VciClient(
+                keyMaterial = holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = true, // this is important
@@ -138,13 +143,7 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().apply {
                 this.shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>()
-                it.client.validateCredentialResponse(
-                    response = this,
-                    request = request,
-                    representation = PLAIN_JWT,
-                    scheme = ConstantIndex.AtomicAttribute2023,
-                    policy = it.integrityOnly
-                ).getOrThrow().shouldBeSingleton().first().credential
+                it.client.prepareOnlyCredential(this, request, it.holder, it.integrityOnly).validation.credential
                     .shouldBeInstanceOf<ValidatedCredential.VcJwt>().apply {
                         credential.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                             shouldNotThrowAny {
@@ -155,9 +154,9 @@ val OidvciEncryptionTest by matrixSuite {
             }
         }
 
-        test("wallet validates every credential of the decrypted credential response") { f ->
+        test("holder validates every credential of the decrypted credential response") { f ->
             // The response is decrypted with an ephemeral key of its request, so each validation needs an issuance
-            suspend fun issueAndValidate(policy: ValidationPolicy): CredentialValidationResult {
+            suspend fun issueAndValidate(policy: ValidationPolicy): PreparedCredentialStorage {
                 val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
                 val credentialFormat = f.client.selectSupportedCredentialFormat(requestOptions, f.issuer.metadata)
                     .shouldNotBeNull()
@@ -173,23 +172,18 @@ val OidvciEncryptionTest by matrixSuite {
                     params = request,
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
-                return f.client.validateCredentialResponse(
-                    response = response,
-                    request = request,
-                    representation = PLAIN_JWT,
-                    scheme = ConstantIndex.AtomicAttribute2023,
-                    policy = policy,
-                ).getOrThrow().shouldBeSingleton().first()
+                return f.client.prepareOnlyCredential(response, request, f.holder, policy)
             }
 
             issueAndValidate(f.integrityOnly).apply {
-                report.decision shouldBe ValidationDecision.ACCEPTED
-                credential.shouldBeInstanceOf<ValidatedCredential.VcJwt>()
+                validation.report.decision shouldBe ValidationDecision.ACCEPTED
+                validation.credential.shouldBeInstanceOf<ValidatedCredential.VcJwt>()
+                credential.shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>()
             }
             // Without trust anchors, the issuer can not be authorized
             issueAndValidate(f.integrityOnly.copy(trust = TrustPolicy.RequireAuthorizedSigner)).apply {
-                report.decision shouldBe ValidationDecision.REJECTED
-                credential.shouldBeNull()
+                validation.report.decision shouldBe ValidationDecision.REJECTED
+                validation.credential.shouldBeNull()
             }
         }
 
@@ -275,6 +269,7 @@ val OidvciEncryptionTest by matrixSuite {
                 encryptionService = IssuerEncryptionService(), // requires nothing, but supports both
             )
             val client = OpenId4VciClient(
+                keyMaterial = it.holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = false, // this is important
@@ -298,13 +293,7 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().apply {
                 shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>()
-                client.validateCredentialResponse(
-                    response = this,
-                    request = request,
-                    representation = PLAIN_JWT,
-                    scheme = ConstantIndex.AtomicAttribute2023,
-                    policy = it.integrityOnly
-                ).getOrThrow().shouldBeSingleton().first().credential
+                client.prepareOnlyCredential(this, request, it.holder, it.integrityOnly).validation.credential
                     .shouldBeInstanceOf<ValidatedCredential.VcJwt>()
             }
         }
@@ -416,11 +405,10 @@ val OidvciEncryptionTest by matrixSuite {
             @Suppress("DEPRECATION")
             it.client.parseCredentialResponse(response, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                 .isFailure shouldBe true
-            it.client.parseCredentialResponse(response, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
-                .getOrThrow()
+            it.client.decodeCredentialResponse(response, request, PLAIN_JWT).getOrThrow()
             // another wallet, which never announced that key, must not be able to read the credential
             OpenId4VciClient(encryptionService = WalletEncryptionService(requestResponseEncryption = true))
-                .parseCredentialResponse(response, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
+                .decodeCredentialResponse(response, request, PLAIN_JWT)
                 .isFailure shouldBe true
         }
 
@@ -447,18 +435,10 @@ val OidvciEncryptionTest by matrixSuite {
             val firstResponse = createResponse(firstRequest)
             val secondResponse = createResponse(secondRequest)
 
-            it.client.parseCredentialResponse(
-                secondResponse, firstRequest, PLAIN_JWT, ConstantIndex.AtomicAttribute2023
-            ).isFailure shouldBe true
-            it.client.parseCredentialResponse(
-                firstResponse, firstRequest, PLAIN_JWT, ConstantIndex.AtomicAttribute2023
-            ).getOrThrow()
-            it.client.parseCredentialResponse(
-                secondResponse, secondRequest, PLAIN_JWT, ConstantIndex.AtomicAttribute2023
-            ).getOrThrow()
-            it.client.parseCredentialResponse(
-                secondResponse, secondRequest, PLAIN_JWT, ConstantIndex.AtomicAttribute2023
-            ).isFailure shouldBe true
+            it.client.decodeCredentialResponse(secondResponse, firstRequest, PLAIN_JWT).isFailure shouldBe true
+            it.client.decodeCredentialResponse(firstResponse, firstRequest, PLAIN_JWT).getOrThrow()
+            it.client.decodeCredentialResponse(secondResponse, secondRequest, PLAIN_JWT).getOrThrow()
+            it.client.decodeCredentialResponse(secondResponse, secondRequest, PLAIN_JWT).isFailure shouldBe true
         }
 
         test("another wallet instance can decrypt through a shared ephemeral key store") {
@@ -495,14 +475,8 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
 
-            responseClient.validateCredentialResponse(
-                response = response,
-                request = request,
-                representation = PLAIN_JWT,
-                scheme = ConstantIndex.AtomicAttribute2023,
-                policy = it.integrityOnly
-            ).getOrThrow().shouldBeSingleton().first().credential
-                .shouldBeInstanceOf<ValidatedCredential.VcJwt>()
+            responseClient.prepareOnlyCredential(response, request, HolderAgent(holderKey), it.integrityOnly)
+                .validation.credential.shouldBeInstanceOf<ValidatedCredential.VcJwt>()
         }
 
         test("wallet omits optional response encryption when no algorithm is shared") {
@@ -585,3 +559,13 @@ val OidvciEncryptionTest by matrixSuite {
     }
 
 }
+
+/** Decodes the only credential of [response], and validates it for storage by [holder], see [ReceivedCredential]. */
+private suspend fun OpenId4VciClient.prepareOnlyCredential(
+    response: OpenId4VciServer.CredentialResponse,
+    request: OpenId4VciClient.CredentialRequest,
+    holder: HolderAgent,
+    policy: ValidationPolicy,
+): PreparedCredentialStorage = decodeCredentialResponse(response, request, PLAIN_JWT).getOrThrow()
+    .shouldBeSingleton().first()
+    .prepareCredentialStorage(holder, ConstantIndex.AtomicAttribute2023, policy).getOrThrow()
