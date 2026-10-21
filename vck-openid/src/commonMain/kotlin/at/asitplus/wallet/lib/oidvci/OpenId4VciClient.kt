@@ -459,7 +459,11 @@ class OpenId4VciClient @JvmOverloads constructor(
         representation: CredentialRepresentation,
         scheme: CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        parseCredentialResponse(response.toCredentialResponse(isEncrypted), representation, scheme).getOrThrow()
+        parseCredentialResponse(
+            response = response.toCredentialResponse(isEncrypted),
+            representation = representation,
+            scheme = scheme
+        ).getOrThrow()
     }
 
     /** Parses a response and binds its encryption to the exact [request] that caused it. */
@@ -470,8 +474,12 @@ class OpenId4VciClient @JvmOverloads constructor(
         representation: CredentialRepresentation,
         scheme: CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        parseCredentialResponse(response.toCredentialResponse(isEncrypted), request, representation, scheme)
-            .getOrThrow()
+        parseCredentialResponse(
+            response = response.toCredentialResponse(isEncrypted),
+            request = request,
+            representation = representation,
+            scheme = scheme
+        ).getOrThrow()
     }
 
     /**
@@ -498,7 +506,13 @@ class OpenId4VciClient @JvmOverloads constructor(
         ).getOrThrow()
     }
 
-    /** Validates every credential of [response], see [validateCredentialResponse]. */
+    /**
+     * Parses a response like [parseCredentialResponse], and validates every credential in it with
+     * [credentialValidator] under [policy], bound to [keyMaterial], whose possession the request proved, and of the
+     * type of [scheme] in [representation]. Results in one [CredentialValidationResult] per credential, also for one
+     * that can not be decoded, so that no rejected member of a batch goes unnoticed. Fails only for the response
+     * itself, e.g. if its encryption does not match [request] or it can not be decrypted.
+     */
     suspend fun validateCredentialResponse(
         response: CredentialResponse,
         request: CredentialRequest,
