@@ -413,6 +413,7 @@ val OidvciEncryptionTest by matrixSuite {
 
             // the wallet that made the request holds the matching key, identified by the JWE `kid`
             response.response.header.keyId.shouldNotBeNull()
+            @Suppress("DEPRECATION")
             it.client.parseCredentialResponse(response, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
                 .isFailure shouldBe true
             it.client.parseCredentialResponse(response, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
