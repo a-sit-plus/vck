@@ -38,6 +38,9 @@ Release 9.0.0 (unreleased):
 - WRPRC authorization exempts only the root `vct` claim; nested claims named `vct` must be registered
 - Add `IsoMdocCredentialScheme.isoQualifiedClaimDescriptions` in `vck`, the claim descriptions of a scheme with their
   paths qualified by its ISO namespace, as the ISO mdoc credential configurations of `DefaultCredentialSchemeMapper` use
+- Add `IsoMdocCredentialScheme.isoClaimPathsAreQualified` (default `false`); when `true`, preserve all claim paths
+  without adding the scheme namespace. ISO schemes derived from type metadata set it to `true`: their paths must
+  include their namespace, including when `vck.isoNamespace` is absent or another namespace is used
 - ISO mdoc data classes:
     - Encode issuer-signed items with the bytes they were decoded from (`ByteStringWrapper.serialized`) instead of
       re-encoding their value, so items an issuer encoded differently, e.g. in another key order like the EUDI

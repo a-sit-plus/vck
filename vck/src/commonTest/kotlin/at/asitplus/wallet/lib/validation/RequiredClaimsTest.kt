@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ExtractedIsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.toCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.StaticCredentialMetadataRegistry
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -23,6 +24,8 @@ import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformationPathSegmentName
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataDefinition
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataDocument
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataDocumentRegistry
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataVckExtensions
+import at.asitplus.wallet.sdjwt.CredentialFormatEnum
 import at.asitplus.wallet.sdjwt.SdJwtVcType
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -232,6 +235,44 @@ val RequiredClaimsTest by matrixSuite {
         ) { Json.parseToJsonElement("{}").jsonObject }.outcome shouldBe Passed
     }
 
+    "ISO metadata preserves qualified mandatory paths" - {
+        listOf("org.iso.18013.5.1", null).asData(nameFn = { "namespace=$it" }) - { namespace ->
+            "claims from another namespace pass even when the scheme namespace falls back to vct" {
+                val paths = listOf(
+                    OpenId4VciClaimsPathPointer("org.iso.18013.5.1", "given_name"),
+                    OpenId4VciClaimsPathPointer("org.iso.18013.5.1.aamva", "element"),
+                )
+                val docType = "org.iso.18013.5.1.mDL"
+                val metadata = SdJwtTypeMetadataDefinition(
+                    vct = SdJwtVcType("urn:test:iso-metadata"),
+                    vckExtensions = SdJwtTypeMetadataVckExtensions(
+                        format = CredentialFormatEnum.MSO_MDOC,
+                        isoDocType = docType,
+                        isoNamespace = namespace,
+                    ),
+                    claims = SdJwtTypeMetadataClaimInformationList(
+                        listOf(
+                            claimInformation("org.iso.18013.5.1", "given_name", mandatory = true),
+                            claimInformation("org.iso.18013.5.1.aamva", "element", mandatory = true),
+                        )
+                    ),
+                ).toSdJwtTypeMetadata()
+                val required = metadata.toCredentialScheme().requiredClaims(docType, ISO_MDOC)
+                val resolver = RequiredClaimsResolver { _, _ -> required }
+                val result = resolver.check(
+                    RequiredClaimsPolicy.RequireMandatory, docType, ISO_MDOC, emptyList(),
+                ) {
+                    Json.parseToJsonElement(
+                        """{"org.iso.18013.5.1":{"given_name":"Alice"},"org.iso.18013.5.1.aamva":{"element":"x"}}"""
+                    ).jsonObject
+                }
+
+                result.outcome shouldBe Passed
+                required.claims.map { it.path } shouldContainExactly paths
+            }
+        }
+    }
+
     "the default resolver selects the mandatory claims of registered metadata, naming their document" {
         val vct = SdJwtVcType("urn:test:required-claims:${uuid4()}")
         val loadedFrom = "https://metadata.example.test/${uuid4()}/sd-jwt.json"
@@ -264,8 +305,8 @@ val RequiredClaimsTest by matrixSuite {
     }
 }
 
-private fun claimInformation(name: String, mandatory: Boolean?) = SdJwtTypeMetadataClaimInformation(
-    path = SdJwtTypeMetadataClaimInformationPath(listOf(SdJwtTypeMetadataClaimInformationPathSegmentName(name))),
+private fun claimInformation(vararg path: String, mandatory: Boolean?) = SdJwtTypeMetadataClaimInformation(
+    path = SdJwtTypeMetadataClaimInformationPath(path.map { SdJwtTypeMetadataClaimInformationPathSegmentName(it) }),
     isMandatory = mandatory,
 )
 

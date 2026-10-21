@@ -199,7 +199,9 @@ through `LibraryInitializer.registerExtensionLibrary()`. Metadata-derived scheme
 `SdJwtTypeMetadata.toCredentialScheme()`, which picks the representation from the document's `vck` extension
 (`SdJwtTypeMetadataVckExtensions`: `format` plus `vcType`/`isoDocType`/`isoNamespace`, defaulting to SD-JWT) and
 produces an `ExtractedVcJwt`/`ExtractedSdJwt`/`ExtractedIsoMdocCredentialScheme`. Both paths coexist by design; do not
-replace one with the other.
+replace one with the other. ISO metadata claim paths must already include their namespace; the derived scheme
+sets `isoClaimPathsAreQualified` so both required-claims validation and issuer configurations preserve them unchanged.
+Code-defined ISO schemes can opt in too; otherwise relative paths are qualified with `isoNamespace`.
 
 `AttributeIndex` coordinates scheme lookup, resolving from its registered `schemeSet` first, then through the
 registries, then through a fallback scheme. `CredentialMetadataRegistry` is its extension boundary:
