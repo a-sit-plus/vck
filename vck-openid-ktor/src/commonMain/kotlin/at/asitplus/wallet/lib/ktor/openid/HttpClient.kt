@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.HttpStep
 import at.asitplus.wallet.lib.PreparedHttpRequest
@@ -59,14 +60,13 @@ private fun HttpClientConfig<*>.installResponseValidation() {
         handleResponseExceptionWithRequest { cause, _ ->
             val response = (cause as? ResponseException)?.response
                 ?: return@handleResponseExceptionWithRequest
-            throw at.asitplus.wallet.lib.HttpErrorResponseException(
-                response.status,
-                response.headers,
-                response.bodyAsText(),
-            )
+            throw response.toErrorException()
         }
     }
 }
+
+internal suspend fun HttpResponse.toErrorException(): HttpErrorResponseException =
+    HttpErrorResponseException(status, headers, bodyAsText())
 
 /**
  * Sends all requests of [exchange] with this client, and returns its result.
@@ -77,11 +77,14 @@ internal suspend fun <T> HttpClient.execute(exchange: HttpExchange<T>): T {
     var step = exchange.next().getOrThrow()
     while (step is HttpStep.Send) {
         val response = send(step.request.http)
-        step = exchange.next(ReceivedHttpResponse(response.status, response.headers, response.bodyAsText()))
+        step = exchange.next(response.toReceivedResponse())
             .getOrThrow()
     }
     return (step as HttpStep.Done).value
 }
+
+internal suspend fun HttpResponse.toReceivedResponse(): ReceivedHttpResponse =
+    ReceivedHttpResponse(status, headers, bodyAsText())
 
 /** Sends [prepared] without ktor's response validation, so that every status code reaches the exchange. */
 internal suspend fun HttpClient.send(prepared: PreparedHttpRequest): HttpResponse = request(prepared.url) {
