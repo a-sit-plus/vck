@@ -30,6 +30,7 @@ data class DeviceRequest(
     val docRequests: Array<DocRequest>,
     /** Can be used with version 1.1 to transport additional infos on how to satisfy the request (DCQL like?) */
     @SerialName("deviceRequestInfo")
+    @Serializable(with = ReserializableByteStringSerializer::class)
     @ValueTags(24U)
     val deviceRequestInfo: ByteStringWrapper<DeviceRequestInfo>? = null,
     @SerialName("readerAuthAll")
