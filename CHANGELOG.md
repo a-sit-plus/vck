@@ -44,6 +44,11 @@ Release 9.0.0 (unreleased):
       tag-24-wrapped `IssuerSignedItemBytes`
     - Add `IssuerSigned.fromIssuerSignedLists(...)` and `StoreEntry.Iso.discloseIssuedItem(...)`; mdoc presentations
       disclose items with the bytes they were issued with
+    - Serialize `DocRequest.itemsRequest` and `DeviceRequest.deviceRequestInfo` again with the bytes they were decoded
+      from (`ByteStringWrapper.serialized`) instead of encoding their value anew, using the new
+      `ReserializableByteStringSerializer`, as `readerAuth` and `readerAuthAll` sign exactly these bytes
+      (ISO/IEC 18013-5:2021, 9.1.4). A request serialized again, e.g. to pass it on within a wallet, no longer verified
+      if its verifier encoded it in another key order, e.g. `systemSpecs` before `zkRequired` in a `zkRequest`
 - Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
     - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations
       (`PresentationValidationInput` in a `PresentationContext`) under a `ValidationPolicy` (`TrustPolicy`,
