@@ -14,7 +14,6 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.ProtocolRequest
 import at.asitplus.wallet.lib.ReceivedHttpResponse
-import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.MediaTypes
@@ -30,6 +29,7 @@ import at.asitplus.wallet.lib.oauth2.path
 import at.asitplus.wallet.lib.oauth2.scripted
 import at.asitplus.wallet.lib.oauth2.toRequestInfo
 import at.asitplus.wallet.lib.openid.DummyUserProvider
+import at.asitplus.wallet.lib.validation.CredentialValidationInput
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -73,10 +73,9 @@ val OpenId4VciProtocolClientTest by matrixSuite {
         vci: OpenId4VciProtocolClient,
         token: TokenResponseWithDpopNonce,
         format: SupportedCredentialFormat,
-    ): Collection<Holder.StoreCredentialInput> {
+    ): List<ReceivedCredential> {
         val issuerMetadata = openId4VciServer.metadata
         val clientNonce = vci.nonceRequest(issuerMetadata)?.let { http.execute(it) }
-        val scheme = vci.resolveCredentialScheme(format).shouldNotBeNull()
         return vci.createCredential(
             tokenResponse = token.params,
             metadata = issuerMetadata,
@@ -84,7 +83,7 @@ val OpenId4VciProtocolClientTest by matrixSuite {
             clientNonce = clientNonce,
             previouslyRequestedScope = format.scope,
         ).getOrThrow().flatMap {
-            http.execute(vci.credentialRequest(it, issuerMetadata, token.params, format, scheme))
+            http.execute(vci.credentialRequest(it, issuerMetadata, token.params, format))
         }
     }
 
@@ -229,7 +228,6 @@ val OpenId4VciProtocolClientTest by matrixSuite {
                         issuerMetadata = openId4VciServer.metadata,
                         tokenResponse = token,
                         credentialFormat = format,
-                        credentialScheme = vci.resolveCredentialScheme(format).shouldNotBeNull(),
                     )
                 )
             }
@@ -278,7 +276,8 @@ val OpenId4VciProtocolClientTest by matrixSuite {
 
             val credentials = requestCredentials(vci, preAuthorizedToken(format), format)
 
-            credentials.shouldBeSingleton().first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>()
+            credentials.shouldBeSingleton().first().shouldBeInstanceOf<ReceivedCredential.Decoded>()
+                .input.shouldBeInstanceOf<CredentialValidationInput.SdJwtVc>()
             // The AS mandates a DPoP nonce (RFC 9449 8.), which the client can only learn from the rejected first
             // token request; the retry needs a fresh attestation challenge, as challenges are single-use
             http.sent.kinds() shouldBe listOf(
@@ -380,9 +379,7 @@ val OpenId4VciProtocolClientTest by matrixSuite {
             ).getOrThrow().first()
 
             val credentialRequest = scriptedHttp.firstRequest<ProtocolRequest.Credential>(
-                vci.credentialRequest(
-                    request, issuerMetadata, token.params, format, vci.resolveCredentialScheme(format).shouldNotBeNull()
-                )
+                vci.credentialRequest(request, issuerMetadata, token.params, format)
             )
             val refreshTokenRequest = scriptedHttp.firstRequest<ProtocolRequest.Token>(
                 oauth2Client.requestTokenWithRefreshToken(
@@ -418,7 +415,7 @@ val OpenId4VciProtocolClientTest by matrixSuite {
             ).getOrThrow().first()
 
             val credentialRequest = http.firstRequest<ProtocolRequest.Credential>(
-                vci.credentialRequest(request, issuerMetadata, token.params, format, vci.resolveCredentialScheme(format).shouldNotBeNull())
+                vci.credentialRequest(request, issuerMetadata, token.params, format)
             )
 
             credentialRequest.http.url shouldBe "https://credentials.example.com/credential"
@@ -445,7 +442,6 @@ val OpenId4VciProtocolClientTest by matrixSuite {
                     issuerMetadata = openId4VciServer.metadata,
                     tokenResponse = token.params,
                     credentialFormat = format,
-                    credentialScheme = vci.resolveCredentialScheme(format).shouldNotBeNull(),
                 )
             ).shouldNotBeEmpty()
 

@@ -2,10 +2,13 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -13,6 +16,11 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PreparedCredentialStorage
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
+import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
@@ -20,6 +28,8 @@ import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
 import at.asitplus.wallet.lib.oidvci.LoadedIssuerMetadata
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciProtocolClient
+import at.asitplus.wallet.lib.oidvci.ReceivedCredential
+import at.asitplus.wallet.lib.validation.CredentialValidationInput
 import at.asitplus.wallet.lib.validation.IssuerMetadataValidator
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
@@ -28,6 +38,7 @@ import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.plugins.cookies.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromByteArray
 
 
 @Deprecated("Renamed", ReplaceWith("OpenId4VciKtorClient"))
@@ -356,19 +367,19 @@ class OpenId4VciKtorClient private constructor(
             previouslyRequestedScope = previouslyRequestedScope
         ).getOrThrow()
 
-        val storeCredentialInputs = requests.flatMap {
+        val receivedCredentials = requests.flatMap {
             oauth2Client.execute(
                 vci.credentialRequest(
                     request = it,
                     issuerMetadata = issuerMetadata,
                     tokenResponse = tokenResponse.params,
                     credentialFormat = credentialFormat,
-                    credentialScheme = credentialScheme,
                 )
             )
         }
         return CredentialIssuanceResult.Success(
-            credentials = storeCredentialInputs,
+            receivedCredentials = receivedCredentials,
+            scheme = credentialScheme,
             refreshToken = CredentialRenewalInfo(
                 refreshToken = tokenResponse.params.refreshToken,
                 issuerMetadata = issuerMetadata,
@@ -474,35 +485,48 @@ data class ProvisioningContext(
  */
 sealed interface CredentialIssuanceResult {
     /**
-     * Store credentials in [credentials], and optionally the [refreshToken] for a later renewal of those credentials,
-     * e.g. with [prepareCredentialStorage].
+     * Store the [receivedCredentials] after validating them with [prepareCredentialStorage], and optionally the
+     * [refreshToken] for a later renewal of those credentials.
      */
     data class Success(
-        val credentials: Collection<Holder.StoreCredentialInput>,
+        /** The credentials of the credential responses, not validated yet, see [prepareCredentialStorage]. */
+        val receivedCredentials: List<ReceivedCredential>,
+        /** The type the [receivedCredentials] have been requested as. */
+        val scheme: CredentialScheme,
         val refreshToken: CredentialRenewalInfo? = null,
         /**
-         * The stored credential the [credentials] replace, as passed to
+         * The stored credential the [receivedCredentials] replace, as passed to
          * [OpenId4VciKtorClient.startProvisioningWithAuthRequestReturningResult] and kept in the [ProvisioningContext],
          * for the wallet to remove once it stored the new ones.
          */
         val reissuingStoreEntryId: Long? = null,
     ) : CredentialIssuanceResult {
 
+        /** The [receivedCredentials], decoded without validating them. */
+        @Deprecated(
+            "The credentials have not been validated: prepare their storage with prepareCredentialStorage, which " +
+                    "validates them with the HolderAgent",
+        )
+        val credentials: Collection<Holder.StoreCredentialInput>
+            get() = receivedCredentials.map { it.toStoreCredentialInput(scheme) }
+
         /**
-         * Validates every credential of [credentials] for storage by [holder] under [policy], with [refreshToken] for
-         * their renewal, see [HolderAgent.prepareCredentialStorage], and stores nothing yet. Show the reports to the
-         * user, then store each credential with [HolderAgent.storeAccepted], or, if the user accepts a rejected
-         * report, e.g. of an untrusted issuer or a credential missing claims its type requires (see
-         * [ValidationPolicy.requiredClaims]), with [HolderAgent.storeAfterUserConsent].
+         * Validates every credential of [receivedCredentials] as the type of [scheme] for storage by [holder] under
+         * [policy], with [refreshToken] for their renewal, see [ReceivedCredential.prepareCredentialStorage], and
+         * stores nothing yet. Show the reports to the user, then store each credential with
+         * [HolderAgent.storeAccepted], or, if the user accepts a rejected report, e.g. of an untrusted issuer or a
+         * credential missing claims its type requires (see [ValidationPolicy.requiredClaims]), with
+         * [HolderAgent.storeAfterUserConsent].
          *
          * The credentials of a batch are of the same issuer and type, so one decision of the user usually covers all.
-         * Fails only if a credential can not be validated at all.
+         * A credential that can not be decoded is reported as rejected, and can never be stored. Fails only if
+         * [scheme] does not support the representation of a credential.
          */
         suspend fun prepareCredentialStorage(
             holder: HolderAgent,
             policy: ValidationPolicy,
         ): KmmResult<List<PreparedCredentialStorage>> = catching {
-            credentials.map { holder.prepareCredentialStorage(it, policy, refreshToken).getOrThrow() }
+            receivedCredentials.map { it.prepareCredentialStorage(holder, scheme, policy, refreshToken).getOrThrow() }
         }
     }
 
@@ -522,3 +546,27 @@ sealed interface CredentialIssuanceResult {
 )
 typealias CredentialIdentifierInfo = at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
 
+/** Decodes the credential without validating it, see [CredentialIssuanceResult.Success.credentials]. */
+@Throws(Throwable::class)
+private fun ReceivedCredential.toStoreCredentialInput(scheme: CredentialScheme): Holder.StoreCredentialInput =
+    when (this) {
+        is ReceivedCredential.Undecodable -> throw cause
+        is ReceivedCredential.Decoded -> when (val input = input) {
+            is CredentialValidationInput.VcJwt -> Holder.StoreCredentialInput.Vc(
+                signedVcJws = JwsCompactTyped<VerifiableCredentialJws>(input.compact),
+                vcJws = input.compact,
+                scheme = scheme as VcJwtCredentialScheme,
+            )
+
+            is CredentialValidationInput.SdJwtVc -> Holder.StoreCredentialInput.SdJwt(
+                signedSdJwtVc = SdJwtSigned.parseCatching(input.compact).getOrThrow(),
+                vcSdJwt = input.compact,
+                scheme = scheme as SdJwtCredentialScheme,
+            )
+
+            is CredentialValidationInput.IsoMdoc -> Holder.StoreCredentialInput.Iso(
+                issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.issuerSignedCbor),
+                scheme = scheme as IsoMdocCredentialScheme,
+            )
+        }
+    }

@@ -357,7 +357,11 @@ Release 9.0.0 (unreleased):
     - Add `CredentialIssuanceResult.Success.prepareCredentialStorage(holder, policy)`, validating the received
       credentials with their renewal info by `HolderAgent.prepareCredentialStorage`, for the wallet to show the reports
       and store them with `HolderAgent.storeAccepted`, or `HolderAgent.storeAfterUserConsent` after the user accepts a
-      rejected report, e.g. of a credential missing claims its type requires (`ValidationPolicy.requiredClaims`)
+      rejected report, e.g. of a credential missing claims its type requires (`ValidationPolicy.requiredClaims`). A
+      credential that can not be decoded is reported as rejected instead of failing the issuance
+    - BREAKING: `CredentialIssuanceResult.Success` holds the `receivedCredentials` (`ReceivedCredential`), not validated
+      yet, and the `scheme` they have been requested as, instead of `credentials`. Deprecate `credentials`, which
+      decodes them without validating them, and fails for a credential that can not be decoded
     - Add `OpenId4VciProtocolClient.loadIssuerMetadata(credentialIssuer, policy)` and
       `OpenId4VciKtorClient.loadIssuerMetadata(credentialIssuer, policy)`, asking for signed metadata
       (`application/jwt`) over unsigned ones (OpenID4VCI 1.0, 12.2.2), and returning `LoadedIssuerMetadata`: `Signed`
@@ -398,7 +402,8 @@ Release 9.0.0 (unreleased):
     - Renamed `CredentialIssuer` (in `vck-openid`) to `OpenId4VciServer`
     - Add `OpenId4VciProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the credential issuer
       (metadata, nonce, credential), built on `OAuth2ProtocolClient`, which handles DPoP for the credential issuer with
-      the credential issuer's own nonces
+      the credential issuer's own nonces. `credentialRequest` decodes the response into `ReceivedCredential`s, see
+      `OpenId4VciClient.decodeCredentialResponse`
     - Move `CredentialIdentifierInfo` to `vck-openid` (`at.asitplus.wallet.lib.oidvci`), deprecate the typealias left
       in `vck-openid-ktor`; the serialized form is unchanged
     - `OpenId4VciKtorClient` sends the requests of `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` in the order of each

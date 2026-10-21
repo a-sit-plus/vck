@@ -354,13 +354,12 @@ val OpenId4VciKtorClientTest by matrixSuite {
                 credentialIssuer = openId4VciServer.metadata.credentialIssuer,
                 schemes = setOf(euPidScheme to ISO_MDOC),
             )
-            val issuedCredential = client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null)
+            val issuerSigned = client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null)
                 .getOrThrow()
                 .shouldBeInstanceOf<CredentialIssuanceResult.Success>()
-                .also { it.verifyIsoMdocCredential(expectedAttributeName, expectedAttributeValue) }
-                .credentials.first().shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
+                .verifyIsoMdocCredential(expectedAttributeName, expectedAttributeValue)
 
-            val statusInfo = issuedCredential.issuerSigned.issuerAuth.payload.shouldNotBeNull()
+            val statusInfo = issuerSigned.issuerAuth.payload.shouldNotBeNull()
                 .status.shouldNotBeNull().shouldBeInstanceOf<IdentifierListInfo>()
 
             val tokenStatusResolver = TokenStatusResolverImpl(
@@ -402,6 +401,10 @@ val OpenId4VciKtorClientTest by matrixSuite {
                 it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
                     refreshTokenStore = it.refreshToken!!
                     it.verifyIsoMdocCredential(expectedAttributeName, expectedAttributeValue)
+                    // The deprecated credentials are decoded as before, without validation
+                    @Suppress("DEPRECATION")
+                    it.credentials.shouldBeSingleton().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
+                        .scheme shouldBe euPidScheme
                 }
             }
             refreshTokenStore.shouldNotBeNull()
