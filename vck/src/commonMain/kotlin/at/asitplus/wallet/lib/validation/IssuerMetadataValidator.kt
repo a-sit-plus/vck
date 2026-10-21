@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.validation
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.csc.api.serializers.Base64X509CertificateSerializer
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.openid.IssuerMetadata
@@ -83,7 +83,7 @@ class IssuerMetadataValidator @JvmOverloads constructor(
         policy: ValidationPolicy,
     ): IssuerMetadataValidation {
         val evaluatedAt = clock.now()
-        val parsed = catching { JwsCompactTyped<IssuerMetadata>(signedMetadata) }.getOrElse {
+        val parsed = catchingUnwrapped { JwsCompactTyped<IssuerMetadata>(signedMetadata) }.getOrElse {
             val checks = IssuerMetadataChecks(
                 parsing = Failed(it),
                 signature = Blocked(),
@@ -109,13 +109,13 @@ class IssuerMetadataValidator @JvmOverloads constructor(
             )
         }
         val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
-        val registration = catching { metadata.registrationCertificate() }
+        val registration = catchingUnwrapped { metadata.registrationCertificate() }
         val certificate = registration.getOrNull()
         val registrationCertificate = certificate?.let {
             validateRegistrationCertificate(it, accessCertificate?.identifier, policy, timeScope)
         }
         val checks = IssuerMetadataChecks(
-            parsing = catching { parsed.requireWellFormed() }.toOutcome(),
+            parsing = catchingUnwrapped { parsed.requireWellFormed() }.toOutcome(),
             signature = verification.outcome,
             trust = accessCertificate?.trustInSigner() ?: TrustValidation(
                 outcome = Failed(IllegalArgumentException("The metadata are not signed with an access certificate")),
@@ -123,7 +123,7 @@ class IssuerMetadataValidator @JvmOverloads constructor(
             ),
             timeliness = metadata.timeliness(timeScope)
                 .andThen { accessCertificate?.checks?.timeliness ?: Passed },
-            subject = catching {
+            subject = catchingUnwrapped {
                 require(metadata.subject == credentialIssuer) {
                     "sub ${metadata.subject} is not the credential issuer $credentialIssuer"
                 }

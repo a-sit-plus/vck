@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -22,7 +21,6 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
-import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -47,12 +45,12 @@ import at.asitplus.wallet.lib.validation.VerifierAttestationChecks
 import at.asitplus.wallet.lib.validation.toOutcome
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -123,11 +121,11 @@ internal class AuthorizationRequestValidator(
         validateRelyingParty: Boolean,
     ): RequestValidation {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
-        val prefix = catching { request.evaluatePrefix(policy, timeScope) }.getOrElse {
+        val prefix = catchingUnwrapped { request.evaluatePrefix(policy, timeScope) }.getOrElse {
             PrefixEvaluation(signature = Failed(it), trust = TrustValidation(Blocked()), clientId = Blocked())
         }
         val checks = RequestObjectChecks(
-            parsing = catching { request.requireWellFormed() }.toOutcome(),
+            parsing = catchingUnwrapped { request.requireWellFormed() }.toOutcome(),
             signature = prefix.signature,
             trust = prefix.trust,
             timeliness = request.timeliness(timeScope),
@@ -214,7 +212,7 @@ internal class AuthorizationRequestValidator(
             is ClientIdScheme.RedirectUri -> PrefixEvaluation(
                 signature = (this as? Signed)?.verifiedWithAssertedKey() ?: NotApplicable,
                 trust = clientTrust.trust,
-                clientId = catching { parameters.verifyRedirectUrl() }.toOutcome(),
+                clientId = catchingUnwrapped { parameters.verifyRedirectUrl() }.toOutcome(),
             )
 
             is ClientIdScheme.VerifierAttestation -> evaluateVerifierAttestation(policy, timeScope, clientTrust.trust)
@@ -256,7 +254,7 @@ internal class AuthorizationRequestValidator(
                 trust = TrustValidation(Blocked()),
                 clientId = Blocked(),
             )
-        val clientId = catching {
+        val clientId = catchingUnwrapped {
             when (prefix) {
                 ClientIdScheme.X509SanDns -> signed.verifyX509SanDns(
                     leaf = leaf,
@@ -309,7 +307,7 @@ internal class AuthorizationRequestValidator(
                 trust = TrustValidation(Blocked()),
                 clientId = Blocked(),
             )
-        val payload = catching { attestation.typed<JsonWebToken, JwsCompact>().payload }
+        val payload = catchingUnwrapped { attestation.typed<JsonWebToken, JwsCompact>().payload }
         // A trusted attester key verified the signature, otherwise it is verified with the key it asserts
         val attestationSignature = if (trust.outcome == Passed && attestation.jwsHeader.certificateChain == null) Passed
         else signatureCheck.verify(attestation).outcome
@@ -344,7 +342,7 @@ internal class AuthorizationRequestValidator(
     /** `exp` and `nbf` of a signed request object, if present (RFC 7519, 4.1.4, 4.1.5). */
     private fun RequestParametersFrom<AuthenticationRequestParameters>.timeliness(timeScope: TimeScope): CheckOutcome {
         val payload = (this as? Signed)?.jwsTyped?.jws?.plainPayload ?: return Passed
-        val claims = catching { Json.parseToJsonElement(payload.decodeToString()).jsonObject }
+        val claims = catchingUnwrapped { Json.parseToJsonElement(payload.decodeToString()).jsonObject }
             .getOrElse { return Failed(InvalidRequest("Request object payload is not a JSON object", it)) }
         return timeliness(claims.instant("exp"), claims.instant("nbf"), "request object", timeScope)
     }
@@ -391,7 +389,7 @@ internal class AuthorizationRequestValidator(
     private suspend fun Signed.verifiedWith(
         keys: Collection<CryptoPublicKey>,
         message: String = "Request object signature not verified",
-    ): CheckOutcome = catching {
+    ): CheckOutcome = catchingUnwrapped {
         val verified = jwsTyped.jws.signatures().any { signature ->
             val algorithm = signature.header.algorithm as? JwsAlgorithm.Signature
             algorithm != null && keys.any {
@@ -405,7 +403,7 @@ internal class AuthorizationRequestValidator(
     private suspend fun Signed.verifiedWithAssertedKey(): CheckOutcome = when (val jws = jwsTyped.jws) {
         is JwsCompact -> signatureCheck.verify(jws).outcome
         else -> {
-            val keys = catching { jws.signatures() }.getOrElse { return Failed(it) }.mapNotNull {
+            val keys = catchingUnwrapped { jws.signatures() }.getOrElse { return Failed(it) }.mapNotNull {
                 it.header.certificateChain?.firstOrNull()?.decodedPublicKey?.getOrNull()
                     ?: it.header.jsonWebKey?.toCryptoPublicKey()?.getOrNull()
             }

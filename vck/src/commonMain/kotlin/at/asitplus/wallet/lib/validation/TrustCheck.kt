@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.validation
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
@@ -61,7 +61,7 @@ internal suspend fun checkTrust(
     if (anchors.isEmpty()) return Failed(IllegalArgumentException("No trust anchor authorizes the signer"))
     val signer = chain?.takeIf { it.isNotEmpty() }
         ?: return Failed(IllegalArgumentException("No certificate transported with the signed object"))
-    return catching {
+    return catchingUnwrapped {
         when (rule) {
             TrustRule.ISSUED_BY_ANCHOR_OR_LISTED -> requireListedOrIssuedByAnchor(signer, anchors, at)
             TrustRule.CHAIN_TO_ANCHOR -> requireChainToAnchor(signer, anchors, at)
@@ -113,7 +113,7 @@ internal suspend fun CredentialTrustAnchors?.checkCredentialTrust(
             credentialIdentifier = credentialIdentifier,
         )
     }
-    val anchors = catching { resolve(credentialIdentifier, purpose) }.getOrElse {
+    val anchors = catchingUnwrapped { resolve(credentialIdentifier, purpose) }.getOrElse {
         return TrustValidation(
             outcome = Blocked(it),
             credentialIdentifier = credentialIdentifier
