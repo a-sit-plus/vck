@@ -82,25 +82,35 @@ class DCQLClaimsPathPointer(
     }
 
     /**
-     *  6.4.1. Processing
+     * Selects the claims this claims path pointer points to in [jsonElement], the root element of a credential, i.e.
+     * its top-level JSON object.
      *
-     * In detail, the array is processed by the Wallet from left to right as follows:
-     * Select the root element of the Credential, i.e., the top-level JSON object.
+     * OpenID4VP 1.0, 7.1.1. Processing:
+     * In detail, the array is processed from left to right as follows:
      *
-     * Process the query of the claims path pointer array from left to right:
-     * If the component is a string, select the element in the respective key in the currently
-     * selected element(s). If any of the currently selected element(s) is not an object, abort
-     * processing and return an error. If the key does not exist in any element currently selected,
-     * remove that element from the selection.
+     * 1. Select the root element of the Credential, i.e., the top-level JSON object.
+     * 2. Process the query of the claims path pointer array from left to right:
+     *    1. If the component is a string, select the element in the respective key in the currently selected
+     *       element(s). If any of the currently selected element(s) is not an object, abort processing and return an
+     *       error. If the key does not exist in any element currently selected, remove that element from the
+     *       selection.
+     *    2. If the component is null, select all elements of the currently selected array(s). If any of the currently
+     *       selected element(s) is not an array, abort processing and return an error.
+     *    3. If the component is a non-negative integer, select the element at the respective index in the currently
+     *       selected array(s). If any of the currently selected element(s) is not an array, abort processing and
+     *       return an error. If the index does not exist in a selected array, remove that array from the selection.
+     *    4. If the component is anything else, abort processing and return an error.
+     * 3. If the set of elements currently selected is empty, abort processing and return an error.
      *
-     * If the component is null, select all elements of the currently selected array(s). If any of
-     * the currently selected element(s) is not an array, abort processing and return an error.If
-     * the component is a non-negative integer, select the element at the respective index in the
-     * currently selected array(s). If any of the currently selected element(s) is not an array,
-     * abort processing and return an error. If the index does not exist in a selected array,
-     * remove that array from the selection.If the set of elements currently selected is empty,
-     * abort processing and return an error.The result of the processing is the set of elements
-     * which is requested for presentation.
+     * The result of the processing is the set of selected JSON elements.
+     *
+     * A component of any other type is rejected when the pointer is deserialized, see
+     * [DCQLClaimsPathPointerSegmentSerializer].
+     *
+     * Every error results in an empty list, which callers treat as the claim not being present: a selected element
+     * of the wrong type fails the whole pointer, even if other selected elements would continue, e.g. a wildcard over
+     * an array whose elements are objects and strings. As an error of this claim only, it does not fail other options
+     * of `claim_sets` that do not request the claim.
      */
     fun query(jsonElement: JsonElement): NodeList {
         var nodeList = listOf(NodeListEntry(NormalizedJsonPath(), jsonElement))
