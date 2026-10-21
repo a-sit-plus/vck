@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.agent.IsoPresentationParameters
 import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.ZkMetadata
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import io.github.aakira.napier.Napier
 
 /** Matching and submission validation for ISO Device Retrieval requests. */
 internal object DeviceRetrievalProcedure {
@@ -67,14 +68,18 @@ internal object DeviceRetrievalProcedure {
 
     private fun ItemsRequest.match(
         credentials: List<StoreEntry>,
-    ): List<IsoDeviceRetrievalCredentialMatch> = credentials.mapIndexedNotNull { index, credential ->
+    ): List<IsoDeviceRetrievalCredentialMatch> = credentials.also {
+        Napier.d("Matching request for $docType against ${it.size} credential(s)")
+    }.mapIndexedNotNull { index, credential ->
         (credential as? StoreEntry.Iso)
             ?.takeIf { it.schemeIdentifier == docType }
             ?.let {
                 evaluateItemsRequestAgainstCredential(
                     itemsRequest = this,
                     issuerSigned = it.issuerSigned,
-                ).getOrNull()?.let { requestedClaims ->
+                ).onFailure { error ->
+                    Napier.w("Credential at index $index does not match request for $docType", error)
+                }.getOrNull()?.let { requestedClaims ->
                     IsoDeviceRetrievalCredentialMatch(
                         credentialIndex = index,
                         requestedClaims = requestedClaims,
