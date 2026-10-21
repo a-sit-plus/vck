@@ -291,14 +291,12 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String? = null,
         previouslyRequestedScope: String? = null,
-        clock: Clock = Clock.System,
     ): KmmResult<Collection<OpenId4VciClient.CredentialRequest>> = vciClient.createCredential(
         tokenResponse = tokenResponse,
         metadata = metadata,
         credentialFormat = credentialFormat,
         clientNonce = clientNonce,
         previouslyRequestedScope = previouslyRequestedScope,
-        clock = clock,
         clientId = oauth2Client.oAuth2Client.clientId,
     )
 
@@ -310,12 +308,10 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         metadata: IssuerMetadata,
         credentialConfigurationId: String,
         clientNonce: String? = null,
-        clock: Clock = Clock.System,
     ): KmmResult<OpenId4VciClient.CredentialRequest> = vciClient.createCredential(
         metadata = metadata,
         credentialConfigurationId = credentialConfigurationId,
         clientNonce = clientNonce,
-        clock = clock,
         clientId = oauth2Client.oAuth2Client.clientId,
     )
 
