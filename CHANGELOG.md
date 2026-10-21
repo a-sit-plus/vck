@@ -1,6 +1,7 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- Reduce certificate trust-check allocations by reusing the BasicConstraints OID and encoding the top certificate once when comparing it with trust anchors.
 - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
 - Add request-side X.509 DCQL support for ETSI TS 119 432 Annex A.6: `CredentialFormatEnum.X509`,

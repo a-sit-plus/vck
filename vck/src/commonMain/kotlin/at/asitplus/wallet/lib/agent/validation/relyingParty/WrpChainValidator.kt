@@ -73,7 +73,8 @@ internal fun requireChainToAnchor(
 
     require(trusted.isNotEmpty()) { "No trusted root certificates configured for request validation." }
     val top = chain.last()
-    if (trusted.none { it.encodeToDer().contentEquals(top.encodeToDer()) }) {
+    val topDer = top.encodeToDer()
+    if (trusted.none { it.encodeToDer().contentEquals(topDer) }) {
         top.isTrustedBy(trusted.toList(), now).getOrThrow()
     }
     Napier.d("Chain validation completed (full chain validity enforced).")
