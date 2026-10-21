@@ -183,14 +183,15 @@ val PresentationValidationTest by matrixSuite {
         "with a key binding JWT of the bound key, answering the request, is accepted" {
             val issuance = issuance()
             val sdJwt = issuance.presentedSdJwt()
-            val result = issuance.validatePresentation(
-                PresentationValidationInput.SdJwt(sdJwt + keyBinding(sdJwt, issuance.holderKey))
-            )
+            val keyBindingJwt = keyBinding(sdJwt, issuance.holderKey)
+            val result = issuance.validatePresentation(PresentationValidationInput.SdJwt(sdJwt + keyBindingJwt))
 
             result.report.decision shouldBe ACCEPTED
             result.checks shouldBe PresentationChecks(Passed, Passed, Passed, Passed, Passed, Passed)
             result.report.children.shouldHaveSize(1).single().decision shouldBe ACCEPTED
-            result.presentation.shouldBeInstanceOf<ValidatedPresentation.SdJwt>().keyBinding.shouldNotBeNull()
+            val presentation = result.presentation.shouldBeInstanceOf<ValidatedPresentation.SdJwt>()
+            presentation.keyBinding.shouldNotBeNull().toString() shouldBe keyBindingJwt
+            presentation.sdJwtSigned.serialize() shouldBe sdJwt + keyBindingJwt
         }
 
         "a withheld disclosure does not count as a missing claim, as presentations disclose selectively" {
@@ -227,7 +228,9 @@ val PresentationValidationTest by matrixSuite {
                 )
                 result.report.decision shouldBe ACCEPTED
                 result.checks.signature shouldBe NotApplicable
-                result.presentation.shouldBeInstanceOf<ValidatedPresentation.SdJwt>().keyBinding.shouldBeNull()
+                val presentation = result.presentation.shouldBeInstanceOf<ValidatedPresentation.SdJwt>()
+                presentation.keyBinding.shouldBeNull()
+                presentation.sdJwtSigned.serialize() shouldBe sdJwt
             }
         }
 

@@ -4,8 +4,10 @@ import at.asitplus.iso.Document
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlin.jvm.JvmOverloads
 
 /**
@@ -100,10 +102,16 @@ sealed interface ValidatedPresentation {
 
     data class SdJwt(
         val credential: ValidatedCredential.SdJwtVc,
-        /** Present if the holder proved possession of the bound key. */
-        val keyBinding: KeyBindingJws?,
+        /**
+         * The signed key binding JWT, present if the request required holder binding and the holder proved possession
+         * of the bound key. A key binding JWT the request did not require is not checked, and therefore not present.
+         */
+        val keyBinding: JwsCompactTyped<KeyBindingJws>?,
     ) : ValidatedPresentation {
         override val credentials get() = listOf(credential)
+
+        /** The SD-JWT as presented, with the disclosures of [credential] and the verified [keyBinding]. */
+        val sdJwtSigned: SdJwtSigned get() = credential.sdJwtSigned.copy(keyBindingJws = keyBinding)
     }
 
     data class MdocDocument(
