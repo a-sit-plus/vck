@@ -72,12 +72,12 @@ val OidvciEncryptionAlgorithmsTest by matrixSuite {
             val holderKey = EphemeralKeyWithoutCert()
             val holder = HolderAgent(holderKey)
             val client = OpenId4VciClient(
-                keyMaterial = holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = true, // this is important
                     fallbackJweEncryptionAlgorithm = walletEnc
-                )
+                ),
+                proofCreators = listOf(JwtProofCreator(holderKey))
             )
             val oauth2Client = OAuth2Client()
             val integrityOnly = ValidationPolicy(

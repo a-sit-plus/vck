@@ -85,7 +85,7 @@ val OidvciSameScopeTest by matrixSuite {
                 credentialSchemes = AttributeIndex.schemeSet,
                 credentialSchemeMapper = SameScopeCredentialSchemeMapper(scope.dropLast(1)),
             )
-            val client = OpenId4VciClient()
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 

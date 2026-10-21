@@ -19,12 +19,12 @@ package at.asitplus.wallet.lib.oidvci
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
-import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
@@ -146,8 +146,8 @@ val OidvciAttestationTest by matrixSuite {
 
             val clientKeyMaterial = EphemeralKeyWithoutCert()
 
-            var client = OpenId4VciClient(
-                loadKeyAttestation = { input ->
+            val loadKeyAttestation: suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt>> =
+                { input ->
                     catching {
                         SignJwt<KeyAttestationJwt>(walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
                             type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
@@ -172,8 +172,12 @@ val OidvciAttestationTest by matrixSuite {
                             serializer = KeyAttestationJwt.serializer(),
                         ).getOrThrow()
                     }
-                },
-                keyMaterial = clientKeyMaterial,
+                }
+            var client = OpenId4VciClient(
+                proofCreators = listOf(
+                    AttestationProofCreator(loadKeyAttestation),
+                    JwtProofCreator(clientKeyMaterial, loadKeyAttestation),
+                ),
             )
 
         }
@@ -383,12 +387,11 @@ val OidvciAttestationTest by matrixSuite {
         }
 
         test("require key attestation for proof, but do not provide one") {
-            it.client = OpenId4VciClient(loadKeyAttestation = null)
+            it.client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(it.clientKeyMaterial)))
 
             val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
-            val credentialFormat =
-                it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
-                    .shouldNotBeNull()
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
             val token = it.getToken(scope)
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
@@ -405,78 +408,36 @@ val OidvciAttestationTest by matrixSuite {
 
         test("reject key attestation if jwt proof signing key is not attested at index zero") {
             it.client = OpenId4VciClient(
-                loadKeyAttestation = it.client::loadTestKeyAttestation,
-                keyMaterial = EphemeralKeyWithoutCert(),
+                proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert(), it.client::loadTestKeyAttestation)),
             )
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
 
             shouldThrow<IllegalArgumentException> {
-                it.client.createCredentialRequestProofJwt(
+                it.client.createCredentialProof(
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
                     clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-                    credentialIssuer = it.issuer.metadata.credentialIssuer,
-                    keyAttestationRequired = KeyAttestationRequired(),
+                    clientId = "https://wallet.a-sit.plus/app"
                 )
             }
         }
 
         test("attestation proof contains the serialized key attestation") {
-            val proof = it.client.createCredentialRequestProofAttestation(
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+
+            val proof = it.client.createCredentialProof(
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-                credentialIssuer = it.issuer.metadata.credentialIssuer,
-                keyAttestationRequired = KeyAttestationRequired(),
-            )
+                clientId = "https://wallet.a-sit.plus/app"
+            ).shouldNotBeNull()
 
             proof.attestation.shouldNotBeNull().shouldNotBeEmpty()
             proof.attestationParsed.shouldNotBeNull().first().payload.keyStorageStatus.shouldNotBeNull()
-        }
-
-        test("key attestation callback receives issuer preference context") {
-            var capturedInput: KeyAttestationInput? = null
-
-            it.client = OpenId4VciClient(
-                loadKeyAttestation = { input ->
-                    capturedInput = input
-                    catching {
-                        SignJwt<KeyAttestationJwt>(it.walletProviderKeyMaterial, JwsHeaderCertOrJwk())(
-                            type = OpenIdConstants.KEY_ATTESTATION_JWT_TYPE,
-                            payload = KeyAttestationJwt(
-                                issuedAt = System.now(),
-                                expiration = System.now() + 1.days,
-                                attestedKeys = setOf(it.clientKeyMaterial.jsonWebKey),
-                                nonce = input.clientNonce,
-                                keyStorage = setOf("iso_18045_high"),
-                                userAuthentication = setOf("iso_18045_high"),
-                                certification = "https://example.org/certification/wscd",
-                                keyStorageStatus = KeyStorageStatus(
-                                    status = buildJsonObject {
-                                        putJsonObject("status_list") {
-                                            put("idx", 7)
-                                            put("uri", "https://example.org/status/key-storage")
-                                        }
-                                    },
-                                    expiration = System.now() + 31.days,
-                                ),
-                            ),
-                            serializer = KeyAttestationJwt.serializer(),
-                        ).getOrThrow()
-                    }
-                },
-                keyMaterial = it.clientKeyMaterial,
-                selectProofJwtKeyBinding = { key -> Pair(key.jsonWebKey, null) },
-            )
-
-            it.client.createCredentialRequestProofJwt(
-                clientNonce = "nonce-123",
-                credentialIssuer = "https://issuer.example.com",
-                keyAttestationRequired = KeyAttestationRequired(preferredTtl = 5.days),
-                supportedAlgorithms = listOf("ES256", "ES384"),
-            )
-
-            capturedInput.shouldNotBeNull().also { input ->
-                input.credentialIssuer shouldBe "https://issuer.example.com"
-                input.clientNonce shouldBe "nonce-123"
-                input.supportedAlgorithms.shouldNotBeNull().shouldContainExactly("ES256", "ES384")
-                input.preferredKeyStorageStatusPeriod shouldBe 5.days
-            }
         }
 
         test("do not require key attestation for proof, so local error shouldn't matter") {
@@ -492,7 +453,13 @@ val OidvciAttestationTest by matrixSuite {
                     keyAttestationValidator = trusting(TestCertificateAuthority()), // not our wallet provider
                 )
             )
-            it.client = OpenId4VciClient(loadKeyAttestation = { catchingUnwrapped { TODO() }.wrap() })
+            it.client = OpenId4VciClient(
+                proofCreators = listOf(
+                    JwtProofCreator(
+                        keyMaterial = EphemeralKeyWithoutCert(),
+                        loadKeyAttestation = { catchingUnwrapped { TODO() }.wrap() })
+                ),
+            )
 
             val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
@@ -701,17 +668,26 @@ val OidvciAttestationTest by matrixSuite {
         // -----------------------------------------------------------------------------------------
         test("throw when both jwk and kid are set in selectProofJwtKeyBinding") {
             val conflictingClient = OpenId4VciClient(
-                keyMaterial = it.clientKeyMaterial,
-                loadKeyAttestation = null,
-                selectProofJwtKeyBinding = { key ->
-                    Pair(key.jsonWebKey, "did:example:123#key-1") // both non-null → conflict
-                },
+                proofCreators = listOf(
+                    JwtProofCreator(
+                        keyMaterial = it.clientKeyMaterial,
+                        selectProofJwtKeyBinding = { key ->
+                            Pair(key.jsonWebKey, "did:example:123#key-1") // both non-null → conflict
+                        },
+                    )
+                )
             )
 
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = conflictingClient.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+
             shouldThrow<IllegalArgumentException> {
-                conflictingClient.createCredentialRequestProofJwt(
+                conflictingClient.createCredentialProof(
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
                     clientNonce = "nonce-abc",
-                    credentialIssuer = it.issuer.metadata.credentialIssuer,
+                    clientId = "https://wallet.a-sit.plus/app"
                 )
             }
         }
@@ -721,17 +697,27 @@ val OidvciAttestationTest by matrixSuite {
         // -----------------------------------------------------------------------------------------
         test("throw when neither jwk nor kid is set in selectProofJwtKeyBinding") {
             val emptyBindingClient = OpenId4VciClient(
-                keyMaterial = it.clientKeyMaterial,
-                loadKeyAttestation = null,
-                selectProofJwtKeyBinding = { _ ->
-                    Pair(null, null) // neither set → missing binding
-                },
+                proofCreators = listOf(
+                    JwtProofCreator(
+                        keyMaterial = it.clientKeyMaterial,
+                        selectProofJwtKeyBinding = { _ ->
+                            Pair(null, null) // neither set → missing binding
+                        },
+                    )
+                )
             )
 
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat =
+                emptyBindingClient.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                    .shouldNotBeNull()
+
             shouldThrow<IllegalArgumentException> {
-                emptyBindingClient.createCredentialRequestProofJwt(
+                emptyBindingClient.createCredentialProof(
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
                     clientNonce = "nonce-abc",
-                    credentialIssuer = it.issuer.metadata.credentialIssuer,
+                    clientId = "https://wallet.a-sit.plus/app"
                 )
             }
         }
@@ -744,11 +730,14 @@ val OidvciAttestationTest by matrixSuite {
             val didUrl = "did:example:holder#key-1"
 
             val kidOnlyClient = OpenId4VciClient(
-                keyMaterial = didKeyMaterial,
-                loadKeyAttestation = null,
-                selectProofJwtKeyBinding = { _ ->
-                    Pair(null, didUrl) // kid only
-                },
+                proofCreators = listOf(
+                    JwtProofCreator(
+                        keyMaterial = didKeyMaterial,
+                        selectProofJwtKeyBinding = { _ ->
+                            Pair(null, didUrl) // kid only
+                        },
+                    )
+                )
             )
 
             // No key attestation required on the issuer side for this sub-test
@@ -762,12 +751,18 @@ val OidvciAttestationTest by matrixSuite {
                 proofValidator = ProofValidator(requireKeyAttestation = false),
             )
 
+            val requestOptions = RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val credentialFormat = kidOnlyClient.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+
             val proof = shouldNotThrowAny {
-                kidOnlyClient.createCredentialRequestProofJwt(
+                kidOnlyClient.createCredentialProof(
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
                     clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
-                    credentialIssuer = it.issuer.metadata.credentialIssuer,
+                    clientId = "https://wallet.a-sit.plus/app"
                 )
-            }
+            }.shouldNotBeNull()
 
             // The resulting JWT set must be non-empty
             proof.jwt.shouldNotBeNull().shouldNotBeEmpty()

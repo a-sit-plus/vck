@@ -53,6 +53,7 @@ import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
@@ -283,7 +284,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             client = OpenId4VciKtorClient(
                 httpClient = HttpClient(mockEngine),
                 oauth2Client = OAuth2Client(clientId = walletClientId),
-                vciClient = OpenId4VciClient(keyMaterial = credentialKeyMaterial),
+                vciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(credentialKeyMaterial))),
                 clientAttestation = ClientAttestation(walletClientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(

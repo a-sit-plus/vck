@@ -22,6 +22,7 @@ import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ProtocolRequest
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -69,7 +70,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
      * Implements OID4VCI protocol, i.e. creates credential requests with proofs of possession for the credential key
      * material, and parses the credential responses.
      */
-    val vciClient: OpenId4VciClient = OpenId4VciClient(),
+    val vciClient: OpenId4VciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert()))),
     /** Implements OAuth 2.0 with the authorization server, and authenticates requests to the credential issuer. */
     val oauth2Client: OAuth2ProtocolClient = OAuth2ProtocolClient(oAuth2Client = OAuth2Client()),
     /**

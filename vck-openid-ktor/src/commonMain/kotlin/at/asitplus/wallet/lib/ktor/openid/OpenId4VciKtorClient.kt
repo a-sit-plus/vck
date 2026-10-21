@@ -25,6 +25,7 @@ import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
 import at.asitplus.wallet.lib.oidvci.LoadedIssuerMetadata
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciProtocolClient
@@ -88,7 +89,7 @@ class OpenId4VciKtorClient private constructor(
     constructor(
         httpClient: HttpClient,
         oauth2Client: OAuth2Client,
-        vciClient: OpenId4VciClient = OpenId4VciClient(),
+        vciClient: OpenId4VciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert()))),
         clientAttestation: ClientAttestation? = null,
         dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
         issuerMetadataValidator: IssuerMetadataValidator = IssuerMetadataValidator(),

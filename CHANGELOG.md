@@ -429,6 +429,15 @@ Release 9.0.0 (unreleased):
       issuer (OID4VCI 1.0 Appendix F.1); `OpenId4VciClient.createCredential` takes it as the new parameter `clientId`
     - Deprecate `OpenId4VciClient.clientId`, which only remains the default for `OpenId4VciClient.createCredential`;
       the `client_id` belongs to `OAuth2Client`
+    - Add `ProofCreator`, creating the `proofs` of a credential request of one proof type (OpenID4VCI 1.0, Appendix F),
+      with `JwtProofCreator` (`jwt`, F.1, signed with its `keyMaterial`, with a key attestation if the issuer requires
+      one) and `AttestationProofCreator` (`attestation`, F.3). `OpenId4VciClient` takes `proofCreators` and uses the
+      first proof created, in their order, for each credential request: if one fails, e.g. as it can not load a key
+      attestation the issuer requires, the next one is asked. The request fails if none creates a proof although the
+      issuer lists `proof_types_supported`, as `proofs` are required then (8.2)
+    - Deprecate the constructor of `OpenId4VciClient` taking `keyMaterial`, `loadKeyAttestation`,
+      `selectProofJwtKeyBinding`, and `clock`, which creates a `JwtProofCreator` of them, followed by an
+      `AttestationProofCreator` if `loadKeyAttestation` is set, as before
     - Fix: Proof JWTs of `OpenId4VciKtorClient` name the `client_id` of the OAuth 2.0 client that requested the token,
       instead of the one of `OpenId4VciClient`, which differed when the OAuth 2.0 client was passed separately
     - Add a constructor to `OpenId4VciKtorClient` taking the app's ktor `HttpClient`, the `OAuth2Client` (the only

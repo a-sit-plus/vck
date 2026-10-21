@@ -33,6 +33,7 @@ import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
@@ -49,7 +50,6 @@ import io.ktor.util.*
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
 
 /**
  * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] with our own internal [SimpleAuthorizationService].
@@ -194,7 +194,7 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
                 client = OpenId4VciKtorClient(
                     httpClient = HttpClient(mockEngine),
                     oauth2Client = OAuth2Client(clientId = clientId),
-                    vciClient = OpenId4VciClient(keyMaterial = credentialKeyMaterial),
+                    vciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(credentialKeyMaterial))),
                     clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
                         catching {
                             BuildClientAttestationJwt(

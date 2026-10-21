@@ -1,22 +1,8 @@
 package at.asitplus.wallet.lib.ktor.openid
 
-import kotlin.time.Duration.Companion.seconds
-import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.collections.shouldNotContain
-import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldBeSingleton
-import at.asitplus.wallet.lib.validation.ValidationPolicy
-import at.asitplus.wallet.lib.validation.ValidationDecision
-import at.asitplus.wallet.lib.validation.TrustPolicy
-import at.asitplus.wallet.lib.validation.StatusPolicy
-import at.asitplus.wallet.lib.validation.RequiredClaimsPolicy
-import at.asitplus.wallet.lib.validation.CredentialChecks
-import at.asitplus.wallet.lib.validation.CheckOutcome
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_METADATA_URL
-import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.catching
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersSerializer
@@ -27,6 +13,7 @@ import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupid.EuPidDataElements
+import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_METADATA_URL
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
@@ -34,6 +21,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.InMemoryIssuerCredentialStore
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -65,13 +53,25 @@ import at.asitplus.wallet.lib.oauth2.TokenService
 import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.ProofValidator
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.CredentialChecks
+import at.asitplus.wallet.lib.validation.RequiredClaimsPolicy
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidationDecision
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.engine.runBlocking
+import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -83,7 +83,7 @@ import io.ktor.util.*
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] with our own internal [SimpleAuthorizationService].
@@ -234,7 +234,7 @@ val OpenId4VciKtorClientTest by matrixSuite {
             client = OpenId4VciKtorClient(
                 httpClient = HttpClient(mockEngine),
                 oauth2Client = OAuth2Client(clientId = clientId),
-                vciClient = OpenId4VciClient(keyMaterial = credentialKeyMaterial),
+                vciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(credentialKeyMaterial))),
                 clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
