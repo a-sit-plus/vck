@@ -127,7 +127,8 @@ internal suspend fun evaluateSdJwtPresentation(
             ?.let { signatureCheck.verify(keyBinding.jws, key = it).outcome }
             ?: Failed(IllegalArgumentException("The SD-JWT has no cnf key to verify the key binding JWT with"))
     }
-    val claims = keyBinding.payload.takeIf { signature == Passed }
+    val verified = keyBinding.takeIf { signature == Passed }
+    val claims = verified?.payload
     val checks = PresentationChecks(
         parsing = Passed,
         signature = signature,
@@ -138,7 +139,7 @@ internal suspend fun evaluateSdJwtPresentation(
             presentationBinding(it, sdJwt, issuerSigned?.credential?.selectiveDisclosureAlgorithm, context)
         } ?: Blocked(),
     )
-    val presentation = validated?.let { ValidatedPresentation.SdJwt(it, keyBinding = claims) }
+    val presentation = validated?.let { ValidatedPresentation.SdJwt(it, keyBinding = verified) }
     return PresentationEvaluation(checks, credential, presentation)
 }
 

@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.PresentationValidationResult
@@ -48,7 +47,7 @@ internal fun legacyPresentationResult(
     } else {
         val validation = accepted.single()
         when (val presentation = validation.presentation!!) {
-            is ValidatedPresentation.SdJwt -> presentation.success(compact, validation.report)
+            is ValidatedPresentation.SdJwt -> presentation.success(validation.report)
             is ValidatedPresentation.VpJwt -> presentation.success(compact, validation.report)
             is ValidatedPresentation.VcJwt -> VerifyPresentationResult.SuccessUnsigned(
                 VcJwsVerificationResultWrapper(
@@ -70,14 +69,11 @@ internal fun legacyIsoDocuments(validations: List<PresentationValidationResult>)
         (validation.presentation as? ValidatedPresentation.MdocDocument)?.parsed(validation.report)
     }
 
-/** With the presentation as [SdJwtSigned], i.e. including its key binding JWT, as the legacy result has it. */
-private fun ValidatedPresentation.SdJwt.success(
-    compact: String,
-    report: ValidationReport,
-): VerifyPresentationResult.SuccessSdJwt {
+/** With the presented [ValidatedPresentation.SdJwt.sdJwtSigned], i.e. including its verified key binding JWT. */
+private fun ValidatedPresentation.SdJwt.success(report: ValidationReport): VerifyPresentationResult.SuccessSdJwt {
     val checks = report.children.single().credentialChecks()
     return VerifyPresentationResult.SuccessSdJwt(
-        sdJwtSigned = SdJwtSigned.parseCatching(compact).getOrThrow(),
+        sdJwtSigned = sdJwtSigned,
         verifiableCredentialSdJwt = credential.credential,
         reconstructedJsonObject = credential.reconstructedJsonObject,
         disclosures = credential.disclosures.values,

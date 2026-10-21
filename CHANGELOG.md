@@ -232,6 +232,10 @@ Release 9.0.0 (unreleased):
       messages name the check, e.g. "The issuerSignature check did not pass", and disclosed items by index
     - Add `CredentialToJsonConverter.toJsonElement(ValidatedCredential)`, `ValidatedCredential.credentialIdentifier`,
       and `ValidatedPresentation.credentials`, e.g. to display the claims of accepted presentations
+    - `ValidatedPresentation.SdJwt.keyBinding` is the signed key binding JWT (`JwsCompactTyped<KeyBindingJws>`)
+      instead of its payload, and `ValidatedPresentation.SdJwt.sdJwtSigned` is the SD-JWT as presented, with that key
+      binding JWT. `VerifyPresentationResult.SuccessSdJwt.sdJwtSigned` is the latter, so it contains no key binding JWT
+      the request did not require, as such a key binding JWT is not checked
     - `StatusValidation` requires mechanisms for a passed `agreement`
     - Known limitations:
         - Certificate paths: trust is evaluated by walking the transported chain, without RFC 5280 path building,
