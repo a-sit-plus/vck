@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.validation
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -8,9 +8,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.TimeScope
-import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
-import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
-import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
+import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Instant
 
@@ -66,7 +64,7 @@ class KeyAttestationValidator @JvmOverloads constructor(
         val payload = attestation.payload
         val verification = signatureCheck.verify(attestation.jws)
         val withoutStatus = KeyAttestationChecks(
-            parsing = catching { attestation.requireWellFormed(embedded, supportedAlgorithms) }.toOutcome(),
+            parsing = catchingUnwrapped { attestation.requireWellFormed(embedded, supportedAlgorithms) }.toOutcome(),
             signature = if (verification.certificateChain == null) {
                 Failed(IllegalArgumentException("The key attestation transports no certificate in x5c"))
             } else verification.outcome,

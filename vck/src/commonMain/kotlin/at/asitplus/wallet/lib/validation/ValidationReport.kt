@@ -413,5 +413,7 @@ data class ValidationReport private constructor(
     }
 }
 
-fun <T> KmmResult<T>.toOutcome(): CheckOutcome =
+fun <T> KmmResult<T>.toOutcome(): CheckOutcome = this.unwrap().toOutcome()
+
+fun <T> Result<T>.toOutcome(): CheckOutcome =
     fold(onSuccess = { CheckOutcome.Passed }, onFailure = { CheckOutcome.Failed(it) })

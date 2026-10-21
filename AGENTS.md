@@ -31,4 +31,5 @@ Agent-only operating notes:
 - Do not test placeholder behavior such as `TODO()` or temporary unsupported-operation errors. You may write tests for the 
   intended behavior and disable them with `TestConfig.disable()` until that behavior is implemented if the shape 
   is already known. Keep tests for already implemented behavior enabled.
-
+- Use `catchingUnwrapped` instead of `catching` when we don't need the `KmmResult` as a return type
+- Every `@Throws` annotation on a suspending function needs to include `CancellationException` for iOS builds

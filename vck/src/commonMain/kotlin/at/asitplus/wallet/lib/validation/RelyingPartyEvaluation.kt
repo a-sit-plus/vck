@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.validation
 
-import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpPayload
@@ -70,14 +69,14 @@ internal suspend fun evaluateAccessCertificate(
     if (chain.isNullOrEmpty()) {
         // A reader authentication that did not verify yields no chain, which says nothing about the certificate, and
         // an unsigned request has none
-        val missing = when (signature) {
+        val parsingOutcome = when (signature) {
             is Failed -> Blocked()
             NotApplicable -> NotApplicable
             else -> Failed(IllegalArgumentException("The request transports no access certificate"))
         }
         return AccessCertificateEvaluation(
             checks = AccessCertificateChecks(
-                parsing = missing,
+                parsing = parsingOutcome,
                 signature = signature,
                 trust = TrustValidation(Blocked(), source = source),
                 timeliness = Blocked(),
@@ -117,7 +116,7 @@ private fun CertificateChain.timeliness(now: Instant): CheckOutcome =
         )
     } ?: Passed
 
-private fun X509Certificate.x509HashBinding(clientId: String): CheckOutcome = catching {
+private fun X509Certificate.x509HashBinding(clientId: String): CheckOutcome = catchingUnwrapped {
     require(clientId.startsWith(X509_HASH)) { "The client identifier does not use the prefix x509_hash" }
     val hash = encodeToDer().sha256().encodeToString(Base64UrlStrict)
     require(clientId.removePrefix(X509_HASH) == hash) { "The client identifier is not the hash of the certificate" }
@@ -195,7 +194,7 @@ internal suspend fun evaluateRegistrationCertificate(
         is WrpCwtRegistrationCertificate -> signatureCheck.verify(certificate.cose)
     }
     val chain = verification.certificateChain
-    val header = catching {
+    val header = catchingUnwrapped {
         val type = when (certificate) {
             is WrpJwtRegistrationCertificate -> certificate.jwsTyped.jws.jwsHeader.type
             is WrpCwtRegistrationCertificate -> certificate.cose.protectedHeader.type
@@ -209,7 +208,7 @@ internal suspend fun evaluateRegistrationCertificate(
     }.toOutcome()
     return RegistrationCertificateEvaluation(
         header = header,
-        claims = catching { payload.requireClaims(purpose) }.toOutcome(),
+        claims = catchingUnwrapped { payload.requireClaims(purpose) }.toOutcome(),
         signature = verification.outcome,
         trust = TrustValidation(
             outcome = checkTrust(chain, anchors?.invoke(), timeScope.now, TrustRule.CHAIN_TO_ANCHOR),
@@ -227,7 +226,7 @@ internal suspend fun evaluateRegistrationCertificate(
 
             else -> Failed(IllegalArgumentException("The sub of the WRPRC is not the identifier of the WRPAC"))
         },
-        requestAuthorization = catching {
+        requestAuthorization = catchingUnwrapped {
             when (purpose) {
                 is RegistrationPurpose.Presentation -> requireRegistered(purpose.requests, payload)
                 RegistrationPurpose.Issuance -> require(

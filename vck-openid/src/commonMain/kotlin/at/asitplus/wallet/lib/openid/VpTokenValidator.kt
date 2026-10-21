@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -81,7 +82,9 @@ internal class VpTokenValidator(
         expectedOrigin: CheckOutcome,
         session: ChallengeSession,
     ): VpTokenValidation {
-        val vpToken = catching { parse(authnRequest, responseParameters, origin) }.getOrElse {
+        val vpToken = catchingUnwrapped {
+            parse(authnRequest, responseParameters, origin)
+        }.getOrElse {
             return VpTokenValidation(
                 result = KmmResult.failure(it),
                 report = credentialValidator.reportResponse(
@@ -110,7 +113,7 @@ internal class VpTokenValidator(
             )
             relatedPresentations.map {
                 ValidatedEntry(
-                    compact = catching { it.extractContent() }.getOrNull().orEmpty(),
+                    compact = catchingUnwrapped { it.extractContent() }.getOrNull().orEmpty(),
                     validations = validatePresentation(credentialQuery.format, it, context) { challenge ->
                         createSessionTranscript(
                             clientId = authnRequest.clientId,
@@ -189,7 +192,7 @@ internal class VpTokenValidator(
         }
         // Over the DC API, holder proofs are bound to the calling Origin, otherwise to client_id (OpenID4VP 1.0, A.4)
         val audience = origin?.let { "origin:$it" } ?: authnRequest.clientId
-            ?: throw IllegalArgumentException("Request has no client_id to bind presentations to")
+        ?: throw IllegalArgumentException("Request has no client_id to bind presentations to")
         return ParsedVpToken(query, presentations, audience)
     }
 
@@ -225,7 +228,7 @@ internal class VpTokenValidator(
         relatedPresentation: JsonElement,
         context: PresentationContext,
         createSessionTranscript: (challenge: String) -> SessionTranscript,
-    ): List<PresentationValidationResult> = catching {
+    ): List<PresentationValidationResult> = catchingUnwrapped {
         when (credentialFormat) {
             CredentialFormatEnum.DC_SD_JWT -> listOf(
                 PresentationValidationInput.SdJwt(relatedPresentation.extractContent())

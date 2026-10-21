@@ -323,11 +323,11 @@ class RelyingPartyValidator @JvmOverloads constructor(
         if (parameters == null)
             return unsupported("The request is no authorization request")
         val chain = jws.jwsHeader.certificateChain?.takeIf { it.isNotEmpty() }
-        val requestData = catching {
+        val requestData = catchingUnwrapped {
             requireNotNull(parameters.clientId) { "The request has no client_id" }
             requireNotNull(parameters.dcqlQuery) { "The request has no DCQL query" }
         }
-        val certificate = catching<WrpRegistrationCertificate> {
+        val certificate = catchingUnwrapped<WrpRegistrationCertificate> {
             val verifierInfo = parameters.verifierInfo
                 ?: throw MissingRegistrationCertificateException("The request has no verifier_info")
             WrpRegistrationCertificate.WrpJwtRegistrationCertificate(verifierInfo.parseSingleRegistrationCertificate())
@@ -368,7 +368,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
             registration = Blocked(),
             registrationCertificates = emptyMap(),
         )
-        val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
+        val registrationCertificates = catchingUnwrapped<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
             if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
                 throw MissingRegistrationCertificateException("No DocRequest contains a registration certificate")
             }

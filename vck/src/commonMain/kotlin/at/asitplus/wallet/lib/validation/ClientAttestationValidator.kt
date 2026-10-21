@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.validation
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -8,10 +8,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
-import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
-import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
-import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
+import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
@@ -74,7 +71,7 @@ class ClientAttestationValidator @JvmOverloads constructor(
         val payload = attestation.payload
         val verification = signatureCheck.verify(attestation.jws)
         val withoutStatus = ClientAttestationChecks(
-            parsing = catching { attestation.requireWellFormed(supportedAlgorithms) }.toOutcome()
+            parsing = catchingUnwrapped { attestation.requireWellFormed(supportedAlgorithms) }.toOutcome()
                 .takeIf { it != Passed } ?: possession.parsing,
             signature = if (verification.certificateChain == null) {
                 Failed(IllegalArgumentException("client attestation has no x5c"))
