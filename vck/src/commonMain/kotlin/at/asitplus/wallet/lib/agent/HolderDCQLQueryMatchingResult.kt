@@ -32,22 +32,27 @@ data class HolderDCQLQueryMatchingResult<Credential : Any>(
      *
      * For every required set, this selects the first satisfiable option. It then submits the first matching
      * credential per query, or every match when that query allows `multiple`. Optional credential sets are omitted.
-     * Wallets that obtain a different choice from the user should build the submission map themselves.
+     * Fails if no option of a required credential set is satisfiable, i.e. has a matching credential for each of its
+     * queries. Wallets that obtain a different choice from the user should build the submission map themselves.
      */
     fun toDefaultSubmission(
         dcqlQuery: DCQLQuery,
     ): KmmResult<Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>> =
         catching {
             val allowsMultiple = dcqlQuery.credentials.filter { it.multiple }.map { it.id }.toSet()
-            // submit the first options of the required queries by default
+            // every query has an entry, which is empty if no credential matches it
+            val satisfiableQueries = dcqlQueryMatchingResult.credentialQueryMatches.filterValues {
+                it.isNotEmpty()
+            }.keys
+            // submit the first satisfiable options of the required queries by default
             val queriesToBePresented = dcqlQuery.requestedCredentialSetQueries.filter {
                 it.required
             }.map {
-                it.options.first {
+                it.options.firstOrNull {
                     it.all {
-                        it in dcqlQueryMatchingResult.credentialQueryMatches
+                        it in satisfiableQueries
                     }
-                }
+                } ?: throw IllegalStateException("No option of a required credential set query is satisfiable")
             }.flatten()
 
             queriesToBePresented.associateWith { queryId ->
