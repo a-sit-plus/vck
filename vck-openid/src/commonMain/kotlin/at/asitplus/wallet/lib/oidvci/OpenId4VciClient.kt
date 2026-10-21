@@ -90,6 +90,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 @Deprecated("Renamed", ReplaceWith("OpenId4VciClient"))
 typealias WalletService = OpenId4VciClient
@@ -151,6 +152,8 @@ class OpenId4VciClient @JvmOverloads constructor(
      * per credential type and the status list token resolver.
      */
     private val credentialValidator: CredentialValidator = CredentialValidator(),
+    /** Clock to use for proof generation. */
+    private val clock: Clock = Clock.System,
 ) {
 
     private val defaultClientId = clientId
@@ -252,7 +255,9 @@ class OpenId4VciClient @JvmOverloads constructor(
         if (input.trimStart().startsWith("{")) {
             CredentialOfferInput.ByValue(input.decodeCredentialOffer())
         } else {
-            val parameters = catchingUnwrapped { input.extractParams() }.getOrElse {
+            val parameters = catchingUnwrapped {
+                Url(input).decodeFromQuery<CredentialOfferUrlParameters>()
+            }.getOrElse {
                 throw InvalidRequest("could not parse credential offer URL", it)
             }
             parameters.credentialOffer?.let { offer ->
@@ -274,10 +279,6 @@ class OpenId4VciClient @JvmOverloads constructor(
         throw InvalidRequest("could not parse credential offer", it)
     }
 
-    private fun String.extractParams(): CredentialOfferUrlParameters =
-        Url(this).decodeFromQuery<CredentialOfferUrlParameters>()
-
-
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].
      *
@@ -289,7 +290,10 @@ class OpenId4VciClient @JvmOverloads constructor(
     fun buildAuthorizationDetails(
         credentialConfigurationId: String,
         authorizationServers: Set<String>? = null,
-    ) = buildAuthorizationDetails(setOf(credentialConfigurationId), authorizationServers)
+    ): Set<OpenIdAuthorizationDetails> = buildAuthorizationDetails(
+        credentialConfigurationIds = setOf(credentialConfigurationId),
+        authorizationServers = authorizationServers
+    )
 
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].
@@ -302,7 +306,7 @@ class OpenId4VciClient @JvmOverloads constructor(
     fun buildAuthorizationDetails(
         credentialConfigurationIds: Set<String>,
         authorizationServers: Set<String>? = null,
-    ) = credentialConfigurationIds.map {
+    ): Set<OpenIdAuthorizationDetails> = credentialConfigurationIds.map {
         OpenIdAuthorizationDetails(
             credentialConfigurationId = it,
             locations = authorizationServers,
@@ -315,7 +319,7 @@ class OpenId4VciClient @JvmOverloads constructor(
     fun selectSupportedCredentialFormat(
         requestOptions: RequestOptions,
         metadata: IssuerMetadata,
-    ) = metadata.supportedCredentialConfigurations.values.filter {
+    ): SupportedCredentialFormat? = metadata.supportedCredentialConfigurations.values.filter {
         it.format.toRepresentation() == requestOptions.representation
     }.firstOrNull {
         when (requestOptions.representation) {
@@ -358,7 +362,6 @@ class OpenId4VciClient @JvmOverloads constructor(
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String? = null,
         previouslyRequestedScope: String? = null,
-        clock: Clock = Clock.System,
         clientId: String = defaultClientId,
     ): KmmResult<Collection<CredentialRequest>> = catching {
         createCredentialRequestInternal(
@@ -367,7 +370,6 @@ class OpenId4VciClient @JvmOverloads constructor(
             credentialFormat = credentialFormat,
             clientNonce = clientNonce,
             previouslyRequestedScope = previouslyRequestedScope,
-            clock = clock,
             clientId = clientId,
         ).getOrThrow().map {
             encryptionService.wrapCredentialRequest(it, metadata).getOrThrow()
@@ -395,13 +397,12 @@ class OpenId4VciClient @JvmOverloads constructor(
         metadata: IssuerMetadata,
         credentialConfigurationId: String,
         clientNonce: String? = null,
-        clock: Clock = Clock.System,
         clientId: String = defaultClientId,
     ): KmmResult<CredentialRequest> = catching {
         val credentialFormat = metadata.supportedCredentialConfigurations[credentialConfigurationId]
             ?: throw UnknownCredentialConfiguration(credentialConfigurationId)
         CredentialRequestParameters(credentialConfigurationId = credentialConfigurationId)
-            .withProofAndEncryption(metadata, credentialFormat, clientNonce, clock, clientId)
+            .withProofAndEncryption(metadata, credentialFormat, clientNonce, clientId)
             .also { Napier.i("createCredentialRequest returns $it") }
             .let { encryptionService.wrapCredentialRequest(it, metadata).getOrThrow() }
     }
@@ -412,11 +413,10 @@ class OpenId4VciClient @JvmOverloads constructor(
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String? = null,
         previouslyRequestedScope: String? = null,
-        clock: Clock = Clock.System,
         clientId: String,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
         tokenResponse.toCredentialRequestParameters(metadata, credentialFormat, previouslyRequestedScope)
-            .map { it.withProofAndEncryption(metadata, credentialFormat, clientNonce, clock, clientId) }
+            .map { it.withProofAndEncryption(metadata, credentialFormat, clientNonce, clientId) }
             .also { Napier.i("createCredentialRequest returns $it") }
     }
 
@@ -424,14 +424,12 @@ class OpenId4VciClient @JvmOverloads constructor(
         metadata: IssuerMetadata,
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String?,
-        clock: Clock,
         clientId: String,
     ): CredentialRequestParameters = copy(
         proofs = createCredentialRequestProof(
             credentialIssuer = metadata.credentialIssuer,
             credentialFormat = credentialFormat,
             clientNonce = clientNonce,
-            clock = clock,
             clientId = clientId,
         ).takeIf { it.jwt != null || it.attestation != null }, // do not send empty proofs
         credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
@@ -629,13 +627,11 @@ class OpenId4VciClient @JvmOverloads constructor(
         credentialIssuer: String,
         credentialFormat: SupportedCredentialFormat,
         clientNonce: String?,
-        clock: Clock = Clock.System,
         clientId: String = defaultClientId,
     ): CredentialRequestProofContainer = credentialFormat.supportedProofTypes?.get(ProofTypes.JWT)?.let { type ->
         createCredentialRequestProofJwt(
             clientNonce = clientNonce,
             credentialIssuer = credentialIssuer,
-            clock = clock,
             clientId = clientId,
             keyAttestationRequired = type.keyAttestationRequired,
             supportedAlgorithms = type.supportedSigningAlgorithms,
@@ -652,7 +648,6 @@ class OpenId4VciClient @JvmOverloads constructor(
     internal suspend fun createCredentialRequestProofJwt(
         clientNonce: String?,
         credentialIssuer: String?,
-        clock: Clock = Clock.System,
         keyAttestationRequired: KeyAttestationRequired? = null,
         supportedAlgorithms: Collection<String>? = null,
         clientId: String = defaultClientId,
@@ -680,7 +675,8 @@ class OpenId4VciClient @JvmOverloads constructor(
                     payload = JsonWebToken(
                         issuer = clientId, // omit when token was pre-authn?
                         audience = credentialIssuer,
-                        issuedAt = clock.now().truncateToSeconds(),
+                        // Apply a bit of clock skew to avoid getting rejected by the issuer
+                        issuedAt = clock.now().truncateToSeconds() - 3.minutes,
                         nonce = clientNonce,
                     ),
                     serializer = JsonWebToken.serializer(),
