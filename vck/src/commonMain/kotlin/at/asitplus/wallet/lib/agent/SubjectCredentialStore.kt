@@ -297,7 +297,7 @@ interface SubjectCredentialStore {
                 val validated = requireNotNull(prepared.validation.unacceptedCredential) {
                     "The credential is not intact"
                 }
-                when (val credential = prepared.credential) {
+                when (val credential = checkNotNull(prepared.credential)) {
                     is Holder.StoreCredentialInput.Vc -> Vc(
                         vcSerialized = credential.vcJws,
                         vc = (validated as ValidatedCredential.VcJwt).credential,

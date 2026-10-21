@@ -135,6 +135,12 @@ Release 9.0.0 (unreleased):
       user looks at the report, then `HolderAgent.storeAccepted(prepared)`, storing only an accepted credential, as
       `storeCredentialWithReport` does, or `HolderAgent.storeAfterUserConsent(prepared)`, storing also a rejected but
       intact credential. `CredentialStorageResult.storedEntry` may thus be present for a rejected report
+    - Add `HolderAgent.prepareCredentialStorage(input, scheme, policy, renewalInfo)`, validating an encoded credential
+      (`CredentialValidationInput`), e.g. as received from a credential issuer, and decoding it only once: the
+      credential to store is the validated one, e.g. an mdoc with exactly the bytes the issuer signed. Add
+      `HolderAgent.rejectUndecodable(cause, policy, renewalInfo)` for a credential that can not be decoded from its
+      transfer encoding, so that it is reported, but never stored. `PreparedCredentialStorage.credential` is `null`
+      for a credential prepared from its encoding that is not intact
     - Add `RelyingPartyValidator` with `RelyingPartyTrustAnchors` (WRPAC and WRPRC anchors, status list signers of
       WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
