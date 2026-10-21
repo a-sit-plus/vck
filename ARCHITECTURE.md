@@ -121,9 +121,10 @@ Important areas:
   credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciKtorClient`, `OpenId4VpKtorHolder` and
   `RemoteOAuth2AuthorizationServerAdapter` only send the requests of the exchanges of `OAuth2ProtocolClient`,
   `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient` (`execute` in `HttpClient.kt`), and run the exchanges of
-  each flow in order; they contain no protocol logic and no DPoP handling. Received credentials are stored by the
-  wallet's `HolderAgent`, not by the Ktor client: `CredentialIssuanceResult.Success.prepareCredentialStorage` hands
-  them to `HolderAgent.prepareCredentialStorage`, see *Validation*.
+  each flow in order; they contain no protocol logic and no DPoP handling. Received credentials are only decoded
+  (`OpenId4VciClient.decodeCredentialResponse`), and are validated and stored by the wallet's `HolderAgent`, not by
+  the Ktor client: `CredentialIssuanceResult.Success.prepareCredentialStorage` hands each `ReceivedCredential` to
+  `HolderAgent.prepareCredentialStorage`, see *Validation*.
 
 Put Ktor engine selection, request execution, response body handling, cache policy, and Ktor-specific test doubles
 here. Non-success responses are `HttpErrorResponseException` instances (defined in `vck-openid`, so that exchanges
@@ -348,6 +349,10 @@ a credential that only fails checks the policy may relax (`isIntactCredential`),
   A registered scheme supplies metadata even with empty or entirely optional claim descriptions; it then declares
   no mandatory claims and the check passes. Presentations disclose selectively, so the check does not apply to
   presented credentials.
+- A received credential is validated once, by the `HolderAgent` that stores it, with its key and validator: protocol
+  clients only decrypt and decode it into a `ReceivedCredential`, and one that can not be decoded is prepared as
+  rejected (`HolderAgent.rejectUndecodable`) instead of failing its batch. The stored credential is the validated one,
+  e.g. the `IssuerSigned` decoded from the issuer's bytes, which keeps every signed byte.
 - Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
   `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy
   results of the OpenID4VP verifiers) delegate to the new validation under a compatibility policy or the configured
