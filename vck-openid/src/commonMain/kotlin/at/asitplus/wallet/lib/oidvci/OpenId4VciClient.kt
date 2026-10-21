@@ -83,7 +83,6 @@ import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -453,12 +452,17 @@ class OpenId4VciClient @JvmOverloads constructor(
      * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
      * rejecting encrypted responses because they require the originating [CredentialRequest].
      */
+    @Deprecated(
+        "Without the originating credential request, a plain response is accepted even if the request asked for an " +
+                "encrypted one: pass the CredentialRequest to parseCredentialResponse or validateCredentialResponse",
+    )
     suspend fun parseCredentialResponse(
         response: String,
         isEncrypted: Boolean,
         representation: CredentialRepresentation,
         scheme: CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
+        @Suppress("DEPRECATION")
         parseCredentialResponse(
             response = response.toCredentialResponse(isEncrypted),
             representation = representation,
@@ -542,6 +546,10 @@ class OpenId4VciClient @JvmOverloads constructor(
      * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
      * rejecting encrypted responses because they require the originating [CredentialRequest].
      */
+    @Deprecated(
+        "Without the originating credential request, a plain response is accepted even if the request asked for an " +
+                "encrypted one: pass the CredentialRequest to parseCredentialResponse or validateCredentialResponse",
+    )
     suspend fun parseCredentialResponse(
         response: CredentialResponse,
         representation: CredentialRepresentation,
@@ -760,6 +768,7 @@ class OpenId4VciClient @JvmOverloads constructor(
             ISO_MDOC -> CredentialValidationInput.IsoMdoc(decodeToByteArray(Base64UrlStrict))
         }
 
+    /** An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4). */
     @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
         credentialRepresentation: CredentialRepresentation,
@@ -779,7 +788,9 @@ class OpenId4VciClient @JvmOverloads constructor(
 
         ISO_MDOC -> catchingUnwrapped {
             Iso(
-                issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(decodeToByteArray(Base64())),
+                issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(
+                    decodeToByteArray(Base64UrlStrict)
+                ),
                 scheme = credentialScheme as IsoMdocCredentialScheme
             )
         }.getOrElse { throw Exception("Invalid credential format: $this", it) }

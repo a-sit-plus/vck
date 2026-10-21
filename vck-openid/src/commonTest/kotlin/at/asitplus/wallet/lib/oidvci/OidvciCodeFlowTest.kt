@@ -27,6 +27,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -686,6 +687,30 @@ val OidvciCodeFlowTest by matrixSuite {
             namespaces.keys.first() shouldBe "org.iso.18013.5.1"
             val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
             numberOfClaims shouldBeGreaterThan 1
+        }
+
+        // An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4)
+        "mdoc of a credential response is parsed from base64url" { it ->
+            val requestOptions = RequestOptions(AttributeIndex.resolveIdentifier(MDL_DOCTYPE, ISO_MDOC), ISO_MDOC)
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
+            val request = it.client.createCredential(
+                tokenResponse = token,
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+            ).getOrThrow().shouldBeSingleton().first()
+            val response = it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = request,
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow().shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
+
+            it.client.parseCredentialResponse(response, request, ISO_MDOC, requestOptions.credentialScheme)
+                .getOrThrow().shouldBeSingleton().first()
+                .shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
+                .issuerSigned.issuerAuth.payload.shouldNotBeNull().docType shouldBe MDL_DOCTYPE
         }
     }
 }
