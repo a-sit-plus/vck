@@ -15,8 +15,11 @@ import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
+import at.asitplus.wallet.lib.oidvci.LoadedIssuerMetadata
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciProtocolClient
+import at.asitplus.wallet.lib.validation.IssuerMetadataValidator
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -48,6 +51,8 @@ class OpenId4VciKtorClient private constructor(
     private val oid4vciClient: OpenId4VciClient,
     /** OAuth 2.0 client to use during the protocol run, which sends all requests. */
     private val oauth2Client: OAuth2KtorClient,
+    /** Validates signed issuer metadata, see [loadIssuerMetadata]. */
+    private val issuerMetadataValidator: IssuerMetadataValidator = IssuerMetadataValidator(),
 ) {
 
     /**
@@ -64,6 +69,8 @@ class OpenId4VciKtorClient private constructor(
      * e.g. with a Wallet Instance Attestation (WIA), or `null` to not use it
      * @param dpopKeyMaterial the key material the access tokens and refresh tokens get bound to, by default the key of
      * [clientAttestation], else an ephemeral key, see [OAuth2KtorClient]
+     * @param issuerMetadataValidator validates signed issuer metadata, see [loadIssuerMetadata]: configure it with the
+     * anchors of the WRPAC providers, and of the WRPRC providers
      */
     constructor(
         httpClient: HttpClient,
@@ -71,6 +78,7 @@ class OpenId4VciKtorClient private constructor(
         vciClient: OpenId4VciClient = OpenId4VciClient(),
         clientAttestation: ClientAttestation? = null,
         dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
+        issuerMetadataValidator: IssuerMetadataValidator = IssuerMetadataValidator(),
     ) : this(
         oid4vciClient = vciClient,
         oauth2Client = OAuth2KtorClient(
@@ -79,6 +87,7 @@ class OpenId4VciKtorClient private constructor(
             clientAttestation = clientAttestation,
             dpopKeyMaterial = dpopKeyMaterial,
         ),
+        issuerMetadataValidator = issuerMetadataValidator,
     )
 
     /**
@@ -113,7 +122,11 @@ class OpenId4VciKtorClient private constructor(
     ) : this(oid4vciClient = oid4vciClient, oauth2Client = oauth2Client)
 
     /** Shares the DPoP nonces of [oauth2Client], which sends all requests. */
-    private val vci = OpenId4VciProtocolClient(vciClient = oid4vciClient, oauth2Client = oauth2Client.protocolClient)
+    private val vci = OpenId4VciProtocolClient(
+        vciClient = oid4vciClient,
+        oauth2Client = oauth2Client.protocolClient,
+        issuerMetadataValidator = issuerMetadataValidator,
+    )
 
     /**
      * Loads the [CredentialOffer] from [input], i.e. the content of a QR code or deep link: a JSON-encoded credential
@@ -141,11 +154,31 @@ class OpenId4VciKtorClient private constructor(
     }
 
     /**
+     * Loads the metadata of [credentialIssuer], preferring signed metadata, which are validated under [policy], see
+     * [OpenId4VciProtocolClient.loadIssuerMetadata]. Pass them to [parseCredentialMetadata], if the wallet accepts
+     * them, so that every [CredentialIdentifierInfo] carries the validated credential issuer.
+     */
+    suspend fun loadIssuerMetadata(
+        credentialIssuer: String,
+        policy: ValidationPolicy,
+    ): KmmResult<LoadedIssuerMetadata> = catching {
+        oauth2Client.execute(vci.loadIssuerMetadata(credentialIssuer, policy))
+    }
+
+    /**
      * Parses IssuerMetadata and returns a list of [CredentialIdentifierInfo].
      */
     fun parseCredentialMetadata(
         issuerMetadata: IssuerMetadata
     ): KmmResult<Collection<CredentialIdentifierInfo>> = vci.parseCredentialMetadata(issuerMetadata)
+
+    /**
+     * Parses the metadata of [loaded], see [loadIssuerMetadata], and returns a list of [CredentialIdentifierInfo], each
+     * with the credential issuer validated from signed metadata. Fails for signed metadata that have been rejected.
+     */
+    fun parseCredentialMetadata(
+        loaded: LoadedIssuerMetadata,
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = vci.parseCredentialMetadata(loaded)
 
     /**
      * Starts the issuing process at [credentialIssuerUrl].

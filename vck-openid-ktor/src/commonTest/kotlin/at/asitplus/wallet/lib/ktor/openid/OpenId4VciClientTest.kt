@@ -236,13 +236,13 @@ val OpenId4VciKtorClientTest by matrixSuite {
             var refreshTokenStore: CredentialRenewalInfo? = null
 
             // Load credential identifier infos from Issuing service
-            val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+            val credentialIdentifierInfos = client.loadCredentialMetadata("https://issuer.example.com").getOrThrow()
             // just pick the first credential in SD-JWT that is available
             val selectedCredential = credentialIdentifierInfos
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
 
             client.startProvisioningWithAuthRequestReturningResult(
-                credentialIssuerUrl = "http://localhost",
+                credentialIssuerUrl = "https://issuer.example.com",
                 credentialIdentifierInfo = selectedCredential,
             ).getOrThrow().also {
                 // Simulates the browser, handling authorization to get the authCode
@@ -281,7 +281,7 @@ val OpenId4VciKtorClientTest by matrixSuite {
                 revocationKind = RevocationList.Kind.IDENTIFIER_LIST,
             )
         ) {
-            val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+            val credentialIdentifierInfos = client.loadCredentialMetadata("https://issuer.example.com").getOrThrow()
             val selectedCredential = credentialIdentifierInfos
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
@@ -324,7 +324,7 @@ val OpenId4VciKtorClientTest by matrixSuite {
         with(setup(euPidScheme, ISO_MDOC, mapOf(expectedAttributeName to expectedAttributeValue))) {
             var refreshTokenStore: CredentialRenewalInfo? = null
             // Load credential identifier infos from Issuing service
-            val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+            val credentialIdentifierInfos = client.loadCredentialMetadata("https://issuer.example.com").getOrThrow()
             // just pick the first credential in MSO_MDOC that is available
             val selectedCredential = credentialIdentifierInfos
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }

@@ -31,6 +31,10 @@ import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.PlainExchange
 import at.asitplus.wallet.lib.oauth2.ValueExchange
+import at.asitplus.wallet.lib.validation.IssuerMetadataValidation
+import at.asitplus.wallet.lib.validation.IssuerMetadataValidator
+import at.asitplus.wallet.lib.validation.ValidatedCredentialIssuer
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
@@ -66,6 +70,11 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
     val vciClient: OpenId4VciClient = OpenId4VciClient(),
     /** Implements OAuth 2.0 with the authorization server, and authenticates requests to the credential issuer. */
     val oauth2Client: OAuth2ProtocolClient = OAuth2ProtocolClient(oAuth2Client = OAuth2Client()),
+    /**
+     * Validates signed issuer metadata, see [loadIssuerMetadata]: configure it with the anchors of the WRPAC
+     * providers, and of the WRPRC providers.
+     */
+    private val issuerMetadataValidator: IssuerMetadataValidator = IssuerMetadataValidator(),
 ) {
 
     /**
@@ -91,39 +100,108 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
     }
 
     /**
-     * Loads [IssuerMetadata] from [credentialIssuer], see [WellKnownPaths.CredentialIssuer].
+     * Loads the unsigned [IssuerMetadata] from [credentialIssuer], see [WellKnownPaths.CredentialIssuer], asking for
+     * `application/json` (OpenID4VCI 1.0, 12.2.2). Fails if their `credential_issuer` is not [credentialIssuer]
+     * (12.2.4). To load signed metadata, see the overload with a policy.
      *
      * Sends `CredentialIssuerMetadata`.
      */
     fun loadIssuerMetadata(
         credentialIssuer: String,
     ): HttpExchange<IssuerMetadata> = PlainExchange(
-        candidates = listOf(
-            ProtocolRequest.CredentialIssuerMetadata(
-                http = PreparedHttpRequest(
-                    url = insertWellKnownPath(credentialIssuer, WellKnownPaths.CredentialIssuer),
-                    method = HttpMethod.Get,
-                )
-            )
-        ),
-        parse = { joseCompliantSerializer.decodeFromString<IssuerMetadata>(it.body) },
+        candidates = listOf(issuerMetadataRequest(credentialIssuer, accept = MediaTypes.Application.JSON)),
+        parse = { it.body.decodeUnsignedIssuerMetadata(credentialIssuer) },
     )
 
     /**
-     * Parses [issuerMetadata] and returns a list of [CredentialIdentifierInfo].
+     * Loads the metadata of [credentialIssuer], see [WellKnownPaths.CredentialIssuer], asking for signed metadata
+     * (`application/jwt`) over unsigned ones (`application/json`), which the credential issuer has to support
+     * (OpenID4VCI 1.0, 12.2.2). Takes the media type of the response from its `Content-Type`:
+     *  - signed metadata are validated with [issuerMetadataValidator] under [policy], see
+     *    [IssuerMetadataValidator.validate], and returned with their report, also if they are rejected, so that the
+     *    wallet can show why, e.g. that the access certificate of the credential issuer is not trusted;
+     *  - unsigned metadata are returned if their `credential_issuer` is [credentialIssuer] (12.2.4), and it is up to
+     *    the wallet whether to use them: e.g. the EUDI Wallet ecosystem requires signed metadata (ETSI TS 119 472-3
+     *    V1.1.1, ISS-MDATA-4.2.1-01).
+     *
+     * Sends `CredentialIssuerMetadata`.
      */
+    fun loadIssuerMetadata(
+        credentialIssuer: String,
+        policy: ValidationPolicy,
+    ): HttpExchange<LoadedIssuerMetadata> = PlainExchange(
+        candidates = listOf(issuerMetadataRequest(credentialIssuer, accept = ACCEPT_SIGNED_METADATA)),
+        parse = { response ->
+            val contentType = response.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
+                ?: throw IllegalArgumentException("The response indicates no media type of the metadata")
+            when {
+                contentType.match(MediaTypes.Application.JWT) -> LoadedIssuerMetadata.Signed(
+                    issuerMetadataValidator.validate(response.body, credentialIssuer, policy)
+                )
+
+                contentType.match(ContentType.Application.Json) -> LoadedIssuerMetadata.Unsigned(
+                    response.body.decodeUnsignedIssuerMetadata(credentialIssuer)
+                )
+
+                else -> throw IllegalArgumentException("Unsupported media type of the metadata: $contentType")
+            }
+        },
+    )
+
+    private fun issuerMetadataRequest(credentialIssuer: String, accept: String) =
+        ProtocolRequest.CredentialIssuerMetadata(
+            http = PreparedHttpRequest(
+                url = insertWellKnownPath(credentialIssuer, WellKnownPaths.CredentialIssuer),
+                method = HttpMethod.Get,
+                headers = headers { append(HttpHeaders.Accept, accept) },
+            )
+        )
+
+    /**
+     * "The value MUST be identical to the Credential Issuer's identifier value into which the well-known URI string
+     * was inserted [...] If these values are not identical (when compared using a simple string comparison with no
+     * normalization), the data contained in the response MUST NOT be used." (OpenID4VCI 1.0, 12.2.4)
+     */
+    private fun String.decodeUnsignedIssuerMetadata(credentialIssuer: String): IssuerMetadata =
+        joseCompliantSerializer.decodeFromString<IssuerMetadata>(this).also {
+            require(it.credentialIssuer == credentialIssuer) {
+                "credential_issuer ${it.credentialIssuer} is not the credential issuer $credentialIssuer"
+            }
+        }
+
+    /**
+     * Parses [issuerMetadata] and returns a list of [CredentialIdentifierInfo], with the [issuer] validated from
+     * signed metadata, if any.
+     */
+    @JvmOverloads
     fun parseCredentialMetadata(
-        issuerMetadata: IssuerMetadata
+        issuerMetadata: IssuerMetadata,
+        issuer: ValidatedCredentialIssuer? = null,
     ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
         issuerMetadata.supportedCredentialConfigurations.map {
             CredentialIdentifierInfo(
                 issuerMetadata = issuerMetadata,
                 credentialIdentifier = it.key,
-                supportedCredentialFormat = it.value
+                supportedCredentialFormat = it.value,
+                issuer = issuer,
             )
         }.also {
             Napier.i("parseCredentialMetadata returns $it")
         }
+    }
+
+    /**
+     * Parses the metadata of [loaded] and returns a list of [CredentialIdentifierInfo], each with the credential issuer
+     * validated from signed metadata, see [LoadedIssuerMetadata.Signed]. Fails for signed metadata that have been
+     * rejected, see their report.
+     */
+    fun parseCredentialMetadata(
+        loaded: LoadedIssuerMetadata,
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
+        val metadata = loaded.metadata
+            ?: throw IllegalArgumentException("The signed metadata have been rejected, see their report")
+        val issuer = (loaded as? LoadedIssuerMetadata.Signed)?.validation?.issuer
+        parseCredentialMetadata(metadata, issuer).getOrThrow()
     }
 
     /**
@@ -265,6 +343,27 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
 }
 
 /**
+ * The metadata of a credential issuer, as it serves them (OpenID4VCI 1.0, 12.2.2): signed and validated, or unsigned,
+ * see [OpenId4VciProtocolClient.loadIssuerMetadata].
+ */
+sealed interface LoadedIssuerMetadata {
+    /** The metadata to use, `null` for signed metadata that have been rejected, see [Signed.validation]. */
+    val metadata: IssuerMetadata?
+
+    /** Signed metadata, with the report of their validation, and the validated credential issuer if accepted. */
+    data class Signed(val validation: IssuerMetadataValidation) : LoadedIssuerMetadata {
+        override val metadata: IssuerMetadata?
+            get() = validation.metadata
+    }
+
+    /** Unsigned metadata, which are not authenticated by the credential issuer. */
+    data class Unsigned(override val metadata: IssuerMetadata) : LoadedIssuerMetadata
+}
+
+/** Signed metadata preferred over unsigned ones, see [OpenId4VciProtocolClient.loadIssuerMetadata]. */
+private const val ACCEPT_SIGNED_METADATA = "${MediaTypes.Application.JWT}, ${MediaTypes.Application.JSON};q=0.9"
+
+/**
  * Gets parsed from the credential issuer's metadata, essentially an entry from
  * [IssuerMetadata.supportedCredentialConfigurations]
  */
@@ -273,4 +372,9 @@ data class CredentialIdentifierInfo(
     val issuerMetadata: IssuerMetadata,
     val credentialIdentifier: String,
     val supportedCredentialFormat: SupportedCredentialFormat,
+    /**
+     * The credential issuer, as validated from its signed metadata, e.g. to show it to the user during the issuance;
+     * `null` for unsigned metadata.
+     */
+    val issuer: ValidatedCredentialIssuer? = null,
 )

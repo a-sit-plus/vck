@@ -206,12 +206,12 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
         test("loadEuPidCredentialSdJwt") { context ->
             var refreshTokenStore: CredentialRenewalInfo? = null
 
-            val credentialIdentifierInfos = context.client.loadCredentialMetadata("http://localhost").getOrThrow()
+            val credentialIdentifierInfos = context.client.loadCredentialMetadata("https://issuer.example.com").getOrThrow()
             val selectedCredential = credentialIdentifierInfos
                 .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
 
             context.client.startProvisioningWithAuthRequestReturningResult(
-                credentialIssuerUrl = "http://localhost",
+                credentialIssuerUrl = "https://issuer.example.com",
                 credentialIdentifierInfo = selectedCredential,
             ).getOrThrow().also {
                 // Simulates the browser, handling authorization to get the authCode
