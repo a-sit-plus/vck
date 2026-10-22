@@ -39,8 +39,12 @@ data class WrpPayload(
     @SerialName("registry_uri")
     val registryUri: String,
 
-    /** Service descriptions, each containing localized versions of the same description (Table 7; clause B.2.1). */
+    /**
+     * Service descriptions, each containing localized versions of the same description (Table 7; clause B.2.1).
+     * Also decoded from a single array of localized descriptions, as one service description.
+     */
     @SerialName("srv_description")
+    @Serializable(with = WrpServiceDescriptionsSerializer::class)
     val srvDescription: List<List<WrpLangString>>,
 
     /** Entitlement identifiers assigned to the relying party as specified in Annex A (Table 7). */
