@@ -2,7 +2,6 @@ package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Convenience class with a custom serializer ([IssuerSignedListSerializer]) to prevent
@@ -35,14 +34,12 @@ data class IssuerSignedList(
          * ```
          *
          * See ISO/IEC 18013-5:2021, 8.3.2.1.2.2 Device retrieval mdoc response
+         *
+         * Every item carries its encoding, the `IssuerSignedItem` within `IssuerSignedItemBytes`, as
+         * [ByteStringWrapper.serialized], like a decoded item, see [IssuerSignedListSerializer].
          */
         fun fromIssuerSignedItems(items: List<IssuerSignedItem>, namespace: String) =
-            IssuerSignedList(items.map { item ->
-                ByteStringWrapper(
-                    item,
-                    coseCompliantSerializer.encodeToByteArray(item.serialize(namespace)).wrapInCborTag(24)
-                )
-            })
+            IssuerSignedList(items.map { item -> ByteStringWrapper(item, item.serialize(namespace)) })
 
         private fun IssuerSignedItem.serialize(namespace: String): ByteArray =
             coseCompliantSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)

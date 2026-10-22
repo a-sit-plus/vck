@@ -24,6 +24,11 @@ import net.orandja.obor.data.CborObject
 /**
  * Serializes [IssuerSignedList.entries] as an "inline list",
  * having serialized instances of [IssuerSignedItem] as the values.
+ *
+ * An entry is written with the bytes it carries in [ByteStringWrapper.serialized], i.e. the encoded
+ * `IssuerSignedItem` it was decoded from, because the digests in the MSO are calculated over exactly these
+ * `IssuerSignedItemBytes` (ISO/IEC 18013-5:2021, 9.1.2.5), and CBOR allows an issuer to encode an item differently
+ * from this library, e.g. in another key order. Only an entry without bytes is encoded from its value.
  */
 open class IssuerSignedListSerializer(private val namespace: String) : KSerializer<IssuerSignedList> {
 
@@ -60,7 +65,8 @@ open class IssuerSignedListSerializer(private val namespace: String) : KSerializ
         var index = 0
         encoder.encodeCollection(descriptor, value.entries.size) {
             value.entries.forEach {
-                encodeSerializableElement(descriptor, index++, ByteArraySerializer(), it.value.serialize(namespace))
+                val itemBytes = if (it.serialized.isNotEmpty()) it.serialized else it.value.serialize(namespace)
+                encodeSerializableElement(descriptor, index++, ByteArraySerializer(), itemBytes)
             }
         }
     }

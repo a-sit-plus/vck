@@ -9,6 +9,7 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
@@ -17,6 +18,13 @@ import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
+import net.orandja.obor.codec.Cbor
+import net.orandja.obor.data.CborArray
+import net.orandja.obor.data.CborMap
+import net.orandja.obor.data.CborMapEntry
+import net.orandja.obor.data.CborObject
 
 val ReaderAuthenticationVerifierTest by matrixSuite {
     val transcript = SessionTranscript.forDcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
@@ -44,6 +52,49 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
         ReaderAuthenticationAll.detachedPayload(
             DeviceRequest(parsedVersion = Version(1, 1), docRequests = arrayOf(original)), transcript
         ).takeLast(3) shouldBe listOf(0x41, 0xA0, 0xF6).map { it.toByte() }
+    }
+
+    "a request signed over items encoded in another key order verifies after it was encoded again" {
+        val signer = EphemeralKeyWithSelfSignedCert()
+        val doc = mdocDocRequest()
+        // The ItemsRequest as received, in another key order than this library encodes, as CBOR does not mandate one
+        val receivedItemsRequest = coseCompliantSerializer.encodeToByteArray(doc.itemsRequest.value)
+            .withReversedKeys()
+        val receivedDocRequest = doc.copy(
+            itemsRequest = ByteStringWrapper(doc.itemsRequest.value, receivedItemsRequest)
+        )
+        val unsigned = DeviceRequest(parsedVersion = Version(1, 1), docRequests = arrayOf(receivedDocRequest))
+        val signed = SignCoseDetached<ByteArray>(signer, unprotectedHeaderModifier = CoseHeaderCertificate())(
+            protectedHeader = null,
+            unprotectedHeader = CoseHeader(),
+            payload = ReaderAuthenticationAll.detachedPayload(unsigned, transcript),
+            serializer = ByteArraySerializer(),
+        ).getOrThrow()
+        val request = unsigned.copy(readerAuthAll = arrayOf(signed))
+        val signedPerDoc = DeviceRequest(
+            parsedVersion = Version(1, 1),
+            docRequests = arrayOf(
+                receivedDocRequest.copy(
+                    readerAuth = SignCoseDetached<ByteArray>(
+                        signer, unprotectedHeaderModifier = CoseHeaderCertificate()
+                    )(
+                        protectedHeader = null,
+                        unprotectedHeader = CoseHeader(),
+                        payload = ReaderAuthentication.detachedPayload(receivedDocRequest, transcript),
+                        serializer = ByteArraySerializer(),
+                    ).getOrThrow()
+                )
+            ),
+        )
+
+        for (signedRequest in listOf(request, signedPerDoc)) {
+            val encodedAgain = coseCompliantSerializer.decodeFromByteArray<DeviceRequest>(
+                coseCompliantSerializer.encodeToByteArray(signedRequest)
+            )
+
+            encodedAgain.docRequests.single().itemsRequest.serialized shouldBe receivedItemsRequest
+            ReaderAuthenticationVerifier()(encodedAgain, transcript).isSuccess shouldBe true
+        }
     }
 
     "readerAuthAll covers every document and binds the transcript" {
@@ -184,4 +235,15 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
         )
             .isFailure shouldBe true
     }
+}
+
+/** This encoded CBOR with the keys of all its maps reversed, which encodes the same value differently. */
+private fun ByteArray.withReversedKeys(): ByteArray =
+    Cbor.encodeToByteArray<CborObject>(Cbor.decodeFromByteArray<CborObject>(this).withReversedKeys())
+        .also { it.contentEquals(this) shouldBe false }
+
+private fun CborObject.withReversedKeys(): CborObject = when (this) {
+    is CborMap -> CborObject.orderedMap(elements.asReversed().map { CborMapEntry(it.key, it.value.withReversedKeys()) })
+    is CborArray -> CborArray(elements.map { it.withReversedKeys() }.toMutableList(), indefinite)
+    else -> this
 }

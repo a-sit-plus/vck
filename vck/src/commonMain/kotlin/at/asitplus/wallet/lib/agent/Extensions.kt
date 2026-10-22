@@ -69,10 +69,19 @@ internal fun String?.toDigest(): Digest? =
 fun SubjectCredentialStore.StoreEntry.Iso.discloseItem(
     namespace: String,
     attributeName: String
-): KmmResult<IssuerSignedItem> = catching {
+): KmmResult<IssuerSignedItem> = discloseIssuedItem(namespace, attributeName).map { it.value }
+
+/**
+ * Returns a single [IssuerSignedItem] for the specified [namespace] and [attributeName] with the bytes it was issued
+ * with, which its digest in the MSO is over (ISO/IEC 18013-5:2021, 9.1.2.5), to disclose it in a presentation,
+ * wrapped in a [KmmResult]. Fails with [IllegalArgumentException] if the item is missing.
+ */
+fun SubjectCredentialStore.StoreEntry.Iso.discloseIssuedItem(
+    namespace: String,
+    attributeName: String
+): KmmResult<ByteStringWrapper<IssuerSignedItem>> = catching {
     issuerSigned.namespaces?.get(namespace)
         ?.entries?.find { it.value.elementIdentifier == attributeName }
-        ?.value
         ?: throw IllegalArgumentException("Attribute not available in credential: $['$namespace']['$attributeName']")
 }
 

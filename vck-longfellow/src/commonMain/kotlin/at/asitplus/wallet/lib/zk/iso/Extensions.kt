@@ -5,6 +5,7 @@ import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.ZkDocument
 import at.asitplus.iso.ZkSystemSpec
@@ -17,7 +18,7 @@ import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.agent.calculateIsoDeviceAuthenticationBytes
 import at.asitplus.wallet.lib.agent.calculateIsoDeviceSignature
-import at.asitplus.wallet.lib.agent.discloseItem
+import at.asitplus.wallet.lib.agent.discloseIssuedItem
 import at.asitplus.wallet.lib.agent.toIsoNamespaceAttribute
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.zk.iso.LongfellowBackend.Companion.CIRCUIT_HASH_KEY
@@ -95,11 +96,11 @@ internal suspend fun StoreEntry.Iso.discloseRequestedClaims(
     }
 
     val disclosedItems = claimsByNamespace.mapValues { (namespace, claims) ->
-        claims.map {
-            discloseItem(namespace, it)
+        IssuerSignedList(claims.map {
+            discloseIssuedItem(namespace, it)
                 .mapFailure { PresentationException(it) }
                 .getOrThrow()
-        }
+        })
     }
 
     val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(emptyMap()))
@@ -114,7 +115,7 @@ internal suspend fun StoreEntry.Iso.discloseRequestedClaims(
 
     return Document(
         docType = schemeIdentifier,
-        issuerSigned = IssuerSigned.fromIssuerSignedItems(
+        issuerSigned = IssuerSigned.fromIssuerSignedLists(
             namespacedItems = disclosedItems,
             issuerAuth = issuerSigned.issuerAuth
         ),

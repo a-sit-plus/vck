@@ -36,6 +36,19 @@ Release 9.0.0 (unreleased):
   constructor is retained; deprecate `normalizedJsonPath`, which cannot represent wildcards. Its JSON member name
   remains `normalizedJsonPath`
 - WRPRC authorization exempts only the root `vct` claim; nested claims named `vct` must be registered
+- ISO mdoc data classes:
+    - Encode issuer-signed items with the bytes they were decoded from (`ByteStringWrapper.serialized`) instead of
+      re-encoding their value, so items an issuer encoded differently, e.g. in another key order like the EUDI
+      reference issuer, keep matching their digests (ISO/IEC 18013-5:2021, 9.1.2.5). `serialized` of items from
+      `IssuerSignedList.fromIssuerSignedItems` holds the encoded `IssuerSignedItem` like a decoded item, no longer the
+      tag-24-wrapped `IssuerSignedItemBytes`
+    - Add `IssuerSigned.fromIssuerSignedLists(...)` and `StoreEntry.Iso.discloseIssuedItem(...)`; mdoc presentations
+      disclose items with the bytes they were issued with
+    - Serialize `DocRequest.itemsRequest` and `DeviceRequest.deviceRequestInfo` again with the bytes they were decoded
+      from (`ByteStringWrapper.serialized`) instead of encoding their value anew, using the new
+      `ReserializableByteStringSerializer`, as `readerAuth` and `readerAuthAll` sign exactly these bytes
+      (ISO/IEC 18013-5:2021, 9.1.4). A request serialized again, e.g. to pass it on within a wallet, no longer verified
+      if its verifier encoded it in another key order, e.g. `systemSpecs` before `zkRequired` in a `zkRequest`
 - Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
     - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations
       (`PresentationValidationInput` in a `PresentationContext`) under a `ValidationPolicy` (`TrustPolicy`,
