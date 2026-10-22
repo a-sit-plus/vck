@@ -50,6 +50,11 @@ Release 9.0.0 (unreleased):
       providers or attestation providers carry them; `WrpCredential.claim` is `null` when absent;
       `WrpIntermediary.sub` is required. Empty `srv_description`, `entitlements`, `purpose`, `credentials`,
       `claim` and claim `values` are rejected. Add `WrpConstants.ENTITLEMENTS` (A.2)
+    - BREAKING: Model the WRPRC fields for which the register allows several values (ETSI TS 119 475 V1.2.1,
+      Annex B) as lists: `WrpPayload.subjectLegalNames`, `privacyPolicies`, `infoUris`, `supportUris`, and
+      `WrpSupervisoryAuthority.emails`, `phones`, `uris`. They are always encoded as arrays, and also decoded from a
+      single string, as in Annex C, in JSON and CWT; empty arrays are rejected. Deprecate `subjectLegalName`,
+      `privacyPolicy`, `infoUri`, `supportUri`, `email`, `phone`, and `uri`, which return the first entry
     - WRPRC validation no longer requires `name` (B.2.1), but requires an entitlement of A.2 (GEN-5.2.4-03),
       `provides_attestations` only for attestation providers (B.2.1), and `purpose` for presentation (GEN-5.2.4-06)
     - WRPRC linkage also accepts the WRPAC of the intermediary named in `intermediary.sub`, who presents the WRPRC of
@@ -62,9 +67,11 @@ Release 9.0.0 (unreleased):
     - BREAKING: Remove `DocRequestInfo.euWrpRegistrarInfo` and the classes `WrpRegistrarInfo` and `WrpIdentifier`:
       CIR (EU) 2026/1731, Annex XII voids the registrar information of ETSI TS 119 472-2 V1.2.1 (ISO/IEC
       18013-REQ-08 to -11), so an ISO mdoc request carries only `euWrprc`
-    - `WrpPayload.srvDescription` stays an array of arrays (ETSI TS 119 475 V1.2.1, B.2.1), and also decodes from a
-      single array of `WrpLangString`s, in JSON and CWT, as one service description; arrays mixed with objects are
-      rejected
+    - BREAKING: Model `srv_description` as `WrpPayload.serviceDescription`, the localized versions of the description
+      of the one service a WRPRC is issued for (ARF Annex 2, RPRC_09), encoded as an array of `WrpLangString`s; it is
+      also decoded from an array of arrays (ETSI TS 119 475 V1.2.1, B.2.1, Annex C), in JSON and CWT, into the
+      descriptions of all its arrays; arrays mixed with objects are rejected. Deprecate `srvDescription`, which returns
+      `serviceDescription` as the only array
 - DCQL claim paths preserve numeric object keys as strings and reject invalid or overflowing indices
 - BREAKING: `JsonClaimReference` now wraps `path: DCQLClaimsPathPointer`, preserving wildcards during WRPRC authorization. The concrete-path
   constructor is retained; deprecate `normalizedJsonPath`, which cannot represent wildcards. Its JSON member name

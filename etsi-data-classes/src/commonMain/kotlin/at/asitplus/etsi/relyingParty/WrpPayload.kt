@@ -14,9 +14,13 @@ data class WrpPayload(
     @SerialName("name")
     val name: String? = null,
 
-    /** Officially recorded legal name, when the relying party is a legal person (Table 7; clause B.2.3). */
+    /**
+     * Officially recorded legal names, when the relying party is a legal person (Table 7; legalName `[1..*]`,
+     * clause B.2.3), always encoded as an array, see [WrpStringListSerializer].
+     */
     @SerialName("sub_ln")
-    val subjectLegalName: String? = null,
+    @Serializable(with = WrpStringListSerializer::class)
+    val subjectLegalNames: List<String>? = null,
 
     /** Officially recorded given names, including middle names, for a natural person (Table 7; clause B.2.4). */
     @SerialName("sub_gn")
@@ -39,31 +43,40 @@ data class WrpPayload(
     val registryUri: String,
 
     /**
-     * Service descriptions, each containing localized versions of the same description (Table 7; clause B.2.1).
-     * Also decoded from a single array of localized descriptions, as one service description.
+     * Localized versions of the description of the service the WRPRC is issued for (Table 7; clause B.2.1),
+     * encoded as an array, and also decoded from an array of arrays, see [WrpServiceDescriptionSerializer].
      */
     @SerialName("srv_description")
-    @Serializable(with = WrpServiceDescriptionsSerializer::class)
-    val srvDescription: List<List<WrpLangString>>,
+    @Serializable(with = WrpServiceDescriptionSerializer::class)
+    val serviceDescription: List<WrpLangString>,
 
     /** Entitlement identifiers assigned to the relying party as specified in Annex A (Table 7). */
     @SerialName("entitlements")
     val entitlements: List<String>,
 
-    /** URL of the privacy policy explaining data processing and storage practices (Table 7). */
+    /**
+     * URLs of the privacy policy explaining data processing and storage practices (Table 7; privacyPolicy `[1..*]`,
+     * clause B.2.7), always encoded as an array, see [WrpStringListSerializer].
+     */
     @SerialName("privacy_policy")
-    val privacyPolicy: String,
+    @Serializable(with = WrpStringListSerializer::class)
+    val privacyPolicies: List<String>,
 
     /**
-     * General-purpose URL providing public information about the relying party (Table 7), absent when the registry
-     * provides none (infoURI `[0..*]`, clause B.2.2).
+     * General-purpose URLs providing public information about the relying party (Table 7), absent when the registry
+     * provides none (infoURI `[0..*]`, clause B.2.2), always encoded as an array, see [WrpStringListSerializer].
      */
     @SerialName("info_uri")
-    val infoUri: String? = null,
+    @Serializable(with = WrpStringListSerializer::class)
+    val infoUris: List<String>? = null,
 
-    /** URL or email address for data deletion or portability requests (Table 7; supportURI `[1..*]`, clause B.2.1). */
+    /**
+     * URLs or email addresses for data deletion or portability requests (Table 7; supportURI `[1..*]`,
+     * clause B.2.1), always encoded as an array, see [WrpStringListSerializer].
+     */
     @SerialName("support_uri")
-    val supportUri: String,
+    @Serializable(with = WrpStringListSerializer::class)
+    val supportUris: List<String>,
 
     /**
      * Contact details of the competent data protection supervisory authority (Table 7; supervisoryAuthority `[1..1]`,
@@ -132,9 +145,33 @@ data class WrpPayload(
     val exp: Instant? = null,
 ) {
     init {
-        require(srvDescription.isNotEmpty()) { "srv_description must not be empty" } // B.2.1: [1..*]
+        require(serviceDescription.isNotEmpty()) { "srv_description must not be empty" } // B.2.1: [1..*]
         require(entitlements.isNotEmpty()) { "entitlements must not be empty" } // B.2.1: [1..*]
         require(purpose?.isNotEmpty() != false) { "purpose must not be empty" } // B.2.7: [1..*]
         require(credentials?.isNotEmpty() != false) { "credentials must not be empty" } // B.2.7: [1..*]
+        require(subjectLegalNames?.isNotEmpty() != false) { "sub_ln must not be empty" } // B.2.3: [1..*]
+        require(privacyPolicies.isNotEmpty()) { "privacy_policy must not be empty" } // B.2.7: [1..*]
+        require(infoUris?.isNotEmpty() != false) { "info_uri must not be empty" } // B.2.2: [0..*], absent if none
+        require(supportUris.isNotEmpty()) { "support_uri must not be empty" } // B.2.1: [1..*]
     }
+
+    @Deprecated("A WRPRC is issued for one service", ReplaceWith("serviceDescription"))
+    val srvDescription: List<List<WrpLangString>>
+        get() = listOf(serviceDescription)
+
+    @Deprecated("Several legal names may be registered", ReplaceWith("subjectLegalNames?.first()"))
+    val subjectLegalName: String?
+        get() = subjectLegalNames?.first()
+
+    @Deprecated("Several privacy policies may be registered", ReplaceWith("privacyPolicies.first()"))
+    val privacyPolicy: String
+        get() = privacyPolicies.first()
+
+    @Deprecated("Several information URLs may be registered", ReplaceWith("infoUris?.first()"))
+    val infoUri: String?
+        get() = infoUris?.first()
+
+    @Deprecated("Several support URLs may be registered", ReplaceWith("supportUris.first()"))
+    val supportUri: String
+        get() = supportUris.first()
 }
