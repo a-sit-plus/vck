@@ -203,6 +203,16 @@ Release 9.0.0 (unreleased):
           intermediate certificate is rejected, a directly listed self-signed signer certificate is accepted, and a
           revoked WRPAC or signer certificate is not detected
         - ZK mdoc presentations are validated like plain mdocs, their proofs are not verified
+- Subject credential store:
+    - BREAKING: Implementations of `SubjectCredentialStore` implement the single `storeCredential(entry: StoreEntry)`,
+      persisting a ready `StoreEntry`. `HolderAgent` stores every credential through it, with its renewal info.
+    - Deprecate the per-format `storeCredential(vc, ...)`, `storeCredential(vc, ..., disclosures, ...)`, and
+      `storeCredential(issuerSigned, ...)` of `SubjectCredentialStore`, which now build the `StoreEntry` and call
+      `storeCredential(entry)`: implementations no longer need to override them
+    - Add `StoreEntry.fromPreparedCredential(prepared)`, the entry of a `PreparedCredentialStorage` built from what
+      its validation verified, also for a rejected but intact credential, and `StoreEntry.Vc.fromString(...)`,
+      `StoreEntry.SdJwt.fromString(...)`, and `StoreEntry.Iso.fromString(...)` (base64url as in OpenID4VCI, or
+      base64), parsing a serialized credential without validating it
 - Trusted relying parties:
     - Fix JSON serialization of `JsonClaimReference` as `SingleClaimReference`, e.g. in `RequestDataValidity`, which produced invalid JSON since `NormalizedJsonPath` became a list in JsonPath4K 4.0.0. It is now serialized as an object holding `normalizedJsonPath`
     - `WrprcValidator` no longer drops the cause when a registration certificate can not be validated, e.g. for a missing or unparseable certificate chain: `WrprcValidationResult.certificateValidationResults` holds a `KmmResult` for each certificate. Deprecate `WrprcValidationResult.certificateValidation`, which maps such certificates to `null`
