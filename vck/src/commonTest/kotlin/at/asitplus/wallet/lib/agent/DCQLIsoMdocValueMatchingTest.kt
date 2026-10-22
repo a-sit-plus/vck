@@ -1,88 +1,95 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
-import at.asitplus.openid.dcql.DCQLExpectedClaimValue
-import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueIsoMdoc
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElementOrNull
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.toDcqlClaimValue
-import at.asitplus.wallet.lib.procedures.dcql.toRfc8949Json
+import at.asitplus.wallet.mdl.IsoSexEnum
+import at.asitplus.wallet.mdl.IsoSexEnumSerializer
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.decodeFromByteArray
+import kotlin.random.Random
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonNull
-import net.orandja.obor.codec.Cbor
-import net.orandja.obor.data.CborObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Instant
 
 /**
- * OpenID4VP 1.0, 6.3: the CBOR value of an ISO mdoc data element is converted to JSON, following RFC 8949, 6.1, before
- * it is matched against the `values` of a claims query.
+ * OpenID4VP 1.0, 6.3: the CBOR value of an ISO mdoc data element is converted to JSON before it is matched against the
+ * `values` of a claims query.
  */
-@OptIn(ExperimentalStdlibApi::class)
 val DCQLIsoMdocValueMatchingTest by matrixSuite {
 
-    "conversion of CBOR items to JSON (RFC 8949, 6.1)" - {
-        mapOf(
-            "unsigned integer" to ("01" to "1"),
-            "negative integer" to ("21" to "-2"),
-            "largest unsigned integer" to ("1bffffffffffffffff" to "18446744073709551615"),
-            "smallest negative integer" to ("3bffffffffffffffff" to "-18446744073709551616"),
-            "byte string as base64url" to ("420102" to "\"AQI\""),
-            "indefinite byte string" to ("5f42010243030405ff" to "\"AQIDBAU\""),
-            "text string" to ("626174" to "\"at\""),
-            "indefinite text string" to ("7f61786179ff" to "\"xy\""),
-            "false" to ("f4" to "false"),
-            "true" to ("f5" to "true"),
-            "null" to ("f6" to "null"),
-            "undefined" to ("f7" to "null"),
-            "floating-point number" to ("f93e00" to "1.5"),
-            "NaN" to ("f97e00" to "null"),
-            "array" to ("8101" to "[1]"),
-            "map" to ("a1616101" to "{\"a\":1}"),
-            "full-date (tag 1004)" to ("d903ec6a313939302d30312d3031" to "\"1990-01-01\""),
-            "date-time (tag 0) keeps its string as issued" to
-                    ("c07819323032362d31302d32325430393a31353a33302b30313a3030" to "\"2026-10-22T09:15:30+01:00\""),
-            "positive bignum (tag 2)" to ("c249010000000000000000" to "\"AQAAAAAAAAAA\""),
-            "negative bignum (tag 3)" to ("c349010000000000000000" to "\"~AQAAAAAAAAAA\""),
-            "positive bignum with an indefinite byte string" to ("c25f41014102ff" to "\"AQI\""),
-            "negative bignum with an indefinite byte string" to ("c35f41014102ff" to "\"~AQI\""),
-            "expected base64url (tag 21)" to ("d542fbff" to "\"-_8\""),
-            "expected base64 (tag 22)" to ("d642fbff" to "\"+/8=\""),
-            "expected base16 (tag 23)" to ("d742fbff" to "\"FBFF\""),
-            "encoding hint for nested byte strings" to ("d68142fbff" to "[\"+/8=\"]"),
-        ).entries.asData(nameFn = { it.key }) test { (_, case) ->
-            val (cbor, json) = case
-            Cbor.decodeFromByteArray<CborObject>(cbor.hexToByteArray()).toRfc8949Json().toString() shouldBe json
+    "conversion to JSON for matching" - {
+        "dates, date-times and byte strings are converted to their string" {
+            LocalDate(1990, 1, 1).toJsonElementOrNull() shouldBe JsonPrimitive("1990-01-01")
+            Instant.parse("2026-10-22T08:15:30Z").toJsonElementOrNull() shouldBe JsonPrimitive("2026-10-22T08:15:30Z")
+            byteArrayOf(-5, -1).toJsonElementOrNull() shouldBe JsonPrimitive("-_8")
+        }
+        "a type with a registered encoder is converted by it" {
+            LibraryInitializer.registerCredentialSerializers(
+                jsonValueEncoder = { (it as? RegisteredCode)?.let { JsonPrimitive(it.code) } }
+            )
+            RegisteredCode(1).toJsonElementOrNull() shouldBe JsonPrimitive(1)
+        }
+        "a type without an encoding is not converted, instead of being represented by its string" {
+            UnknownValue("1").toJsonElementOrNull().shouldBeNull()
+            UnknownValue("1").toJsonElement() shouldBe JsonPrimitive("UnknownValue(value=1)")
         }
     }
 
-    "data elements of an IssuerSignedItem" - {
-        "the original element value is converted" {
-            item("d903ec6a313939302d30312d3031").toDcqlClaimValue().toString() shouldBe "\"1990-01-01\""
+    "conversion of data elements with their CBOR serializer" - {
+        LibraryInitializer.registerCredentialSerializers(
+            jsonValueEncoder = {
+                when (it) {
+                    is TestCode -> JsonPrimitive("CODE_${it.code}")
+                    is CborOnlyValue -> JsonPrimitive("display")
+                    else -> null
+                }
+            },
+            itemValueSerializerMap = mapOf(
+                TEST_NAMESPACE to mapOf(
+                    "code" to TestCodeSerializer,
+                    "cbor_only" to CborOnlyValueSerializer,
+                    "portrait" to ByteArraySerializer(),
+                    "sex" to IsoSexEnumSerializer,
+                )
+            ),
+        )
+        fun item(elementIdentifier: String, value: Any) =
+            IssuerSignedItem(0u, Random.nextBytes(16), elementIdentifier, value)
+
+        "a scheme-specific type is encoded like its CBOR item, not by its display encoder" {
+            item("code", TestCode(1)).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonPrimitive(1)
         }
-        "an array is not converted like a byte string, so it does not match its base64url" {
-            // the CBOR array [1], which an unregistered element was decoded to as raw bytes, base64url "gQE"
-            val value = item("8101").toDcqlClaimValue()
-            value.toString() shouldBe "[1]"
-            matches(value, DCQLExpectedClaimValue.StringValue("gQE")) shouldBe false
+        "the mDL sex is encoded as its integer code" {
+            item("sex", IsoSexEnum.FEMALE).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonPrimitive(IsoSexEnum.FEMALE.code)
         }
-        "an integer is matched as its CBOR value, not as a value of a display encoder" {
-            val value = item("00").toDcqlClaimValue()
-            matches(value, DCQLExpectedClaimValue.IntegerValue(0)) shouldBe true
-            matches(value, DCQLExpectedClaimValue.StringValue("display")) shouldBe false
+        "a serializer that can not encode to JSON falls back to the registered encoder" {
+            item("cbor_only", CborOnlyValue).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonPrimitive("display")
         }
-        "an item that can not be read is null" {
-            ByteStringWrapper(IssuerSignedItem(0u, byteArrayOf(0), "x", "unused"), byteArrayOf())
-                .toDcqlClaimValue() shouldBe JsonNull
+        "a byte string stays base64url, although its serializer would encode an array" {
+            item("portrait", byteArrayOf(-5, -1)).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonPrimitive("-_8")
+        }
+        "a value without any JSON value is null" {
+            item("unknown", UnknownValue("1")).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonNull
         }
     }
 
@@ -113,7 +120,7 @@ val DCQLIsoMdocValueMatchingTest by matrixSuite {
             )
             val matching = holder.matchPresentationRequestAgainstCredentialStore(
                 CredentialPresentationRequest.DCQLRequest(query)
-            ).getOrThrow().shouldBeInstanceOf<DCQLMatchingResult<*>>()
+            ).getOrThrow().shouldBeInstanceOf<at.asitplus.wallet.lib.agent.DCQLMatchingResult<*>>()
             return matching.matchingResult.credentialQueryMatches.values.single().isNotEmpty()
         }
 
@@ -126,20 +133,30 @@ val DCQLIsoMdocValueMatchingTest by matrixSuite {
     }
 }
 
-/**
- * An `IssuerSignedItem` as encoded in an ISO mdoc, whose element value is the CBOR item [elementValue] in hex. Only its
- * encoding is converted, the decoded item is a placeholder.
- */
-@OptIn(ExperimentalStdlibApi::class)
-private fun item(elementValue: String) = ByteStringWrapper(
-    IssuerSignedItem(0u, byteArrayOf(0), "x", "unused"),
-    ("a4" + "686469676573744944" + "00" + "6672616e646f6d" + "4100" +
-            "71656c656d656e744964656e746966696572" + "6178" + "6c656c656d656e7456616c7565" + elementValue).hexToByteArray(),
-)
+private data class RegisteredCode(val code: Int)
 
-private fun matches(value: JsonElement, expected: DCQLExpectedClaimValue) = DCQLIsoMdocClaimsQuery(
-    path = DCQLClaimsPathPointer("namespace", "x"),
-    values = listOf(expected),
-).executeClaimsQueryAgainstCredential(
-    DCQLCredentialClaimStructure.IsoMdocStructure(mapOf("namespace" to mapOf("x" to value)))
-).isSuccess
+private data class UnknownValue(val value: String)
+
+private const val TEST_NAMESPACE = "at.a-sit.wallet.dcql-value-matching-test"
+
+private data class TestCode(val code: Int)
+
+/** Encodes like a CBOR integer, as e.g. `IsoSexEnumSerializer` does. */
+private object TestCodeSerializer : KSerializer<TestCode> {
+    override val descriptor = PrimitiveSerialDescriptor("TestCode", PrimitiveKind.INT)
+    override fun serialize(encoder: Encoder, value: TestCode) = encoder.encodeInt(value.code)
+    override fun deserialize(decoder: Decoder) = TestCode(decoder.decodeInt())
+}
+
+private object CborOnlyValue
+
+/** Refuses to encode to JSON, like a serializer relying on features of CBOR. */
+private object CborOnlyValueSerializer : KSerializer<CborOnlyValue> {
+    override val descriptor = PrimitiveSerialDescriptor("CborOnlyValue", PrimitiveKind.INT)
+    override fun serialize(encoder: Encoder, value: CborOnlyValue) {
+        if (encoder is JsonEncoder) throw SerializationException("CBOR only")
+        encoder.encodeInt(0)
+    }
+    override fun deserialize(decoder: Decoder) = CborOnlyValue.also { decoder.decodeInt() }
+}
+

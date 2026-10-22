@@ -102,9 +102,18 @@ object CredentialToJsonConverter {
     }
 
     /**
-     * Converts any value to a [JsonElement], to be used when serializing values into JSON structures.
+     * Converts any value to a [JsonElement], to be used when serializing values into JSON structures. A value of a type
+     * without a known encoding is converted to the string of [toString], see [toJsonElementOrNull].
      */
-    fun Any.toJsonElement(): JsonElement = when (this) {
+    fun Any.toJsonElement(): JsonElement = toJsonElementOrNull() ?: JsonPrimitive(toString())
+
+    /**
+     * Converts a value to a [JsonElement] like [toJsonElement], or returns null if its type has no known encoding,
+     * i.e. it is neither one of the types handled here nor encoded by a [JsonCredentialSerializer]. Use this where a
+     * value must not be represented by its [toString], e.g. when matching it against the `values` of a DCQL claims
+     * query (OpenID4VP 1.0, 6.3).
+     */
+    fun Any.toJsonElementOrNull(): JsonElement? = when (this) {
         is Boolean -> JsonPrimitive(this)
         is Number -> JsonPrimitive(this)
         is String -> JsonPrimitive(this)
@@ -119,7 +128,7 @@ object CredentialToJsonConverter {
         is Collection<*> -> JsonArray(mapNotNull { it?.toJsonElement() }.toList())
         is Array<*> -> JsonArray(mapNotNull { it?.toJsonElement() }.toList())
         is JsonElement -> this
-        else -> JsonCredentialSerializer.encode(this) ?: JsonPrimitive(toString())
+        else -> JsonCredentialSerializer.encode(this)
     }
 }
 
