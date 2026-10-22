@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
@@ -18,14 +19,9 @@ import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnfFun
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService.Companion.DEFAULT_WALLET_ATTESTATION_ALGORITHMS
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidClient
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UseAttestationChallenge
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.UseFreshAttestation
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.validation.CheckOutcome
-import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
-import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
-import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
-import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
+import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import at.asitplus.wallet.lib.validation.ClientAttestationChecks
 import at.asitplus.wallet.lib.validation.ClientAttestationPossession
 import at.asitplus.wallet.lib.validation.ClientAttestationValidator
@@ -216,7 +212,7 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
         val payload = pop.payload
         val cnf = attestation.confirmationClaim
         return ClientAttestationPossession(
-            parsing = catching {
+            parsing = catchingUnwrapped {
                 if (pop.jws.jwsHeader.type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
                     throw InvalidClient("invalid client attestation PoP typ: ${pop.jws.jwsHeader.type}")
                 }

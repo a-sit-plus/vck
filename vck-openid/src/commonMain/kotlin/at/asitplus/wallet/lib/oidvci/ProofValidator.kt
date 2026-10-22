@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofSupported
@@ -25,10 +25,7 @@ import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
 import at.asitplus.wallet.lib.validation.CheckOutcome
-import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
-import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
-import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
-import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
+import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import at.asitplus.wallet.lib.validation.JwtProofChecks
 import at.asitplus.wallet.lib.validation.KeyAttestationChecks
 import at.asitplus.wallet.lib.validation.KeyAttestationValidationResult
@@ -174,7 +171,7 @@ class ProofValidator @JvmOverloads constructor(
         policy: ValidationPolicy,
         evaluatedAt: Instant,
     ): ProofValidation {
-        val parsed = catching { proof.typed<JsonWebToken, JwsCompact>() }.getOrElse {
+        val parsed = catchingUnwrapped { proof.typed<JsonWebToken, JwsCompact>() }.getOrElse {
             return ProofValidation(
                 report = ValidationReport.jwtProof(
                     checks = blockedJwtProof(Failed(InvalidProof("invalid proof", it))),
@@ -188,12 +185,12 @@ class ProofValidator @JvmOverloads constructor(
         val header = parsed.jws.jwsHeader
         val payload = parsed.payload
         val keyAttestation = header.keyAttestation?.let { attestation ->
-            catching { attestation.typed<KeyAttestationJwt, JwsCompact>() }.fold(
+            catchingUnwrapped { attestation.typed<KeyAttestationJwt, JwsCompact>() }.fold(
                 onSuccess = { validateKeyAttestation(it, policy, evaluatedAt, embedded = true) },
                 onFailure = { null },
             )
         }
-        val parsing = catching {
+        val parsing = catchingUnwrapped {
             if (header.type != OpenIdConstants.PROOF_JWT_TYPE) throw InvalidProof("invalid typ: ${header.type}")
             if (header.algorithm !is JwsAlgorithm.Signature || header.algorithm !in supportedAlgorithms) {
                 throw InvalidProof("unsupported proof alg: ${header.algorithm}")
@@ -256,7 +253,7 @@ class ProofValidator @JvmOverloads constructor(
         policy: ValidationPolicy,
         evaluatedAt: Instant,
     ): ProofValidation {
-        val parsed = catching { proof.typed<KeyAttestationJwt, JwsCompact>() }.getOrElse {
+        val parsed = catchingUnwrapped { proof.typed<KeyAttestationJwt, JwsCompact>() }.getOrElse {
             return ProofValidation(
                 report = ValidationReport.keyAttestation(
                     checks = blockedKeyAttestation(Failed(InvalidProof("invalid proof", it))),
@@ -368,6 +365,7 @@ private fun ValidationReport.keyAttestationRejection(): CheckOutcome {
         checks.parsing is Failed -> (checks.parsing as Failed).throwable.let { Failed(InvalidProof(it.message, it)) }
         checks.timeliness is Failed ->
             (checks.timeliness as Failed).throwable.let { Failed(InvalidProof(it.message, it)) }
+
         checks.signature != Passed -> checks.signature.cause().wrap("key attestation not verified")
         checks.trust.outcome != Passed -> checks.trust.outcome.cause().wrap("key attestation not verified")
         else -> checks.status.mechanisms.firstNotNullOfOrNull { it.outcome as? Failed }?.throwable

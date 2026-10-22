@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.validation
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.digest
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -11,9 +11,9 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.deviceAuthenticationBytes
-import at.asitplus.wallet.lib.verifyDeviceMac
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.validation.CheckOutcome.*
+import at.asitplus.wallet.lib.verifyDeviceMac
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -105,7 +105,7 @@ internal suspend fun evaluateSdJwtPresentation(
         val presentation = validated?.let { ValidatedPresentation.SdJwt(it, keyBinding = null) }
         return PresentationEvaluation(notApplicable(), credential, presentation)
     }
-    val keyBinding = catching {
+    val keyBinding = catchingUnwrapped {
         require(keyBindingJwt.isNotEmpty()) { "The request requires a key binding JWT" }
         JwsCompactTyped<KeyBindingJws>(keyBindingJwt).also {
             val type = it.jws.jwsHeader.type
@@ -168,7 +168,7 @@ private fun presentationBinding(
     sdJwt: String,
     sdAlgorithm: String?,
     context: PresentationContext,
-): CheckOutcome = catching {
+): CheckOutcome = catchingUnwrapped {
     val sdHash = sdJwtDigest(sdAlgorithm).digest(sdJwt.encodeToByteArray())
     require(keyBinding.sdHash.contentEquals(sdHash)) { "The sd_hash does not match the SD-JWT" }
     context.transactionData?.takeIf { it.isNotEmpty() }?.let { transactionData ->
@@ -192,7 +192,7 @@ internal suspend fun evaluateVpJwtPresentation(
     timeScope: TimeScope,
     complete: CredentialValidationCompletion,
 ): PresentationEvaluation {
-    val vpJws = catching {
+    val vpJws = catchingUnwrapped {
         JwsCompactTyped<VerifiablePresentationJws>(input.compact).also {
             require(it.payload.vp.type == VcDataModelConstants.VERIFIABLE_PRESENTATION) {
                 "Not a verifiable presentation"

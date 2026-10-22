@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.validation
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
@@ -128,7 +129,7 @@ class StatusValidator @JvmOverloads constructor(
         evaluatedAt: Instant,
     ): StatusListTokenChecks {
         val payload = token.parsedPayload.getOrNull()
-        val parsing = catching {
+        val parsing = catchingUnwrapped {
             requireNotNull(payload) { "The status list token payload can not be decoded" }
             val type = when (token) {
                 is StatusListJwt -> token.value.jws.jwsHeader.type
