@@ -24,27 +24,26 @@ import kotlinx.serialization.Serializable
 @Serializable(with = DCQLCredentialQuerySerializer::class)
 sealed interface DCQLCredentialQuery {
     /**
-     * OID4VP 1.0: id: REQUIRED. A string identifying the Credential in the response and, if
-     * provided, the constraints in credential_sets. The value MUST be a non-empty string
-     * consisting of alphanumeric, underscore (_) or hyphen (-) characters. Within the
-     * Authorization Request, the same id MUST NOT be present more than once.
+     * OID4VP 1.0, 6.1: id: REQUIRED. A string identifying the Credential in the response and, if provided, the
+     * constraints in credential_sets. The value MUST be a non-empty string consisting of alphanumeric, underscore (_),
+     * or hyphen (-) characters. Within the Authorization Request, the same id MUST NOT be present more than once.
      */
     val id: DCQLCredentialQueryIdentifier
 
     /**
-     * OID4VP 1.0: format: REQUIRED. A string that specifies the format of the requested
-     * Verifiable Credential. Valid Credential Format Identifier values are defined in Appendix B.
+     * OID4VP 1.0, 6.1: format: REQUIRED. A string that specifies the format of the requested Credential. Valid
+     * Credential Format Identifier values are defined in Appendix B.
      */
     val format: CredentialFormatEnum
 
     /**
-     *  OID4VP 1.0: multiple: OPTIONAL. A boolean which indicates whether multiple Credentials can be returned
+     *  OID4VP 1.0, 6.1: multiple: OPTIONAL. A boolean which indicates whether multiple Credentials can be returned
      *  for this Credential Query. If omitted, the default value is false.
      */
     val multiple: Boolean
 
     /**
-     * OID4VP 1.0: meta: REQUIRED. An object defining additional properties requested by the
+     * OID4VP 1.0, 6.1: meta: REQUIRED. An object defining additional properties requested by the
      * Verifier that apply to the metadata and validity data of the Credential. The properties of
      * this object are defined per Credential Format. Examples of those are in Appendix B.3.5 and
      * Appendix B.2.3. If empty, no specific constraints are placed on the metadata or validity
@@ -55,7 +54,7 @@ sealed interface DCQLCredentialQuery {
     val meta: DCQLCredentialMetadataAndValidityConstraints
 
     /**
-     * OID4VP 1.0: trusted_authorities: OPTIONAL. A non-empty array of objects as defined in Section 6.1.1 that
+     * OID4VP 1.0, 6.1: trusted_authorities: OPTIONAL. A non-empty array of objects as defined in Section 6.1.1 that
      * specifies expected authorities or trust frameworks that certify Issuers, that the Verifier will accept.
      * Every Credential returned by the Wallet SHOULD match at least one of the conditions present
      * in the corresponding trusted_authorities array if present.
@@ -63,7 +62,7 @@ sealed interface DCQLCredentialQuery {
     val trustedAuthorities: NonEmptyList<DCQLTrustedAuthorityQueryEntry>?
 
     /**
-     *  OID4VP: require_cryptographic_holder_binding: OPTIONAL. A boolean which indicates whether the Verifier
+     *  OID4VP 1.0, 6.1: require_cryptographic_holder_binding: OPTIONAL. A boolean which indicates whether the Verifier
      *  requires a Cryptographic Holder Binding proof. The default value is true, i.e., a Verifiable Presentation
      *  with Cryptographic Holder Binding is required. If set to false, the Verifier accepts a Credential without
      *  Cryptographic Holder Binding proof.
@@ -71,7 +70,7 @@ sealed interface DCQLCredentialQuery {
     val requireCryptographicHolderBinding: Boolean
 
     /**
-     * OID4VP 1.0: claims: OPTIONAL. A non-empty array of objects as defined in Section 6.3
+     * OID4VP 1.0, 6.1: claims: OPTIONAL. A non-empty array of objects as defined in Section 6.3
      * that specifies claims in the requested Credential. Verifiers MUST NOT point to the same claim more than once
      * in a single query. Wallets SHOULD ignore such duplicate claim queries.
      *
@@ -82,9 +81,9 @@ sealed interface DCQLCredentialQuery {
     val claims: DCQLClaimsQueryList<DCQLClaimsQuery>?
 
     /**
-     * OID4VP 1.0: claim_sets: OPTIONAL. A non-empty array containing arrays of identifiers
-     * for elements in [claims] that specifies which combinations of claims for the Credential are
-     * requested. The rules for selecting claims to send are defined in Section 6.4.1.
+     * OID4VP 1.0, 6.1: claim_sets: OPTIONAL. A non-empty array containing arrays of identifiers for elements in claims
+     * that specifies which combinations of claims for the Credential are requested. The rules for selecting claims to
+     * send are defined in Section 6.4.1.
      */
     val claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>?
 
@@ -203,10 +202,16 @@ sealed interface DCQLCredentialQuery {
                 "claim_sets MUST NOT be present if claims is absent."
             }
         }
+        // OpenID4VP 1.0, 6.1: claim_sets: "OPTIONAL. A non-empty array containing arrays of identifiers for elements in
+        // claims that specifies which combinations of claims for the Credential are requested."
+        val claimIds = claims?.mapNotNull { it.id }?.toSet().orEmpty()
+        claimSets?.flatten()?.forEach {
+            require(it in claimIds) { "`claim_sets` references an unknown Claims Query: $it" }
+        }
     }
 
     /**
-     *  6.4.1. Selecting Claims
+     * OpenID4VP 1.0, 6.4.1. Selecting Claims
      *
      * The following rules apply for selecting claims via claims and claim_sets:
      *
@@ -324,7 +329,9 @@ sealed interface DCQLCredentialQuery {
 
         val successCombination = requestedClaimsQueryCombinations.firstNotNullOf { claimQueryCombination ->
             catching {
-                claimQueryCombination.map { claimQuery ->
+                // OpenID4VP 1.0, 6.1: claims: "Verifiers MUST NOT point to the same claim more than once in a single
+                // query. Wallets SHOULD ignore such duplicate claim queries."
+                claimQueryCombination.distinctBy { it.path }.map { claimQuery ->
                     claimQuery.executeClaimsQueryAgainstCredential(
                         credentialStructure = credentialStructure,
                     ).getOrThrow()

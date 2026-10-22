@@ -9,20 +9,25 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 /**
- *  6.4. Claims Path Pointer
+ * OpenID4VP 1.0, 7. Claims Path Pointer
  *
- * A claims path pointer is a pointer into the JSON structure of the Verifiable Credential,
- * identifying one or more claims. A claims path pointer MUST be a non-empty array of strings and
- * non-negative integers. A string value indicates that the respective key is to be selected, a
- * null value indicates that all elements of the currently selected array(s) are to be selected;
- * and a non-negative integer indicates that the respective index in an array is to be selected.
- * The path is formed as follows:
+ * A claims path pointer is a pointer into the Credential, identifying one or more claims. A claims path pointer MUST
+ * be a non-empty array of strings, nulls and non-negative integers. A claims path pointer can be processed, which
+ * means it is applied to a Credential. The results of processing are the referenced claims.
+ *
+ * OpenID4VP 1.0, 7.1. Semantics for JSON-based credentials
+ *
+ * This section defines the semantics of a claims path pointer when applied to a JSON-based Credential.
+ *
+ * A string value indicates that the respective key is to be selected, a null value indicates that all elements of the
+ * currently selected array(s) are to be selected; and a non-negative integer indicates that the respective index in an
+ * array is to be selected. The path is formed as follows:
+ *
  * Start with an empty array and repeat the following until the full path is formed.
- * To address a particular claim within an object, append the key (claim name) to the array.
- * To address an element within an array, append the index to the array (as a non-negative, 0-based
- * integer).To address all elements within an array, append a null value to the array. Verifiers
- * MUST NOT point to the same claim more than once in a single query. Wallets SHOULD ignore such
- * duplicate claim queries.
+ *
+ *     To address a particular claim within an object, append the key (claim name) to the array.
+ *     To address an element within an array, append the index to the array (as a non-negative, 0-based integer).
+ *     To address all elements within an array, append a null value to the array.
  */
 @Serializable(with = DCQLClaimsPathPointerInlineSerializer::class)
 class DCQLClaimsPathPointer(
@@ -82,25 +87,35 @@ class DCQLClaimsPathPointer(
     }
 
     /**
-     *  6.4.1. Processing
+     * Selects the claims this claims path pointer points to in [jsonElement], the root element of a credential, i.e.
+     * its top-level JSON object.
      *
-     * In detail, the array is processed by the Wallet from left to right as follows:
-     * Select the root element of the Credential, i.e., the top-level JSON object.
+     * OpenID4VP 1.0, 7.1.1. Processing:
+     * In detail, the array is processed from left to right as follows:
      *
-     * Process the query of the claims path pointer array from left to right:
-     * If the component is a string, select the element in the respective key in the currently
-     * selected element(s). If any of the currently selected element(s) is not an object, abort
-     * processing and return an error. If the key does not exist in any element currently selected,
-     * remove that element from the selection.
+     * 1. Select the root element of the Credential, i.e., the top-level JSON object.
+     * 2. Process the query of the claims path pointer array from left to right:
+     *    1. If the component is a string, select the element in the respective key in the currently selected
+     *       element(s). If any of the currently selected element(s) is not an object, abort processing and return an
+     *       error. If the key does not exist in any element currently selected, remove that element from the
+     *       selection.
+     *    2. If the component is null, select all elements of the currently selected array(s). If any of the currently
+     *       selected element(s) is not an array, abort processing and return an error.
+     *    3. If the component is a non-negative integer, select the element at the respective index in the currently
+     *       selected array(s). If any of the currently selected element(s) is not an array, abort processing and
+     *       return an error. If the index does not exist in a selected array, remove that array from the selection.
+     *    4. If the component is anything else, abort processing and return an error.
+     * 3. If the set of elements currently selected is empty, abort processing and return an error.
      *
-     * If the component is null, select all elements of the currently selected array(s). If any of
-     * the currently selected element(s) is not an array, abort processing and return an error.If
-     * the component is a non-negative integer, select the element at the respective index in the
-     * currently selected array(s). If any of the currently selected element(s) is not an array,
-     * abort processing and return an error. If the index does not exist in a selected array,
-     * remove that array from the selection.If the set of elements currently selected is empty,
-     * abort processing and return an error.The result of the processing is the set of elements
-     * which is requested for presentation.
+     * The result of the processing is the set of selected JSON elements.
+     *
+     * A component of any other type is rejected when the pointer is deserialized, see
+     * [DCQLClaimsPathPointerSegmentSerializer].
+     *
+     * Every error results in an empty list, which callers treat as the claim not being present: a selected element
+     * of the wrong type fails the whole pointer, even if other selected elements would continue, e.g. a wildcard over
+     * an array whose elements are objects and strings. As an error of this claim only, it does not fail other options
+     * of `claim_sets` that do not request the claim.
      */
     fun query(jsonElement: JsonElement): NodeList {
         var nodeList = listOf(NodeListEntry(NormalizedJsonPath(), jsonElement))

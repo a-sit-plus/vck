@@ -6,13 +6,19 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
+import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
@@ -31,6 +37,7 @@ import at.asitplus.wallet.lib.validation.CredentialValidator
 import at.asitplus.wallet.lib.validation.HolderBindingPolicy
 import at.asitplus.wallet.lib.validation.StatusPolicy
 import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidatedCredential
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.firstRejection
 import at.asitplus.wallet.lib.validation.sameForAllTypes
@@ -157,6 +164,51 @@ class HolderAgent @JvmOverloads constructor(
     }
 
     /**
+     * Validates the encoded credential [input] of the type of [scheme], e.g. as received from a credential issuer, like
+     * [prepareCredentialStorage], and decodes it only once: the credential to store is the one that has been
+     * validated, e.g. an mdoc with exactly the bytes the issuer signed. Its [PreparedCredentialStorage.credential] is
+     * `null` if it is not intact, as it can never be stored then.
+     *
+     * Fails if [scheme] does not support the representation of [input].
+     */
+    @JvmOverloads
+    suspend fun prepareCredentialStorage(
+        input: CredentialValidationInput,
+        scheme: CredentialScheme,
+        policy: ValidationPolicy,
+        renewalInfo: CredentialRenewalInfo? = null,
+    ): KmmResult<PreparedCredentialStorage> = catching {
+        val validation = credentialValidator.validate(
+            input = input,
+            policy = policy.boundToHolder(),
+            context = context(scheme.credentialIdentifier(input))
+        )
+        PreparedCredentialStorage(
+            credential = validation.unacceptedCredential?.let { input.toStoreCredentialInput(it, scheme) },
+            validation = validation,
+            renewalInfo = renewalInfo,
+            holderKey = keyMaterial.publicKey,
+        )
+    }
+
+    /**
+     * Prepares a credential that could not be decoded from its transfer encoding, e.g. the base64url encoding of an
+     * mdoc in an OpenID4VCI credential response, so that it is reported like every other credential: rejected
+     * under [policy], see [CredentialValidator.rejectUndecodable], and never stored.
+     */
+    @JvmOverloads
+    fun rejectUndecodable(
+        cause: Throwable,
+        policy: ValidationPolicy,
+        renewalInfo: CredentialRenewalInfo? = null,
+    ): PreparedCredentialStorage = PreparedCredentialStorage(
+        credential = null,
+        validation = credentialValidator.rejectUndecodable(cause, policy.boundToHolder()),
+        renewalInfo = renewalInfo,
+        holderKey = keyMaterial.publicKey,
+    )
+
+    /**
      * Stores the credential of [prepared] only if its report is accepted, see [CredentialStorageResult]. A rejected
      * credential is a successful result without a stored entry; only persisting fails.
      */
@@ -203,7 +255,7 @@ class HolderAgent @JvmOverloads constructor(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
     ): CredentialValidationResult {
-        val bound = policy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey)
+        val bound = policy.boundToHolder()
         return when (credential) {
             is Holder.StoreCredentialInput.Vc -> credentialValidator.validate(
                 input = CredentialValidationInput.VcJwt(credential.vcJws),
@@ -230,6 +282,38 @@ class HolderAgent @JvmOverloads constructor(
         expectedHolderKey = keyMaterial.publicKey,
         expectedCredentialIdentifier = credentialIdentifier,
     )
+
+    /** A credential to store is bound to the key of this holder, whatever [ValidationPolicy.holderBinding] says. */
+    private fun ValidationPolicy.boundToHolder() = copy(holderBinding = HolderBindingPolicy.RequireExpectedKey)
+
+    private fun CredentialScheme.credentialIdentifier(input: CredentialValidationInput): String = when (input) {
+        is CredentialValidationInput.VcJwt -> vcType
+        is CredentialValidationInput.SdJwtVc -> sdJwtType
+        is CredentialValidationInput.IsoMdoc -> isoDocType
+    } ?: throw IllegalArgumentException("Scheme $this does not support the representation of $input")
+
+    /** The credential of [input] to store, from what its validation decoded, see [prepareCredentialStorage]. */
+    private fun CredentialValidationInput.toStoreCredentialInput(
+        validated: ValidatedCredential,
+        scheme: CredentialScheme,
+    ): Holder.StoreCredentialInput = when (this) {
+        is CredentialValidationInput.VcJwt -> Holder.StoreCredentialInput.Vc(
+            signedVcJws = JwsCompactTyped<VerifiableCredentialJws>(compact),
+            vcJws = compact,
+            scheme = scheme as VcJwtCredentialScheme,
+        )
+
+        is CredentialValidationInput.SdJwtVc -> Holder.StoreCredentialInput.SdJwt(
+            signedSdJwtVc = (validated as ValidatedCredential.SdJwtVc).sdJwtSigned,
+            vcSdJwt = compact,
+            scheme = scheme as SdJwtCredentialScheme,
+        )
+
+        is CredentialValidationInput.IsoMdoc -> Holder.StoreCredentialInput.Iso(
+            issuerSigned = (validated as ValidatedCredential.IsoMdoc).issuerSigned,
+            scheme = scheme as IsoMdocCredentialScheme,
+        )
+    }
 
     /**
      * Gets a list of all stored credentials, with a revocation status.

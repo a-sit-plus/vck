@@ -90,7 +90,6 @@ import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -823,14 +822,11 @@ val OpenId4VpKtorHolderTest by matrixSuite {
 
             val preparationState = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
 
-            // Matching returns query-specific candidates, not a Boolean. Build the automatic submission and check it
-            // against the original request to determine whether the store can satisfy the request.
+            // Matching returns query-specific candidates, not a Boolean. The automatic submission can not be built, as
+            // no option of the required credential set is satisfied by a stored credential.
             it.wallet.getMatchingCredentials(preparationState).getOrThrow()
                 .shouldBeInstanceOf<DCQLMatchingResult<*>>().apply {
-                    val submission = matchingResult.toDefaultSubmission(presentationRequest.dcqlQuery).getOrThrow()
-                    shouldThrowAny {
-                        presentationRequest.dcqlQuery.checkCredentialSetQueryRequirements(submission.keys).getOrThrow()
-                    }
+                    matchingResult.toDefaultSubmission(presentationRequest.dcqlQuery).isFailure shouldBe true
                 }
         }
     }

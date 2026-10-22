@@ -13,6 +13,9 @@ package at.asitplus.openid.dcql
  */
 
 import kotlin.jvm.JvmInline
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 
 @JvmInline
 value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
@@ -41,7 +44,9 @@ value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
             documentType = documentType,
             satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding,
             authorityKeyIdentifiers = authorityKeyIdentifiers,
-            claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(namespaces)
+            claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
+                namespaces.mapValues { (_, elements) -> elements.mapValues { (_, value) -> value.toTestJsonValue() } }
+            )
         )
     }
 
@@ -53,4 +58,13 @@ value class TestCredentialQueryAdapter(val dcqlQuery: DCQLQuery) {
             }.keys
         ).isSuccess
     }
+}
+
+/** The JSON value of a test data element, as the wallet converts it from CBOR (OpenID4VP 1.0, 6.3). */
+private fun Any.toTestJsonValue(): JsonElement = when (this) {
+    is JsonElement -> this
+    is String -> JsonPrimitive(this)
+    is Boolean -> JsonPrimitive(this)
+    is Number -> JsonPrimitive(this)
+    else -> JsonNull
 }

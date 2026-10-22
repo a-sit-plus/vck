@@ -12,9 +12,19 @@ import at.asitplus.wallet.lib.validation.CredentialValidationResult
  */
 @ConsistentCopyVisibility
 data class PreparedCredentialStorage internal constructor(
-    val credential: Holder.StoreCredentialInput,
+    /**
+     * The credential to store, `null` if it has been validated from its encoding, but is not intact, e.g. if it can
+     * not be decoded, see [HolderAgent.rejectUndecodable], and thus can never be stored.
+     */
+    val credential: Holder.StoreCredentialInput?,
     val validation: CredentialValidationResult,
     val renewalInfo: CredentialRenewalInfo?,
     /** The key [validation] required the credential to be bound to. */
     internal val holderKey: CryptoPublicKey,
-)
+) {
+    init {
+        require(credential != null || validation.unacceptedCredential == null) {
+            "An intact credential is prepared with the credential to store"
+        }
+    }
+}

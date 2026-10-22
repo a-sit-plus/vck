@@ -5,6 +5,7 @@ import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.*
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -14,11 +15,60 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
 val DCQLClaimsPathPointerTest by matrixSuite {
+    "processing (OpenID4VP 1.0, 7.1.1)" - {
+        val credential = Json.parseToJsonElement(
+            """
+            {
+              "place_of_birth": { "locality": "Wien", "country": "AT" },
+              "nationalities": ["AT", "DE"],
+              "addresses": [ { "country": "AT" }, { } ],
+              "mixed": [ { "x": "yes" }, "text" ],
+              "nothing": null
+            }
+            """.trimIndent()
+        )
+
+        "an object is selected as a whole" {
+            DCQLClaimsPathPointer("place_of_birth").query(credential).single().value shouldBe
+                    credential.jsonObject["place_of_birth"]
+        }
+        "a wildcard selects every element of an array" {
+            (DCQLClaimsPathPointer("nationalities") + null).query(credential).map { it.value } shouldBe
+                    listOf(JsonPrimitive("AT"), JsonPrimitive("DE"))
+        }
+        "an absent key removes that element from the selection" {
+            (DCQLClaimsPathPointer("addresses") + null + "country").query(credential).map { it.value } shouldBe
+                    listOf(JsonPrimitive("AT"))
+        }
+        "an absent index removes that array from the selection" {
+            (DCQLClaimsPathPointer("nationalities") + 2u).query(credential).shouldBeEmpty()
+        }
+        "a selected element of the wrong type is an error, even if other selected elements would continue" - {
+            listOf(
+                DCQLClaimsPathPointer("mixed") + null + "x",
+                DCQLClaimsPathPointer("nationalities") + "x",
+                DCQLClaimsPathPointer("place_of_birth") + null,
+                DCQLClaimsPathPointer("place_of_birth") + 0u,
+                DCQLClaimsPathPointer("nothing") + "x",
+                DCQLClaimsPathPointer("nationalities") + 0u + "x",
+            ).asData(nameFn = { it.toString() }) test { pointer ->
+                pointer.query(credential).shouldBeEmpty()
+            }
+        }
+        "a claim with value null is selected" {
+            DCQLClaimsPathPointer("nothing").query(credential).single().value shouldBe JsonNull
+        }
+        "a wildcard over an empty selection is an error" {
+            (DCQLClaimsPathPointer("absent") + null).query(credential).shouldBeEmpty()
+        }
+    }
+
     "numeric object keys remain names" {
         Json.decodeFromString<DCQLClaimsPathPointer>("""["age_equal_or_over","18"]""") shouldBe
                 DCQLClaimsPathPointer("age_equal_or_over", "18")

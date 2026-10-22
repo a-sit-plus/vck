@@ -1,6 +1,10 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
+- `HolderDCQLQueryMatchingResult.toDefaultSubmission` selects the first option of a required credential set whose queries all match a credential, instead of always the first option, which produced an empty submission when no credential matched it; it fails if no option of a required credential set is satisfiable
+- `DCQLClaimsPathPointer.query` processes claims path pointers as OpenID4VP 1.0, 7.1.1 specifies: if any selected element is not an object for a name component, or not an array for an index or `null` component, the result is empty, i.e. the claim does not match, instead of continuing with the other selected elements; other options of `claim_sets` that do not request the claim may still match
+- DCQL: Reject queries that OpenID4VP 1.0 does not allow: empty `values` of a claims query, empty `vct_values`, empty arrays in `type_values` or in the `options` of `credential_sets`, `options` that reference an unknown Credential Query and `claim_sets` that reference an unknown claims query; a claims query that points to the same claim again is ignored when matching
+- DCQL: Match the `values` of a claims query against the JSON value of an ISO mdoc data element as OpenID4VP 1.0, 6.3 requires, converted with `CredentialToJsonConverter`, so that a full-date or date-time matches its string, e.g. `"1990-01-01"` for `birth_date`, a byte string its base64url encoding, and a value of a scheme-specific type the JSON encoding of the serializer registered for its data element with `CborCredentialSerializer`, e.g. the integer code of `IsoSexEnum`, or else of its registered `JsonValueEncoder`; such elements matched no value before. Add `CredentialToJsonConverter.toJsonElementOrNull`, which returns null instead of the `toString()` of a value of a type without a known encoding. `DCQLCredentialClaimStructure.IsoMdocStructure` holds the JSON values of the data elements (`Map<String, Map<String, JsonElement>>` instead of `Any`), with `JsonNull` for an element without a JSON value, and `DCQLClaimsQueryResult.IsoMdocResult.claimValue` is that JSON value
 - Reduce certificate trust-check allocations by reusing the BasicConstraints OID and encoding the top certificate once when comparing it with trust anchors.
 - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
@@ -26,6 +30,8 @@ Release 9.0.0 (unreleased):
 - CSC data classes:
     - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
     - Implement CSC Data Model 1.0.0
+- OpenID data classes:
+    - BREAKING: `VerifierInfo.data` is a `VerifierInfo.Data` of `StringData` or `ObjectData` instead of `String`, as OpenID4VP 1.0 allows a string or a JSON object. `VerifierInfo` can still be created with a `String`, or with a `JsonObject`
 - ETSI data classes:
     - BREAKING: Align LoTE digital-identity JSON member names and representations with TS 119 602 Annex A.1:
       `PublicKeyValue` is a `JsonWebKey`, while `SubjectKeyIdentifier` and `OtherId` are strings; absent
@@ -125,7 +131,10 @@ Release 9.0.0 (unreleased):
       credentials in `getValidCredentialsByPriority()`, demoting only verified problems. Deprecate the constructor
       taking `validator`, `validatorVcJws`, `validatorSdJwt`, `validatorMdoc` (which no longer take effect), and
       `trustedIssuers` (adapted as anchors for every credential type)
-    - Add `OpenId4VciClient.validateCredentialResponse(...)`, reporting every credential of a (batch) response
+    - Add `OpenId4VciClient.decodeCredentialResponse(response, request, representation)`, decoding every credential
+      of a (batch) response into a `ReceivedCredential`, also one that can not be decoded, and
+      `ReceivedCredential.prepareCredentialStorage(holder, scheme, policy, renewalInfo)`, validating it for storage by
+      the `HolderAgent`, which reports a credential that can not be decoded as rejected
     - Add `ValidationPolicy.requiredClaims` (`RequiredClaimsPolicy.Skip` by default, or `RequireMandatory`) and the
       check `CredentialChecks.requiredClaims` (`RequiredClaimsValidation`, failing with `MissingRequiredClaimException`): whether a
       credential received on its own contains every claim the metadata of its signed type describe as `mandatory`
@@ -140,6 +149,12 @@ Release 9.0.0 (unreleased):
       user looks at the report, then `HolderAgent.storeAccepted(prepared)`, storing only an accepted credential, as
       `storeCredentialWithReport` does, or `HolderAgent.storeAfterUserConsent(prepared)`, storing also a rejected but
       intact credential. `CredentialStorageResult.storedEntry` may thus be present for a rejected report
+    - Add `HolderAgent.prepareCredentialStorage(input, scheme, policy, renewalInfo)`, validating an encoded credential
+      (`CredentialValidationInput`), e.g. as received from a credential issuer, and decoding it only once: the
+      credential to store is the validated one, e.g. an mdoc with exactly the bytes the issuer signed. Add
+      `HolderAgent.rejectUndecodable(cause, policy, renewalInfo)` for a credential that can not be decoded from its
+      transfer encoding, so that it is reported, but never stored. `PreparedCredentialStorage.credential` is `null`
+      for a credential prepared from its encoding that is not intact
     - Add `RelyingPartyValidator` with `RelyingPartyTrustAnchors` (WRPAC and WRPRC anchors, status list signers of
       WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
@@ -232,8 +247,8 @@ Release 9.0.0 (unreleased):
       `HolderBindingPolicy.None`): `CredentialValidator.validate(input, policy, context)`,
       `CredentialValidator.rejectUndecodable(cause, policy)`, and `ValidationReport.credential(checks, policy,
       evaluatedAt)` no longer take a `HolderBindingPolicy`. In a presentation, the presentation decides the holder
-      binding of its credentials; `HolderAgent.storeCredentialWithReport` and
-      `OpenId4VciClient.validateCredentialResponse` always require the holder's key
+      binding of its credentials; `HolderAgent.storeCredentialWithReport` and `HolderAgent.prepareCredentialStorage`
+      always require the holder's key
     - `PresentationValidationResult.rejection()` takes the requirements from the report instead of a policy. Rejection
       messages name the check, e.g. "The issuerSignature check did not pass", and disclosed items by index
     - Add `CredentialToJsonConverter.toJsonElement(ValidatedCredential)`, `ValidatedCredential.credentialIdentifier`,
@@ -265,6 +280,7 @@ Release 9.0.0 (unreleased):
     - `WrprcValidator` validates each credential request on its own, so a request that can not be validated (e.g. a DCQL claims path with a `null` segment) no longer fails the whole validation: `WrprcValidationResult.requestDataValidationResults` holds a `KmmResult` for each request. Deprecate `WrprcValidationResult.requestDataValidation`, which maps such requests to an invalid credential type without attributes, `WrprcValidator.validateRequest()` in favor of `validateCredentialRequests()`, and the `WrprcValidationResult` constructor taking the old types
     - `WrpAuthenticationRequestValidator` tells apart why it can not extract a WRPRC, with exceptions extending `IllegalArgumentException`: `MissingRegistrationCertificateException` if the request contains none, `InvalidRegistrationCertificateException` with the parsing error as cause if it can not be parsed, and `UnsupportedWrpRequestException` for requests it can not validate, e.g. unsigned ones
     - `WrpAuthenticationRequestValidator` rejects requests with more than one `registration_cert` entry in `verifier_info`, also if only one of them can be parsed, and ISO requests that carry an `euWrprc` in only some of their `DocRequest`s
+    - `WrpAuthenticationRequestValidator` rejects a `registration_cert` entry in `verifier_info` whose data is a JSON object instead of a string
     - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
 - Status lists:
     - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
@@ -348,7 +364,11 @@ Release 9.0.0 (unreleased):
     - Add `CredentialIssuanceResult.Success.prepareCredentialStorage(holder, policy)`, validating the received
       credentials with their renewal info by `HolderAgent.prepareCredentialStorage`, for the wallet to show the reports
       and store them with `HolderAgent.storeAccepted`, or `HolderAgent.storeAfterUserConsent` after the user accepts a
-      rejected report, e.g. of a credential missing claims its type requires (`ValidationPolicy.requiredClaims`)
+      rejected report, e.g. of a credential missing claims its type requires (`ValidationPolicy.requiredClaims`). A
+      credential that can not be decoded is reported as rejected instead of failing the issuance
+    - BREAKING: `CredentialIssuanceResult.Success` holds the `receivedCredentials` (`ReceivedCredential`), not validated
+      yet, and the `scheme` they have been requested as, instead of `credentials`. Deprecate `credentials`, which
+      decodes them without validating them, and fails for a credential that can not be decoded
     - Add `OpenId4VciProtocolClient.loadIssuerMetadata(credentialIssuer, policy)` and
       `OpenId4VciKtorClient.loadIssuerMetadata(credentialIssuer, policy)`, asking for signed metadata
       (`application/jwt`) over unsigned ones (OpenID4VCI 1.0, 12.2.2), and returning `LoadedIssuerMetadata`: `Signed`
@@ -389,7 +409,8 @@ Release 9.0.0 (unreleased):
     - Renamed `CredentialIssuer` (in `vck-openid`) to `OpenId4VciServer`
     - Add `OpenId4VciProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the credential issuer
       (metadata, nonce, credential), built on `OAuth2ProtocolClient`, which handles DPoP for the credential issuer with
-      the credential issuer's own nonces
+      the credential issuer's own nonces. `credentialRequest` decodes the response into `ReceivedCredential`s, see
+      `OpenId4VciClient.decodeCredentialResponse`
     - Move `CredentialIdentifierInfo` to `vck-openid` (`at.asitplus.wallet.lib.oidvci`), deprecate the typealias left
       in `vck-openid-ktor`; the serialized form is unchanged
     - `OpenId4VciKtorClient` sends the requests of `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` in the order of each
@@ -401,8 +422,9 @@ Release 9.0.0 (unreleased):
       another offer URL or a redirect in its place is rejected
     - Deprecate `WalletService.parseCredentialOffer`, which retrieved offers passed by reference with the
       `remoteResourceRetriever` of `OpenId4VciClient`; that constructor parameter is only used by the deprecated method
-    - Deprecate `OpenId4VciClient.parseCredentialResponse` without the originating `CredentialRequest`, which accepts a
-      plain response even if the request asked for an encrypted one; pass the request
+    - Deprecate `OpenId4VciClient.parseCredentialResponse`, which decodes credentials without validating them: use
+      `decodeCredentialResponse` and `ReceivedCredential.prepareCredentialStorage`. The overloads without the
+      originating `CredentialRequest` also accept a plain response even if the request asked for an encrypted one
     - Add `OpenId4VciProtocolClient.createCredential`, whose proof JWTs name the `client_id` of its `OAuth2Client` as the
       issuer (OID4VCI 1.0 Appendix F.1); `OpenId4VciClient.createCredential` takes it as the new parameter `clientId`
     - Deprecate `OpenId4VciClient.clientId`, which only remains the default for `OpenId4VciClient.createCredential`;

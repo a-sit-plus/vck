@@ -22,7 +22,6 @@ import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ProtocolRequest
-import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -317,8 +316,9 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
 
     /**
      * Sends [request], as created by [createCredential], to the
-     * [IssuerMetadata.credentialEndpointUrl] with the access token from [tokenResponse], and parses the (possibly
-     * encrypted) response into credentials to store.
+     * [IssuerMetadata.credentialEndpointUrl] with the access token from [tokenResponse], and decodes the (possibly
+     * encrypted) response in [credentialFormat] with [OpenId4VciClient.decodeCredentialResponse]. Validates nothing:
+     * prepare the storage of each [ReceivedCredential] with [ReceivedCredential.prepareCredentialStorage].
      *
      * Sends `Credential{1,2}`, i.e. retries once if the credential issuer asks for a DPoP nonce.
      */
@@ -327,8 +327,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         issuerMetadata: IssuerMetadata,
         tokenResponse: TokenResponseParameters,
         credentialFormat: SupportedCredentialFormat,
-        credentialScheme: CredentialScheme,
-    ): HttpExchange<Collection<Holder.StoreCredentialInput>> = oauth2Client.accessTokenRequest(
+    ): HttpExchange<List<ReceivedCredential>> = oauth2Client.accessTokenRequest(
         unauthenticatedRequest = when (request) {
             is OpenId4VciClient.CredentialRequest.Encrypted -> PreparedHttpRequest(
                 url = issuerMetadata.credentialEndpointUrl,
@@ -345,12 +344,11 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         tokenResponse = tokenResponse,
         toProtocolRequest = ProtocolRequest::Credential,
         parse = { response ->
-            vciClient.parseCredentialResponse(
+            vciClient.decodeCredentialResponse(
                 response = response.body,
                 isEncrypted = response.headers.isJwt(),
                 request = request,
                 representation = credentialFormat.format.toRepresentation(),
-                scheme = credentialScheme,
             ).getOrThrow()
         },
     )
