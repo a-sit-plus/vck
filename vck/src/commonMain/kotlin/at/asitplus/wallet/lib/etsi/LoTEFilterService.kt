@@ -233,6 +233,15 @@ sealed class LoteProfile(
         serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WRPAC/Revocation"
     )
 
+    data object WRPRC : LoteProfile(
+        fileName = "wrprc-providers.json",
+        loteType = "http://uri.etsi.org/19602/LoTEType/EUWRPRCProvidersList",
+        statusDeterminationApproach = "http://uri.etsi.org/19602/WRPRCProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WRPRCProvidersList/schemerules/EU")),
+        serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WRPRC/Issuance",
+        serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WRPRC/Revocation"
+    )
+
     data object WALLET : LoteProfile(
         fileName = "wallet-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUWalletProvidersList",
@@ -257,7 +266,7 @@ sealed class LoteProfile(
 
         /** All known profiles, i.e. all lists published per [LoTEStage]. */
         val entries: List<LoteProfile> by lazy {
-            listOf(PID, mDL, WRPAC, WALLET, EAA)
+            listOf(PID, mDL, WRPAC, WRPRC, WALLET, EAA)
         }
 
         /** URLs of all lists published below [baseUrl]. */
