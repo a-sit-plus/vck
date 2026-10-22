@@ -44,7 +44,7 @@ internal suspend fun evaluateVcJwt(
         holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
             vcJws.subject?.let { key.matchesIdentifier(it) } == true
         },
-        timeliness = VcJwsTimelinessValidator()(vcJws, timeScope).let { details ->
+        timeliness = VcJwsTimelinessValidator(vcJws, timeScope).let { details ->
             CredentialTimelinessValidationSummary.VcJws(details).toValidation(
                 evaluatedAt = timeScope.now,
                 notYetValid = listOf(details.jwsNotYetValidError, details.credentialNotYetValidError),

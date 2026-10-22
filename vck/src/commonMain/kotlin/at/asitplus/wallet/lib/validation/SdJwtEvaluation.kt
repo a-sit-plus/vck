@@ -56,7 +56,7 @@ internal suspend fun evaluateSdJwtVc(
         holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
             parsed.credential.confirmationClaim?.jsonWebKey?.toCryptoPublicKey()?.getOrNull() == key
         },
-        timeliness = SdJwtTimelinessValidator()(parsed.credential, timeScope).let { details ->
+        timeliness = SdJwtTimelinessValidator(parsed.credential, timeScope).let { details ->
             CredentialTimelinessValidationSummary.SdJwt(details).toValidation(
                 evaluatedAt = timeScope.now,
                 notYetValid = listOf(details.jwsNotYetValidError),

@@ -2,12 +2,8 @@ package at.asitplus.wallet.lib.agent.validation.mdoc
 
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.wallet.lib.agent.validation.TimeScope
-import io.github.aakira.napier.Napier
-import kotlin.jvm.JvmOverloads
 
-class MdocTimelinessValidator @JvmOverloads constructor(
-    private val mobileSecurityObjectTimelinessValidator: MobileSecurityObjectTimelinessValidator = MobileSecurityObjectTimelinessValidator(),
-) {
+object MdocTimelinessValidator {
     operator fun invoke(
         issuerSigned: IssuerSigned,
         timeScope: TimeScope,
@@ -15,7 +11,7 @@ class MdocTimelinessValidator @JvmOverloads constructor(
         MdocTimelinessValidationDetails(
             evaluationTime = now,
             msoTimelinessValidationSummary = issuerSigned.issuerAuth.payload?.let {
-                mobileSecurityObjectTimelinessValidator(it, timeScope)
+                MobileSecurityObjectTimelinessValidator(it, timeScope)
             }
         )
     }
