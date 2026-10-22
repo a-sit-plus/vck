@@ -121,7 +121,9 @@ Important areas:
   credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciKtorClient`, `OpenId4VpKtorHolder` and
   `RemoteOAuth2AuthorizationServerAdapter` only send the requests of the exchanges of `OAuth2ProtocolClient`,
   `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient` (`execute` in `HttpClient.kt`), and run the exchanges of
-  each flow in order; they contain no protocol logic and no DPoP handling.
+  each flow in order; they contain no protocol logic and no DPoP handling. Received credentials are stored by the
+  wallet's `HolderAgent`, not by the Ktor client: `CredentialIssuanceResult.Success.prepareCredentialStorage` hands
+  them to `HolderAgent.prepareCredentialStorage`, see *Validation*.
 
 Put Ktor engine selection, request execution, response body handling, cache policy, and Ktor-specific test doubles
 here. Non-success responses are `HttpErrorResponseException` instances (defined in `vck-openid`, so that exchanges
@@ -197,7 +199,9 @@ through `LibraryInitializer.registerExtensionLibrary()`. Metadata-derived scheme
 `SdJwtTypeMetadata.toCredentialScheme()`, which picks the representation from the document's `vck` extension
 (`SdJwtTypeMetadataVckExtensions`: `format` plus `vcType`/`isoDocType`/`isoNamespace`, defaulting to SD-JWT) and
 produces an `ExtractedVcJwt`/`ExtractedSdJwt`/`ExtractedIsoMdocCredentialScheme`. Both paths coexist by design; do not
-replace one with the other.
+replace one with the other. ISO metadata claim paths must already include their namespace; the derived scheme
+sets `isoClaimPathsAreQualified` so both required-claims validation and issuer configurations preserve them unchanged.
+Code-defined ISO schemes can opt in too; otherwise relative paths are qualified with `isoNamespace`.
 
 `AttributeIndex` coordinates scheme lookup, resolving from its registered `schemeSet` first, then through the
 registries, then through a fallback scheme. `CredentialMetadataRegistry` is its extension boundary:
@@ -321,7 +325,10 @@ Every artifact a party receives is validated in `vck/.../lib/validation` into a 
 checks, each a `CheckOutcome` (passed, failed with its cause, blocked by a failed prerequisite, or not applicable),
 whose `decision` is derived from the checks, the children, and a `ValidationPolicy` by the pure rules in
 `ValidationRules.kt`. A result holds the report next to the validated value, which is present only if the report is
-accepted, so an unverified value is never exposed as validated. Rules to keep:
+accepted, so an unverified value is never exposed as validated. Where a user may continue after seeing the report, the
+result also carries the value as untrusted or unaccepted, e.g. `CredentialValidationResult.unacceptedCredential` for
+a credential that only fails checks the policy may relax (`isIntactCredential`), which
+`HolderAgent.storeAfterUserConsent` stores after `prepareCredentialStorage`. Rules to keep:
 
 - One validator per artifact kind: `CredentialValidator` for credentials and presentations, `StatusValidator` for
   status list tokens, `RelyingPartyValidator` for WRPACs, WRPRCs and client identifier prefixes,
@@ -331,9 +338,16 @@ accepted, so an unverified value is never exposed as validated. Rules to keep:
 - Trust is configured as anchors per artifact kind, and for credentials per credential type
   (`CredentialTrustAnchors`), never as an injected verification function that hides its anchors. A missing source
   of trust blocks the check, and `TrustPolicy.RequireAuthorizedSigner` then rejects (fail closed).
-- The policy relaxes only trust, status, and timeliness of the artifact; parsing, signatures, holder binding and the
-  time of holder proofs, nonces, and audiences are never relaxed. A status is resolved only for an artifact that is
-  valid otherwise (draft-ietf-oauth-status-list-21, 8.3).
+- The policy relaxes only trust, status, and timeliness of the artifact, and whether a standalone credential has to
+  contain the claims its type requires; parsing, signatures, holder binding and the time of holder proofs, nonces, and
+  audiences are never relaxed. A status is resolved only for an artifact that is valid otherwise
+  (draft-ietf-oauth-status-list-21, 8.3); missing claims do not make a credential invalid as a token.
+- The claims a credential type requires come from its metadata, selected by the type signed into the credential
+  through a `RequiredClaimsResolver`, by default the `CredentialMetadataRegistry`s and the schemes of
+  `AttributeIndex`. A type without metadata blocks `requiredClaims`, it never passes as a type without required claims.
+  A registered scheme supplies metadata even with empty or entirely optional claim descriptions; it then declares
+  no mandatory claims and the check passes. Presentations disclose selectively, so the check does not apply to
+  presented credentials.
 - Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
   `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy
   results of the OpenID4VP verifiers) delegate to the new validation under a compatibility policy or the configured

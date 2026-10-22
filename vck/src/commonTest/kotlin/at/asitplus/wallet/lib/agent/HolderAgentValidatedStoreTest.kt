@@ -1,11 +1,15 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.RequiredClaim
+import at.asitplus.wallet.lib.validation.RequiredClaims
+import at.asitplus.wallet.lib.validation.RequiredClaimsPolicy
 import at.asitplus.wallet.lib.validation.StatusValidator
 import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
@@ -62,6 +66,72 @@ val HolderAgentValidatedStoreTest by matrixSuite {
                     result.storedEntry.shouldBeNull()
                     result.validation.report.checks.shouldBeInstanceOf<CredentialChecks>().holderBinding
                         .shouldBeInstanceOf<CheckOutcome.Failed>()
+                }
+
+                "a rejected but intact credential is stored only after the user's consent" {
+                    val issuance = issuance()
+                    val holder = HolderAgent(issuance.holderKey, credentialValidator = issuance().validator())
+                    val prepared = holder.prepareCredentialStorage(
+                        issuance.issue(representation).toStoreCredentialInput(),
+                        strictPolicy,
+                    ).getOrThrow()
+
+                    prepared.validation.report.decision shouldBe REJECTED
+                    holder.getCredentials().shouldNotBeNull().shouldBeEmpty()
+                    holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldBeNull()
+                    holder.getCredentials().shouldNotBeNull().shouldBeEmpty()
+
+                    holder.storeAfterUserConsent(prepared).getOrThrow().let {
+                        it.validation shouldBe prepared.validation
+                        it.storedEntry.shouldNotBeNull()
+                    }
+                    holder.getCredentials().shouldNotBeNull().shouldHaveSize(1)
+                }
+
+                "a credential missing required claims is stored only after the user's consent" {
+                    val issuance = issuance()
+                    val validator = CredentialValidator(
+                        trustAnchors = issuance.trustAnchors,
+                        statusValidator = StatusValidator(issuance.statusTokens),
+                        requiredClaimsResolver = { identifier, _ ->
+                            RequiredClaims(identifier, listOf(RequiredClaim(OpenId4VciClaimsPathPointer("missing"))))
+                        },
+                    )
+                    val holder = HolderAgent(issuance.holderKey, credentialValidator = validator)
+                    val prepared = holder.prepareCredentialStorage(
+                        issuance.issue(representation).toStoreCredentialInput(),
+                        strictPolicy.copy(requiredClaims = RequiredClaimsPolicy.RequireMandatory),
+                    ).getOrThrow()
+
+                    prepared.validation.report.checks.shouldBeInstanceOf<CredentialChecks>().requiredClaims.outcome
+                        .shouldBeInstanceOf<CheckOutcome.Failed>()
+                    holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldBeNull()
+                    holder.storeAfterUserConsent(prepared).getOrThrow().storedEntry.shouldNotBeNull()
+                }
+
+                "a credential bound to another key can not be stored, even after the user's consent" {
+                    val issuance = issuance()
+                    val holder = HolderAgent(EphemeralKeyWithoutCert(), credentialValidator = issuance.validator())
+                    val prepared = holder.prepareCredentialStorage(
+                        issuance.issue(representation).toStoreCredentialInput(),
+                        strictPolicy,
+                    ).getOrThrow()
+
+                    prepared.validation.unacceptedCredential.shouldBeNull()
+                    holder.storeAfterUserConsent(prepared).isFailure shouldBe true
+                    holder.getCredentials().shouldNotBeNull().shouldBeEmpty()
+                }
+
+                "a credential prepared by another holder is not stored" {
+                    val issuance = issuance()
+                    val prepared = HolderAgent(issuance.holderKey, credentialValidator = issuance.validator())
+                        .prepareCredentialStorage(issuance.issue(representation).toStoreCredentialInput(), strictPolicy)
+                        .getOrThrow()
+                    val other = HolderAgent(EphemeralKeyWithoutCert(), credentialValidator = issuance.validator())
+
+                    other.storeAccepted(prepared).isFailure shouldBe true
+                    other.storeAfterUserConsent(prepared).isFailure shouldBe true
+                    other.getCredentials().shouldNotBeNull().shouldBeEmpty()
                 }
 
                 "the legacy store fails with the cause of the rejection, and stores nothing" {

@@ -75,6 +75,11 @@ data class ValidationPolicy(
      * be bound to the key of the VP, and other artifacts have no holder, so it does not apply to them.
      */
     val holderBinding: HolderBindingPolicy = HolderBindingPolicy.None,
+    /**
+     * Whether a credential validated on its own has to contain every claim its type requires, e.g. when a wallet
+     * receives it. A presentation discloses claims selectively, so it does not apply to presented credentials.
+     */
+    val requiredClaims: RequiredClaimsPolicy = RequiredClaimsPolicy.Skip,
     /** Whether a relying party has to transport registration certificates (WRPRCs) with its request. */
     val registration: RegistrationPolicy = RegistrationPolicy.Require,
 ) {
@@ -94,6 +99,21 @@ sealed interface HolderBindingPolicy {
 
     /** The credential has to be bound to [CredentialValidationContext.expectedHolderKey]. */
     data object RequireExpectedKey : HolderBindingPolicy
+}
+
+/**
+ * Whether a standalone credential has to contain the claims its type requires, see [RequiredClaimsResolver].
+ */
+sealed interface RequiredClaimsPolicy {
+    /** The claims are not checked, and their metadata are not resolved. */
+    data object Skip : RequiredClaimsPolicy
+
+    /**
+     * The credential has to contain every claim the metadata of its signed type describe as `mandatory`. Without
+     * metadata of that type, the check is blocked. A registered scheme is metadata, including when its claim
+     * descriptions are empty or all optional, in which case there are no mandatory claims and the check passes.
+     */
+    data object RequireMandatory : RequiredClaimsPolicy
 }
 
 /**

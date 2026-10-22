@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.KmmResult
+import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -79,6 +80,23 @@ data class TrustValidation(
 )
 
 /**
+ * Whether a credential contains every claim its type requires, see [RequiredClaimsResolver].
+ */
+data class RequiredClaimsValidation(
+    val outcome: CheckOutcome,
+    /** The signed credential identifier the required claims were selected for, if it could be determined. */
+    val credentialIdentifier: String? = null,
+    /** Names the metadata the required claims come from, e.g. the URL of a type metadata document. */
+    val source: String? = null,
+    /** The paths of the required claims the credential does not contain, never claim values. */
+    val missing: List<OpenId4VciClaimsPathPointer> = emptyList(),
+) {
+    init {
+        require(missing.isEmpty() || outcome is CheckOutcome.Failed) { "Only a failed check misses claims" }
+    }
+}
+
+/**
  * The checks of one status mechanism advertised by an artifact, i.e. a status list or an identifier list.
  */
 data class StatusMechanismValidation(
@@ -129,6 +147,8 @@ data class CredentialChecks(
     val semantics: CheckOutcome,
     /** One entry per supplied disclosure or issuer-signed item, in the order supplied. */
     val disclosedItems: List<DisclosedItemValidation>,
+    /** Whether the credential contains every claim its type requires, as [ValidationPolicy.requiredClaims] asks. */
+    val requiredClaims: RequiredClaimsValidation,
     val holderBinding: CheckOutcome,
     val timeliness: TimelinessValidation,
     val status: StatusValidation,
