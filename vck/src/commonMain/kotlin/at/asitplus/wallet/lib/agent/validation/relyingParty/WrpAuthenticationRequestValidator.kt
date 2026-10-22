@@ -22,6 +22,7 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest.WrpDcqlCredentialQuery
 import at.asitplus.wallet.lib.validation.parseSingleRegistrationCertificate
 import at.asitplus.wallet.lib.validation.parseWrprcCose
+import at.asitplus.wallet.lib.validation.stringData
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.decodeFromByteArray
 
@@ -113,7 +114,7 @@ object WrpAuthenticationRequestValidator {
 
     fun VerifierInfo.parseJws() = catchingUnwrapped {
         require(format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true))
-        JwsCompactTyped<WrpPayload>(data)
+        JwsCompactTyped<WrpPayload>(stringData())
     }.onFailure { Napier.w("Failed to parse JWS data for $this (${REGISTRATION_CERT_FORMAT}).", it) }
         .getOrNull()
 
