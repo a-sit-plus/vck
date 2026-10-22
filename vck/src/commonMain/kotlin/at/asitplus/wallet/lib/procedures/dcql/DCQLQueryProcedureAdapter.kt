@@ -18,7 +18,6 @@ package at.asitplus.wallet.lib.procedures.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catchingUnwrapped
-import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
@@ -41,22 +40,41 @@ import at.asitplus.signum.indispensable.asn1.authorityKeyIdentifier_2_5_29_35
 import at.asitplus.signum.indispensable.asn1.decodeRethrowing
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.asn1.encoding.decode
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElementOrNull
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.jvm.JvmInline
-import kotlin.time.Instant
-import kotlinx.datetime.LocalDate
-import kotlinx.serialization.KSerializer
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonUnquotedLiteral
+import net.orandja.obor.codec.Cbor
+import net.orandja.obor.data.CborArray
+import net.orandja.obor.data.CborBoolean
+import net.orandja.obor.data.CborBytes
+import net.orandja.obor.data.CborBytesIndefinite
+import net.orandja.obor.data.CborFloat
+import net.orandja.obor.data.CborMap
+import net.orandja.obor.data.CborMapEntry
+import net.orandja.obor.data.CborNegative
+import net.orandja.obor.data.CborObject
+import net.orandja.obor.data.CborPositive
+import net.orandja.obor.data.CborTagged
+import net.orandja.obor.data.CborText
+import net.orandja.obor.data.CborTextIndefinite
 
 @JvmInline
 value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
@@ -134,7 +152,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             DCQLIsoMdocCredential(
                 claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
                     namespaces?.mapValues { namespace ->
-                        namespace.value.entries.associate { it.value.elementIdentifier to it.value.toDcqlClaimValue(namespace.key) }
+                        namespace.value.entries.associate { it.value.elementIdentifier to it.toDcqlClaimValue() }
                     } ?: mapOf()
                 ),
                 documentType = document.docType,
@@ -213,7 +231,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
                         namespace.value.entries
                             .filter { it.value in validItems }
                             .associate {
-                                it.value.elementIdentifier to it.value.toDcqlClaimValue(namespace.key)
+                                it.value.elementIdentifier to it.toDcqlClaimValue()
                             }
                     } ?: mapOf()
                 ),
@@ -246,7 +264,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
             issuerSigned.namespaces?.mapValues { entry ->
                 entry.value.entries.associate {
-                    it.value.elementIdentifier to it.value.toDcqlClaimValue(entry.key)
+                    it.value.elementIdentifier to it.toDcqlClaimValue()
                 }
             } ?: mapOf()
         ),
@@ -337,39 +355,72 @@ class AuthorityKeyIdentifier(
 }
 
 /**
- * The value of this ISO mdoc data element in [namespace] for DCQL matching, converted to JSON. OpenID4VP 1.0, 6.3: "If
- * a Wallet implements value matching and the Credential being matched is an ISO mdoc-based credential, the CBOR value
- * used for matching MUST first be converted to JSON, following the advice given in Section 6.1 of [RFC8949]."
+ * The value of this ISO mdoc data element for DCQL matching, converted to JSON. OpenID4VP 1.0, 6.3: "If a Wallet
+ * implements value matching and the Credential being matched is an ISO mdoc-based credential, the CBOR value used for
+ * matching MUST first be converted to JSON, following the advice given in Section 6.1 of [RFC8949]."
  *
- * Strings, booleans, numbers, dates, date-times and byte strings are converted by [toJsonElementOrNull], e.g. a
- * full-date to its string and a byte string to base64url. A value of another type, e.g. of a scheme-specific type, is
- * encoded to JSON with the [KSerializer] it was decoded with, see [CborCredentialSerializer], so that its JSON
- * mirrors its CBOR item, e.g. `IsoSexEnum` becomes its integer code. If there is none, or it can not encode to JSON,
- * the value is converted by the registered [at.asitplus.wallet.lib.JsonValueEncoder]. A value without any JSON value
- * becomes [JsonNull], so that the data element is still present, but it can not match `values`.
- *
- * Limitations: this converts the decoded value, not the original CBOR item, so it approximates RFC 8949, 6.1:
- * - A value whose serializer cannot encode to JSON falls back to the registered
- *   [at.asitplus.wallet.lib.JsonValueEncoder], which was written for display and Presentation Exchange. An enum then
- *   matches its CBOR integer only if its encoder produces that number rather than a name.
- * - A date-time (tag 0) is converted to the string of its [kotlin.time.Instant], so a value written with fractional
- *   seconds or an offset does not match its exact string. A full-date (tag 1004) is not affected.
- * - A floating-point number stays a number, so `18.0` does not match the integer `18`.
- * - A data element that could not be decoded is kept as its raw CBOR bytes, which are converted to base64url like a
- *   byte string.
- * - A bignum (tags 2 and 3), which RFC 8949 converts to a base64url string, is not converted, so it does not match.
+ * The original CBOR item of the element value is converted, see [toRfc8949Json], not the decoded value, so that e.g. a
+ * date-time keeps its string as issued and a scheme-specific type its CBOR representation. If the item can not be
+ * read, the value is [JsonNull], so that the data element is still present, but it can not match `values`.
  */
-internal fun IssuerSignedItem.toDcqlClaimValue(namespace: String): JsonElement = with(elementValue) {
-    val convertedDirectly = this is String || this is Boolean || this is Number || this is UByte || this is UShort ||
-            this is UInt || this is ULong || this is ByteArray || this is LocalDate || this is Instant
-    (if (convertedDirectly) null else encodeWithCborSerializer(namespace, elementIdentifier))
-        ?: toJsonElementOrNull()
-        ?: JsonNull
+internal fun ByteStringWrapper<IssuerSignedItem>.toDcqlClaimValue(): JsonElement = catchingUnwrapped {
+    (Cbor.decodeFromByteArray<CborObject>(serialized) as CborMap).elements
+        .first { (it.key as? CborText)?.value == ELEMENT_VALUE }
+        .value.toRfc8949Json()
+}.getOrNull() ?: JsonNull
+
+/** The serial name of the element value in an `IssuerSignedItem`, ISO/IEC 18013-5, 8.3.2.1.2.2. */
+private const val ELEMENT_VALUE = "elementValue"
+
+/**
+ * Converts this CBOR item to JSON as RFC 8949, 6.1 advises:
+ * - An integer becomes a number, a text string a string, and a byte string a base64url string without padding.
+ * - An array becomes an array, and a map an object, with keys that are not text strings converted to their JSON.
+ * - `false`, `true` and `null` become their JSON counterparts. A floating-point number becomes a number, or `null` if
+ *   it is not finite. Any other simple value, e.g. `undefined`, becomes `null`.
+ * - A bignum (tags 2 and 3) becomes the base64url string of its byte string, prefixed by `~` if it is negative.
+ * - An encoding hint (tags 21 to 23) encodes the byte strings it encloses in base64url, base64 or base16.
+ * - Any other tag becomes the conversion of its content, e.g. a full-date (tag 1004) or date-time (tag 0) its string.
+ */
+@OptIn(ExperimentalSerializationApi::class)
+internal fun CborObject.toRfc8949Json(
+    byteEncoding: (ByteArray) -> String = { it.encodeToString(Base64UrlStrict) },
+): JsonElement = when (this) {
+    is CborPositive -> JsonUnquotedLiteral(value.toString())
+    is CborNegative -> JsonUnquotedLiteral(
+        if (value == ULong.MAX_VALUE) "-18446744073709551616" else "-${value + 1u}"
+    )
+    is CborBytes -> JsonPrimitive(byteEncoding(value))
+    is CborBytesIndefinite -> JsonPrimitive(byteEncoding(byteStringOrNull()!!))
+    is CborText -> JsonPrimitive(value)
+    is CborTextIndefinite -> JsonPrimitive(value.joinToString("") { it.value })
+    is CborArray -> JsonArray(elements.map { it.toRfc8949Json(byteEncoding) })
+    is CborMap -> JsonObject(elements.associate {
+        ((it.key as? CborText)?.value ?: it.key.toRfc8949Json(byteEncoding).toString()) to
+                it.value.toRfc8949Json(byteEncoding)
+    })
+    is CborMapEntry -> JsonNull
+    is CborBoolean -> JsonPrimitive(value)
+    is CborFloat -> if (value.isFinite()) JsonPrimitive(value) else JsonNull
+    is CborTagged -> when (tag) {
+        2L -> value.byteStringOrNull()?.let { JsonPrimitive(it.encodeToString(Base64UrlStrict)) } ?: JsonNull
+        3L -> value.byteStringOrNull()?.let { JsonPrimitive("~" + it.encodeToString(Base64UrlStrict)) } ?: JsonNull
+        21L -> value.toRfc8949Json { it.encodeToString(Base64UrlStrict) }
+        22L -> value.toRfc8949Json { it.encodeToString(Base64Strict) }
+        23L -> value.toRfc8949Json { bytes ->
+            bytes.joinToString("") { it.toUByte().toString(16).padStart(2, '0').uppercase() }
+        }
+        else -> value.toRfc8949Json(byteEncoding)
+    }
+    else -> JsonNull
 }
 
-/** Encodes this value to JSON with the [KSerializer] registered for its data element, if that can encode to JSON. */
-@Suppress("UNCHECKED_CAST")
-private fun Any.encodeWithCborSerializer(namespace: String, elementIdentifier: String): JsonElement? =
-    (CborCredentialSerializer.lookupSerializer(namespace, elementIdentifier) as? KSerializer<Any>)?.let { serializer ->
-        catchingUnwrapped { joseCompliantSerializer.encodeToJsonElement(serializer, this) }.getOrNull()
-    }
+/**
+ * The bytes of this byte string, with the chunks of an indefinite-length byte string concatenated (RFC 8949,
+ * 3.2.3), or null if this is no byte string.
+ */
+private fun CborObject.byteStringOrNull(): ByteArray? = when (this) {
+    is CborBytes -> value
+    is CborBytesIndefinite -> elements.fold(byteArrayOf()) { acc, it -> acc + it.value }
+    else -> null
+}
