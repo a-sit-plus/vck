@@ -348,16 +348,23 @@ class AuthorityKeyIdentifier(
  * the value is converted by the registered [at.asitplus.wallet.lib.JsonValueEncoder]. A value without any JSON value
  * becomes [JsonNull], so that the data element is still present, but it can not match `values`.
  *
- * Limitations: this converts the decoded value, not the original CBOR item, so it approximates RFC 8949, 6.1:
- * - A value whose serializer cannot encode to JSON falls back to the registered
- *   [at.asitplus.wallet.lib.JsonValueEncoder], which was written for display and Presentation Exchange. An enum then
- *   matches its CBOR integer only if its encoder produces that number rather than a name.
- * - A date-time (tag 0) is converted to the string of its [kotlin.time.Instant], so a value written with fractional
- *   seconds or an offset does not match its exact string. A full-date (tag 1004) is not affected.
- * - A floating-point number stays a number, so `18.0` does not match the integer `18`.
+ * Limitations: this converts the decoded value, not the original CBOR item, so it only approximates RFC 8949, 6.1,
+ * and can let a value match that the data element does not hold:
  * - A data element that could not be decoded is kept as its raw CBOR bytes, which are converted to base64url like a
- *   byte string.
+ *   byte string. It can therefore match a string it is not: the CBOR array `[1]` becomes `"gQE"`, exactly like a byte
+ *   string holding the same bytes.
+ * - A value whose serializer can not encode to JSON is converted by the registered
+ *   [at.asitplus.wallet.lib.JsonValueEncoder], which was written for display and Presentation Exchange, not for RFC
+ *   8949. Its JSON can differ from the CBOR item and substitute another value, e.g. a string for a CBOR integer, so
+ *   that a string matches although the element holds an integer, and an enum matches its CBOR integer only if its
+ *   encoder produces that number rather than a name.
+ * - A date-time (tag 0) is converted to the string of its [kotlin.time.Instant], so a value written with fractional
+ *   seconds or an offset does not match its exact string as issued. A full-date (tag 1004) is not affected.
  * - A bignum (tags 2 and 3), which RFC 8949 converts to a base64url string, is not converted, so it does not match.
+ * - A floating-point number stays a number, so `18.0` does not match the integer `18`.
+ *
+ * Converting the original CBOR item of the data element, which the [IssuerSignedItem] is encoded from, would remove
+ * these limitations.
  */
 internal fun IssuerSignedItem.toDcqlClaimValue(namespace: String): JsonElement = with(elementValue) {
     val convertedDirectly = this is String || this is Boolean || this is Number || this is UByte || this is UShort ||
