@@ -43,6 +43,7 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElementOrNull
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
@@ -124,7 +125,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             DCQLIsoMdocCredential(
                 claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
                     namespaces?.mapValues { namespace ->
-                        namespace.value.entries.associate { it.value.elementIdentifier to it.value.elementValue }
+                        namespace.value.entries.associate { it.value.elementIdentifier to it.value.elementValue.toClaimValue() }
                     } ?: mapOf()
                 ),
                 documentType = document.docType,
@@ -203,7 +204,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
                         it.value.entries
                             .filter { it.value in validItems }
                             .associate {
-                                it.value.elementIdentifier to it.value.elementValue
+                                it.value.elementIdentifier to it.value.elementValue.toClaimValue()
                             }
                     } ?: mapOf()
                 ),
@@ -236,7 +237,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
             issuerSigned.namespaces?.mapValues { entry ->
                 entry.value.entries.associate {
-                    it.value.elementIdentifier to it.value.elementValue
+                    it.value.elementIdentifier to it.value.elementValue.toClaimValue()
                 }
             } ?: mapOf()
         ),
@@ -325,3 +326,25 @@ class AuthorityKeyIdentifier(
 
     }
 }
+
+/**
+ * The value of an ISO mdoc data element for DCQL matching, converted to JSON. OpenID4VP 1.0, 6.3: "If a Wallet
+ * implements value matching and the Credential being matched is an ISO mdoc-based credential, the CBOR value used for
+ * matching MUST first be converted to JSON, following the advice given in Section 6.1 of [RFC8949]."
+ *
+ * A value of a type without a known JSON encoding is kept, so that the data element is still present, but it can not
+ * match `values`.
+ *
+ * Limitations: this converts the decoded value, not the original CBOR item, so it approximates RFC 8949, 6.1:
+ * - A value of a scheme-specific type is converted by the registered [at.asitplus.wallet.lib.JsonValueEncoder], which
+ *   was written for display and Presentation Exchange. An enum matches its CBOR integer only if its encoder produces
+ *   that number rather than a name.
+ * - A date-time (tag 0) is converted to the string of its [kotlin.time.Instant], so a value written with fractional
+ *   seconds or an offset does not match its exact string. A full-date (tag 1004) is not affected.
+ * - A floating-point number stays a number, so `18.0` does not match the integer `18`.
+ * - A data element that could not be decoded is kept as its raw CBOR bytes, which are converted to base64url like a
+ *   byte string.
+ * - A bignum (tags 2 and 3), which RFC 8949 converts to a base64url string, is not converted if a scheme decoder
+ *   produces a `BigInteger`, so it does not match.
+ */
+private fun Any.toClaimValue(): Any = toJsonElementOrNull() ?: this

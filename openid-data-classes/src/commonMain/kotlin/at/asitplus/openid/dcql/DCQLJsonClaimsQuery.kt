@@ -4,9 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class DCQLJsonClaimsQuery(
@@ -31,16 +29,8 @@ data class DCQLJsonClaimsQuery(
         val queryResults = path.query(credentialStructure.jsonElement)
         val result = values?.let { values ->
             queryResults.filter { result ->
-                catching {
-                    val primitive = result.value.jsonPrimitive
-                    values.any { value ->
-                        when (value) {
-                            is DCQLExpectedClaimValue.StringValue -> primitive.isString && primitive.content == value.string
-                            is DCQLExpectedClaimValue.BooleanValue -> !primitive.isString && primitive.booleanOrNull == value.boolean
-                            is DCQLExpectedClaimValue.IntegerValue -> !primitive.isString && primitive.longOrNull == value.long
-                        }
-                    }
-                }.getOrNull() ?: false
+                val primitive = result.value as? JsonPrimitive
+                primitive != null && values.any { it.matches(primitive) }
             }
         } ?: queryResults
         require(result.isNotEmpty()) {

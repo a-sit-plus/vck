@@ -7,6 +7,7 @@ import com.ionspin.kotlin.bignum.integer.BigInteger
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import kotlinx.serialization.json.JsonPrimitive
 
 
 @Serializable
@@ -53,24 +54,9 @@ data class DCQLIsoMdocClaimsQuery(
         credentialStructure: DCQLCredentialClaimStructure.IsoMdocStructure,
     ): KmmResult<DCQLClaimsQueryResult.IsoMdocResult> = catching {
         val value = credentialStructure.namespaceClaimValueMap[namespace]!![claimName]!!
-        values?.any {
-            when (it) {
-                is DCQLExpectedClaimValue.IntegerValue -> when (value) {
-                    is Byte -> value.toLong() == it.long
-                    is UByte -> value.toLong() == it.long
-                    is Short -> value.toLong() == it.long
-                    is UShort -> value.toLong() == it.long
-                    is Int -> value.toLong() == it.long
-                    is UInt -> value.toLong() == it.long
-                    is Long -> value == it.long
-                    is ULong -> value.toLong() == it.long
-                    is BigInteger -> value == BigInteger(it.long)
-                    else -> false
-                }
-
-                is DCQLExpectedClaimValue.BooleanValue -> value as? Boolean == it.boolean
-                is DCQLExpectedClaimValue.StringValue -> value as? String == it.string
-            }
+        values?.let { values ->
+            val json = value.toJsonForValueMatching()
+            json != null && values.any { it.matches(json) }
         }?.let {
             if (it == false) {
                 throw IllegalStateException("Value $value (${value::class}) to be queried is not expected: $values")
@@ -83,4 +69,26 @@ data class DCQLIsoMdocClaimsQuery(
             claimValue = value,
         )
     }
+}
+
+/**
+ * The JSON value of a data element for matching `values`. OpenID4VP 1.0, 6.3 requires the CBOR value of an ISO mdoc
+ * to be converted to JSON first, see [DCQLCredentialClaimStructure.IsoMdocStructure]: a [JsonPrimitive] is used as it
+ * is, and a Kotlin string, boolean or integer, whose conversion is unambiguous, as its JSON value. Other values, e.g.
+ * a date that has not been converted, do not match.
+ */
+private fun Any.toJsonForValueMatching(): JsonPrimitive? = when (this) {
+    is JsonPrimitive -> this
+    is String -> JsonPrimitive(this)
+    is Boolean -> JsonPrimitive(this)
+    is Byte -> JsonPrimitive(toLong())
+    is Short -> JsonPrimitive(toLong())
+    is Int -> JsonPrimitive(toLong())
+    is Long -> JsonPrimitive(this)
+    is UByte -> JsonPrimitive(toLong())
+    is UShort -> JsonPrimitive(toLong())
+    is UInt -> JsonPrimitive(toLong())
+    is ULong -> toString().toLongOrNull()?.let { JsonPrimitive(it) }
+    is BigInteger -> toString().toLongOrNull()?.let { JsonPrimitive(it) }
+    else -> null
 }
