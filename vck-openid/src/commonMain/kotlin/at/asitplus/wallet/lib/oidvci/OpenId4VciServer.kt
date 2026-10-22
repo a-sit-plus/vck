@@ -96,9 +96,9 @@ class OpenId4VciServer @JvmOverloads constructor(
     /** Used for [IssuerMetadata.issuedAt] in [signedMetadata]. */
     private val clock: Clock = Clock.System,
     /**
-     * Used for [IssuerMetadata.issuerInfo] in [signedMetadata]: the registration information of this provider from
-     * its registrar, and possibly its registration certificate (ETSI TS 119 472-3 V1.1.1, 4.2.3), which
-     * [signMetadata] has to sign with the access certificate of this provider (4.2.1).
+     * Used for [IssuerMetadata.issuerInfo] in [signedMetadata]: the registration certificate of this provider
+     * (ETSI TS 119 472-3 V1.1.1, 4.2.3), which `IssuerMetadataValidator` requires, and [signMetadata] has to sign
+     * with the access certificate of this provider (4.2.1).
      */
     private val issuerInfo: List<IssuerInfo>? = null,
 ) {

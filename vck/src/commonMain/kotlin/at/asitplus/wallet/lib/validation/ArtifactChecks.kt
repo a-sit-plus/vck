@@ -165,14 +165,19 @@ data class RegistrationCertificateChecks(
  * of the credential issuer.
  */
 data class IssuerMetadataChecks(
-    /** `typ`, decoding, required claims, and the identifier in the access certificate. */
+    /** `typ`, decoding, and the claims `sub` and `iat`. */
     val parsing: CheckOutcome,
-    /** With the access certificate in `x5c`. */
+    /** With the key the metadata assert, the access certificate in `x5c` or a `jwk`. */
     val signature: CheckOutcome,
-    /** Whether the access certificate leads to an anchor of the WRPAC providers. */
+    /**
+     * Whether the metadata are signed with an access certificate carrying the identifier of the provider, which leads
+     * to an anchor of the WRPAC providers.
+     */
     val trust: TrustValidation,
-    /** `iat`, `exp` if present, and the validity of the certificate chain. */
+    /** `iat`, `exp` if present, and the validity of the certificate chain, if any. */
     val timeliness: CheckOutcome,
     /** `sub` and `credential_issuer` are the identifier the metadata was requested for. */
     val subject: CheckOutcome,
+    /** The registration information of the provider in `issuer_info`. */
+    val registration: CheckOutcome,
 ) : ValidationChecks

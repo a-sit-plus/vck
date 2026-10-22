@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferUrlParameters
@@ -380,6 +381,10 @@ sealed interface LoadedIssuerMetadata {
         /** The metadata whatever the decision, if signed for the credential issuer, see [IssuerMetadataValidation]. */
         val untrustedMetadata: IssuerMetadata?
             get() = validation.untrustedMetadata
+
+        /** What the WRPRC of the metadata says whatever the decision, see [IssuerMetadataValidation]. */
+        val untrustedRegistration: WrpPayload?
+            get() = validation.untrustedRegistration
     }
 
     /** Unsigned metadata, which are not authenticated by the credential issuer. */

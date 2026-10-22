@@ -58,7 +58,10 @@ fun CheckOutcome.cause(): Throwable? = when (this) {
  *    check (`trust`, `issuerTrust`, `signerTrust`);
  *  - `timeliness` is always the validity period of the artifact the report is about, including its certificates; the
  *    time of a proof of possession by the holder is `proofTime` or `popTime`;
- *  - the parts of the status of an artifact start with `status.`.
+ *  - the parts of the status of an artifact start with `status.`;
+ *  - `registration` is the registration information of a credential issuer, `linkage` and `requestAuthorization`
+ *    are the checks of a registration certificate (WRPRC), and `requestData` the extraction of the requested
+ *    credentials and the WRPRCs of a relying party.
  */
 data class NamedCheck(
     val name: String,
@@ -297,12 +300,14 @@ internal fun RegistrationCertificateChecks.named(policy: ValidationPolicy) = lis
 
 internal fun RegistrationCertificateChecks.meets(policy: ValidationPolicy): Boolean = named(policy).allSatisfied()
 
+/** The registration information is required by every policy (ETSI TS 119 472-3 V1.1.1, ISS-MDATA-REG_CERT-4.2.3-01). */
 internal fun IssuerMetadataChecks.named(policy: ValidationPolicy) = listOf(
     NamedCheck("parsing", parsing, REQUIRED),
     NamedCheck("signature", signature, REQUIRED),
     NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
     NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
     NamedCheck("subject", subject, REQUIRED),
+    NamedCheck("registration", registration, REQUIRED),
 )
 
 /**
