@@ -406,6 +406,10 @@ object OpenIdConstants {
      * Constants for VerifierInfo
      */
     object VerifierInfo {
+        /**
+         * ETSI TS 119 472-2 V1.3.1 OIDFVP-HAIP-COMMON-REQ-RO-15: `format` of the `verifier_info` element enclosing the
+         * registration certificate, whose `data` is the serialized registration certificate (RO-16).
+         */
         const val REGISTRATION_CERT_FORMAT = "registration_cert"
     }
 
