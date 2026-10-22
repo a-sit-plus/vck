@@ -176,8 +176,10 @@ val OAuth2ProtocolClientTest by matrixSuite {
         http.execute(clientWithoutAttestation().preAuthTokenRequest(scriptedMetadata()))
 
         http.sent.kinds() shouldBe listOf("Token(0)")
-        http.sent.single().http.headers.getAll(HttpHeaders.ContentType) shouldBe
-                listOf("application/x-www-form-urlencoded")
+        http.sent.single().http.apply {
+            headers.getAll(HttpHeaders.ContentType) shouldBe null
+            body.shouldNotBeNull().contentType.toString() shouldBe "application/x-www-form-urlencoded"
+        }
     }
 
     /** [EUDI TS3 Wallet Unit Attestation](https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts3-wallet-unit-attestation.md) */
@@ -284,6 +286,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
         http.execute(clientWithoutAttestation().userInfoRequest("$asUrl/userinfo", token))
 
         http.sent.kinds() shouldBe listOf("UserInfo(0)", "UserInfo(1)")
+        http.sent.filterIsInstance<ProtocolRequest.Retryable>().map { it.attempt } shouldBe listOf(0, 1)
         http.sent[1].http.headers[HttpHeaders.Authorization] shouldBe token.toHttpHeaderValue()
         http.sent[1].toRequestInfo().dpop.shouldNotBeNull().payload.apply {
             nonce shouldBe "n1"

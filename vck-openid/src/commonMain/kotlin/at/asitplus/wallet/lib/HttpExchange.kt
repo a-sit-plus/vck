@@ -4,15 +4,19 @@ import at.asitplus.KmmResult
 import io.ktor.http.*
 
 /**
- * A request to send. [body] is already encoded, e.g. as form, JSON or JWT, and its media type is set as
- * `Content-Type` in [headers].
+ * A request to send. Send every header in [headers], and [body] with its [HttpBody.contentType] as `Content-Type`;
+ * [headers] never contain `Content-Type`.
  */
 data class PreparedHttpRequest(
     val url: String,
     val method: HttpMethod,
     val headers: Headers = Headers.Empty,
-    val body: String? = null,
-)
+    val body: HttpBody? = null,
+) {
+    init {
+        headers.requireNoContentType()
+    }
+}
 
 /** The server's answer, whatever the status code. Callers must not follow redirects. */
 data class ReceivedHttpResponse(
@@ -25,10 +29,21 @@ data class ReceivedHttpResponse(
  * Every HTTP request the OAuth 2.0, OpenID4VCI and OpenID4VP protocol clients hand out, see
  * [at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient] and [at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient].
  * Each method returning an [HttpExchange] documents which of these kinds it sends, in which order, and how often.
- * [attempt] starts at 0 for the first attempt of a request, and is increased for each retry.
+ * Requests that are retried are [Retryable].
  */
 sealed class ProtocolRequest {
     abstract val http: PreparedHttpRequest
+
+    /**
+     * A request with client authentication or an access token, sent again with fresh authentication headers when the
+     * server asks for a DPoP nonce (RFC 9449, 8 and 9) or an attestation challenge
+     * (draft-ietf-oauth-attestation-based-client-auth-10, 6.2). [attempt] starts at 0 for the first attempt of a
+     * request, and is increased for each retry of the same request. A fallback to another request, e.g.
+     * [AuthorizationServerMetadata] with [AuthorizationServerMetadata.openidConfiguration], is not a retry.
+     */
+    sealed class Retryable : ProtocolRequest() {
+        abstract val attempt: Int
+    }
 
     /**
      * GET the authorization server metadata from `/.well-known/oauth-authorization-server`, or, as a fallback, from
@@ -49,22 +64,22 @@ sealed class ProtocolRequest {
     data class AttestationChallenge(override val http: PreparedHttpRequest) : ProtocolRequest()
 
     /** POST a pushed authorization request to the `pushed_authorization_request_endpoint`, with client authentication. */
-    data class PushedAuthorization(override val http: PreparedHttpRequest, val attempt: Int) : ProtocolRequest()
+    data class PushedAuthorization(override val http: PreparedHttpRequest, override val attempt: Int) : Retryable()
 
     /** POST a token request to the `token_endpoint`, with client authentication. */
-    data class Token(override val http: PreparedHttpRequest, val attempt: Int) : ProtocolRequest()
+    data class Token(override val http: PreparedHttpRequest, override val attempt: Int) : Retryable()
 
     /** POST a token introspection request to the `introspection_endpoint`, with client authentication. */
-    data class TokenIntrospection(override val http: PreparedHttpRequest, val attempt: Int) : ProtocolRequest()
+    data class TokenIntrospection(override val http: PreparedHttpRequest, override val attempt: Int) : Retryable()
 
     /** POST to the `nonce_endpoint` of the credential issuer. */
     data class Nonce(override val http: PreparedHttpRequest) : ProtocolRequest()
 
     /** POST a credential request to the `credential_endpoint`, with the access token. */
-    data class Credential(override val http: PreparedHttpRequest, val attempt: Int) : ProtocolRequest()
+    data class Credential(override val http: PreparedHttpRequest, override val attempt: Int) : Retryable()
 
     /** GET the `userinfo_endpoint`, with the access token. */
-    data class UserInfo(override val http: PreparedHttpRequest, val attempt: Int) : ProtocolRequest()
+    data class UserInfo(override val http: PreparedHttpRequest, override val attempt: Int) : Retryable()
 
     /**
      * GET the request object from the `request_uri` of an OpenID4VP authorization request, or POST `wallet_metadata`

@@ -49,7 +49,7 @@ fun requestUriEndpoint(
     if (request.url == requestUrl) ReceivedHttpResponse(
         status = HttpStatusCode.OK,
         headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.AUTHZ_REQ_JWT),
-        body = serve(request.body?.decodeFromFormUrlEncoded<RequestObjectParameters>()),
+        body = serve(request.body?.text?.decodeFromFormUrlEncoded<RequestObjectParameters>()),
     ) else ReceivedHttpResponse(HttpStatusCode.NotFound, Headers.Empty, "")
 }
 

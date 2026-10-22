@@ -32,9 +32,9 @@ val AuthorizationServerResponsesTest by matrixSuite {
 
         metadata.toHttpResponse().apply {
             status shouldBe HttpStatusCode.OK
-            headers.names() shouldBe setOf(HttpHeaders.ContentType)
+            headers.names() shouldBe emptySet()
             shouldBeJson()
-            joseCompliantSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(body) shouldBe metadata
+            joseCompliantSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(bodyText) shouldBe metadata
         }
     }
 
@@ -45,7 +45,7 @@ val AuthorizationServerResponsesTest by matrixSuite {
             status shouldBe HttpStatusCode.OK
             shouldBeJson()
             headers[HttpHeaders.CacheControl] shouldBe "no-store"
-            joseCompliantSerializer.decodeFromString<AttestationChallengeResponse>(body) shouldBe challenge
+            joseCompliantSerializer.decodeFromString<AttestationChallengeResponse>(bodyText) shouldBe challenge
         }
     }
 
@@ -58,12 +58,12 @@ val AuthorizationServerResponsesTest by matrixSuite {
                 shouldBeJson()
                 headers[HttpHeaders.DPoPNonce] shouldBe NONCE
                 headers[HttpHeaders.OAuthClientAttestationChallenge] shouldBe CHALLENGE
-                joseCompliantSerializer.decodeFromString<PushedAuthenticationResponseParameters>(body) shouldBe par
+                joseCompliantSerializer.decodeFromString<PushedAuthenticationResponseParameters>(bodyText) shouldBe par
             }
         }
 
         test("without DPoP nonce and attestation challenge") {
-            ResponseWithDpopNonce(par, null).toHttpResponse().headers.names() shouldBe setOf(HttpHeaders.ContentType)
+            ResponseWithDpopNonce(par, null).toHttpResponse().headers.names() shouldBe emptySet()
         }
     }
 
@@ -87,13 +87,13 @@ val AuthorizationServerResponsesTest by matrixSuite {
                 headers[HttpHeaders.Pragma] shouldBe "no-cache"
                 headers[HttpHeaders.DPoPNonce] shouldBe NONCE
                 headers[HttpHeaders.OAuthClientAttestationChallenge] shouldBe CHALLENGE
-                joseCompliantSerializer.decodeFromString<TokenResponseParameters>(body) shouldBe token
+                joseCompliantSerializer.decodeFromString<TokenResponseParameters>(bodyText) shouldBe token
             }
         }
 
         test("without DPoP nonce and attestation challenge") {
             ResponseWithDpopNonce(token, null).toHttpResponse().headers.names() shouldBe
-                    setOf(HttpHeaders.ContentType, HttpHeaders.CacheControl, HttpHeaders.Pragma)
+                    setOf(HttpHeaders.CacheControl, HttpHeaders.Pragma)
         }
     }
 
@@ -104,7 +104,7 @@ val AuthorizationServerResponsesTest by matrixSuite {
             introspection.toHttpResponse().apply {
                 status shouldBe HttpStatusCode.OK
                 shouldBeJson()
-                joseCompliantSerializer.decodeFromString<TokenIntrospectionResponse>(body) shouldBe introspection
+                joseCompliantSerializer.decodeFromString<TokenIntrospectionResponse>(bodyText) shouldBe introspection
             }
         }
 
@@ -122,9 +122,9 @@ val AuthorizationServerResponsesTest by matrixSuite {
 
             TokenIntrospectionJwtResponse(jwt).toHttpResponse().apply {
                 status shouldBe HttpStatusCode.OK
-                headers.names() shouldBe setOf(HttpHeaders.ContentType)
-                headers[HttpHeaders.ContentType] shouldBe "application/token-introspection+jwt"
-                body shouldBe jwt.jws.toString()
+                headers.names() shouldBe emptySet()
+                bodyContentType shouldBe "application/token-introspection+jwt"
+                bodyText shouldBe jwt.jws.toString()
             }
         }
     }
@@ -137,11 +137,11 @@ val AuthorizationServerResponsesTest by matrixSuite {
             shouldBeJson()
             headers[HttpHeaders.DPoPNonce] shouldBe NONCE
             headers[HttpHeaders.CacheControl] shouldBe null
-            body shouldBe """{"sub":"user"}"""
+            bodyText shouldBe """{"sub":"user"}"""
         }
     }
 }
 
 private fun PreparedHttpResponse.shouldBeJson() {
-    headers[HttpHeaders.ContentType] shouldBe ContentType.Application.Json.toString()
+    bodyContentType shouldBe ContentType.Application.Json.toString()
 }

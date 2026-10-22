@@ -3,8 +3,9 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.wallet.lib.BodyContentTypes
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.PreparedHttpResponse
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jsonHttpResponse
 import at.asitplus.wallet.lib.oauth2.NO_STORE
 import io.ktor.http.*
@@ -25,8 +26,7 @@ suspend fun CreatedRequest.loadRequestObjectHttpResponse(
     val load = checkNotNull(loadRequestObject) { "No request object to serve for $url" }
     PreparedHttpResponse(
         status = HttpStatusCode.OK,
-        headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.AUTHZ_REQ_JWT),
-        body = load(params).getOrThrow(),
+        body = HttpBody(BodyContentTypes.AuthzReqJwt, load(params).getOrThrow()),
     )
 }
 

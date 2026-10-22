@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.ProtocolRequest
 import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.openid.toOAuth2Error
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.ktor.http.*
 
 /**
@@ -82,10 +83,25 @@ fun ProtocolRequest.toRequestInfo() = http.toRequestInfo()
 val PreparedHttpRequest.path: String
     get() = Url(url).encodedPath
 
-fun PreparedHttpRequest.formParameters(): FormParameters = body.orEmpty().toFormParameters()
+fun PreparedHttpRequest.formParameters(): FormParameters = body?.text.orEmpty().toFormParameters()
 
-/** What the client receives, when a server sends this response. */
-fun PreparedHttpResponse.received() = ReceivedHttpResponse(status = status, headers = headers, body = body)
+/** What the client receives, when a server sends this response, i.e. with the `Content-Type` of its body. */
+fun PreparedHttpResponse.received() = ReceivedHttpResponse(
+    status = status,
+    headers = Headers.build {
+        appendAll(headers)
+        body?.let { append(HttpHeaders.ContentType, it.contentType.toString()) }
+    },
+    body = body?.text.orEmpty(),
+)
+
+/** The text of the body of this response, failing if it has none. */
+val PreparedHttpResponse.bodyText: String
+    get() = body.shouldNotBeNull().text
+
+/** The media type of the body of this response, as sent in `Content-Type`. */
+val PreparedHttpResponse.bodyContentType: String?
+    get() = body?.contentType?.toString()
 
 /** Adds the header [name] with [value], e.g. a fresh DPoP nonce alongside an error (RFC 9449 8.2). */
 fun ReceivedHttpResponse.withHeader(name: String, value: String) =

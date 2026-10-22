@@ -41,8 +41,14 @@ import kotlin.time.Duration.Companion.minutes
 object TestUtils {
 
     /** Writes out [response], as converted by a server, e.g. with `toHttpResponse()` or `directPostHttpResponse()`. */
-    fun MockRequestHandleScope.respond(response: PreparedHttpResponse): HttpResponseData =
-        respond(content = response.body, status = response.status, headers = response.headers)
+    fun MockRequestHandleScope.respond(response: PreparedHttpResponse): HttpResponseData = respond(
+        content = response.body?.text.orEmpty(),
+        status = response.status,
+        headers = Headers.build {
+            appendAll(response.headers)
+            response.body?.let { append(HttpHeaders.ContentType, it.contentType.toString()) }
+        },
+    )
 
     /**
      * Error response of an authorization server endpoint, see [OAuth2Exception.toHttpResponse], or 500 for anything

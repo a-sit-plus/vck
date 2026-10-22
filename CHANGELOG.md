@@ -198,17 +198,21 @@ Release 9.0.0 (unreleased):
       OAuth 2.0 errors and RFC 9457 problem details of non-success responses are available without a ktor client.
       The exception carries `status` and `headers` instead of a ktor `HttpResponse`
     - Add `OAuth2Error?.dpopNonce(Headers)` and `OAuth2Error?.attestationChallenge(Headers)` in `vck-openid`
-    - BREAKING: `HttpErrorResponseException` in `vck-openid-ktor` now extends the new class instead of ktor's
-      `ResponseException`; it keeps its constructor and `response`, and is still an `IllegalStateException`
-    - Deprecate `HttpErrorResponseException` and the typealias `ProblemDetails` in `vck-openid-ktor`, replace with the
-      classes from `vck-openid`
+    - BREAKING: `HttpErrorResponseException` in `vck-openid-ktor` is a deprecated typealias of the new class, and no
+      longer a ktor `ResponseException`, so catching either name catches every error response, also of exchanges sent
+      without ktor. Its `response` and the constructors taking an `HttpResponse` are removed, use `status`, `headers`
+      and `responseBody`; it is still an `IllegalStateException`
+    - Deprecate the typealiases `HttpErrorResponseException` and `ProblemDetails` in `vck-openid-ktor`, replace with
+      the classes from `vck-openid`
     - Deprecate `HttpErrorResponseException.dpopNonce()` and `HttpErrorResponseException.attestationChallenge()` in
       `vck-openid-ktor`, replace with `oauth2Error.dpopNonce(headers)` and `oauth2Error.attestationChallenge(headers)`
 - OAuth 2.0 client:
     - Add `OAuth2ProtocolClient` in `vck-openid`, implementing the client side of OAuth 2.0 (PAR, JAR, token requests,
       token introspection, userinfo) including DPoP and attestation-based client authentication, without sending
       requests itself: each call returns an `HttpExchange`, whose requests (`ProtocolRequest`) callers send with any
-      HTTP stack
+      HTTP stack. `ProtocolRequest.Retryable` marks the requests that are sent again when the server asks for a DPoP
+      nonce or an attestation challenge, with their `attempt`. The `PreparedHttpRequest` of each request carries its
+      `body` as `HttpBody`, with the `contentType` to send as `Content-Type`; its `headers` never contain `Content-Type`
     - `OAuth2KtorClient` sends the requests of `OAuth2ProtocolClient`, keeping its API
     - Move `TokenResponseWithDpopNonce`, `LoadInstanceAttestationInput` and `OpenUrlForAuthnRequest` to `vck-openid`
       (`at.asitplus.wallet.lib.oauth2`, the latter two nested in `OAuth2ProtocolClient`), deprecate the typealiases
@@ -400,7 +404,8 @@ Release 9.0.0 (unreleased):
       answered at most once
 - Server-side HTTP responses:
     - Add `PreparedHttpResponse` in `vck-openid` (package `at.asitplus.wallet.lib`), a response with status, headers and
-      encoded body, to be written out unchanged with any HTTP server stack
+      encoded body, to be written out unchanged with any HTTP server stack. The `body` is an `HttpBody`, with the
+      `contentType` to write out as `Content-Type`; the `headers` never contain `Content-Type`
     - Add `OAuth2Exception.toHttpResponse()` for errors of authorization server endpoints: status 400, with `DPoP-Nonce`
       for `use_dpop_nonce` and `OAuth-Client-Attestation-Challenge` for `use_attestation_challenge`
     - Add `OAuth2Exception.toResourceServerHttpResponse(authorizationHeader)` for errors of endpoints accessed with an
