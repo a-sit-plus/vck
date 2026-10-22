@@ -558,6 +558,25 @@ val OidvciAttestationTest by matrixSuite {
                 .parsing.shouldBeInstanceOf<CheckOutcome.Failed>()
         }
 
+        test("key attestation without nonce is accepted in a JWT proof, but not as attestation proof (OpenID4VCI 1.0, D.1, F.3)") {
+            val validator = ProofValidator(keyAttestationValidator = trusting(it.walletProvider))
+            val nonce = validator.nonce().clientNonce
+            val withoutNonce = buildValidKeyAttestation(it.walletProviderKeyMaterial, it.clientKeyMaterial, nonce) {
+                copy(nonce = null)
+            }
+
+            validator.validateProofs(it.clientKeyMaterial.jwtProof(nonce, withoutNonce.jws), strictPolicy).apply {
+                accepted shouldBe true
+                proofs.single().report.children.single().checks.shouldBeInstanceOf<KeyAttestationChecks>()
+                    .nonce shouldBe CheckOutcome.NotApplicable
+            }
+            validator.validateProofs(
+                CredentialRequestParameters(proofs = CredentialRequestProofContainer(attestation = setOf(withoutNonce.jws))),
+                strictPolicy,
+            ).proofs.single().report.checks.shouldBeInstanceOf<KeyAttestationChecks>()
+                .nonce.shouldBeInstanceOf<CheckOutcome.Failed>()
+        }
+
         test("a rejected proof does not consume its nonce, and a proof that can not be parsed is reported") {
             val validator = ProofValidator(keyAttestationValidator = trusting(it.walletProvider))
             val nonce = validator.nonce().clientNonce
