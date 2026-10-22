@@ -116,7 +116,10 @@ data class VerifierAttestationChecks(
  * reports, see [ValidationReport.relyingParty].
  */
 data class RelyingPartyChecks(
-    /** Whether the requested credentials and claims could be extracted from the request. */
+    /**
+     * Whether the requested credentials and claims could be extracted from the request. Fails with an
+     * `UnsupportedWrpRequestException` for an unsigned request, whose WRPRCs are not bound to it.
+     */
     val requestData: CheckOutcome,
 ) : ValidationChecks
 
@@ -124,9 +127,12 @@ data class RelyingPartyChecks(
  * The checks of a wallet-relying party access certificate (WRPAC) and the request it signed.
  */
 data class AccessCertificateChecks(
-    /** The chain is present and the identifier of its leaf parses. */
+    /** The chain is present and the identifier of its leaf parses. Not applicable to an unsigned request. */
     val parsing: CheckOutcome,
-    /** The request is signed by the leaf, as JAR or as mdoc reader authentication. */
+    /**
+     * The request is signed by the leaf, as JAR or as mdoc reader authentication. Not applicable to an unsigned
+     * request, e.g. an mdoc request without reader authentication.
+     */
     val signature: CheckOutcome,
     /** Whether the chain leads to an anchor of the access certificate providers. */
     val trust: TrustValidation,

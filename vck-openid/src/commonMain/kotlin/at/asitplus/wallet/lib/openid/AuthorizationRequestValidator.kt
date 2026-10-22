@@ -32,6 +32,7 @@ import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CheckOutcome.*
+import at.asitplus.wallet.lib.validation.RelyingPartyValidationResult
 import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import at.asitplus.wallet.lib.validation.RequestObjectChecks
 import at.asitplus.wallet.lib.validation.SignatureCheck
@@ -95,7 +96,7 @@ internal class AuthorizationRequestValidator(
     suspend fun validateAuthorizationRequest(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ) {
-        val report = validate(request, compatibilityPolicy, validateRelyingParty = false)
+        val report = validate(request, compatibilityPolicy, validateRelyingParty = false).report
         if (report.decision != ValidationDecision.ACCEPTED)
             throw report.rejection(compatibilityPolicy)
     }
@@ -108,13 +109,19 @@ internal class AuthorizationRequestValidator(
     suspend fun validate(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         policy: ValidationPolicy,
-    ): ValidationReport = validate(request, policy, validateRelyingParty = true)
+    ): RequestValidation = validate(request, policy, validateRelyingParty = true)
+
+    /** The [report] of a request, and the result of validating its [relyingParty], whose report is a child of it. */
+    class RequestValidation(
+        val report: ValidationReport,
+        val relyingParty: RelyingPartyValidationResult?,
+    )
 
     private suspend fun validate(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         policy: ValidationPolicy,
         validateRelyingParty: Boolean,
-    ): ValidationReport {
+    ): RequestValidation {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
         val prefix = catching { request.evaluatePrefix(policy, timeScope) }.getOrElse {
             PrefixEvaluation(signature = Failed(it), trust = TrustValidation(Blocked()), clientId = Blocked())
@@ -128,15 +135,17 @@ internal class AuthorizationRequestValidator(
             walletNonce = request.walletNonce(),
             expectedOrigin = request.expectedOrigin(),
         )
-        return ValidationReport.requestObject(
+        val relyingParty = if (validateRelyingParty && request.carriesRegistrationCertificate())
+            relyingPartyValidator.validate(request, policy)
+        else null
+        val report = ValidationReport.requestObject(
             checks = checks,
             policy = policy,
             verifierAttestation = prefix.verifierAttestation,
-            relyingParty = if (validateRelyingParty && request.carriesRegistrationCertificate())
-                relyingPartyValidator.validate(request, policy).report
-            else null,
+            relyingParty = relyingParty?.report,
             evaluatedAt = timeScope.now,
         )
+        return RequestValidation(report, relyingParty)
     }
 
     /**

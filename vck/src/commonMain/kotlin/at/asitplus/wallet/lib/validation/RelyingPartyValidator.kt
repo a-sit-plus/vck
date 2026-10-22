@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
@@ -70,7 +71,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         is RequestParametersFrom.IsoMdocDcApi ->
             unsupported("The session transcript is required for ISO mdoc reader authentication")
 
-        else -> unsupported("The request is not signed by a wallet-relying party")
+        else -> unsigned("The request is not signed by a wallet-relying party")
     }.let { validate(it, policy) }
 
     /**
@@ -82,7 +83,25 @@ class RelyingPartyValidator @JvmOverloads constructor(
         request: RequestParametersFrom.IsoMdocDcApi,
         sessionTranscript: SessionTranscript,
         policy: ValidationPolicy,
-    ): RelyingPartyValidationResult = validate(extractMdoc(request, sessionTranscript), policy)
+    ): RelyingPartyValidationResult =
+        validate(request.parameters.isoMdocRequest.deviceRequest, sessionTranscript, policy)
+
+    /**
+     * Validates the relying party of the ISO mdoc [deviceRequest] under [policy], e.g. of a proximity presentation
+     * over BLE or NFC: every document request is authenticated by one WRPAC over [sessionTranscript] (ISO/IEC
+     * 18013-5:2021, 9.1.4), and carries the WRPRC for it in `euWrprc`. The clock is read once, all checks use that
+     * time.
+     *
+     * Reader authentication is optional (9.1.4): a request without any is reported as unsigned, like an unsigned
+     * authorization request, with the `signature` of the WRPAC not applicable and `requestData` failing with an
+     * [UnsupportedWrpRequestException], so that a wallet can tell an unauthenticated reader from one whose reader
+     * authentication does not verify, whose `signature` fails.
+     */
+    suspend fun validate(
+        deviceRequest: DeviceRequest,
+        sessionTranscript: SessionTranscript,
+        policy: ValidationPolicy,
+    ): RelyingPartyValidationResult = validate(extractMdoc(deviceRequest, sessionTranscript), policy)
 
     /**
      * Whether trust in the client identifier of a request can be decided for any client identifier prefix, see
@@ -239,14 +258,17 @@ class RelyingPartyValidator @JvmOverloads constructor(
             registrationCertificates = registrations.map { it.second },
             evaluatedAt = timeScope.now,
         )
+        val untrustedRegistrations = registrations
+            .filter { (it.second.checks as RegistrationCertificateChecks).parsing == Passed }
+            .map { it.first.payload }
         val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
             ValidatedRelyingParty(
                 accessCertificateChain = requireNotNull(request.accessCertificateChain),
                 identifier = requireNotNull(access.identifier),
-                registrationCertificates = registrations.map { it.first.payload },
+                registrationCertificates = untrustedRegistrations,
             )
         } else null
-        return RelyingPartyValidationResult(report, relyingParty)
+        return RelyingPartyValidationResult(report, relyingParty, untrustedRegistrations)
     }
 
     /** A JAR, signed with the leaf of its `x5c`, with one WRPRC in `verifier_info` for its DCQL query. */
@@ -254,8 +276,10 @@ class RelyingPartyValidator @JvmOverloads constructor(
         jws: JwsCompact?,
         parameters: AuthenticationRequestParameters?,
     ): ExtractedRequest {
-        if (jws == null || parameters == null)
-            return unsupported("The request is no signed authorization request")
+        if (jws == null)
+            return unsigned("The request is no signed authorization request")
+        if (parameters == null)
+            return unsupported("The request is no authorization request")
         val chain = jws.jwsHeader.certificateChain?.takeIf { it.isNotEmpty() }
         val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
             requireNotNull(parameters.clientId) { "The request has no client_id" }
@@ -282,10 +306,11 @@ class RelyingPartyValidator @JvmOverloads constructor(
      * the WRPRC for it in `euWrprc`.
      */
     private suspend fun extractMdoc(
-        request: RequestParametersFrom.IsoMdocDcApi,
+        deviceRequest: DeviceRequest,
         sessionTranscript: SessionTranscript,
     ): ExtractedRequest {
-        val deviceRequest = request.parameters.isoMdocRequest.deviceRequest
+        if (deviceRequest.readerAuthAll.isNullOrEmpty() && deviceRequest.docRequests.all { it.readerAuth == null })
+            return unsigned("The request has no reader authentication")
         val chain = ReaderAuthenticationVerifier()(deviceRequest, sessionTranscript)
         val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
             if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
@@ -314,6 +339,18 @@ class RelyingPartyValidator @JvmOverloads constructor(
             registrationCertificates = registrationCertificates.getOrElse { emptyMap() },
         )
     }
+
+    /**
+     * A request that is not signed, so there is no WRPAC whose signature could be verified, and no WRPRC is bound to
+     * the request: its WRPRCs are not extracted, as anyone can copy them into a request.
+     */
+    private fun unsigned(message: String) = ExtractedRequest(
+        accessCertificateChain = null,
+        signature = NotApplicable,
+        clientId = null,
+        requestData = Failed(UnsupportedWrpRequestException(message)),
+        registrationCertificates = emptyMap(),
+    )
 
     private fun unsupported(message: String) = ExtractedRequest(
         accessCertificateChain = null,
@@ -352,11 +389,21 @@ class RelyingPartyValidator @JvmOverloads constructor(
 data class RelyingPartyValidationResult(
     val report: ValidationReport,
     val relyingParty: ValidatedRelyingParty?,
+    /**
+     * What the WRPRCs of the request say whose `parsing` passed, whatever the decision of [report], e.g. to show the
+     * name and the purposes of a relying party next to the warning that its WRPRC is revoked. They are not verified
+     * unless [relyingParty] is present: their signer may not be trusted, nor their status valid, nor they be issued
+     * to the relying party that signed the request, so use them only to show them to the user, marked as such.
+     */
+    val untrustedRegistrations: List<WrpPayload> = emptyList(),
 ) {
     init {
         require(report.checks is RelyingPartyChecks) { "Report has to be a relying party report" }
         require((relyingParty != null) == (report.decision == ValidationDecision.ACCEPTED)) {
             "A relying party is present if and only if the report is accepted"
+        }
+        require(relyingParty == null || relyingParty.registrationCertificates == untrustedRegistrations) {
+            "The registrations of an accepted relying party are the untrusted registrations too"
         }
     }
 }

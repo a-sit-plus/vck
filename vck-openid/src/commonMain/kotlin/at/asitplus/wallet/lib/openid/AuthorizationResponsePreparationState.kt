@@ -7,6 +7,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.validation.RelyingPartyValidationResult
 import at.asitplus.wallet.lib.validation.ValidationReport
 import kotlinx.serialization.Serializable
 
@@ -47,4 +48,17 @@ data class AuthorizationResponsePreparationState(
 data class AuthorizationRequestValidation(
     val validationReport: ValidationReport,
     val preparationState: AuthorizationResponsePreparationState,
-)
+    /**
+     * The result of validating the relying party of a request carrying a registration certificate (WRPRC), whose
+     * report is the [at.asitplus.wallet.lib.validation.RelyingPartyChecks] child of [validationReport], with the
+     * relying party if accepted, and what its WRPRCs say in any case, see
+     * [RelyingPartyValidationResult.untrustedRegistrations]. `null` for a request without one.
+     */
+    val relyingParty: RelyingPartyValidationResult? = null,
+) {
+    init {
+        require(relyingParty == null || relyingParty.report in validationReport.children) {
+            "The report of the relying party is a child of the report of the request"
+        }
+    }
+}

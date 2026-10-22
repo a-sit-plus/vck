@@ -1,9 +1,18 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpCredential
+import at.asitplus.etsi.relyingParty.WrpCredentialMeta
+import at.asitplus.etsi.relyingParty.WrpLangString
+import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.etsi.relyingParty.WrpStatus
+import at.asitplus.etsi.relyingParty.WrpStatusList
+import at.asitplus.etsi.relyingParty.WrpSupervisoryAuthority
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -34,14 +43,19 @@ import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.ValidationReport
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import com.benasher44.uuid.uuid4
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 val OpenId4VpRequestValidationReportTest by matrixSuite {
@@ -103,15 +117,42 @@ val OpenId4VpRequestValidationReportTest by matrixSuite {
             claims = mapOf("verifier_info" to """[{"format":"registration_cert","data":"not-a-jws"}]""")
         )
 
-        holder.startAuthorizationResponsePreparation(request, strictPolicy).getOrThrow().validationReport.apply {
+        val validation = holder.startAuthorizationResponsePreparation(request, strictPolicy).getOrThrow()
+
+        validation.validationReport.apply {
             decision shouldBe REJECTED
             requestChecks().signature shouldBe CheckOutcome.Passed
             children.single().checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
                 .shouldBeInstanceOf<CheckOutcome.Failed>()
         }
+        validation.relyingParty.shouldNotBeNull().untrustedRegistrations.shouldBeEmpty()
         // The legacy method has never validated registration certificates
         holder.startAuthorizationResponsePreparation(relyingParty.request(claims = mapOf("verifier_info" to
                 """[{"format":"registration_cert","data":"not-a-jws"}]"""))).getOrThrow()
+    }
+
+    "the relying party of a request is carried with what its registration certificate says, also if rejected" {
+        val relyingParty = relyingParty()
+        val holder = OpenId4VpHolder(relyingPartyValidator = relyingParty.validator)
+        val payload = registration()
+        val wrprc = SignJwt<WrpPayload>(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk())(
+            "rc-wrp+jwt", payload, WrpPayload.serializer(),
+        ).getOrThrow().toString()
+        val request = relyingParty.request(
+            claims = mapOf("verifier_info" to """[{"format":"registration_cert","data":"$wrprc"}]""")
+        )
+
+        val validation = holder.startAuthorizationResponsePreparation(request, strictPolicy).getOrThrow()
+
+        validation.validationReport.decision shouldBe REJECTED
+        validation.relyingParty.shouldNotBeNull().apply {
+            validation.validationReport.children shouldContain report
+            // no anchors of WRPRC providers are configured, so the relying party is not accepted
+            this.relyingParty.shouldBeNull()
+            untrustedRegistrations shouldBe listOf(payload)
+        }
+        holder.startAuthorizationResponsePreparation(relyingParty.request(), strictPolicy).getOrThrow()
+            .relyingParty.shouldBeNull()
     }
 
     "a pre-registered client is trusted with the keys registered for it" {
@@ -162,6 +203,36 @@ private val strictPolicy = ValidationPolicy(
     status = StatusPolicy.Skip,
     timeLeeway = 5.minutes,
     requireTimeliness = true,
+)
+
+/** A registration of a relying party for the requested claim (ETSI TS 119 475 V1.2.1, 5.2.4). */
+private fun registration() = WrpPayload(
+    name = "Example Shop",
+    subjectLegalName = "Example Shop",
+    subjectIdentifier = "LEI-EXAMPLE",
+    country = "AT",
+    registryUri = "https://registrar.example.com",
+    srvDescription = listOf(listOf(WrpLangString(lang = "en", value = "Sells things"))),
+    entitlements = listOf("https://uri.etsi.org/19475/Entitlement/Service_Provider"),
+    privacyPolicy = "https://shop.example.com/privacy",
+    infoUri = "https://shop.example.com",
+    supportUri = "https://shop.example.com/support",
+    supervisoryAuthority = WrpSupervisoryAuthority(),
+    certificatePolicy = "https://registrar.example.com/policy",
+    iat = Clock.System.now().truncateToSeconds(),
+    exp = (Clock.System.now() + 30.days).truncateToSeconds(),
+    status = WrpStatus(statusList = WrpStatusList(idx = 0UL, uri = "https://registrar.example.com/status/1")),
+    purpose = listOf(WrpLangString(lang = "en", value = "Age verification")),
+    credentials = listOf(
+        WrpCredential(
+            format = "dc+sd-jwt",
+            meta = WrpCredentialMeta(vctValues = listOf(AtomicAttribute2023.sdJwtType)),
+            claim = listOf(WrpClaim(path = listOf(CLAIM_GIVEN_NAME))),
+        )
+    ),
+    intendedUseId = "urn:uuid:${uuid4()}",
+    providesAttestations = emptyList(),
+    publicBody = false,
 )
 
 private fun expiredClaims() = mapOf("exp" to Clock.System.now().epochSeconds - 3600)
