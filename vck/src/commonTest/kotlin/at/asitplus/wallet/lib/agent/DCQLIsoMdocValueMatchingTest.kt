@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.LibraryInitializer
@@ -9,11 +10,24 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElementOrNull
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.procedures.dcql.toDcqlClaimValue
+import at.asitplus.wallet.mdl.IsoSexEnum
+import at.asitplus.wallet.mdl.IsoSexEnumSerializer
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlin.random.Random
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Instant
 
@@ -38,6 +52,44 @@ val DCQLIsoMdocValueMatchingTest by matrixSuite {
         "a type without an encoding is not converted, instead of being represented by its string" {
             UnknownValue("1").toJsonElementOrNull().shouldBeNull()
             UnknownValue("1").toJsonElement() shouldBe JsonPrimitive("UnknownValue(value=1)")
+        }
+    }
+
+    "conversion of data elements with their CBOR serializer" - {
+        LibraryInitializer.registerCredentialSerializers(
+            jsonValueEncoder = {
+                when (it) {
+                    is TestCode -> JsonPrimitive("CODE_${it.code}")
+                    is CborOnlyValue -> JsonPrimitive("display")
+                    else -> null
+                }
+            },
+            itemValueSerializerMap = mapOf(
+                TEST_NAMESPACE to mapOf(
+                    "code" to TestCodeSerializer,
+                    "cbor_only" to CborOnlyValueSerializer,
+                    "portrait" to ByteArraySerializer(),
+                    "sex" to IsoSexEnumSerializer,
+                )
+            ),
+        )
+        fun item(elementIdentifier: String, value: Any) =
+            IssuerSignedItem(0u, Random.nextBytes(16), elementIdentifier, value)
+
+        "a scheme-specific type is encoded like its CBOR item, not by its display encoder" {
+            item("code", TestCode(1)).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonPrimitive(1)
+        }
+        "the mDL sex is encoded as its integer code" {
+            item("sex", IsoSexEnum.FEMALE).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonPrimitive(IsoSexEnum.FEMALE.code)
+        }
+        "a serializer that can not encode to JSON falls back to the registered encoder" {
+            item("cbor_only", CborOnlyValue).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonPrimitive("display")
+        }
+        "a byte string stays base64url, although its serializer would encode an array" {
+            item("portrait", byteArrayOf(-5, -1)).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonPrimitive("-_8")
+        }
+        "a value without any JSON value is null" {
+            item("unknown", UnknownValue("1")).toDcqlClaimValue(TEST_NAMESPACE) shouldBe JsonNull
         }
     }
 
@@ -84,3 +136,27 @@ val DCQLIsoMdocValueMatchingTest by matrixSuite {
 private data class RegisteredCode(val code: Int)
 
 private data class UnknownValue(val value: String)
+
+private const val TEST_NAMESPACE = "at.a-sit.wallet.dcql-value-matching-test"
+
+private data class TestCode(val code: Int)
+
+/** Encodes like a CBOR integer, as e.g. `IsoSexEnumSerializer` does. */
+private object TestCodeSerializer : KSerializer<TestCode> {
+    override val descriptor = PrimitiveSerialDescriptor("TestCode", PrimitiveKind.INT)
+    override fun serialize(encoder: Encoder, value: TestCode) = encoder.encodeInt(value.code)
+    override fun deserialize(decoder: Decoder) = TestCode(decoder.decodeInt())
+}
+
+private object CborOnlyValue
+
+/** Refuses to encode to JSON, like a serializer relying on features of CBOR. */
+private object CborOnlyValueSerializer : KSerializer<CborOnlyValue> {
+    override val descriptor = PrimitiveSerialDescriptor("CborOnlyValue", PrimitiveKind.INT)
+    override fun serialize(encoder: Encoder, value: CborOnlyValue) {
+        if (encoder is JsonEncoder) throw SerializationException("CBOR only")
+        encoder.encodeInt(0)
+    }
+    override fun deserialize(decoder: Decoder) = CborOnlyValue.also { decoder.decodeInt() }
+}
+
