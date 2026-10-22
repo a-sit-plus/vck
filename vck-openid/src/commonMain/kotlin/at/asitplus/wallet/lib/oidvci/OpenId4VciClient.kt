@@ -33,6 +33,7 @@ import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
@@ -174,11 +175,28 @@ class OpenId4VciClient @JvmOverloads constructor(
     val clientId: String
         get() = defaultClientId
 
+    /**
+     * What [JwtProofCreator] and [AttestationProofCreator] pass to their `loadKeyAttestation`, to load a key
+     * attestation (OpenID4VCI 1.0, Appendix D) that the credential issuer accepts for the requested credential.
+     */
     data class KeyAttestationInput(
+        /** The Credential Issuer Identifier the proof is created for. */
         val credentialIssuer: String?,
+        /**
+         * The `c_nonce` of the credential issuer, if it has a Nonce Endpoint, which has to be the `nonce` of the key
+         * attestation then (Appendix F.1 and F.3).
+         */
         val clientNonce: String?,
+        /** The `proof_signing_alg_values_supported` of the proof type (12.2.4). */
         val supportedAlgorithms: Collection<String>?,
+        /** The preferred validity of the key storage status, see [KeyAttestationRequired.preferredTtl]. */
+        @Deprecated("Use requirements instead", ReplaceWith("requirements?.preferredTtl"))
         val preferredKeyStorageStatusPeriod: Duration?,
+        /**
+         * The `key_attestations_required` of the proof type (12.2.4), i.e. the `key_storage` and `user_authentication`
+         * values (Appendix D.2) the credential issuer accepts, `null` if it states none for this proof type.
+         */
+        val requirements: KeyAttestationRequired?,
     )
 
     sealed interface CredentialRequest {

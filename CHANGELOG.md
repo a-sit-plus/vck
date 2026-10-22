@@ -438,6 +438,8 @@ Release 9.0.0 (unreleased):
     - Deprecate the constructor of `OpenId4VciClient` taking `keyMaterial`, `loadKeyAttestation`,
       `selectProofJwtKeyBinding`, and `clock`, which creates a `JwtProofCreator` of them, followed by an
       `AttestationProofCreator` if `loadKeyAttestation` is set, as before
+    - Extend `KeyAttestationInput` to contain the requirements of the issuer as `KeyAttestationRequired`
+      from issuer metadata
     - Fix: Proof JWTs of `OpenId4VciKtorClient` name the `client_id` of the OAuth 2.0 client that requested the token,
       instead of the one of `OpenId4VciClient`, which differed when the OAuth 2.0 client was passed separately
     - Add a constructor to `OpenId4VciKtorClient` taking the app's ktor `HttpClient`, the `OAuth2Client` (the only
