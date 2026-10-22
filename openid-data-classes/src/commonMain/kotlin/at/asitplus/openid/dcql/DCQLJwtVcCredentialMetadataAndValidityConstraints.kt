@@ -19,7 +19,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DCQLJwtVcCredentialMetadataAndValidityConstraints(
     /**
-     * OID4VP 1.0: type_values: REQUIRED. A non-empty array of string arrays.
+     * OID4VP 1.0, B.1.1: type_values: REQUIRED. A non-empty array of string arrays.
      * The value of each element in the type_values array is a non-empty array specifying the
      * fully expanded types (IRIs) that the Verifier accepts in a Presentation, after applying
      * the @context to the Verifiable Credential. If a type value in a Verifiable Credential is not

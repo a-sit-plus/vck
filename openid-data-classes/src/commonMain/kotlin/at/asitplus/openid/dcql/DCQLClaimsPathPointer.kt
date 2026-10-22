@@ -9,20 +9,25 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 /**
- *  6.4. Claims Path Pointer
+ * OpenID4VP 1.0, 7. Claims Path Pointer
  *
- * A claims path pointer is a pointer into the JSON structure of the Verifiable Credential,
- * identifying one or more claims. A claims path pointer MUST be a non-empty array of strings and
- * non-negative integers. A string value indicates that the respective key is to be selected, a
- * null value indicates that all elements of the currently selected array(s) are to be selected;
- * and a non-negative integer indicates that the respective index in an array is to be selected.
- * The path is formed as follows:
+ * A claims path pointer is a pointer into the Credential, identifying one or more claims. A claims path pointer MUST
+ * be a non-empty array of strings, nulls and non-negative integers. A claims path pointer can be processed, which
+ * means it is applied to a Credential. The results of processing are the referenced claims.
+ *
+ * OpenID4VP 1.0, 7.1. Semantics for JSON-based credentials
+ *
+ * This section defines the semantics of a claims path pointer when applied to a JSON-based Credential.
+ *
+ * A string value indicates that the respective key is to be selected, a null value indicates that all elements of the
+ * currently selected array(s) are to be selected; and a non-negative integer indicates that the respective index in an
+ * array is to be selected. The path is formed as follows:
+ *
  * Start with an empty array and repeat the following until the full path is formed.
- * To address a particular claim within an object, append the key (claim name) to the array.
- * To address an element within an array, append the index to the array (as a non-negative, 0-based
- * integer).To address all elements within an array, append a null value to the array. Verifiers
- * MUST NOT point to the same claim more than once in a single query. Wallets SHOULD ignore such
- * duplicate claim queries.
+ *
+ *     To address a particular claim within an object, append the key (claim name) to the array.
+ *     To address an element within an array, append the index to the array (as a non-negative, 0-based integer).
+ *     To address all elements within an array, append a null value to the array.
  */
 @Serializable(with = DCQLClaimsPathPointerInlineSerializer::class)
 class DCQLClaimsPathPointer(
