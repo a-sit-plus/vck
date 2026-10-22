@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.deviceAuthenticationBytes
+import at.asitplus.wallet.lib.verifyDeviceMac
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import kotlinx.serialization.json.JsonObject
@@ -63,8 +64,12 @@ internal fun blockedPresentationChecks(parsing: CheckOutcome) = PresentationChec
     presentationBinding = Blocked(),
 )
 
-private fun equalOrFailed(actual: String?, expected: String, claim: String): CheckOutcome =
-    if (actual == expected) Passed else Failed(IllegalArgumentException("The $claim is not the expected one"))
+/** A blank [expected] value, e.g. of [PresentationContext.forMdoc], is never answered. */
+private fun equalOrFailed(actual: String?, expected: String, claim: String): CheckOutcome = when {
+    expected.isBlank() -> Failed(IllegalArgumentException("The request has no $claim to answer"))
+    actual == expected -> Passed
+    else -> Failed(IllegalArgumentException("The $claim is not the expected one"))
+}
 
 /**
  * Validates an SD-JWT presentation: the SD-JWT as a credential (RFC 9901, 7.1), and, if the request requires holder
@@ -263,9 +268,10 @@ internal suspend fun evaluateVcJwtPresentation(
 
 /**
  * Validates an mdoc `Document`: its `IssuerSigned` as a credential of the document's `docType`, and its device
- * signature over `DeviceAuthenticationBytes` with the device key the MSO binds (ISO/IEC 18013-5:2021, 9.1.3.4), which
- * is only authoritative once the issuer signature verified. The session transcript binds the request, so nonce and
- * audience are not applicable. MAC authentication is not supported.
+ * authentication over `DeviceAuthenticationBytes` with the device key the MSO binds, which is only authoritative once
+ * the issuer signature verified: either its device signature (ISO/IEC 18013-5:2021, 9.1.3.6), or its device MAC
+ * with the reader's ephemeral key [PresentationContext.eReaderKey] (9.1.3.5). The session transcript binds the
+ * request, so nonce and audience are not applicable.
  */
 internal suspend fun evaluateMdocPresentation(
     input: PresentationValidationInput.MdocDocument,
@@ -287,19 +293,27 @@ internal suspend fun evaluateMdocPresentation(
     val deviceKey: CryptoPublicKey? =
         issuerSigned?.issuerSigned?.issuerAuth?.payload?.deviceKeyInfo?.deviceKey?.toCryptoPublicKey()?.getOrNull()
     val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
+    val deviceMac = document.deviceSigned.deviceAuth.deviceMac
     val transcript = context.sessionTranscript
+    val eReaderKey = context.eReaderKey
     val signature = when {
-        transcript == null -> Blocked(IllegalStateException("No session transcript to verify the device signature"))
+        transcript == null -> Blocked(IllegalStateException("No session transcript to verify the device authentication"))
         deviceKey == null -> Blocked(IllegalStateException("The issuer signature of the MSO did not verify"))
-        deviceSignature == null && document.deviceSigned.deviceAuth.deviceMac != null ->
-            Failed(IllegalArgumentException("MAC authentication of the device is not supported"))
+        deviceSignature != null && deviceMac != null ->
+            Failed(IllegalArgumentException("The document has both a device signature and a device MAC"))
 
-        deviceSignature == null -> Failed(IllegalArgumentException("The document has no device signature"))
-        else -> signatureCheck.verify(
+        deviceSignature != null -> signatureCheck.verify(
             cose = deviceSignature,
             detachedPayload = document.deviceAuthenticationBytes(transcript),
             key = deviceKey,
         ).outcome
+
+        deviceMac == null -> Failed(IllegalArgumentException("The document has neither a device signature nor a MAC"))
+        eReaderKey == null ->
+            Blocked(IllegalStateException("No ephemeral reader key to verify the device MAC of the document"))
+
+        else -> document.verifyDeviceMac(deviceMac, deviceKey, eReaderKey, transcript)
+            .fold(onSuccess = { Passed }, onFailure = { Failed(it) })
     }
     val validated = credential.credential as? ValidatedCredential.IsoMdoc
     return PresentationEvaluation(

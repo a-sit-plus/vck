@@ -426,7 +426,7 @@ private fun Verifier.VerifyPresentationResult.SuccessIso.assertRevocationInvalid
 }
 // Simple Session Transcript (mostly empty)
 private val simpleTranscriptCallback: () -> SessionTranscript = {
-    SessionTranscript.forQr(
+    SessionTranscript.Qr(
         deviceEngagementBytes = byteArrayOf(),
         eReaderKeyBytes = byteArrayOf(),
     )

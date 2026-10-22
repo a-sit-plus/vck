@@ -38,7 +38,7 @@ object IsoMdocDcapiResponseBuilder {
             DCAPIInfo(isoMdocRequest.encryptionInfo, callingOrigin)
         ).sha256()
         val handover = DCAPIHandover(type = TYPE_DCAPI, hash = hash)
-        return SessionTranscript.forDcApi(handover)
+        return SessionTranscript.DcApi(handover)
     }
 
     /** Creates the device response, applies device authentication, and HPKE-encrypts it for the verifier. */

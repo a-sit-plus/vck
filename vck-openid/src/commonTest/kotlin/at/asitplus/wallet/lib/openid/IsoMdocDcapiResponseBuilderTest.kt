@@ -69,7 +69,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
         val fixture = dcapiFixture()
 
         val walletTranscript = IsoMdocDcapiResponseBuilder.sessionTranscriptFor(fixture.walletRequest)
-        val verifierTranscript = at.asitplus.iso.SessionTranscript.forDcApi(
+        val verifierTranscript = at.asitplus.iso.SessionTranscript.DcApi(
             at.asitplus.dcapi.DCAPIHandover(
                 type = TYPE_DCAPI,
                 hash = coseCompliantSerializer.encodeToByteArray(

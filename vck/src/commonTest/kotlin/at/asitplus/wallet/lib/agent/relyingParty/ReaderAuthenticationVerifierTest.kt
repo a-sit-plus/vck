@@ -30,8 +30,8 @@ import net.orandja.obor.data.CborMapEntry
 import net.orandja.obor.data.CborObject
 
 val ReaderAuthenticationVerifierTest by matrixSuite {
-    val transcript = SessionTranscript.forDcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
-    val changedTranscript = SessionTranscript.forDcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32) { 1 }))
+    val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+    val changedTranscript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32) { 1 }))
 
     "detached content retains the original tagged request bytes" {
         val doc = mdocDocRequest()
