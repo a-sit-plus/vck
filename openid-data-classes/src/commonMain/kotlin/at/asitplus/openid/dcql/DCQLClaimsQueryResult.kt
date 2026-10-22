@@ -7,6 +7,7 @@ sealed interface DCQLClaimsQueryResult {
         val nodeList: NodeList,
     ) : DCQLClaimsQueryResult
 
+    /** [claimValue] is the JSON value of the data element, see [DCQLCredentialClaimStructure.IsoMdocStructure]. */
     data class IsoMdocResult(
         val namespace: String,
         val claimName: String,

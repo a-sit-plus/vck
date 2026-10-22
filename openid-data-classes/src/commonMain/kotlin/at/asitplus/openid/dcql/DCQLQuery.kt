@@ -22,19 +22,28 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DCQLQuery(
     /**
-     * OID4VP 1.0: REQUIRED. A non-empty array of Credential Queries as defined in Section 6.1 that
-     * specify the requested credentials.
+     * OID4VP 1.0, 6: credentials: REQUIRED. A non-empty array of Credential Queries as defined in Section 6.1
+     * that specify the requested Credentials.
      */
     @SerialName(SerialNames.CREDENTIALS)
     val credentials: DCQLCredentialQueryList<DCQLCredentialQuery>,
 
     /**
-     * OID4VP 1.0: OPTIONAL. A non-empty array of credential set queries as defined in Section
-     * 6.2 that specifies additional constraints on which of the requested Credentials to return.
+     * OID4VP 1.0, 6: credential_sets: OPTIONAL. A non-empty array of Credential Set Queries as defined in Section 6.2
+     * that specifies additional constraints on which of the requested Credentials to return.
      */
     @SerialName(SerialNames.CREDENTIAL_SETS)
     val credentialSets: NonEmptyList<DCQLCredentialSetQuery>? = null,
 ) {
+    init {
+        // OpenID4VP 1.0, 6.2: "The value of each element in the options array is a non-empty array of identifiers which
+        // reference elements in credentials."
+        val credentialQueryIds = credentials.map { it.id }.toSet()
+        credentialSets?.flatMap { it.options }?.flatten()?.forEach {
+            require(it in credentialQueryIds) { "`credential_sets` references an unknown Credential Query: $it" }
+        }
+    }
+
     val requestedCredentialSetQueries: NonEmptyList<DCQLCredentialSetQuery>
         get() = credentialSets ?: nonEmptyListOf(
             DCQLCredentialSetQuery(
@@ -49,21 +58,25 @@ data class DCQLQuery(
     }
 
     /**
-     *  6.3.1.2. Selecting Credentials
+     * OpenID4VP 1.0, 6.4.2. Selecting Credentials
      *
      * The following rules apply for selecting Credentials via credentials and credential_sets:
-     * If credential_sets is not provided, the Verifier requests presentations for all Credentials
-     * in credentials to be returned.
      *
-     * Otherwise, the Verifier requests presentations of Credentials to be returned satisfying
-     * all of the Credential Set Queries in the credential_sets array where the required attribute
-     * is true or omitted, and
-     * optionally, any of the other Credential Set Queries.To satisfy a Credential Set Query, the
-     * Wallet MUST return presentations of a set of Credentials that match to one of the options
-     * inside the Credential Set Query.Credentials not matching the respective constraints
-     * expressed within credentials MUST NOT be returned, i.e., they are treated as if they would
-     * not exist in the Wallet.If the Wallet cannot deliver all non-optional Credentials requested
-     * by the Verifier according to these rules, it MUST NOT return any Credential(s).
+     *     If credential_sets is not provided, the Verifier requests presentations for all Credentials in credentials
+     *     to be returned.
+     *     Otherwise, the Verifier requests presentations of Credentials to be returned satisfying
+     *         all of the Credential Set Queries in the credential_sets array where the required attribute is true or
+     *         omitted, and
+     *         optionally, any of the other Credential Set Queries.
+     *
+     * To satisfy a Credential Set Query, the Wallet MUST return presentations of a set of Credentials that match to one
+     * of the options inside the Credential Set Query.
+     *
+     * Credentials not matching the respective constraints expressed within credentials MUST NOT be returned, i.e.,
+     * they are treated as if they would not exist in the Wallet.
+     *
+     * If the Wallet cannot deliver all non-optional Credentials requested by the Verifier according to these rules, it
+     * MUST NOT return any Credential(s).
      */
     fun findCredentialQueryMatches(
         availableCredentials: List<DCQLCredential>,
