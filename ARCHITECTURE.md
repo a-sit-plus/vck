@@ -340,9 +340,8 @@ accepted, so an unverified value is never exposed as validated. Rules to keep:
   policy, and project their old results from the report, so there is one implementation of every rule.
 - Every enforced rule cites its source inline in the KDoc next to it (spec, version, section). Reports carry causes,
   so exception messages must not contain claim values, disclosures, or keys.
-- Known limitations: trust is evaluated for single-hop paths or by walking the WRP chain, without RFC 5280 path
-  building, `pathLenConstraint`, `keyUsage`, or certificate revocation; ZK mdoc presentations are validated like plain
-  mdocs.
+- Known limitations: trust is evaluated by walking the transported chain, without RFC 5280 path building,
+  `pathLenConstraint`, `keyUsage`, or certificate revocation; ZK mdoc presentations are validated like plain mdocs.
 
 ### OpenID4VP Verifier Responses
 

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.etsi.ListOfTrustedEntities
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.selfSignedKey
@@ -158,14 +159,14 @@ val CredentialTrustTest by matrixSuite {
             scopes.checkCredentialTrust(PID_VCT, TrustPurpose.ISSUANCE, listOf(listed), now()).outcome shouldBe Passed
         }
 
-        "a status list signer has to be issued by an anchor, it can not be listed itself" {
-            val listed = selfSignedKey().getCertificate().shouldNotBeNull()
+        "a status list signer may be listed itself" {
+            val listed = TestCertificateAuthority().issue().getCertificate().shouldNotBeNull()
             val scopes = CredentialTrustScopes(
-                CredentialTrustScope(setOf(PID_VCT), "PID", { setOf(listed) }, { setOf(listed) })
+                CredentialTrustScope(setOf(PID_VCT), "PID", { emptySet() }, { setOf(listed) })
             )
 
-            scopes.checkCredentialTrust(PID_VCT, TrustPurpose.STATUS, listOf(listed), now())
-                .outcome.shouldBeInstanceOf<Failed>()
+            scopes.checkCredentialTrust(PID_VCT, TrustPurpose.STATUS, listOf(listed), now()) shouldBe
+                    TrustValidation(Passed, PID_VCT, "PID")
         }
 
         "a status list signer issued by a status anchor is authorized" {
@@ -192,22 +193,22 @@ val CredentialTrustTest by matrixSuite {
         "without anchors it is blocked, with no anchors it fails" {
             val chain = TestCertificateAuthority().signerChain()
 
-            checkTrust(chain, anchors = null, now(), TrustRule.ISSUED_BY_ANCHOR)
+            checkTrust(chain, anchors = null, now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
                 .shouldBeInstanceOf<Blocked>()
-            checkTrust(chain, anchors = emptySet(), now(), TrustRule.ISSUED_BY_ANCHOR)
+            checkTrust(chain, anchors = emptySet(), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
                 .shouldBeInstanceOf<Failed>()
         }
 
         "a signed object without certificate fails" {
             val ca = TestCertificateAuthority()
 
-            checkTrust(null, setOf(ca.certificate), now(), TrustRule.ISSUED_BY_ANCHOR)
+            checkTrust(null, setOf(ca.certificate), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
                 .shouldBeInstanceOf<Failed>()
-            checkTrust(emptyList(), setOf(ca.certificate), now(), TrustRule.ISSUED_BY_ANCHOR)
+            checkTrust(emptyList(), setOf(ca.certificate), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
                 .shouldBeInstanceOf<Failed>()
         }
 
-        listOf(TrustRule.ISSUED_BY_ANCHOR_OR_LISTED, TrustRule.ISSUED_BY_ANCHOR, TrustRule.CHAIN_TO_ANCHOR)
+        listOf(TrustRule.ISSUED_BY_ANCHOR_OR_LISTED, TrustRule.CHAIN_TO_ANCHOR)
             .asData(nameFn = { "$it passes for a signer issued by an anchor, fails after its validity" }) test { rule ->
             val ca = TestCertificateAuthority()
             val chain = ca.signerChain()
@@ -221,9 +222,56 @@ val CredentialTrustTest by matrixSuite {
             val ca = TestCertificateAuthority()
             val chain = ca.signerChain() + ca.certificate
 
-            checkTrust(chain, setOf(ca.certificate), now(), TrustRule.ISSUED_BY_ANCHOR)
+            checkTrust(chain, setOf(ca.certificate), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
                 .shouldBeInstanceOf<Failed>()
             checkTrust(chain, setOf(ca.certificate), now(), TrustRule.CHAIN_TO_ANCHOR) shouldBe Passed
+        }
+
+        "a listed signer passes, also when self-signed, and fails after its validity" {
+            val issued = TestCertificateAuthority().signerChain()
+            val selfSigned = listOf(selfSignedKey().getCertificate().shouldNotBeNull())
+
+            listOf(issued, selfSigned).forEach { chain ->
+                checkTrust(chain, chain.toSet(), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED) shouldBe Passed
+                checkTrust(chain, chain.toSet(), now() + 1.days, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
+                    .shouldBeInstanceOf<Failed>()
+            }
+        }
+
+        "a self-signed signer that is not listed fails" {
+            val chain = listOf(selfSignedKey().getCertificate().shouldNotBeNull())
+            val anchors = setOf(TestCertificateAuthority().certificate)
+
+            checkTrust(chain, anchors, now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
+                .shouldBeInstanceOf<Failed>()
+                .throwable.message.shouldNotBeNull() shouldContain "self-signed"
+        }
+
+        "a signer issued through an intermediate certificate passes, if the intermediate is transported" {
+            val root = TestCertificateAuthority()
+            val intermediate = root.issue(subjectName = "Intermediate CA", certificateAuthority = true)
+            val signer = EphemeralKeyWithoutCert().let {
+                TestCertificateAuthority.certificateFor(it.publicKey, "Signer", "Intermediate CA", intermediate)
+            }
+            val intermediateCertificate = intermediate.getCertificate().shouldNotBeNull()
+
+            checkTrust(
+                listOf(signer, intermediateCertificate),
+                setOf(root.certificate),
+                now(),
+                TrustRule.ISSUED_BY_ANCHOR_OR_LISTED,
+            ) shouldBe Passed
+            checkTrust(listOf(signer), setOf(root.certificate), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
+                .shouldBeInstanceOf<Failed>()
+        }
+
+        "a transported certificate that did not issue the one before it fails" {
+            val ca = TestCertificateAuthority()
+            val unrelated = TestCertificateAuthority().issue(certificateAuthority = true)
+            val chain = ca.signerChain() + unrelated.getCertificate().shouldNotBeNull()
+
+            checkTrust(chain, setOf(ca.certificate), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
+                .shouldBeInstanceOf<Failed>()
         }
     }
 

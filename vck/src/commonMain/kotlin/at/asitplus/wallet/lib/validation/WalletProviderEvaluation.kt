@@ -20,15 +20,16 @@ private const val WALLET_PROVIDERS = "wallet providers"
 private const val WALLET_PROVIDER_STATUS = "status list signers of wallet providers"
 
 /**
- * Whether a wallet provider authorized by [anchors] signed with the leaf of [chain]: the signing certificate is
- * issued by an anchor, which is not transported, and is not self-signed (OpenID4VC HAIP 1.0, 4.4.1, 4.5.1).
+ * Whether a wallet provider authorized by [anchors] signed with the leaf of [chain]: the signing certificate is an
+ * anchor itself, or leads to one through the intermediate certificates of [chain], see
+ * [TrustRule.ISSUED_BY_ANCHOR_OR_LISTED].
  */
 internal suspend fun walletProviderTrust(
     chain: CertificateChain?,
     anchors: TrustedCertificates?,
     at: Instant,
 ): TrustValidation = TrustValidation(
-    outcome = checkTrust(chain, anchors?.invoke(), at, TrustRule.ISSUED_BY_ANCHOR),
+    outcome = checkTrust(chain, anchors?.invoke(), at, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED),
     source = WALLET_PROVIDERS,
 )
 
