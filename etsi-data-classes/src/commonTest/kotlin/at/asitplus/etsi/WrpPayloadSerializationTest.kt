@@ -1,0 +1,115 @@
+package at.asitplus.etsi
+
+import at.asitplus.etsi.relyingParty.WrpConstants
+import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.testballoon.matrix.matrixSuite
+import io.kotest.assertions.throwables.shouldThrowAny
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+
+val WrpPayloadSerializationTest by matrixSuite {
+    // ETSI TS 119 475 V1.2.1, Annex C, whose intermediary carries `name` instead of `sname` (Table 10)
+    val annexC = """
+        {
+          "name": "Example Company",
+          "sub_ln": "Example Company GmbH",
+          "sub": "LEIXG-529900T8BM49AURSDO55",
+          "country": "DE",
+          "registry_uri": "https://registrar.com",
+          "srv_description": [[
+            {"lang": "en-US", "value": "Awesome Service by Example Company"},
+            {"lang": "de-DE", "value": "Super Dienst von Example Company"}
+          ]],
+          "entitlements": ["https://uri.etsi.org/19475/Entitlement/Non_Q_EAA_Provider"],
+          "privacy_policy": "https://example.com/privacy-policy",
+          "info_uri": "https://example.com/info",
+          "support_uri": "https://example.com/support",
+          "supervisory_authority": {
+            "email": "supervisory@dpa.com",
+            "phone": "+49 123 4567890",
+            "uri": "https://dpa.com/supervisory-authority"
+          },
+          "policy_id": ["0.4.0.19475.3.1"],
+          "certificate_policy": "https://registrar.com/certificate-policy",
+          "iat": 1683000000,
+          "status": {"status_list": {"idx": 0, "uri": "https://example.com/statuslists/1"}},
+          "purpose": [
+            {"lang": "en-US", "value": "Required for checking the minimum age"},
+            {"lang": "de-DE", "value": "Benötigt für die Überprüfung des Mindestalters"}
+          ],
+          "credentials": [
+            {
+              "format": "dc+sd-jwt",
+              "meta": {"vct_values": ["urn:eudi:pid:de:1"]},
+              "claim": [{"path": ["age_equal_or_over", "18"]}]
+            },
+            {
+              "format": "mso_mdoc",
+              "meta": {"doctype_value": "eu.europa.ec.eudi.pid.1"},
+              "claim": [{"path": ["eu.europa.ec.eudi.pid.1", "age_over_18"]}]
+            }
+          ],
+          "provides_attestations": [
+            {"format": "dc+sd-jwt", "meta": {"vct_values": ["https://example.com/attestations/age_over_18"]}}
+          ],
+          "intermediary": {"sub": "LEIXG-INTERMEDIARY-1234567890", "name": "Intermediary Services Ltd."}
+        }
+    """.trimIndent()
+    val annexCObject = joseCompliantSerializer.parseToJsonElement(annexC).jsonObject
+
+    fun JsonObject.without(key: String) = JsonObject(this - key)
+    fun JsonObject.with(key: String, json: String) =
+        JsonObject(this + (key to joseCompliantSerializer.parseToJsonElement(json)))
+    fun decode(json: JsonObject) = joseCompliantSerializer.decodeFromJsonElement(WrpPayload.serializer(), json)
+
+    "decodes the example of Annex C" {
+        val payload = decode(annexCObject)
+
+        payload.policyId shouldBe listOf(WrpConstants.POLICY_IDENTIFIER)
+        payload.providesAttestations?.single()?.claim.shouldBeNull()
+        payload.intermediary?.sub shouldBe "LEIXG-INTERMEDIARY-1234567890"
+        payload.intermediary?.sname.shouldBeNull()
+    }
+
+    "encodes policy_id, which has no default" {
+        joseCompliantSerializer.encodeToString(WrpPayload.serializer(), decode(annexCObject)) shouldContain
+                """"policy_id":["${WrpConstants.POLICY_IDENTIFIER}"]"""
+    }
+
+    "decodes optional fields as absent" {
+        val payload = listOf("name", "info_uri", "purpose", "credentials", "provides_attestations", "intermediary")
+            .fold(annexCObject) { json, key -> json.without(key) }
+            .let { decode(it) }
+
+        payload.name.shouldBeNull()
+        payload.infoUri.shouldBeNull()
+        payload.purpose.shouldBeNull()
+        payload.credentials.shouldBeNull()
+        payload.providesAttestations.shouldBeNull()
+        payload.intermediary.shouldBeNull()
+    }
+
+    "rejects a payload without a required field" - {
+        listOf("policy_id", "support_uri", "supervisory_authority").asData() test { key ->
+            shouldThrowAny { decode(annexCObject.without(key)) }
+        }
+    }
+
+    "rejects empty arrays of at least one entry, and an intermediary without sub" - {
+        listOf(
+            "entitlements" to "[]",
+            "srv_description" to "[]",
+            "purpose" to "[]",
+            "credentials" to "[]",
+            "credentials" to """[{"format":"mso_mdoc","meta":{"doctype_value":"a"},"claim":[]}]""",
+            "credentials" to """[{"format":"mso_mdoc","meta":{"doctype_value":"a"},"claim":[{"path":["a"],"values":[]}]}]""",
+            "intermediary" to """{"sname":"Intermediary Services Ltd."}""",
+        ).asData(nameFn = { "${it.first}: ${it.second}" }) test { field ->
+            shouldThrowAny { decode(annexCObject.with(field.first, field.second)) }
+        }
+    }
+}

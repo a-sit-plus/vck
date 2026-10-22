@@ -7,6 +7,7 @@ import at.asitplus.etsi.relyingParty.WrpLangString
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.etsi.relyingParty.WrpStatus
 import at.asitplus.etsi.relyingParty.WrpStatusList
+import at.asitplus.etsi.relyingParty.WrpSupervisoryAuthority
 import at.asitplus.openid.IssuerInfo
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OpenIdConstants.IssuerInfo.REGISTRATION_CERT_FORMAT
@@ -277,6 +278,9 @@ private class SigningIssuer private constructor(
                 entitlements = listOf(WrpConstants.ENTITLEMENT_PID_PROVIDER),
                 privacyPolicy = "$ISSUER/privacy",
                 infoUri = ISSUER,
+                supportUri = "$ISSUER/support",
+                supervisoryAuthority = WrpSupervisoryAuthority(email = "dpa@example.com"),
+                policyId = listOf(WrpConstants.POLICY_IDENTIFIER),
                 certificatePolicy = "https://registrar.example.com/policy",
                 iat = issuedAt,
                 exp = issuedAt + 30.days,

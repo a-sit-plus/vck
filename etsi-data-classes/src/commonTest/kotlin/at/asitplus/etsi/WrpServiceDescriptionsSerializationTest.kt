@@ -2,10 +2,12 @@
 
 package at.asitplus.etsi
 
+import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpLangString
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.etsi.relyingParty.WrpStatus
 import at.asitplus.etsi.relyingParty.WrpStatusList
+import at.asitplus.etsi.relyingParty.WrpSupervisoryAuthority
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -22,9 +24,12 @@ val WrpServiceDescriptionsSerializationTest by matrixSuite {
         country = "AT",
         registryUri = "https://registrar.example.com",
         srvDescription = listOf(listOf(shop, laden)),
-        entitlements = listOf("https://uri.etsi.org/19475/Entitlement/Service_Provider"),
+        entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
         privacyPolicy = "https://example.com/privacy",
         infoUri = "https://example.com/info",
+        supportUri = "https://example.com/support",
+        supervisoryAuthority = WrpSupervisoryAuthority(email = "dpa@example.com"),
+        policyId = listOf(WrpConstants.POLICY_IDENTIFIER),
         certificatePolicy = "https://registrar.example.com/policy",
         iat = Instant.fromEpochSeconds(1_700_000_000),
         status = WrpStatus(WrpStatusList(idx = 0u, uri = "https://registrar.example.com/status")),
@@ -46,19 +51,16 @@ val WrpServiceDescriptionsSerializationTest by matrixSuite {
                 payload
     }
 
-    "JSON keeps several arrays and an empty array" {
+    "JSON keeps several arrays" {
         val nested = joseCompliantSerializer.encodeToString(WrpPayload.serializer(), payload)
         val several = """"srv_description":[[{"lang":"en","value":"Shop"}],[{"lang":"de","value":"Laden"}]]"""
         joseCompliantSerializer.decodeFromString(WrpPayload.serializer(), nested.replace(nestedJson, several))
             .srvDescription shouldBe listOf(listOf(shop), listOf(laden))
-        joseCompliantSerializer.decodeFromString(
-            WrpPayload.serializer(),
-            nested.replace(nestedJson, """"srv_description":[]""")
-        ).srvDescription shouldBe emptyList()
     }
 
-    "JSON rejects arrays mixed with objects" - {
+    "JSON rejects an empty array and arrays mixed with objects" - {
         listOf(
+            """"srv_description":[]""",
             """"srv_description":[[{"lang":"en","value":"Shop"}],{"lang":"de","value":"Laden"}]""",
             """"srv_description":[{"lang":"en","value":"Shop"},[{"lang":"de","value":"Laden"}]]""",
             """"srv_description":["Shop"]""",

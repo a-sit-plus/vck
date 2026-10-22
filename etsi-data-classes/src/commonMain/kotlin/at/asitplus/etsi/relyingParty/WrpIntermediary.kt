@@ -8,9 +8,9 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WrpIntermediary(
-    /** Identifier of the intermediary as specified in its WRPAC (Table 10). */
+    /** Identifier of the intermediary as specified in its WRPAC, present with the intermediary (Table 10, NOTE 2). */
     @SerialName("sub")
-    val sub: String? = null,
+    val sub: String,
 
     /** Common name of the intermediary as specified in its WRPAC (Table 10). */
     @SerialName("sname")
