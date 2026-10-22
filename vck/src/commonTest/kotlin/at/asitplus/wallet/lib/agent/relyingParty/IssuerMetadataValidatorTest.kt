@@ -19,6 +19,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
@@ -29,12 +30,15 @@ import at.asitplus.wallet.lib.validation.IssuerMetadataValidation
 import at.asitplus.wallet.lib.validation.IssuerMetadataValidator
 import at.asitplus.wallet.lib.validation.RegistrationCertificateChecks
 import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.StatusValidator
 import at.asitplus.wallet.lib.validation.TimelinessException
+import at.asitplus.wallet.lib.validation.TokenStatusException
 import at.asitplus.wallet.lib.validation.TrustPolicy
 import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -56,6 +60,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
             report.decision shouldBe ACCEPTED
             report.children.shouldBeEmpty()
             metadata.shouldNotBeNull().credentialIssuer shouldBe CREDENTIAL_ISSUER
+            untrustedMetadata shouldBe metadata
             issuer.shouldNotBeNull().apply {
                 identifier shouldBe WrpacIdentifier.WrpacLegalIdentifier(fixture.wrpIdentifier)
                 accessCertificateChain shouldBe fixture.wrpacChain
@@ -85,6 +90,37 @@ val IssuerMetadataValidatorTest by matrixSuite {
         fixture.validate(fixture.signedMetadata(metadata(issuerInfo = issuerInfo(wrprc)))).apply {
             report.decision shouldBe REJECTED
             registrationChecks().requestAuthorization.shouldBeInstanceOf<CheckOutcome.Failed>()
+            metadata.shouldBeNull()
+            // signed for the credential issuer, so a wallet may continue after warning the user
+            untrustedMetadata.shouldNotBeNull().credentialIssuer shouldBe CREDENTIAL_ISSUER
+        }
+    }
+
+    "a revoked WRPRC is rejected with its status, and the metadata are still authenticated" {
+        val fixture = buildWrpFixture()
+        val validator = IssuerMetadataValidator(
+            accessCertificates = fixture.trustAnchors,
+            registrationCertificates = fixture.trustAnchors,
+            statusValidator = StatusValidator(StatusListTokenResolver { buildStatusListToken(it, revokedIndex = 1) }),
+        )
+        // the status list tokens are signed by a key without certificate, so their signers are not authorized
+        val statusPolicy = policy.copy(status = StatusPolicy.RequireClaim(signerTrust = TrustPolicy.IntegrityOnly))
+        suspend fun signed(statusListIdx: Int) = fixture.signedMetadata(
+            metadata(issuerInfo = issuerInfo(fixture.issuerWrprc(statusListIdx = statusListIdx)))
+        )
+
+        validator.validate(signed(statusListIdx = 0), CREDENTIAL_ISSUER, statusPolicy).report.decision shouldBe ACCEPTED
+        validator.validate(signed(statusListIdx = 1), CREDENTIAL_ISSUER, statusPolicy).apply {
+            report.decision shouldBe REJECTED
+            checks().apply {
+                signature shouldBe CheckOutcome.Passed
+                subject shouldBe CheckOutcome.Passed
+            }
+            registrationChecks().status.mechanisms.shouldBeSingleton().first().outcome
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<TokenStatusException>()
+            metadata.shouldBeNull()
+            issuer.shouldBeNull()
+            untrustedMetadata.shouldNotBeNull().credentialIssuer shouldBe CREDENTIAL_ISSUER
         }
     }
 
@@ -101,6 +137,7 @@ val IssuerMetadataValidatorTest by matrixSuite {
         ).apply {
             report.decision shouldBe REJECTED
             registrationChecks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Blocked>()
+            untrustedMetadata.shouldNotBeNull()
         }
     }
 
@@ -135,9 +172,13 @@ val IssuerMetadataValidatorTest by matrixSuite {
             report.decision shouldBe REJECTED
             checks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Blocked>()
             metadata.shouldBeNull()
+            untrustedMetadata.shouldNotBeNull()
         }
         IssuerMetadataValidator(accessCertificates = { emptySet() }).validate(signed, CREDENTIAL_ISSUER, policy)
-            .checks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+            .apply {
+                checks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+                untrustedMetadata.shouldNotBeNull()
+            }
     }
 
     "metadata of an untrusted signer are reported, so the wallet can warn, if the policy does not require trust" {
@@ -162,7 +203,10 @@ val IssuerMetadataValidatorTest by matrixSuite {
         val fixture = buildWrpFixture()
         val signed = fixture.signedMetadata(key = EphemeralKeyWithoutCert())
 
-        fixture.validate(signed).checks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+        fixture.validate(signed).apply {
+            checks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+            untrustedMetadata.shouldBeNull()
+        }
     }
 
     "metadata signed without x5c is rejected" {
@@ -171,9 +215,10 @@ val IssuerMetadataValidatorTest by matrixSuite {
             ISSUER_METADATA_JWT_TYPE, metadata(), IssuerMetadata.serializer()
         ).getOrThrow().toString()
 
-        fixture.validate(signed).checks().apply {
-            signature.shouldBeInstanceOf<CheckOutcome.Failed>()
-            trust.outcome.shouldBeInstanceOf<CheckOutcome.Blocked>()
+        fixture.validate(signed).apply {
+            checks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+            checks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Blocked>()
+            untrustedMetadata.shouldBeNull()
         }
     }
 
@@ -190,8 +235,10 @@ val IssuerMetadataValidatorTest by matrixSuite {
     "metadata of another credential issuer is rejected" {
         val fixture = buildWrpFixture()
 
-        fixture.validate(fixture.signedMetadata(metadata(subject = "https://other.example.com")))
-            .checks().subject.shouldBeInstanceOf<CheckOutcome.Failed>()
+        fixture.validate(fixture.signedMetadata(metadata(subject = "https://other.example.com"))).apply {
+            checks().subject.shouldBeInstanceOf<CheckOutcome.Failed>()
+            untrustedMetadata.shouldBeNull()
+        }
         fixture.validate(fixture.signedMetadata(metadata(credentialIssuer = "https://other.example.com")))
             .checks().subject.shouldBeInstanceOf<CheckOutcome.Failed>()
         // compared without normalization (OpenID4VCI 1.0, 12.2.4)
@@ -269,8 +316,9 @@ private fun issuerInfo(wrprc: String? = null) = listOfNotNull(
 private suspend fun WrpFixture.issuerWrprc(
     identifier: String = wrpIdentifier,
     entitlements: List<String> = listOf(WrpConstants.ENTITLEMENT_PID_PROVIDER),
+    statusListIdx: Int = 0,
 ): String {
-    val payload: WrpPayload = buildWrpPayload(identifier, credentials = emptyList())
+    val payload: WrpPayload = buildWrpPayload(identifier, credentials = emptyList(), statusListIdx = statusListIdx)
         .copy(entitlements = entitlements, providesAttestations = PROVIDED_ATTESTATIONS)
     return signWrprc(wrprcSigningKeyMaterial, payload)
 }

@@ -210,6 +210,11 @@ Release 9.0.0 (unreleased):
       for relying parties, has to be issued to the identifier of the WRPAC, and has to register the provider with an
       entitlement of attestation providers (ETSI TS 119 472-3 V1.1.1, 4.2.3; ETSI TS 119 475 V1.2.1, A.2). Accepted
       metadata come with a `ValidatedCredentialIssuer`
+    - Add `IssuerMetadataValidation.untrustedMetadata` and `LoadedIssuerMetadata.Signed.untrustedMetadata`, the
+      metadata whatever the decision if their signature and subject passed, and
+      `parseCredentialMetadataIgnoringTrust(loaded)` in `OpenId4VciProtocolClient` and `OpenId4VciKtorClient`, which
+      parses them without a validated credential issuer, so that a wallet can continue after warning the user, e.g.
+      about an untrusted WRPAC or a rejected WRPRC
     - Add `IssuerMetadata.issuerInfo` with `IssuerInfo`, whose `data` is a JSON element, and
       `OpenIdConstants.IssuerInfo`; add `WrpRegistrarDataset`, `WrpMultiLangString`, and the entitlements of
       attestation providers in `WrpConstants` to `etsi-data-classes`
