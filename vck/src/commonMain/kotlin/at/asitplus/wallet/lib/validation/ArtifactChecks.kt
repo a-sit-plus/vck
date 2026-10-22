@@ -124,10 +124,10 @@ data class RelyingPartyChecks(
     val requestData: CheckOutcome,
     /**
      * Whether the request carries its WRPRCs, one in `verifier_info` of an OpenID4VP request, or one in `euWrprc` of
-     * every document request of an ISO mdoc request, and they could be parsed, failing with a
-     * `MissingRegistrationCertificateException` or an `InvalidRegistrationCertificateException` otherwise. Not
-     * applicable to a request without WRPRCs under [RegistrationPolicy.ValidateIfPresent]. Blocked for a request
-     * whose `requestData` failed without them being extracted.
+     * every document request of an ISO mdoc request, and they could be parsed and identify one relying party,
+     * failing with a `MissingRegistrationCertificateException` or an `InvalidRegistrationCertificateException`
+     * otherwise. Not applicable to a request without WRPRCs under [RegistrationPolicy.ValidateIfPresent]. Blocked for
+     * a request whose `requestData` failed without them being extracted.
      */
     val registration: CheckOutcome,
 ) : ValidationChecks
@@ -166,7 +166,10 @@ data class RegistrationCertificateChecks(
     /** `iat`, `exp`, and the maximum validity. */
     val timeliness: CheckOutcome,
     val status: StatusValidation,
-    /** `sub` is the identifier of the access certificate. */
+    /**
+     * `sub` is the identifier of the access certificate, or the access certificate is issued to the intermediary
+     * named in `intermediary.sub` (ETSI TS 119 475 V1.2.1, 4.5, Table 10).
+     */
     val linkage: CheckOutcome,
     /** The requested credentials and claims are registered. */
     val requestAuthorization: CheckOutcome,

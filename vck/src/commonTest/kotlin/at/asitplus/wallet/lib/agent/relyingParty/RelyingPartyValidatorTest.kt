@@ -9,6 +9,7 @@ import at.asitplus.etsi.relyingParty.WrpClaim
 import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
+import at.asitplus.etsi.relyingParty.WrpIntermediary
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
@@ -95,8 +96,74 @@ val RelyingPartyValidatorTest by matrixSuite {
         result.relyingParty.shouldNotBeNull().apply {
             identifier.shouldNotBeNull().identifier shouldBe fixture.wrpIdentifier
             registrationCertificates.shouldBeSingleton().first() shouldBe payload
+            intermediated shouldBe false
         }
         result.untrustedRegistrations shouldBe listOf(payload)
+    }
+
+    "a request of an intermediary, with the WRPRC of the relying party naming it, is accepted" {
+        val fixture = buildWrpFixture(wrpIdentifier = INTERMEDIARY)
+        val payload = intermediatedPayload()
+
+        val result = fixture.validate(fixture.request(payload))
+
+        result.report.decision shouldBe ACCEPTED
+        result.relyingParty.shouldNotBeNull().apply {
+            identifier.shouldNotBeNull().identifier shouldBe INTERMEDIARY
+            registrationCertificates.shouldBeSingleton().first().subjectIdentifier shouldBe RELYING_PARTY
+            intermediated shouldBe true
+        }
+    }
+
+    "a WRPRC naming another intermediary fails the linkage" {
+        val fixture = buildWrpFixture(wrpIdentifier = INTERMEDIARY)
+        val payload = intermediatedPayload(intermediary = "LEIXG-ANOTHER-INTERMEDIARY")
+
+        val result = fixture.validate(fixture.request(payload))
+
+        result.report.decision shouldBe REJECTED
+        result.registrationChecks().linkage.shouldBeInstanceOf<CheckOutcome.Failed>()
+    }
+
+    "a WRPRC naming an intermediary also links to the WRPAC of its own subject" {
+        val fixture = buildWrpFixture(wrpIdentifier = RELYING_PARTY)
+
+        fixture.validate(fixture.request(intermediatedPayload())).apply {
+            report.decision shouldBe ACCEPTED
+            relyingParty.shouldNotBeNull().intermediated shouldBe false
+        }
+    }
+
+    "an mdoc request of an intermediary, with the WRPRC of the relying party naming it, is accepted" {
+        val fixture = buildWrpFixture(wrpIdentifier = INTERMEDIARY)
+        val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+        val request = fixture.isoRequest(fixture.docRequestWithWrprc(payload = intermediatedPayload()), transcript)
+
+        fixture.validator().validate(request, transcript, policy).apply {
+            report.decision shouldBe ACCEPTED
+            relyingParty.shouldNotBeNull().apply {
+                identifier.shouldNotBeNull().identifier shouldBe INTERMEDIARY
+                intermediated shouldBe true
+            }
+        }
+    }
+
+    "an mdoc request with WRPRCs of different relying parties fails the registration" {
+        val fixture = buildWrpFixture(wrpIdentifier = INTERMEDIARY)
+        val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+        val other = buildWrpPayload("LEIXG-ANOTHER-RELYING-PARTY").copy(intermediary = WrpIntermediary(INTERMEDIARY))
+        val request = fixture.isoRequest(
+            fixture.docRequestWithWrprc(payload = intermediatedPayload()),
+            transcript,
+            fixture.docRequestWithWrprc(payload = other),
+        )
+
+        fixture.validator().validate(request, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                .shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+        }
     }
 
     "a WRPRC registering all elements of an array authorizes requests for each of them, not for the array" {
@@ -562,6 +629,13 @@ private suspend fun WrpFixture.request(
 
 private const val PID_VCT = "urn:eudi:pid:1"
 
+private const val RELYING_PARTY = "LEIXG-RELYING-PARTY"
+private const val INTERMEDIARY = "LEIXG-INTERMEDIARY"
+
+/** A WRPRC of [RELYING_PARTY] acting through [intermediary] (ETSI TS 119 475 V1.2.1, 4.5, Table 10). */
+private fun intermediatedPayload(intermediary: String = INTERMEDIARY) =
+    buildWrpPayload(RELYING_PARTY).copy(intermediary = WrpIntermediary(sub = intermediary))
+
 /** A DCQL request for an SD-JWT VC of [PID_VCT] with the claims at [paths]. */
 private fun sdJwtRequest(vararg paths: DCQLClaimsPathPointer) = CredentialPresentationRequest.DCQLRequest(
     DCQLQuery(
@@ -616,9 +690,10 @@ private suspend fun WrpFixture.proximityRequest(transcript: SessionTranscript): 
 private suspend fun WrpFixture.isoRequest(
     docRequest: DocRequest,
     transcript: SessionTranscript,
+    vararg otherDocRequests: DocRequest,
     signingKey: KeyMaterial = wrpKey,
 ): RequestParametersFrom.IsoMdocDcApi {
-    val unsigned = DeviceRequest(Version(1, 1), docRequests = arrayOf(docRequest))
+    val unsigned = DeviceRequest(Version(1, 1), docRequests = arrayOf(docRequest, *otherDocRequests))
     val readerAuth = readerAuthAll(unsigned, transcript, signingKey, wrpacChain)
     return RequestParametersFrom.IsoMdocDcApi(
         parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(

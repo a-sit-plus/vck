@@ -145,11 +145,15 @@ class IssuerMetadataValidator @JvmOverloads constructor(
                 untrustedMetadata = untrustedMetadata,
                 untrustedRegistration = untrustedRegistration,
                 // The required WRPRC is only accepted if linked to the identifier of a WRPAC, whatever the policy
-                issuer = ValidatedCredentialIssuer(
-                    accessCertificateChain = checkNotNull(chain) { "Accepted metadata without x5c" },
-                    identifier = checkNotNull(accessCertificate?.identifier) { "Accepted WRPAC without identifier" },
-                    registrationCertificate = registration.getOrThrow().payload,
-                ),
+                issuer = checkNotNull(accessCertificate?.identifier) { "Accepted WRPAC without identifier" }.let {
+                    val payload = registration.getOrThrow().payload
+                    ValidatedCredentialIssuer(
+                        accessCertificateChain = checkNotNull(chain) { "Accepted metadata without x5c" },
+                        identifier = it,
+                        registrationCertificate = payload,
+                        intermediated = payload.isPresentedByIntermediary(it),
+                    )
+                },
             )
         } else IssuerMetadataValidation(
             report = report,
@@ -270,8 +274,16 @@ data class IssuerMetadataValidation(
 data class ValidatedCredentialIssuer(
     /** The access certificate (WRPAC) the metadata are signed with. */
     val accessCertificateChain: List<@Serializable(with = Base64X509CertificateSerializer::class) X509Certificate>,
-    /** The identifier of the provider in its WRPAC, which its WRPRC is issued to. */
+    /**
+     * The identifier in the WRPAC: of the provider, which its WRPRC is issued to, or of the intermediary its WRPRC
+     * names, if [intermediated].
+     */
     val identifier: WrpacIdentifier,
     /** What the provider is registered for, from the WRPRC in its metadata. */
     val registrationCertificate: WrpPayload,
+    /**
+     * Whether an intermediary signed the metadata with its own WRPAC ([accessCertificateChain], [identifier]), on
+     * behalf of the provider of [registrationCertificate] (ETSI TS 119 475 V1.2.1, 4.5, Table 10).
+     */
+    val intermediated: Boolean = false,
 )

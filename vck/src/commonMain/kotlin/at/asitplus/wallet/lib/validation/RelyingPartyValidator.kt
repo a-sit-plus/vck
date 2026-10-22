@@ -271,10 +271,13 @@ class RelyingPartyValidator @JvmOverloads constructor(
             .filter { (it.second.checks as RegistrationCertificateChecks).parsing == Passed }
             .map { it.first.payload }
         val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
+            val identifier = access.evaluation.identifier
             ValidatedRelyingParty(
                 accessCertificateChain = requireNotNull(access.chain),
-                identifier = access.evaluation.identifier,
+                identifier = identifier,
                 registrationCertificates = untrustedRegistrations,
+                intermediated = identifier != null &&
+                        untrustedRegistrations.any { it.isPresentedByIntermediary(identifier) },
             )
         } else null
         return RelyingPartyValidationResult(report, relyingParty, untrustedRegistrations)
@@ -369,20 +372,29 @@ class RelyingPartyValidator @JvmOverloads constructor(
             if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
                 throw MissingRegistrationCertificateException("No DocRequest contains a registration certificate")
             }
-            deviceRequest.docRequests.map { docRequest ->
-                val encoded = docRequest.itemsRequest.value.requestInfo?.euWrprc
-                    ?: throw InvalidRegistrationCertificateException(
-                        "A DocRequest has no registration certificate, while others have one"
-                    )
-                val certificate = catchingUnwrapped {
-                    val cose = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(encoded)
-                    WrpRegistrationCertificate.WrpCwtRegistrationCertificate(
-                        cose = cose,
-                        payload = parseWrprcCose(cose),
-                    )
-                }.getOrElse { throw InvalidRegistrationCertificateException("A WRPRC can not be parsed", it) }
-                certificate to WrpCredentialRequest.WrpDocRequest(docRequest)
-            }.groupBy({ it.first }, { it.second })
+            val certificates: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>> =
+                deviceRequest.docRequests.map { docRequest ->
+                    val encoded = docRequest.itemsRequest.value.requestInfo?.euWrprc
+                        ?: throw InvalidRegistrationCertificateException(
+                            "A DocRequest has no registration certificate, while others have one"
+                        )
+                    val certificate = catchingUnwrapped {
+                        val cose = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(encoded)
+                        WrpRegistrationCertificate.WrpCwtRegistrationCertificate(
+                            cose = cose,
+                            payload = parseWrprcCose(cose),
+                        )
+                    }.getOrElse { throw InvalidRegistrationCertificateException("A WRPRC can not be parsed", it) }
+                    certificate to WrpCredentialRequest.WrpDocRequest(docRequest)
+                }.groupBy({ it.first }, { it.second })
+            // The WRPAC of an intermediary is associated to the one relying party it acts for (CIR (EU) 2025/848,
+            // Annex I, point 16, and Annex IV, point 3(k), as amended by CIR (EU) 2026/1730), and without an
+            // intermediary, every WRPRC is issued to the subject of the WRPAC
+            if (certificates.keys.map { it.payload.subjectIdentifier }.distinct().size > 1)
+                throw InvalidRegistrationCertificateException(
+                    "The WRPRCs of the request identify different relying parties"
+                )
+            certificates
         }
         return ExtractedRequest(
             accessCertificateChains = reader.getOrNull()?.chains.orEmpty(),
@@ -478,10 +490,18 @@ data class RelyingPartyValidationResult(
 data class ValidatedRelyingParty(
     val accessCertificateChain: CertificateChain,
     /**
-     * The identifier of the relying party in its WRPAC, which every WRPRC is issued to. `null` for a reader without
-     * WRPRCs, accepted with [RegistrationPolicy.ValidateIfPresent], whose certificate is no WRPAC.
+     * The identifier in the WRPAC: of the relying party, which every WRPRC is issued to, or of the intermediary that
+     * every WRPRC names, if [intermediated]. `null` for a reader without WRPRCs, accepted with
+     * [RegistrationPolicy.ValidateIfPresent], whose certificate is no WRPAC.
      */
     val identifier: WrpacIdentifier?,
     /** What the relying party is registered for, e.g. to show its name and its purposes to the user. */
     val registrationCertificates: List<WrpPayload>,
+    /**
+     * Whether an intermediary authenticated the request with its own WRPAC ([accessCertificateChain], [identifier]),
+     * on behalf of the relying party of [registrationCertificates] (ETSI TS 119 475 V1.2.1, 4.5, Table 10). A wallet
+     * displays the information of the WRPAC (CIR (EU) 2024/2982, Article 3(5), as amended by CIR (EU) 2026/1731),
+     * but not the trade names of the intermediary (ARF Annex 2, RPI_07), and logs both (ARF Annex 2, DASH_03).
+     */
+    val intermediated: Boolean = false,
 )

@@ -169,7 +169,11 @@ internal sealed interface RegistrationPurpose {
  *  - `trust`: the chain leads to one of [anchors], see [TrustRule.CHAIN_TO_ANCHOR];
  *  - `timeliness`: `iat` is not in the future, `exp` is not in the past, and the WRPRC is valid for at most
  *    [maxValidity] (GEN-5.2.4-08: not later than 12 months after `iat`);
- *  - `linkage`: `sub` is the identifier of the WRPAC (GEN-5.2.4-02);
+ *  - `linkage`: `sub` is the identifier of the WRPAC (GEN-5.2.4-02), or the WRPAC is issued to the intermediary
+ *    named in `intermediary.sub`, who presents the WRPRC of the relying party it acts for (ETSI TS 119 475 V1.2.1,
+ *    4.5, Table 10, Annex E; binding through CIR (EU) 2025/848, Annex V, point 3, as amended by CIR (EU)
+ *    2026/1730); a WRPRC naming an intermediary also links to the WRPAC of its own subject (ARF Annex 2, RPRC_17a
+ *    note a). `act.sub` of GEN-5.2.4-09 contradicts Table 10 and is not supported;
  *  - `requestAuthorization`: for [RegistrationPurpose.Presentation], every requested credential type and claim is
  *    registered, else failed with an [UnregisteredRequestException]; for [RegistrationPurpose.Issuance], one of
  *    the entitlements of attestation providers is registered (ETSI TS 119 475 V1.2.1, 4.2, A.2), as
@@ -215,6 +219,12 @@ internal suspend fun evaluateRegistrationCertificate(
         linkage = when {
             accessIdentifier == null -> Blocked(IllegalStateException("The identifier of the WRPAC is unknown"))
             payload.isLinkedTo(accessIdentifier) -> Passed
+            payload.intermediary != null -> Failed(
+                IllegalArgumentException(
+                    "Neither the sub nor the intermediary of the WRPRC is the identifier of the WRPAC"
+                )
+            )
+
             else -> Failed(IllegalArgumentException("The sub of the WRPRC is not the identifier of the WRPAC"))
         },
         requestAuthorization = catching {
@@ -232,11 +242,18 @@ internal suspend fun evaluateRegistrationCertificate(
 }
 
 /**
- * Whether this WRPRC links to the WRPAC with [accessIdentifier]: it is issued to the subject of the WRPAC, see
- * `linkage` of [evaluateRegistrationCertificate].
+ * Whether this WRPRC links to the WRPAC with [accessIdentifier]: it is issued to the subject of the WRPAC, or names
+ * it as the intermediary, see `linkage` of [evaluateRegistrationCertificate].
  */
 internal fun WrpPayload.isLinkedTo(accessIdentifier: WrpacIdentifier): Boolean =
-    accessIdentifier.identifier == subjectIdentifier
+    accessIdentifier.identifier == subjectIdentifier || accessIdentifier.identifier == intermediary?.sub
+
+/**
+ * Whether the WRPAC with [accessIdentifier] is not issued to the subject of this WRPRC, but to the intermediary it
+ * names, who presents it for the relying party it acts for (ETSI TS 119 475 V1.2.1, 4.5, Table 10).
+ */
+internal fun WrpPayload.isPresentedByIntermediary(accessIdentifier: WrpacIdentifier): Boolean =
+    subjectIdentifier != accessIdentifier.identifier && intermediary?.sub == accessIdentifier.identifier
 
 /**
  * The status of the WRPRC of [evaluation], only resolved for a WRPRC that is valid otherwise, as for credentials
