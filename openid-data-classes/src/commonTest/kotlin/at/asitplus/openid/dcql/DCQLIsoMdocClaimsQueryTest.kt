@@ -7,9 +7,10 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -61,12 +62,12 @@ val DCQLIsoMdocClaimsQueryTest by matrixSuite {
     "execution" {
         val credential = mapOf(
             "testNamespace" to mapOf(
-                "testClaimName" to 0,
-                "otherClaimName" to -1,
+                "testClaimName" to JsonPrimitive(0),
+                "otherClaimName" to JsonPrimitive(-1),
             ),
             "otherNamespace" to mapOf(
-                "testClaimName" to -1,
-                "otherClaimName" to -1
+                "testClaimName" to JsonPrimitive(-1),
+                "otherClaimName" to JsonPrimitive(-1)
             )
         )
 
@@ -85,7 +86,7 @@ val DCQLIsoMdocClaimsQueryTest by matrixSuite {
         ).executeClaimsQueryAgainstCredential(
             credentialStructure = DCQLCredentialClaimStructure.IsoMdocStructure(credential)
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.IsoMdocResult>().let {
-            it.claimValue shouldBe 0
+            it.claimValue shouldBe JsonPrimitive(0)
         }
 
         DCQLIsoMdocClaimsQuery(
@@ -106,7 +107,7 @@ val DCQLIsoMdocClaimsQueryTest by matrixSuite {
 
 
     "value matching compares the JSON value of a data element (OpenID4VP 1.0, 6.3)" - {
-        data class Case(val name: String, val claimValue: Any, val expected: DCQLExpectedClaimValue, val matches: Boolean)
+        data class Case(val name: String, val claimValue: JsonElement, val expected: DCQLExpectedClaimValue, val matches: Boolean)
         listOf(
             Case("JSON string of a full-date", JsonPrimitive("1990-01-01"), DCQLExpectedClaimValue.StringValue("1990-01-01"), true),
             Case("JSON string of another date", JsonPrimitive("1990-01-01"), DCQLExpectedClaimValue.StringValue("1990-01-02"), false),
@@ -115,9 +116,7 @@ val DCQLIsoMdocClaimsQueryTest by matrixSuite {
             Case("JSON string does not match a number", JsonPrimitive("18"), DCQLExpectedClaimValue.IntegerValue(18), false),
             Case("JSON boolean", JsonPrimitive(true), DCQLExpectedClaimValue.BooleanValue(true), true),
             Case("JSON array never matches", JsonArray(listOf(JsonPrimitive("AT"))), DCQLExpectedClaimValue.StringValue("AT"), false),
-            Case("Kotlin unsigned integer", 18u, DCQLExpectedClaimValue.IntegerValue(18), true),
-            Case("Kotlin string", "AT", DCQLExpectedClaimValue.StringValue("AT"), true),
-            Case("unconverted full-date does not match", LocalDate(1990, 1, 1), DCQLExpectedClaimValue.StringValue("1990-01-01"), false),
+            Case("JSON null never matches", JsonNull, DCQLExpectedClaimValue.StringValue("null"), false),
         ).asData(nameFn = { it.name }) test { case ->
             DCQLIsoMdocClaimsQuery(
                 path = DCQLClaimsPathPointer("namespace", "element"),

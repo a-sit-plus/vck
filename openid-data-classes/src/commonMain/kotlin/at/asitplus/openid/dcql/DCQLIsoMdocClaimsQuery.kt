@@ -3,7 +3,6 @@ package at.asitplus.openid.dcql
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
-import com.ionspin.kotlin.bignum.integer.BigInteger
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -55,7 +54,7 @@ data class DCQLIsoMdocClaimsQuery(
     ): KmmResult<DCQLClaimsQueryResult.IsoMdocResult> = catching {
         val value = credentialStructure.namespaceClaimValueMap[namespace]!![claimName]!!
         values?.let { values ->
-            val json = value.toJsonForValueMatching()
+            val json = value as? JsonPrimitive
             json != null && values.any { it.matches(json) }
         }?.let {
             if (it == false) {
@@ -69,26 +68,4 @@ data class DCQLIsoMdocClaimsQuery(
             claimValue = value,
         )
     }
-}
-
-/**
- * The JSON value of a data element for matching `values`. OpenID4VP 1.0, 6.3 requires the CBOR value of an ISO mdoc
- * to be converted to JSON first, see [DCQLCredentialClaimStructure.IsoMdocStructure]: a [JsonPrimitive] is used as it
- * is, and a Kotlin string, boolean or integer, whose conversion is unambiguous, as its JSON value. Other values, e.g.
- * a date that has not been converted, do not match.
- */
-private fun Any.toJsonForValueMatching(): JsonPrimitive? = when (this) {
-    is JsonPrimitive -> this
-    is String -> JsonPrimitive(this)
-    is Boolean -> JsonPrimitive(this)
-    is Byte -> JsonPrimitive(toLong())
-    is Short -> JsonPrimitive(toLong())
-    is Int -> JsonPrimitive(toLong())
-    is Long -> JsonPrimitive(this)
-    is UByte -> JsonPrimitive(toLong())
-    is UShort -> JsonPrimitive(toLong())
-    is UInt -> JsonPrimitive(toLong())
-    is ULong -> toString().toLongOrNull()?.let { JsonPrimitive(it) }
-    is BigInteger -> toString().toLongOrNull()?.let { JsonPrimitive(it) }
-    else -> null
 }

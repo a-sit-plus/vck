@@ -48,6 +48,8 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import kotlin.jvm.JvmInline
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 
 @JvmInline
 value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
@@ -332,8 +334,8 @@ class AuthorityKeyIdentifier(
  * implements value matching and the Credential being matched is an ISO mdoc-based credential, the CBOR value used for
  * matching MUST first be converted to JSON, following the advice given in Section 6.1 of [RFC8949]."
  *
- * A value of a type without a known JSON encoding is kept, so that the data element is still present, but it can not
- * match `values`.
+ * A value of a type without a known JSON encoding becomes [JsonNull], so that the data element is still present, but it
+ * can not match `values`.
  *
  * Limitations: this converts the decoded value, not the original CBOR item, so it approximates RFC 8949, 6.1:
  * - A value of a scheme-specific type is converted by the registered [at.asitplus.wallet.lib.JsonValueEncoder], which
@@ -347,4 +349,4 @@ class AuthorityKeyIdentifier(
  * - A bignum (tags 2 and 3), which RFC 8949 converts to a base64url string, is not converted if a scheme decoder
  *   produces a `BigInteger`, so it does not match.
  */
-private fun Any.toClaimValue(): Any = toJsonElementOrNull() ?: this
+private fun Any.toClaimValue(): JsonElement = toJsonElementOrNull() ?: JsonNull
