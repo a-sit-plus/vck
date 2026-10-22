@@ -25,7 +25,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.IssuerSigned
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferUrlParameters
@@ -70,7 +69,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer.CredentialResponse
 import at.asitplus.wallet.lib.validation.CredentialValidationInput
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
@@ -370,9 +368,151 @@ class OpenId4VciClient @JvmOverloads constructor(
     }
 
     /**
+     * Prepared credential request from [prepareCredentialRequests], to be put one-by-one into [createCredential]
+     * after fetching the client nonce
+     */
+    data class PreparedCredentialRequest(
+        /**
+         * Either the `credential_identifier` or the `credential_configuration_id` of the requested credential, still
+         * without `proofs` and `credential_response_encryption` (OpenID4VCI 1.0, 8.2).
+         */
+        val credentialRequestParameters: CredentialRequestParameters,
+        /** The configuration of the requested credential, which its proof and decoding the response depend on. */
+        val credentialFormat: SupportedCredentialFormat,
+    )
+
+    /**
+     * Prepares the credential requests the access token of [tokenResponse] grants for the credentials of
+     * [credentialFormats], each with the configuration its proof and response depend on, still without proofs and
+     * encryption. Create each request with its own `c_nonce` right before sending it with
+     * [OpenId4VciProtocolClient.credentialRequest], which adds the access token from [tokenResponse] and, for
+     * DPoP-bound tokens, the DPoP proof, and parses the response.
+     *
+     * Fails if the token grants none of [credentialFormats].
+     *
+     * @param tokenResponse from the authorization server token endpoint
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
+     * @param credentialFormats which credentials to request, picked out of
+     * [IssuerMetadata.supportedCredentialConfigurations]
+     * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
+     * may not set it in [tokenResponse]
+     */
+    fun prepareCredentialRequests(
+        tokenResponse: TokenResponseParameters,
+        metadata: IssuerMetadata,
+        credentialFormats: Collection<SupportedCredentialFormat>,
+        previouslyRequestedScope: String? = null,
+    ): KmmResult<List<PreparedCredentialRequest>> = catching {
+        prepareInternal(tokenResponse, previouslyRequestedScope, metadata, credentialFormats)
+            .ifEmpty { throw InvalidToken("Token response grants none of the selected credentials") }
+    }
+
+    /**
+     * Prepares the credential requests the access token of [tokenResponse] grants for all its credentials,
+     * each with the configuration its proof and response depend on, still without proofs and
+     * encryption. Create each request with its own `c_nonce` right before sending it with
+     * [OpenId4VciProtocolClient.credentialRequest], which adds the access token from [tokenResponse] and, for
+     * DPoP-bound tokens, the DPoP proof, and parses the response.
+     *
+     * @param tokenResponse from the authorization server token endpoint
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
+     * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
+     * may not set it in [tokenResponse]
+     */
+    fun prepareCredentialRequests(
+        tokenResponse: TokenResponseParameters,
+        metadata: IssuerMetadata,
+        previouslyRequestedScope: String? = null,
+    ): KmmResult<List<PreparedCredentialRequest>> = catching {
+        prepareInternal(tokenResponse, previouslyRequestedScope, metadata, null)
+            .ifEmpty { throw InvalidToken("Token response grants no credentials") }
+    }
+
+    private fun prepareInternal(
+        tokenResponse: TokenResponseParameters,
+        previouslyRequestedScope: String?,
+        metadata: IssuerMetadata,
+        credentialFormats: Collection<SupportedCredentialFormat>?
+    ): List<PreparedCredentialRequest> {
+        val authorizationDetails = tokenResponse.authorizationDetails
+        val scope = tokenResponse.scope ?: previouslyRequestedScope
+        val prepared = if (authorizationDetails != null) {
+            authorizationDetails.filterIsInstance<OpenIdAuthorizationDetails>()
+                .flatMap { it.toPreparedCredentialRequests(metadata, credentialFormats) }
+        } else if (scope != null) {
+            scope.split(" ").filter(String::isNotBlank).flatMap { singleScope ->
+                metadata.supportedCredentialConfigurations
+                    .filter { it.value.scope == singleScope && (credentialFormats == null || it.value in credentialFormats) }
+                    .keys
+            }.distinct().map {
+                PreparedCredentialRequest(
+                    credentialRequestParameters = CredentialRequestParameters(credentialConfigurationId = it),
+                    credentialFormat = metadata.supportedCredentialConfigurations.getValue(it),
+                )
+            }
+        } else {
+            throw InvalidToken("Token response contains neither authorization_details nor scope")
+        }
+        return prepared
+    }
+
+    /**
+     * Prepares one credential request per entry of [credentialConfigurationIds], each with its configuration from
+     * [IssuerMetadata.supportedCredentialConfigurations] of [metadata], still without proofs and encryption, see
+     * [createCredential].
+     *
+     * Only use this when the token response contained no `credential_identifiers` in its `authorization_details`,
+     * because then the requests have to use those, and `credential_configuration_id` "MUST NOT be present"
+     * (OpenID4VCI 1.0, 8.2). Otherwise, use the overload accepting [TokenResponseParameters].
+     *
+     * Fails for an identifier that [metadata] does not list.
+     *
+     * @param credentialConfigurationIds the exact `credential_configuration_id`s to request, keys of
+     * [IssuerMetadata.supportedCredentialConfigurations]
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
+     */
+    fun prepareCredentialRequests(
+        credentialConfigurationIds: Set<String>,
+        metadata: IssuerMetadata,
+    ): KmmResult<List<PreparedCredentialRequest>> = catching {
+        credentialConfigurationIds.map {
+            PreparedCredentialRequest(
+                credentialRequestParameters = CredentialRequestParameters(credentialConfigurationId = it),
+                credentialFormat = metadata.supportedCredentialConfigurations[it]
+                    ?: throw UnknownCredentialConfiguration(it),
+            )
+        }
+    }
+
+    /**
+     * The credential requests these authorization details of a token response grant, if [credentialFormats] contains
+     * the configuration of their `credential_configuration_id`, which is REQUIRED (OpenID4VCI 1.0, 5.1.1): one per
+     * `credential_identifier` of that configuration (6.2), sent without the `credential_configuration_id`, which
+     * "MUST NOT be present" then (8.2), or else one for the `credential_configuration_id`.
+     */
+    private fun OpenIdAuthorizationDetails.toPreparedCredentialRequests(
+        metadata: IssuerMetadata,
+        credentialFormats: Collection<SupportedCredentialFormat>?,
+    ): List<PreparedCredentialRequest> {
+        val configurationId = credentialConfigurationId?.takeIf { it.isNotEmpty() }
+            ?: throw InvalidToken("Authorization details contain no credential_configuration_id")
+        val format = metadata.supportedCredentialConfigurations[configurationId]
+            ?.takeIf { credentialFormats == null || it in credentialFormats }
+            ?: return listOf()
+        val parameters = credentialIdentifiers?.takeIf { it.isNotEmpty() }
+            ?.map { CredentialRequestParameters(credentialIdentifier = it) }
+            ?: listOf(CredentialRequestParameters(credentialConfigurationId = configurationId))
+        return parameters.map { PreparedCredentialRequest(it, format) }
+    }
+
+    /**
      * Creates the credential request to be sent to the credential issuer.
      * Send each request with [OpenId4VciProtocolClient.credentialRequest], which adds the access token from
      * [tokenResponse] and, for DPoP-bound tokens, the DPoP proof, and parses the response.
+     *
+     * Creates all requests with the same [clientNonce]. With a credential issuer that accepts each `c_nonce` only once,
+     * use [prepareCredentialRequests], and create each request with its own `c_nonce` with the overload accepting a
+     * [PreparedCredentialRequest] instead.
      *
      * @param tokenResponse from the authorization server token endpoint
      * @param metadata the issuer's metadata, see [IssuerMetadata]
@@ -391,14 +531,14 @@ class OpenId4VciClient @JvmOverloads constructor(
         previouslyRequestedScope: String? = null,
         clientId: String = defaultClientId,
     ): KmmResult<Collection<CredentialRequest>> = catching {
-        createCredentialRequestInternal(
+        prepareCredentialRequests(
             tokenResponse = tokenResponse,
             metadata = metadata,
-            credentialFormat = credentialFormat,
-            clientNonce = clientNonce,
-            previouslyRequestedScope = previouslyRequestedScope,
-            clientId = clientId,
+            credentialFormats = setOf(credentialFormat),
+            previouslyRequestedScope = previouslyRequestedScope
         ).getOrThrow().map {
+            it.withProofAndEncryption(metadata, clientNonce, clientId)
+        }.map {
             encryptionService.wrapCredentialRequest(it, metadata).getOrThrow()
         }
     }
@@ -426,33 +566,44 @@ class OpenId4VciClient @JvmOverloads constructor(
         clientNonce: String? = null,
         clientId: String = defaultClientId,
     ): KmmResult<CredentialRequest> = catching {
-        val credentialFormat = metadata.supportedCredentialConfigurations[credentialConfigurationId]
-            ?: throw UnknownCredentialConfiguration(credentialConfigurationId)
-        CredentialRequestParameters(credentialConfigurationId = credentialConfigurationId)
-            .withProofAndEncryption(metadata, credentialFormat, clientNonce, clientId)
-            .also { Napier.i("createCredentialRequest returns $it") }
-            .let { encryptionService.wrapCredentialRequest(it, metadata).getOrThrow() }
+        createCredential(
+            request = prepareCredentialRequests(setOf(credentialConfigurationId), metadata).getOrThrow().single(),
+            metadata = metadata,
+            clientNonce = clientNonce,
+            clientId = clientId,
+        ).getOrThrow()
     }
 
-    private suspend fun createCredentialRequestInternal(
-        tokenResponse: TokenResponseParameters,
+    /**
+     * Creates the credential request for [request], prepared with [prepareCredentialRequests], with a proof for its
+     * [PreparedCredentialRequest.credentialFormat] (see [ProofCreator]) and, if the credential issuer supports it, the
+     * encryption of request and response (OpenID4VCI 1.0, 10). Create it right before sending it with
+     * [OpenId4VciProtocolClient.credentialRequest], each with a fresh [clientNonce], as the credential issuer decides
+     * how long a `c_nonce` can be used (13.8), and may accept each one only once.
+     *
+     * @param request one of the requests from [prepareCredentialRequests]
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
+     * @param clientNonce if required by the issuer (see [IssuerMetadata.nonceEndpointUrl]),
+     * the value from there, exactly [ClientNonceResponse.clientNonce]
+     * @param clientId the `client_id` of the OAuth 2.0 client, used as the issuer of proof JWTs
+     */
+    suspend fun createCredential(
+        request: PreparedCredentialRequest,
         metadata: IssuerMetadata,
-        credentialFormat: SupportedCredentialFormat,
         clientNonce: String? = null,
-        previouslyRequestedScope: String? = null,
-        clientId: String,
-    ): KmmResult<Collection<CredentialRequestParameters>> = catching {
-        tokenResponse.toCredentialRequestParameters(metadata, credentialFormat, previouslyRequestedScope)
-            .map { it.withProofAndEncryption(metadata, credentialFormat, clientNonce, clientId) }
-            .also { Napier.i("createCredentialRequest returns $it") }
+        clientId: String = defaultClientId,
+    ): KmmResult<CredentialRequest> = catching {
+        encryptionService.wrapCredentialRequest(
+            request.withProofAndEncryption(metadata, clientNonce, clientId),
+            metadata
+        ).getOrThrow()
     }
 
-    private suspend fun CredentialRequestParameters.withProofAndEncryption(
+    private suspend fun PreparedCredentialRequest.withProofAndEncryption(
         metadata: IssuerMetadata,
-        credentialFormat: SupportedCredentialFormat,
         clientNonce: String?,
         clientId: String,
-    ): CredentialRequestParameters = copy(
+    ): CredentialRequestParameters = credentialRequestParameters.copy(
         proofs = createCredentialProof(metadata, credentialFormat, clientId, clientNonce),
         credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
     )
@@ -492,20 +643,6 @@ class OpenId4VciClient @JvmOverloads constructor(
             ?: IllegalArgumentException("No proof creator for the supported proof types $requiredProofTypes")
     }
 
-    private fun TokenResponseParameters.toCredentialRequestParameters(
-        metadata: IssuerMetadata,
-        credentialFormat: SupportedCredentialFormat,
-        previouslyRequestedScope: String?
-    ): Collection<CredentialRequestParameters> = if (authorizationDetails != null) {
-        authorizationDetails!!.toCredentialRequestParameters()
-    } else if (scope != null) {
-        scope!!.mapScopeToCredentialRequestParameters(metadata, credentialFormat)
-    } else if (previouslyRequestedScope != null) {
-        previouslyRequestedScope.mapScopeToCredentialRequestParameters(metadata, credentialFormat)
-    } else {
-        throw InvalidToken("Can't parse token: $this")
-    }
-
     /**
      * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
      * rejecting encrypted responses because they require the originating [CredentialRequest].
@@ -515,7 +652,7 @@ class OpenId4VciClient @JvmOverloads constructor(
                 "encrypted one: pass the CredentialRequest to decodeCredentialResponse, and prepare the storage of " +
                 "each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which validates it",
     )
-    suspend fun parseCredentialResponse(
+    fun parseCredentialResponse(
         response: String,
         isEncrypted: Boolean,
         representation: CredentialRepresentation,
@@ -603,7 +740,7 @@ class OpenId4VciClient @JvmOverloads constructor(
                 "encrypted one: pass the CredentialRequest to decodeCredentialResponse, and prepare the storage of " +
                 "each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which validates it",
     )
-    suspend fun parseCredentialResponse(
+    fun parseCredentialResponse(
         response: CredentialResponse,
         representation: CredentialRepresentation,
         scheme: CredentialScheme,
@@ -668,40 +805,6 @@ class OpenId4VciClient @JvmOverloads constructor(
 
     private fun String?.shouldBePresent(): String =
         this ?: throw InvalidEncryptionParameters("Credential request contains no response encryption key id")
-
-    private fun Set<AuthorizationDetails>.toCredentialRequestParameters(): List<CredentialRequestParameters> =
-        filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
-            if (it.credentialIdentifiers != null && it.credentialIdentifiers?.isNotEmpty() == true) {
-                it.credentialIdentifiers!!.map { CredentialRequestParameters(credentialIdentifier = it) }
-            } else if (it.credentialConfigurationId != null && it.credentialConfigurationId?.isNotEmpty() == true) {
-                listOf(CredentialRequestParameters(credentialConfigurationId = it.credentialConfigurationId!!))
-            } else throw InvalidToken("Invalid authorization details: $it")
-        }
-
-    private fun String.mapScopeToCredentialRequestParameters(
-        metadata: IssuerMetadata,
-        credentialFormat: SupportedCredentialFormat,
-    ): Set<CredentialRequestParameters> = mapScopeToCredentialConfigurationIds(metadata, credentialFormat)
-        .map { CredentialRequestParameters(credentialConfigurationId = it) }
-        .toSet()
-
-    private fun String.mapScopeToCredentialConfigurationIds(
-        metadata: IssuerMetadata,
-        credentialFormat: SupportedCredentialFormat,
-    ): Set<String> {
-        if (credentialFormat.scope == null)
-            throw UnknownCredentialConfiguration("Credential does not support scope: $credentialFormat")
-        val scopes = split(" ").filter(String::isNotBlank)
-        if (credentialFormat.scope !in scopes)
-            throw UnknownCredentialConfiguration(this)
-        return scopes.mapNotNull { singleScope ->
-            metadata.supportedCredentialConfigurations.entries
-                .firstOrNull { it.value.scope == singleScope && it.value.format == credentialFormat.format }
-                ?.key
-        }.toSet().ifEmpty {
-            throw UnknownCredentialConfiguration(this)
-        }
-    }
 
     /** An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4). */
     @Throws(Exception::class)

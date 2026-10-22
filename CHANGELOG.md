@@ -439,7 +439,20 @@ Release 9.0.0 (unreleased):
       `selectProofJwtKeyBinding`, and `clock`, which creates a `JwtProofCreator` of them, followed by an
       `AttestationProofCreator` if `loadKeyAttestation` is set, as before
     - Extend `KeyAttestationInput` to contain the requirements of the issuer as `KeyAttestationRequired`
-      from issuer metadata
+      from issuer metadata, and deprecate `KeyAttestationInput.preferredKeyStorageStatusPeriod`, use
+      `requirements?.preferredTtl` instead
+    - Add `OpenId4VciClient.prepareCredentialRequests(tokenResponse, metadata, credentialFormats, ...)`, preparing one
+      `PreparedCredentialRequest` per credential the access token grants, each with the configuration of its
+      `credential_configuration_id` (OpenID4VCI 1.0, 5.1.1), or of its `scope`, which its proof and the decoding of its
+      response depend on. Overloads prepare every credential the token grants, or the given
+      `credentialConfigurationIds`. Create each request with `createCredential(request, metadata, clientNonce, ...)`
+      right before sending it, with a proof for its own configuration and its own `c_nonce`, so that credentials of
+      different formats can be requested with one access token, also from a credential issuer that accepts each
+      `c_nonce` only once
+    - Fix: `OpenId4VciClient.createCredential(tokenResponse, metadata, credentialFormat, ...)` creates requests only for
+      the credentials of `credentialFormat` the token grants, instead of for every credential it grants with a proof
+      for `credentialFormat`, and fails if it grants none of them. Authorization details of the token response without
+      a `credential_configuration_id`, which is REQUIRED (5.1.1), are rejected
     - Fix: Proof JWTs of `OpenId4VciKtorClient` name the `client_id` of the OAuth 2.0 client that requested the token,
       instead of the one of `OpenId4VciClient`, which differed when the OAuth 2.0 client was passed separately
     - Add a constructor to `OpenId4VciKtorClient` taking the app's ktor `HttpClient`, the `OAuth2Client` (the only
