@@ -202,6 +202,12 @@ sealed interface DCQLCredentialQuery {
                 "claim_sets MUST NOT be present if claims is absent."
             }
         }
+        // OpenID4VP 1.0, 6.1: claim_sets: "OPTIONAL. A non-empty array containing arrays of identifiers for elements in
+        // claims that specifies which combinations of claims for the Credential are requested."
+        val claimIds = claims?.mapNotNull { it.id }?.toSet().orEmpty()
+        claimSets?.flatten()?.forEach {
+            require(it in claimIds) { "`claim_sets` references an unknown Claims Query: $it" }
+        }
     }
 
     /**
@@ -323,7 +329,9 @@ sealed interface DCQLCredentialQuery {
 
         val successCombination = requestedClaimsQueryCombinations.firstNotNullOf { claimQueryCombination ->
             catching {
-                claimQueryCombination.map { claimQuery ->
+                // OpenID4VP 1.0, 6.1: claims: "Verifiers MUST NOT point to the same claim more than once in a single
+                // query. Wallets SHOULD ignore such duplicate claim queries."
+                claimQueryCombination.distinctBy { it.path }.map { claimQuery ->
                     claimQuery.executeClaimsQueryAgainstCredential(
                         credentialStructure = credentialStructure,
                     ).getOrThrow()

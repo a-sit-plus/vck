@@ -29,6 +29,10 @@ data class DCQLCredentialSetQuery(
     @SerialName("required")
     val required: Boolean = true,
 ) {
+    init {
+        require(options.all { it.isNotEmpty() }) { "Each element of `options` must be a non-empty array." }
+    }
+
     fun checkSubmissionRequirements(
         credentialSubmissions: Set<DCQLCredentialQueryIdentifier>,
     ): KmmResult<Unit> = catching {

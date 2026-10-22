@@ -26,7 +26,7 @@ val DCQLSdJwtCredentialQueryTest by matrixSuite {
                     path = DCQLClaimsPathPointer(null)
                 )
             ),
-            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(listOf())
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(listOf("urn:eudi:pid:1"))
         )
 
         val expectedJsonObject = buildJsonObject {
@@ -37,7 +37,7 @@ val DCQLSdJwtCredentialQueryTest by matrixSuite {
             )
             put(DCQLCredentialQuery.SerialNames.META,
                 buildJsonObject {
-                    put(DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES, buildJsonArray {})
+                    put(DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES, buildJsonArray { add(JsonPrimitive("urn:eudi:pid:1")) })
                 })
             put(DCQLCredentialQuery.SerialNames.CLAIMS, buildJsonArray {
                 add(buildJsonObject {

@@ -38,6 +38,7 @@ data class DCQLIsoMdocClaimsQuery(
     }
 
     init {
+        requireNonEmptyValues()
         require(path.size == 2) { "`path` needs to contain exactly 2 elements " }
         require(path.all { it is NameSegment }) { "`path` must contain name segments only" }
     }

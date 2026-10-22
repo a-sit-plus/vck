@@ -18,6 +18,10 @@ data class DCQLAmbiguousClaimsQuery(
     @SerialName(DCQLClaimsQuery.SerialNames.PATH)
     override val path: DCQLClaimsPathPointer
 ) : DCQLClaimsQuery {
+    init {
+        requireNonEmptyValues()
+    }
+
     override fun executeClaimsQueryAgainstCredential(
         credentialStructure: DCQLCredentialClaimStructure,
     ): KmmResult<DCQLClaimsQueryResult> = catching {

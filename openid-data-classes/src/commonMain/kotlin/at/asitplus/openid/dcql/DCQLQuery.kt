@@ -35,6 +35,15 @@ data class DCQLQuery(
     @SerialName(SerialNames.CREDENTIAL_SETS)
     val credentialSets: NonEmptyList<DCQLCredentialSetQuery>? = null,
 ) {
+    init {
+        // OpenID4VP 1.0, 6.2: "The value of each element in the options array is a non-empty array of identifiers which
+        // reference elements in credentials."
+        val credentialQueryIds = credentials.map { it.id }.toSet()
+        credentialSets?.flatMap { it.options }?.flatten()?.forEach {
+            require(it in credentialQueryIds) { "`credential_sets` references an unknown Credential Query: $it" }
+        }
+    }
+
     val requestedCredentialSetQueries: NonEmptyList<DCQLCredentialSetQuery>
         get() = credentialSets ?: nonEmptyListOf(
             DCQLCredentialSetQuery(

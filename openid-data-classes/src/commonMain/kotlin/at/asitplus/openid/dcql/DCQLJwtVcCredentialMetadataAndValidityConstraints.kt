@@ -36,6 +36,10 @@ data class DCQLJwtVcCredentialMetadataAndValidityConstraints(
     @SerialName(SerialNames.TYPE_VALUES)
     val typeValues: NonEmptyList<List<String>>
 ) : DCQLCredentialMetadataAndValidityConstraints {
+    init {
+        require(typeValues.all { it.isNotEmpty() }) { "Each element of `type_values` must be a non-empty array." }
+    }
+
     object SerialNames {
         const val TYPE_VALUES = "type_values"
     }

@@ -21,6 +21,9 @@ data class DCQLJsonClaimsQuery(
     @SerialName(DCQLClaimsQuery.SerialNames.PATH)
     override val path: DCQLClaimsPathPointer
 ) : DCQLClaimsQuery {
+    init {
+        requireNonEmptyValues()
+    }
 
     fun executeClaimsQueryAgainstCredential(
         credentialStructure: DCQLCredentialClaimStructure.JsonBasedStructure,

@@ -17,6 +17,10 @@ data class DCQLSdJwtCredentialMetadataAndValidityConstraints(
     @SerialName(SerialNames.VCT_VALUES)
     val vctValues: List<String>
 ) : DCQLCredentialMetadataAndValidityConstraints {
+    init {
+        require(vctValues.isNotEmpty()) { "`vct_values` must be a non-empty array." }
+    }
+
     object SerialNames {
         const val VCT_VALUES = "vct_values"
     }

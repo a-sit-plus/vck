@@ -109,4 +109,10 @@ sealed interface DCQLClaimsQuery {
     }
 }
 
-
+/**
+ * OpenID4VP 1.0, 6.3: values: "OPTIONAL A non-empty array of strings, integers or boolean values that specifies the
+ * expected values of the claim."
+ */
+internal fun DCQLClaimsQuery.requireNonEmptyValues() = require(values?.isNotEmpty() != false) {
+    "`values` must be a non-empty array if present."
+}
