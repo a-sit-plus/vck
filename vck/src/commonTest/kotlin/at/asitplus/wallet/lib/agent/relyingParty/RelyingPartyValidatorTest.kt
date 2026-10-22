@@ -1,9 +1,14 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.NFCHandover
 import at.asitplus.dcapi.request.IsoMdocRequest
+import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
+import at.asitplus.etsi.relyingParty.WrpCredential
+import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
@@ -16,6 +21,17 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.VerifierInfo
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.IndexSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -24,6 +40,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.relyingParty.InvalidRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.UnsupportedWrpRequestException
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -53,12 +70,12 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.encodeToByteArray
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.encodeToByteArray
 
 val RelyingPartyValidatorTest by matrixSuite {
 
@@ -74,6 +91,106 @@ val RelyingPartyValidatorTest by matrixSuite {
             registrationCertificates.shouldBeSingleton().first() shouldBe payload
         }
         result.untrustedRegistrations shouldBe listOf(payload)
+    }
+
+    "a WRPRC registering all elements of an array authorizes requests for each of them, not for the array" {
+        val fixture = buildWrpFixture()
+        val nationalities = WrpCredential(
+            format = "dc+sd-jwt",
+            meta = WrpCredentialMeta(vctValues = listOf(PID_VCT)),
+            claim = listOf(
+                WrpClaim(listOf(WrpClaimPathSegment.Name("nationalities"), WrpClaimPathSegment.AllElements))
+            ),
+        )
+        val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(nationalities))
+        val elements = sdJwtRequest(
+            DCQLClaimsPathPointer(nonEmptyListOf(NameSegment("nationalities"), IndexSegment(0U))),
+            DCQLClaimsPathPointer(nonEmptyListOf(NameSegment("nationalities"), IndexSegment(1U))),
+        )
+        val array = sdJwtRequest(DCQLClaimsPathPointer("nationalities"))
+
+        fixture.validate(fixture.request(payload, elements)).apply {
+            report.decision shouldBe ACCEPTED
+            relyingParty.shouldNotBeNull().registrationCertificates.single() shouldBe payload
+        }
+        fixture.validate(fixture.request(payload, array)).apply {
+            report.decision shouldBe REJECTED
+            registrationChecks().requestAuthorization.shouldBeInstanceOf<CheckOutcome.Failed>()
+                .throwable.shouldBeInstanceOf<UnregisteredRequestException>()
+        }
+    }
+
+    "only the root vct is exempt from claim registration" - {
+        listOf(
+            DCQLClaimsPathPointer("vct") to ACCEPTED,
+            DCQLClaimsPathPointer("address", "vct") to REJECTED,
+        ).asData() test { (path, decision) ->
+            val fixture = buildWrpFixture()
+            val credential = WrpCredential(
+                format = "dc+sd-jwt",
+                meta = WrpCredentialMeta(vctValues = listOf(PID_VCT)),
+                claim = listOf(WrpClaim.named("given_name")),
+            )
+            val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
+
+            fixture.validate(fixture.request(payload, sdJwtRequest(path))).report.decision shouldBe decision
+        }
+    }
+
+    "registered JSON paths cover only their selected claims and descendants" - {
+        listOf(
+            Triple("[\"address\"]", "[\"address\"]", ACCEPTED),
+            Triple("[\"address\"]", "[\"address\",\"locality\"]", ACCEPTED),
+            Triple("[\"address\",\"locality\"]", "[\"address\"]", REJECTED),
+            Triple("[\"degrees\",null,\"type\"]", "[\"degrees\",1,\"type\"]", ACCEPTED),
+            Triple("[\"degrees\",null,\"type\"]", "[\"degrees\",null,\"type\"]", ACCEPTED),
+            Triple("[\"degrees\",null,\"type\"]", "[\"degrees\",\"1\",\"type\"]", REJECTED),
+            Triple("[\"degrees\",1,\"type\"]", "[\"degrees\",null,\"type\"]", REJECTED),
+            Triple("[\"degrees\",1,\"type\"]", "[\"degrees\",0,\"type\"]", REJECTED),
+            Triple("[\"degrees\",1,\"type\"]", "[\"degrees\",1,\"type\"]", ACCEPTED),
+            Triple("[\"degrees\"]", "[\"degrees\",null,\"university\"]", ACCEPTED),
+            Triple("[\"nationalities\",null]", "[\"nationalities\",null]", ACCEPTED),
+            Triple("[\"nationalities\",null]", "[\"nationalities\",0]", ACCEPTED),
+            Triple("[\"nationalities\",null]", "[\"nationalities\"]", REJECTED),
+            Triple("[\"nationalities\",0]", "[\"nationalities\",null]", REJECTED),
+            Triple("[\"age_equal_or_over\",\"18\"]", "[\"age_equal_or_over\",\"18\"]", ACCEPTED),
+        ).asData(nameFn = { (grant, request, _) -> "$grant covers $request" }) test { (grant, request, decision) ->
+            val fixture = buildWrpFixture()
+            val credential = WrpCredential(
+                format = "dc+sd-jwt",
+                meta = WrpCredentialMeta(vctValues = listOf(PID_VCT)),
+                claim = listOf(joseCompliantSerializer.decodeFromString(WrpClaim.serializer(), """{"path":$grant}""")),
+            )
+            val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
+            val path = joseCompliantSerializer.decodeFromString(DCQLClaimsPathPointer.serializer(), request)
+            val result = fixture.validate(fixture.request(payload, sdJwtRequest(path)))
+
+            result.report.decision shouldBe decision
+            if (decision == ACCEPTED) {
+                result.registrationChecks().requestAuthorization shouldBe CheckOutcome.Passed
+            } else {
+                result.registrationChecks().requestAuthorization.shouldBeInstanceOf<CheckOutcome.Failed>()
+                    .throwable.shouldBeInstanceOf<UnregisteredRequestException>()
+            }
+        }
+    }
+
+    "mdoc registration matches exactly namespace and element" - {
+        listOf(
+            "[\"$DEFAULT_DOCTYPE\",\"given_name\"]" to ACCEPTED,
+            "[\"$DEFAULT_DOCTYPE\"]" to REJECTED,
+            "[\"$DEFAULT_DOCTYPE\",null]" to REJECTED,
+            "[\"$DEFAULT_DOCTYPE\",0]" to REJECTED,
+            "[\"$DEFAULT_DOCTYPE\",\"given_name\",\"child\"]" to REJECTED,
+        ).asData() test { (grant, decision) ->
+            val fixture = buildWrpFixture()
+            val credential = defaultMdocCredential().copy(
+                claim = listOf(joseCompliantSerializer.decodeFromString(WrpClaim.serializer(), """{"path":$grant}""")),
+            )
+            val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
+            fixture.validate(fixture.request(payload, mdocDcqlRequest(claimNames = listOf("given_name"))))
+                .report.decision shouldBe decision
+        }
     }
 
     "a revoked WRPRC is rejected, with its status" {
@@ -232,7 +349,7 @@ val RelyingPartyValidatorTest by matrixSuite {
             untrustedRegistrations.shouldBeEmpty()
             // a wallet may continue past these after warning the user, but past no integrity check
             report.allNamedChecks().filterNot { it.satisfied }.map { it.name }.toSet() shouldBe
-                    setOf("requestData", "trust", "timeliness")
+                    setOf("requestData", "registration", "trust", "timeliness")
         }
     }
 
@@ -255,11 +372,47 @@ val RelyingPartyValidatorTest by matrixSuite {
 
         val result = fixture.validate(fixture.signedByWrp(parameters))
 
-        result.report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
-            .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
-            .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+        result.report.checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
+            requestData shouldBe CheckOutcome.Passed
+            registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+        }
         result.report.children.drop(1).shouldBeEmpty()
         result.accessChecks().signature shouldBe CheckOutcome.Passed
+    }
+
+    "a WRPRC that can not be parsed fails the registration of a relying party, not its request" {
+        val fixture = buildWrpFixture()
+        val parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier))
+            .copy(verifierInfo = nonEmptyListOf(VerifierInfo(REGISTRATION_CERT_FORMAT, "not-a-jws")))
+
+        fixture.validate(fixture.signedByWrp(parameters)).apply {
+            report.decision shouldBe REJECTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
+                requestData shouldBe CheckOutcome.Passed
+                registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                    .shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+            }
+            // the request is authenticated by a trusted WRPAC, so a wallet may continue after warning the user
+            report.allNamedChecks().filterNot { it.satisfied }.map { it.name } shouldBe listOf("registration")
+            untrustedRegistrations.shouldBeEmpty()
+        }
+    }
+
+    "a device request without WRPRCs fails the registration of a proximity reader, not its request" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val deviceRequest = fixture.isoRequest(mdocDocRequest(), transcript).parameters.isoMdocRequest.deviceRequest
+
+        fixture.validator().validate(deviceRequest, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            accessChecks().signature shouldBe CheckOutcome.Passed
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
+                requestData shouldBe CheckOutcome.Passed
+                registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                    .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+            }
+        }
     }
 
     "an unsigned request is not supported" {
@@ -273,6 +426,8 @@ val RelyingPartyValidatorTest by matrixSuite {
             report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
                 .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<UnsupportedWrpRequestException>()
             accessChecks().signature shouldBe CheckOutcome.NotApplicable
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
+                .shouldBeInstanceOf<CheckOutcome.Blocked>()
         }
     }
 }
@@ -311,6 +466,23 @@ private suspend fun WrpFixture.request(
     payload: WrpPayload,
     request: CredentialPresentationRequest = mdocDcqlRequest(),
 ) = signedByWrp(parameters(payload, request))
+
+private const val PID_VCT = "urn:eudi:pid:1"
+
+/** A DCQL request for an SD-JWT VC of [PID_VCT] with the claims at [paths]. */
+private fun sdJwtRequest(vararg paths: DCQLClaimsPathPointer) = CredentialPresentationRequest.DCQLRequest(
+    DCQLQuery(
+        credentials = DCQLCredentialQueryList(
+            nonEmptyListOf(
+                DCQLSdJwtCredentialQuery(
+                    id = DCQLCredentialQueryIdentifier("pid"),
+                    meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(vctValues = listOf(PID_VCT)),
+                    claims = DCQLClaimsQueryList(paths.map { DCQLJsonClaimsQuery(path = it) }.toNonEmptyList()),
+                )
+            )
+        )
+    )
+)
 
 /** The named checks of this report and of its children. */
 private fun ValidationReport.allNamedChecks(): List<NamedCheck> = namedChecks + children.flatMap { it.allNamedChecks() }

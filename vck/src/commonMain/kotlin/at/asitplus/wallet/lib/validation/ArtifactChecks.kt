@@ -117,10 +117,18 @@ data class VerifierAttestationChecks(
  */
 data class RelyingPartyChecks(
     /**
-     * Whether the requested credentials and claims could be extracted from the request. Fails with an
-     * `UnsupportedWrpRequestException` for an unsigned request, whose WRPRCs are not bound to it.
+     * Whether the requested credentials and claims could be extracted from the request, e.g. its `client_id` and
+     * DCQL query. Fails with an `UnsupportedWrpRequestException` for an unsigned request, whose WRPRCs are not bound
+     * to it.
      */
     val requestData: CheckOutcome,
+    /**
+     * Whether the request carries its WRPRCs, one in `verifier_info` of an OpenID4VP request, or one in `euWrprc` of
+     * every document request of an ISO mdoc request, and they could be parsed, failing with a
+     * `MissingRegistrationCertificateException` or an `InvalidRegistrationCertificateException` otherwise. Blocked
+     * for a request whose `requestData` failed without them being extracted.
+     */
+    val registration: CheckOutcome,
 ) : ValidationChecks
 
 /**

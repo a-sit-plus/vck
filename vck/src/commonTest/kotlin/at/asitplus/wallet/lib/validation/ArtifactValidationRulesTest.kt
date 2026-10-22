@@ -118,7 +118,7 @@ private fun registrationCertificate(checks: RegistrationCertificateChecks = pass
 
 private fun relyingParty(registrationCertificates: List<ValidationReport> = listOf(registrationCertificate())) =
     ValidationReport.relyingParty(
-        checks = RelyingPartyChecks(Passed),
+        checks = RelyingPartyChecks(Passed, Passed),
         accessCertificate = accessCertificate(),
         registrationCertificates = registrationCertificates,
         evaluatedAt = evaluatedAt,
@@ -340,17 +340,25 @@ val ArtifactValidationRulesTest by matrixSuite {
 
         "failed request data extraction rejects" {
             ValidationReport.relyingParty(
-                RelyingPartyChecks(Failed(failure)), accessCertificate(), emptyList(), evaluatedAt
+                RelyingPartyChecks(Failed(failure), Passed), accessCertificate(), emptyList(), evaluatedAt
+            ).decision shouldBe REJECTED
+        }
+
+        "failed registration rejects" {
+            ValidationReport.relyingParty(
+                RelyingPartyChecks(Passed, Failed(failure)), accessCertificate(), emptyList(), evaluatedAt
             ).decision shouldBe REJECTED
         }
 
         "contains certificate reports only" {
             shouldThrow<IllegalArgumentException> {
-                ValidationReport.relyingParty(RelyingPartyChecks(Passed), keyAttestation(), emptyList(), evaluatedAt)
+                ValidationReport.relyingParty(
+                    RelyingPartyChecks(Passed, Passed), keyAttestation(), emptyList(), evaluatedAt
+                )
             }
             shouldThrow<IllegalArgumentException> {
                 ValidationReport.relyingParty(
-                    RelyingPartyChecks(Passed), accessCertificate(), listOf(accessCertificate()), evaluatedAt
+                    RelyingPartyChecks(Passed, Passed), accessCertificate(), listOf(accessCertificate()), evaluatedAt
                 )
             }
         }

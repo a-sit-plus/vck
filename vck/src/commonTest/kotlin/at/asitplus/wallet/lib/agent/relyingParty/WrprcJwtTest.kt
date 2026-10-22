@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent.relyingParty
 import at.asitplus.KmmResult
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpClaimValue
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
@@ -219,7 +220,9 @@ val WrprcJwtTest by matrixSuite {
     "WRPRC with unsupported claim values does not authorize a path-only request" {
         val fixture = buildWrpFixture()
         val credential = defaultMdocCredential().copy(
-            claim = listOf(WrpClaim(path = listOf(DEFAULT_DOCTYPE, "given_name"), values = listOf("Alice")))
+            claim = listOf(
+                WrpClaim.named(DEFAULT_DOCTYPE, "given_name").copy(values = listOf(WrpClaimValue.Text("Alice")))
+            )
         )
 
         val result = fixture.validateWrprc(
@@ -242,7 +245,7 @@ val WrprcJwtTest by matrixSuite {
             .message.shouldContain("Certificate chain is empty")
     }
 
-    "Credential request that can not be validated is invalid and does not affect other requests" {
+    "An unregistered wildcard request is invalid and does not affect other requests" {
         val fixture = buildWrpFixture()
         val mdocQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest)
             .dcqlQuery.credentials.single()
@@ -271,8 +274,7 @@ val WrprcJwtTest by matrixSuite {
             (request as WrpCredentialRequest.WrpDcqlCredentialQuery).query.id to result
         }
         requestResults.getValue(mdocQuery.id).getOrThrow().isValid() shouldBe true
-        requestResults.getValue(nullSegmentQuery.id).exceptionOrNull().shouldNotBeNull()
-            .message.shouldContain("NullSegment")
+        requestResults.getValue(nullSegmentQuery.id).getOrThrow().isValid() shouldBe false
         @Suppress("DEPRECATION")
         result.requestDataValidation.associate { (request, validity) ->
             (request as WrpCredentialRequest.WrpDcqlCredentialQuery).query.id to validity.isValid()

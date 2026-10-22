@@ -329,7 +329,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             .startAuthorizationResponsePreparation(fixture.walletRequest, testPresentationPolicy).getOrThrow().apply {
                 validationReport.shouldNotBeNull().apply {
                     decision shouldBe ValidationDecision.REJECTED
-                    checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                    checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
                         .shouldBeInstanceOf<CheckOutcome.Failed>()
                 }
                 // an Annex C request has no request object, so its report is the one of its relying party
@@ -384,6 +384,8 @@ private suspend fun dcapiFixture(
 ): DcapiFixture {
     val ephemeralKeyStore = DefaultMapStore<String, String>()
     val verifier = DcApiVerifier(
+        // with a certificate, so that the verifier signs the reader authentication of its requests
+        keyMaterial = EphemeralKeyWithSelfSignedCert(),
         clientIdScheme = ClientIdScheme.PreRegistered(
             clientId = "dc-api-rp",
             redirectUri = "https://verifier.example.com/callback",

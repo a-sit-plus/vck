@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
+import at.asitplus.etsi.relyingParty.WrpClaimValue
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.DocRequestInfo
 import at.asitplus.signum.indispensable.CryptoSignature
@@ -114,18 +116,45 @@ val WrprcCwtTest by matrixSuite {
         result.requestDataValidationResults.toMap().values.single().getOrThrow().isValid() shouldBe false
     }
 
-    "CWT WRPRC with unsupported claim values does not authorize a path-only request" {
-        val fixture = buildWrpFixture()
-        val credential = defaultMdocCredential().copy(
-            claim = listOf(WrpClaim(path = listOf(DEFAULT_DOCTYPE, "given_name"), values = listOf("Alice")))
-        )
+    "claim paths of a CWT WRPRC are encoded as CBOR text strings and null" {
+        val claim = WrpClaim(listOf(WrpClaimPathSegment.Name(DEFAULT_DOCTYPE), WrpClaimPathSegment.AllElements))
 
+        val encoded = coseCompliantSerializer.encodeToByteArray(WrpClaim.serializer(), claim)
+
+        coseCompliantSerializer.decodeFromByteArray(WrpClaim.serializer(), encoded) shouldBe claim
+    }
+
+    "a signed CWT with an additional numeric path still authorizes its named claims" {
+        val fixture = buildWrpFixture()
+        val credential = defaultMdocCredential().let {
+            it.copy(claim = it.claim + WrpClaim(
+                listOf(WrpClaimPathSegment.Name(DEFAULT_DOCTYPE), WrpClaimPathSegment.Index(0u))
+            ))
+        }
         val result = fixture.validateWrprcCose(
             payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential)),
-            request = mdocDocRequest(claimNames = listOf("given_name")),
-        )
+        ).getOrThrow()
 
-        result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validPayload shouldBe false
+        result.certificateValidationResults.values.single().getOrThrow().isValid() shouldBe true
+        result.requestDataValidationResults.single().second.getOrThrow().isValid() shouldBe true
+    }
+
+    "CWT WRPRC with unsupported claim values does not authorize a path-only request" - {
+        listOf(WrpClaimValue.Text("Alice"), WrpClaimValue.Integer(18), WrpClaimValue.Bool(true)).asData() test { value ->
+            val fixture = buildWrpFixture()
+            val credential = defaultMdocCredential().copy(
+                claim = listOf(
+                    WrpClaim.named(DEFAULT_DOCTYPE, "given_name").copy(values = listOf(value))
+                )
+            )
+
+            val result = fixture.validateWrprcCose(
+                payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential)),
+                request = mdocDocRequest(claimNames = listOf("given_name")),
+            )
+
+            result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validPayload shouldBe false
+        }
     }
 
     "CWT without a certificate chain is invalid and carries the cause" {
