@@ -14,6 +14,7 @@ import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
@@ -46,6 +47,8 @@ import io.ktor.http.*
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 val OAuth2ProtocolClientTest by matrixSuite {
 
@@ -87,6 +90,7 @@ val OAuth2ProtocolClientTest by matrixSuite {
                     SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
                     clientId = clientId,
                     clientKey = attestedKey.jsonWebKey,
+                    clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
                 )
             }
         },

@@ -24,6 +24,7 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.decodeFromQuery
 import at.asitplus.openid.encodeToParameters
 import at.asitplus.openid.formUrlEncode
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -56,7 +57,9 @@ import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.update
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Implements the client side of OAuth 2.0, without sending any HTTP request itself: every call returns an
@@ -104,6 +107,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
      * ([RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662)).
      */
     private val verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
+    /** Clock to use for creation timestamps of PoP JWTs. */
+    private val clock: Clock = Clock.System,
 ) {
 
     /** Used in [ClientAttestation.loadInstanceAttestation] to provide information about the authorization server. */
@@ -568,10 +573,12 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             BuildDPoPHeader(
                 signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
                 url = resourceUrl,
-                httpMethod = httpMethod.value,
+                httpMethod = httpMethod.value.uppercase(),
                 accessToken = tokenResponse.accessToken,
                 nonce = dpopNonce ?: resourceServerDpopNonces.current(resourceUrl),
-                randomSource = randomSource
+                randomSource = randomSource,
+                // Apply a bit of clock skew to avoid getting rejected by the AS
+                issuedAt = clock.now().truncateToSeconds() - 3.minutes,
             )
         } else null
         return Headers.build {
@@ -671,6 +678,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 audience = authentication.authorizationServer,
                 // nonce support must not be implemented by the AS, so we keep it optional
                 nonce = takeAttestationChallenge(resourceUrl) ?: fetchedChallenge,
+                // Apply a bit of clock skew to avoid getting rejected by the AS
+                issuedAt = clock.now().truncateToSeconds() - 3.minutes,
             )
         } else null
 
@@ -678,7 +687,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             BuildDPoPHeader(
                 signDpop = SignJwt(dpopKeyMaterial, JwsHeaderJwk()),
                 url = resourceUrl,
-                httpMethod = httpMethod.value,
+                httpMethod = httpMethod.value.uppercase(),
                 nonce = if (popMethod == ClientAttestationPopMethod.DpopCombined) {
                     takeAttestationChallenge(resourceUrl)
                         ?: authorizationServerDpopNonces.current(resourceUrl)
@@ -687,6 +696,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                     authorizationServerDpopNonces.current(resourceUrl)
                 },
                 randomSource = randomSource,
+                // Apply a bit of clock skew to avoid getting rejected by the AS
+                issuedAt = clock.now().truncateToSeconds() - 3.minutes,
             )
         } else null
 

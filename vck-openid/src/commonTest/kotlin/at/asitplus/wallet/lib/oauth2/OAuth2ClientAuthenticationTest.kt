@@ -8,6 +8,7 @@ import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -40,9 +41,11 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /** RFC 8414 issuer identifier of the AS under test, i.e. the required `aud` of client attestation PoP JWTs. */
 private const val AUTHORIZATION_SERVER = "https://wallet.a-sit.at/authorization-server"
@@ -58,7 +61,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             val clientAttestation = BuildClientAttestationJwt(
                 attesterBackend,
                 clientId = client.clientId,
-                clientKey = clientKey.jsonWebKey
+                clientKey = clientKey.jsonWebKey,
+                clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
             )
 
             val signClientAttestationPop: SignJwtFun<JsonWebToken> = SignJwt(clientKey, JwsHeaderNone())
@@ -126,6 +130,7 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
                         attesterBackend,
                         clientId = client.clientId,
                         clientKey = key.jsonWebKey,
+                        clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
                     ),
                     clientAttestationPop = BuildClientAttestationPoPJwt(
                         signJwt = SignJwt(key, JwsHeaderNone()),
@@ -504,7 +509,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             val clientAttestation = BuildClientAttestationJwt(
                 SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
                 clientId = "wrong client id",
-                clientKey = it.clientKey.jsonWebKey
+                clientKey = it.clientKey.jsonWebKey,
+                clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
             )
 
             @Suppress("DEPRECATION")
@@ -563,7 +569,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
             val clientAttestation = BuildClientAttestationJwt(
                 SignJwt(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk()),
                 clientId = it.client.clientId,
-                clientKey = it.clientKey.jsonWebKey
+                clientKey = it.clientKey.jsonWebKey,
+                clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
             )
 
             shouldThrow<OAuth2Exception> {

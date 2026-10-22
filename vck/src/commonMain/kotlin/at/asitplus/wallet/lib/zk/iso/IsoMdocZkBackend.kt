@@ -9,6 +9,8 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import kotlinx.serialization.KSerializer
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Interface for generating and loading ISO mDoc Zero-Knowledge (ZK) proofs.
@@ -90,6 +92,7 @@ interface IsoMdocZkBackend {
         requestedClaims: Collection<NormalizedJsonPath>,
         requestedZkSystemSpecs: List<ZkSystemSpec>,
         keyMaterial: KeyMaterial,
+        timestamp: Instant = Clock.System.now(),
     ): KmmResult<IsoMdocZkProof>
 
     /**
