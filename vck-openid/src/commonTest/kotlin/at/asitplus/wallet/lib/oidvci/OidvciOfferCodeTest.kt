@@ -7,6 +7,7 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -34,7 +35,7 @@ val OidvciOfferCodeTest by matrixSuite {
             val authorizationService = SimpleAuthorizationService(
                 requirePushedAuthorizationRequests = false,
                 strategy = CredentialAuthorizationServiceStrategy(
-                    credentialSchemes =  AttributeIndex.schemeSet,
+                    credentialSchemes = AttributeIndex.schemeSet,
                     mapper = mapper,
                 ),
             )
@@ -44,10 +45,10 @@ val OidvciOfferCodeTest by matrixSuite {
                     identifier = "https://issuer.example.com".toUri(),
                     randomSource = RandomSource.Default
                 ),
-                credentialSchemes =  AttributeIndex.schemeSet,
+                credentialSchemes = AttributeIndex.schemeSet,
                 credentialSchemeMapper = mapper,
             )
-            val client = OpenId4VciClient()
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 

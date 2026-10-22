@@ -21,6 +21,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidDataElements
+import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -68,7 +69,7 @@ object DummyOAuth2IssuerCredentialDataProvider : CredentialDataProviderFun {
             getAtomic(input.userInfo, input.subjectPublicKey, input.credentialRepresentation, input.credentialScheme)
         else if (input.credentialScheme.isoDocType == MDL_DOCTYPE)
             getMdl(input.userInfo, input.subjectPublicKey, input.credentialScheme)
-        else if (input.credentialScheme.isoDocType == EU_PID_DOCTYPE || input.credentialScheme.vcType == "EuPid2023")
+        else if (input.credentialScheme.isoDocType == EU_PID_DOCTYPE || input.credentialScheme.vcType == "EuPid2023" || input.credentialScheme.sdJwtType == EU_PID_SD_JWT_VCT)
             getEuPid(input.userInfo, input.subjectPublicKey, input.credentialRepresentation, input.credentialScheme)
         else throw NotImplementedError()
     }

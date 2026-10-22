@@ -2,6 +2,9 @@ package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
+import at.asitplus.data.NonEmptyList
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.IssuerMetadata
@@ -25,6 +28,7 @@ import at.asitplus.wallet.lib.oauth2.ClientAttestation
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.TokenResponseWithDpopNonce
 import at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
 import at.asitplus.wallet.lib.oidvci.LoadedIssuerMetadata
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciProtocolClient
@@ -39,6 +43,7 @@ import io.ktor.client.engine.*
 import io.ktor.client.plugins.cookies.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromByteArray
+import kotlin.coroutines.cancellation.CancellationException
 
 
 @Deprecated("Renamed", ReplaceWith("OpenId4VciKtorClient"))
@@ -88,7 +93,7 @@ class OpenId4VciKtorClient private constructor(
     constructor(
         httpClient: HttpClient,
         oauth2Client: OAuth2Client,
-        vciClient: OpenId4VciClient = OpenId4VciClient(),
+        vciClient: OpenId4VciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert()))),
         clientAttestation: ClientAttestation? = null,
         dpopKeyMaterial: KeyMaterial = clientAttestation?.keyMaterial ?: EphemeralKeyWithoutCert(),
         issuerMetadataValidator: IssuerMetadataValidator = IssuerMetadataValidator(),
@@ -219,27 +224,45 @@ class OpenId4VciKtorClient private constructor(
         credentialIssuerUrl: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         reissuingStoreEntryId: Long? = null
+    ): KmmResult<CredentialIssuanceResult.OpenUrlForAuthnRequest> = startProvisioningWithAuthRequestReturningResult(
+        credentialIssuerUrl = credentialIssuerUrl,
+        credentialIdentifierInfos = listOf(credentialIdentifierInfo).toNonEmptyList(),
+        reissuingStoreEntryId = reissuingStoreEntryId,
+    )
+
+    /**
+     * Starts the issuing process at [credentialIssuerUrl] for all of [credentialIdentifierInfos] with one
+     * authorization, like the overload for one credential, so that the user authenticates only once.
+     *
+     * @param credentialIssuerUrl URL of the credential issuer service
+     * @param credentialIdentifierInfos credentials to request, i.e. picked by user selection, all of the same
+     * credential issuer
+     * @param reissuingStoreEntryId the stored credential the new ones replace, if any, kept in the
+     * [ProvisioningContext] and returned in [CredentialIssuanceResult.Success.reissuingStoreEntryId]
+     */
+    suspend fun startProvisioningWithAuthRequestReturningResult(
+        credentialIssuerUrl: String,
+        credentialIdentifierInfos: NonEmptyList<CredentialIdentifierInfo>,
+        reissuingStoreEntryId: Long? = null
     ): KmmResult<CredentialIssuanceResult.OpenUrlForAuthnRequest> = catching {
-        Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfo")
-        val issuerMetadata = credentialIdentifierInfo.issuerMetadata
+        Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfos")
+        val issuerMetadata = credentialIdentifierInfos.first().issuerMetadata
         val authorizationServer = vci.selectAuthorizationServer(issuerMetadata, credentialIssuerUrl)
         val oauthMetadata = oauth2Client.loadAuthorizationServerMetadata(authorizationServer)
 
         oauth2Client.startAuthorization(
             oauthMetadata = oauthMetadata,
             authorizationServer = authorizationServer,
-            authorizationDetails = oid4vciClient.buildAuthorizationDetails(
-                credentialIdentifierInfo.credentialIdentifier,
-                issuerMetadata.authorizationServers
-            ),
-            scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+            authorizationDetails = credentialIdentifierInfos.authorizationDetails(issuerMetadata),
+            scope = credentialIdentifierInfos.scope(),
             issuerMetadata = issuerMetadata,
         ).getOrThrow().let {
             CredentialIssuanceResult.OpenUrlForAuthnRequest(
                 url = it.url,
                 context = ProvisioningContext(
                     state = it.state,
-                    credential = credentialIdentifierInfo,
+                    credential = credentialIdentifierInfos.first(),
+                    credentials = credentialIdentifierInfos,
                     oauthMetadata = oauthMetadata,
                     issuerMetadata = issuerMetadata,
                     reissuingStoreEntryId = reissuingStoreEntryId
@@ -266,30 +289,23 @@ class OpenId4VciKtorClient private constructor(
         Napier.i("resumeWithAuthCode")
         Napier.d("resumeWithAuthCode: $url, $context")
 
+        val credentialIdentifierInfos = context.credentials.toNonEmptyList()
         val tokenResponse = oauth2Client.requestTokenWithAuthCode(
             oauthMetadata = context.oauthMetadata,
             url = url,
             authorizationServer = context.oauthMetadata.issuer,
             state = context.state,
-            scope = context.credential.supportedCredentialFormat.scope,
-            authorizationDetails = oid4vciClient.buildAuthorizationDetails(
-                context.credential.credentialIdentifier,
-                context.issuerMetadata.authorizationServers
-            ),
+            scope = credentialIdentifierInfos.scope(),
+            authorizationDetails = credentialIdentifierInfos.authorizationDetails(context.issuerMetadata),
             issuerMetadata = context.issuerMetadata,
         ).getOrThrow()
 
-        val credentialScheme = vci.resolveCredentialScheme(context.credential.supportedCredentialFormat)
-            ?: throw Exception("Unknown credential scheme in ${context.credential}")
-
         postCredentialRequestAndStore(
             issuerMetadata = context.issuerMetadata,
-            oauthMetadata = context.oauthMetadata,
             tokenResponse = tokenResponse,
-            credentialFormat = context.credential.supportedCredentialFormat,
-            credentialIdentifier = context.credential.credentialIdentifier,
-            credentialScheme = credentialScheme,
-            previouslyRequestedScope = context.credential.supportedCredentialFormat.scope,
+            credentialIdentifierInfos = credentialIdentifierInfos,
+            oauthMetadata = context.oauthMetadata,
+            previouslyRequestedScope = credentialIdentifierInfos.scope(),
             reissuingStoreEntryId = context.reissuingStoreEntryId,
         )
     }
@@ -323,73 +339,113 @@ class OpenId4VciKtorClient private constructor(
                 issuerMetadata = issuerMetadata,
             ).getOrThrow()
 
-            val credentialScheme = vci.resolveCredentialScheme(credentialFormat)
-                ?: throw Exception("Unknown credential scheme in $credentialFormat")
-
             postCredentialRequestAndStore(
                 issuerMetadata = issuerMetadata,
                 tokenResponse = tokenResponse,
-                credentialFormat = credentialFormat,
-                credentialScheme = credentialScheme,
+                credentialIdentifierInfos = listOf(
+                    CredentialIdentifierInfo(issuerMetadata, credentialIdentifier, credentialFormat)
+                ).toNonEmptyList(),
                 oauthMetadata = oauthMetadata,
-                credentialIdentifier = credentialIdentifier,
                 previouslyRequestedScope = credentialFormat.scope,
             )
         }
     }
 
     /**
-     * Will use the [tokenResponse] to request the credentials, for the caller to store them, see
-     * [CredentialIssuanceResult.Success.prepareCredentialStorage].
+     * Uses [tokenResponse] to request every credential of [credentialIdentifierInfos] it grants, for the caller to
+     * store them, see [CredentialIssuanceResult.Success.prepareCredentialStorage]: one [IssuedCredentials] per
+     * configuration, each with its own renewal info.
      */
-    @Throws(Exception::class)
+    @Throws(Exception::class, CancellationException::class)
     private suspend fun postCredentialRequestAndStore(
         issuerMetadata: IssuerMetadata,
         tokenResponse: TokenResponseWithDpopNonce,
-        credentialFormat: SupportedCredentialFormat,
-        credentialScheme: CredentialScheme,
+        credentialIdentifierInfos: NonEmptyList<CredentialIdentifierInfo>,
         oauthMetadata: OAuth2AuthorizationServerMetadata,
-        credentialIdentifier: String,
         previouslyRequestedScope: String?,
         reissuingStoreEntryId: Long? = null,
     ): CredentialIssuanceResult.Success {
         Napier.i("postCredentialRequestAndStore: ${issuerMetadata.credentialEndpointUrl}")
-        Napier.d("postCredentialRequestAndStore: $tokenResponse")
-
-        val clientNonce = vci.nonceRequest(issuerMetadata)?.let { oauth2Client.execute(it) }
-            .also { Napier.i("postCredentialRequestAndStore: uses nonce $it") }
-
-        val requests = vci.createCredential(
-            tokenResponse = tokenResponse.params,
+        val issued = vci.prepareCredentialRequests(
             metadata = issuerMetadata,
-            credentialFormat = credentialFormat,
-            clientNonce = clientNonce,
-            previouslyRequestedScope = previouslyRequestedScope
-        ).getOrThrow()
-
-        val receivedCredentials = requests.flatMap {
-            oauth2Client.execute(
-                vci.credentialRequest(
-                    request = it,
+            tokenResponse = tokenResponse.params,
+            credentialFormats = credentialIdentifierInfos.map { it.supportedCredentialFormat }.toSet(),
+            previouslyRequestedScope = previouslyRequestedScope,
+        ).getOrThrow().groupBy { it.credentialConfigurationId }.map { group ->
+            val credentialIdentifierInfo = credentialIdentifierInfos
+                .firstOrNull { it.credentialIdentifier == group.key }
+                ?: CredentialIdentifierInfo(issuerMetadata, group.key, group.value.first().credentialFormat)
+            val scheme = vci.resolveCredentialScheme(credentialIdentifierInfo.supportedCredentialFormat)
+                ?: throw Exception("Unknown credential scheme in ${credentialIdentifierInfo.supportedCredentialFormat}")
+            IssuedCredentials(
+                credentialIdentifierInfo = credentialIdentifierInfo,
+                receivedCredentials = group.value.flatMap { requestCredential(it, issuerMetadata, tokenResponse) },
+                scheme = scheme,
+                refreshToken = CredentialRenewalInfo(
+                    refreshToken = tokenResponse.params.refreshToken,
                     issuerMetadata = issuerMetadata,
-                    tokenResponse = tokenResponse.params,
-                    credentialFormat = credentialFormat,
-                )
+                    oauthMetadata = oauthMetadata,
+                    credentialFormat = credentialIdentifierInfo.supportedCredentialFormat,
+                    credentialIdentifier = group.key,
+                ),
             )
         }
         return CredentialIssuanceResult.Success(
-            receivedCredentials = receivedCredentials,
-            scheme = credentialScheme,
-            refreshToken = CredentialRenewalInfo(
-                refreshToken = tokenResponse.params.refreshToken,
-                issuerMetadata = issuerMetadata,
-                oauthMetadata = oauthMetadata,
-                credentialFormat = credentialFormat,
-                credentialIdentifier = credentialIdentifier,
-            ),
+            issued = issued.toNonEmptyList(),
             reissuingStoreEntryId = reissuingStoreEntryId,
         )
     }
+
+    /**
+     * Sends the credential request of [preparedRequest] with a fresh `c_nonce`, as the credential issuer may accept
+     * each one only once (OpenID4VCI 1.0, 13.8), and once more with a new one if the credential issuer rejects it, see
+     * [OpenId4VciProtocolClient.isInvalidNonce].
+     *
+     * Sends `Nonce` and `Credential{1,2}`, and both again after `invalid_nonce`.
+     */
+    @Throws(Exception::class, CancellationException::class)
+    private suspend fun requestCredential(
+        preparedRequest: OpenId4VciClient.PreparedCredentialRequest,
+        issuerMetadata: IssuerMetadata,
+        tokenResponse: TokenResponseWithDpopNonce,
+        retryOnInvalidNonce: Boolean = true,
+    ): List<ReceivedCredential> {
+        val clientNonce = vci.nonceRequest(issuerMetadata)?.let { oauth2Client.execute(it) }
+            .also { Napier.i("requestCredential: uses nonce $it") }
+        val request = vci.createCredential(
+            request = preparedRequest,
+            metadata = issuerMetadata,
+            clientNonce = clientNonce,
+        ).getOrThrow()
+        return catchingUnwrapped {
+            oauth2Client.execute(
+                vci.credentialRequest(
+                    request = request,
+                    issuerMetadata = issuerMetadata,
+                    tokenResponse = tokenResponse.params,
+                    credentialFormat = preparedRequest.credentialFormat,
+                )
+            )
+        }.getOrElse {
+            if (retryOnInvalidNonce && vci.isInvalidNonce(it))
+                requestCredential(preparedRequest, issuerMetadata, tokenResponse, retryOnInvalidNonce = false)
+            else throw it
+        }
+    }
+
+    /**
+     * The `scope` for all of these credentials, if every one of them has one, else `null`: a credential without
+     * `scope` can only be requested with `authorization_details` (OpenID4VCI 1.0, 12.2.4), see [authorizationDetails].
+     */
+    private fun Collection<CredentialIdentifierInfo>.scope(): String? =
+        mapNotNull { it.supportedCredentialFormat.scope }.takeIf { it.size == size }?.distinct()?.joinToString(" ")
+
+    /** The `authorization_details` for all of these credentials (OpenID4VCI 1.0, 5.1.1). */
+    private fun Collection<CredentialIdentifierInfo>.authorizationDetails(issuerMetadata: IssuerMetadata) =
+        oid4vciClient.buildAuthorizationDetails(
+            map { it.credentialIdentifier }.toSet(),
+            issuerMetadata.authorizationServers
+        )
 
     /**
      * Loads a user-selected credential with pre-authorized code from the OID4VCI credential issuer
@@ -405,38 +461,55 @@ class OpenId4VciKtorClient private constructor(
         transactionCode: String? = null,
         authorizationServerMetadata: OAuth2AuthorizationServerMetadata? = null
     ): KmmResult<CredentialIssuanceResult> = catching {
+        loadCredentialWithOfferReturningResult(
+            credentialOffer,
+            listOf(credentialIdentifierInfo).toNonEmptyList(),
+            transactionCode,
+            authorizationServerMetadata
+        ).getOrThrow()
+    }
+
+    /**
+     * Loads some user-selected credentials with pre-authorized code from the OID4VCI credential issuer, with one
+     * token for all of them, as a pre-authorized code can usually be used only once
+     *
+     * @param credentialOffer as loaded and decoded from the QR Code
+     * @param credentialIdentifierInfos as selected by the user from the issuer's metadata, all of the same credential
+     * issuer
+     * @param transactionCode if required from Issuing service, i.e. transmitted out-of-band to the user
+     * @param authorizationServerMetadata oauthMetadata optionally transmitted via the DC API. Set to null for other flows as it will be fetched from the authorizationServer/credentialIssuer.
+     */
+    suspend fun loadCredentialWithOfferReturningResult(
+        credentialOffer: CredentialOffer,
+        credentialIdentifierInfos: NonEmptyList<CredentialIdentifierInfo>,
+        transactionCode: String? = null,
+        authorizationServerMetadata: OAuth2AuthorizationServerMetadata? = null
+    ): KmmResult<CredentialIssuanceResult> = catching {
         Napier.i("loadCredentialWithOffer: $credentialOffer")
-        val issuerMetadata = credentialIdentifierInfo.issuerMetadata
+        val issuerMetadata = credentialIdentifierInfos.first().issuerMetadata
         val authorizationServer = vci.selectAuthorizationServer(issuerMetadata, credentialOffer.credentialIssuer)
         val oauthMetadata = authorizationServerMetadata
             ?: oauth2Client.loadAuthorizationServerMetadata(authorizationServer)
         val state = uuid4().toString()
+        val scope = credentialIdentifierInfos.scope()
         val preAuthorizedCode = credentialOffer.grants?.preAuthorizedCode
         if (preAuthorizedCode != null) {
-            val credentialScheme = vci.resolveCredentialScheme(credentialIdentifierInfo.supportedCredentialFormat)
-                ?: throw Exception("Unknown credential scheme in $credentialIdentifierInfo")
-
             val tokenResponse = oauth2Client.requestTokenWithPreAuthorizedCode(
                 oauthMetadata = oauthMetadata,
                 authorizationServer = preAuthorizedCode.authorizationServer ?: issuerMetadata.credentialIssuer,
                 preAuthorizedCode = preAuthorizedCode.preAuthorizedCode,
                 transactionCode = transactionCode,
-                scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
-                authorizationDetails = oid4vciClient.buildAuthorizationDetails(
-                    credentialIdentifierInfo.credentialIdentifier,
-                    issuerMetadata.authorizationServers
-                ),
+                scope = scope,
+                authorizationDetails = credentialIdentifierInfos.authorizationDetails(issuerMetadata),
                 issuerMetadata = issuerMetadata,
             ).getOrThrow()
 
             postCredentialRequestAndStore(
                 issuerMetadata = issuerMetadata,
                 tokenResponse = tokenResponse,
-                credentialFormat = credentialIdentifierInfo.supportedCredentialFormat,
-                credentialScheme = credentialScheme,
+                credentialIdentifierInfos = credentialIdentifierInfos,
                 oauthMetadata = oauthMetadata,
-                credentialIdentifier = credentialIdentifierInfo.credentialIdentifier,
-                previouslyRequestedScope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+                previouslyRequestedScope = scope,
             )
         } else {
             oauth2Client.startAuthorization(
@@ -445,18 +518,16 @@ class OpenId4VciKtorClient private constructor(
                     ?: authorizationServer,
                 state = state,
                 issuerState = credentialOffer.grants?.authorizationCode?.issuerState,
-                authorizationDetails = oid4vciClient.buildAuthorizationDetails(
-                    credentialIdentifierInfo.credentialIdentifier,
-                    issuerMetadata.authorizationServers
-                ),
-                scope = credentialIdentifierInfo.supportedCredentialFormat.scope,
+                authorizationDetails = credentialIdentifierInfos.authorizationDetails(issuerMetadata),
+                scope = scope,
                 issuerMetadata = issuerMetadata,
             ).getOrThrow().let {
                 CredentialIssuanceResult.OpenUrlForAuthnRequest(
                     url = it.url,
                     context = ProvisioningContext(
                         state = it.state,
-                        credential = credentialIdentifierInfo,
+                        credential = credentialIdentifierInfos.first(),
+                        credentials = credentialIdentifierInfos,
                         oauthMetadata = oauthMetadata,
                         issuerMetadata = issuerMetadata
                     )
@@ -473,7 +544,12 @@ class OpenId4VciKtorClient private constructor(
 @Serializable
 data class ProvisioningContext(
     val state: String,
+    /** The first of [credentials], also so that a context stored by an earlier version can still be decoded. */
     val credential: CredentialIdentifierInfo,
+    /**
+     * The credentials to request with one authorization, only [credential] for a context stored by an earlier version.
+     */
+    val credentials: List<CredentialIdentifierInfo> = listOf(credential),
     val oauthMetadata: OAuth2AuthorizationServerMetadata,
     val issuerMetadata: IssuerMetadata,
     val reissuingStoreEntryId: Long? = null,
@@ -485,48 +561,59 @@ data class ProvisioningContext(
  */
 sealed interface CredentialIssuanceResult {
     /**
-     * Store the [receivedCredentials] after validating them with [prepareCredentialStorage], and optionally the
-     * [refreshToken] for a later renewal of those credentials.
+     * Store the credentials [issued] for each requested credential configuration after validating them with
+     * [prepareCredentialStorage], and optionally their [IssuedCredentials.refreshToken] for a later renewal.
      */
     data class Success(
-        /** The credentials of the credential responses, not validated yet, see [prepareCredentialStorage]. */
-        val receivedCredentials: List<ReceivedCredential>,
-        /** The type the [receivedCredentials] have been requested as. */
-        val scheme: CredentialScheme,
-        val refreshToken: CredentialRenewalInfo? = null,
+        /** The credentials of each requested credential configuration. */
+        val issued: NonEmptyList<IssuedCredentials>,
         /**
-         * The stored credential the [receivedCredentials] replace, as passed to
+         * The stored credential the [issued] credentials replace, as passed to
          * [OpenId4VciKtorClient.startProvisioningWithAuthRequestReturningResult] and kept in the [ProvisioningContext],
          * for the wallet to remove once it stored the new ones.
          */
         val reissuingStoreEntryId: Long? = null,
     ) : CredentialIssuanceResult {
 
-        /** The [receivedCredentials], decoded without validating them. */
+        /** The renewal info of the first of [issued]. */
+        @Deprecated(
+            "The credentials of several configurations may be issued: use the refreshToken of each of issued",
+            ReplaceWith("issued.first().refreshToken"),
+        )
+        val refreshToken: CredentialRenewalInfo?
+            get() = issued.first().refreshToken
+
+        /** The credentials of all [issued] configurations, decoded without validating them. */
         @Deprecated(
             "The credentials have not been validated: prepare their storage with prepareCredentialStorage, which " +
                     "validates them with the HolderAgent",
         )
         val credentials: Collection<Holder.StoreCredentialInput>
-            get() = receivedCredentials.map { it.toStoreCredentialInput(scheme) }
+            get() = issued.flatMap { group ->
+                group.receivedCredentials.map { it.toStoreCredentialInput(group.scheme) }
+            }
 
         /**
-         * Validates every credential of [receivedCredentials] as the type of [scheme] for storage by [holder] under
-         * [policy], with [refreshToken] for their renewal, see [ReceivedCredential.prepareCredentialStorage], and
-         * stores nothing yet. Show the reports to the user, then store each credential with
-         * [HolderAgent.storeAccepted], or, if the user accepts a rejected report, e.g. of an untrusted issuer or a
-         * credential missing claims its type requires (see [ValidationPolicy.requiredClaims]), with
-         * [HolderAgent.storeAfterUserConsent].
+         * Validates every credential of [issued] as the type of its [IssuedCredentials.scheme] for storage by [holder]
+         * under [policy], with its [IssuedCredentials.refreshToken] for its renewal, see
+         * [ReceivedCredential.prepareCredentialStorage], and stores nothing yet. Show the reports to the user, then
+         * store each credential with [HolderAgent.storeAccepted], or, if the user accepts a rejected report, e.g. of an
+         * untrusted issuer or a credential missing claims its type requires (see [ValidationPolicy.requiredClaims]),
+         * with [HolderAgent.storeAfterUserConsent].
          *
-         * The credentials of a batch are of the same issuer and type, so one decision of the user usually covers all.
-         * A credential that can not be decoded is reported as rejected, and can never be stored. Fails only if
-         * [scheme] does not support the representation of a credential.
+         * The credentials of one configuration are of the same issuer and type, so one decision of the user usually
+         * covers them. A credential that can not be decoded is reported as rejected, and can never be stored. Fails
+         * only if the scheme of a configuration does not support the representation of one of its credentials.
          */
         suspend fun prepareCredentialStorage(
             holder: HolderAgent,
             policy: ValidationPolicy,
         ): KmmResult<List<PreparedCredentialStorage>> = catching {
-            receivedCredentials.map { it.prepareCredentialStorage(holder, scheme, policy, refreshToken).getOrThrow() }
+            issued.flatMap { group ->
+                group.receivedCredentials.map {
+                    it.prepareCredentialStorage(holder, group.scheme, policy, group.refreshToken).getOrThrow()
+                }
+            }
         }
     }
 
@@ -539,6 +626,26 @@ sealed interface CredentialIssuanceResult {
         val context: ProvisioningContext,
     ) : CredentialIssuanceResult
 }
+
+/**
+ * The credentials issued for one requested credential configuration, see [CredentialIssuanceResult.Success.issued].
+ */
+data class IssuedCredentials(
+    /** The requested credential configuration, as selected from the metadata of the credential issuer. */
+    val credentialIdentifierInfo: CredentialIdentifierInfo,
+    /**
+     * The credentials of the credential responses, not validated yet, see
+     * [ReceivedCredential.prepareCredentialStorage].
+     */
+    val receivedCredentials: List<ReceivedCredential>,
+    /** The type the [receivedCredentials] have been requested as. */
+    val scheme: CredentialScheme,
+    /**
+     * To renew the [receivedCredentials] later, see [OpenId4VciKtorClient.refreshCredentialReturningResult]. The
+     * refresh token is the one of the whole flow, i.e. shared with the other configurations issued with it.
+     */
+    val refreshToken: CredentialRenewalInfo?,
+)
 
 @Deprecated(
     "Moved to vck-openid, which does not depend on a ktor client",

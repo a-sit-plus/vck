@@ -81,15 +81,16 @@ val OidvciEncryptionTest by matrixSuite {
                 ),
             )
             val state = uuid4().toString()
+
             // The client proves possession of the holder's key, so the holder accepts the credentials bound to it
             val holderKey = EphemeralKeyWithoutCert()
             val holder = HolderAgent(holderKey)
             val client = OpenId4VciClient(
-                keyMaterial = holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = true, // this is important
-                )
+                ),
+                proofCreators = listOf(JwtProofCreator(holderKey))
             )
 
             // The issuer has no certificate, and its status list is not published in this test
@@ -269,11 +270,11 @@ val OidvciEncryptionTest by matrixSuite {
                 encryptionService = IssuerEncryptionService(), // requires nothing, but supports both
             )
             val client = OpenId4VciClient(
-                keyMaterial = it.holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = false, // this is important
-                )
+                ),
+                proofCreators = listOf(JwtProofCreator(it.holderKey))
             )
             val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
@@ -308,7 +309,7 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
                 encryptionService = IssuerEncryptionService(), // requires nothing, but supports both
             )
-            val client = OpenId4VciClient() // wants nothing
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(it.holderKey))) // wants nothing
             val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
@@ -339,7 +340,8 @@ val OidvciEncryptionTest by matrixSuite {
                 credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
                 encryptionService = IssuerEncryptionService(), // requires nothing, but supports both
             )
-            val client = OpenId4VciClient() // wants nothing, so it creates a plain request for us to tamper with
+            // wants nothing, so it creates a plain request for us to tamper with
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(it.holderKey)))
             val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
@@ -407,8 +409,10 @@ val OidvciEncryptionTest by matrixSuite {
                 .isFailure shouldBe true
             it.client.decodeCredentialResponse(response, request, PLAIN_JWT).getOrThrow()
             // another wallet, which never announced that key, must not be able to read the credential
-            OpenId4VciClient(encryptionService = WalletEncryptionService(requestResponseEncryption = true))
-                .decodeCredentialResponse(response, request, PLAIN_JWT)
+            OpenId4VciClient(
+                encryptionService = WalletEncryptionService(requestResponseEncryption = true),
+                proofCreators = listOf(JwtProofCreator(it.holderKey))
+            ).decodeCredentialResponse(response, request, PLAIN_JWT)
                 .isFailure shouldBe true
         }
 
@@ -446,18 +450,18 @@ val OidvciEncryptionTest by matrixSuite {
             // Both instances belong to the same wallet, so they share its holder key, to which the credential is bound
             val holderKey = EphemeralKeyWithoutCert()
             val requestClient = OpenId4VciClient(
-                keyMaterial = holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true,
                     ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(keyStore),
-                )
+                ),
+                proofCreators = listOf(JwtProofCreator(holderKey))
             )
             val responseClient = OpenId4VciClient(
-                keyMaterial = holderKey,
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true,
                     ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(keyStore),
-                )
+                ),
+                proofCreators = listOf(JwtProofCreator(holderKey))
             )
             val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = requestClient.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)

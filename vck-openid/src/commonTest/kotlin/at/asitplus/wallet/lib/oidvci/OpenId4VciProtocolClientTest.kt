@@ -14,6 +14,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.ProtocolRequest
 import at.asitplus.wallet.lib.ReceivedHttpResponse
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.MediaTypes
@@ -155,7 +156,8 @@ val OpenId4VciProtocolClientTest by matrixSuite {
 
     test("issuer metadata comes from the well-known path") {
         with(AuthorizationServerFixture(requirePAR = false)) {
-            val issuerMetadata = http.execute(vciClient().loadIssuerMetadata(openId4VciServer.metadata.credentialIssuer))
+            val issuerMetadata =
+                http.execute(vciClient().loadIssuerMetadata(openId4VciServer.metadata.credentialIssuer))
 
             issuerMetadata.credentialEndpointUrl shouldBe openId4VciServer.metadata.credentialEndpointUrl
             http.sent.kinds() shouldBe listOf("CredentialIssuerMetadata")
@@ -181,7 +183,10 @@ val OpenId4VciProtocolClientTest by matrixSuite {
                 issuerMetadata.copy(authorizationServers = setOf("https://as1.example.com", "https://as2.example.com")),
                 "https://issuer.example.com",
             ) shouldBe "https://as1.example.com"
-            vci.selectAuthorizationServer(issuerMetadata.copy(authorizationServers = null), "https://issuer.example.com")
+            vci.selectAuthorizationServer(
+                issuerMetadata.copy(authorizationServers = null),
+                "https://issuer.example.com"
+            )
                 .shouldBe("https://issuer.example.com")
         }
     }
@@ -241,7 +246,11 @@ val OpenId4VciProtocolClientTest by matrixSuite {
     test("proof JWTs name the client_id of the OAuth 2.0 client as the issuer") {
         with(AuthorizationServerFixture(requirePAR = false)) {
             // OpenId4VciClient keeps its default client ID, which differs from the one of the OAuth 2.0 client
-            val vci = OpenId4VciProtocolClient(vciClient = OpenId4VciClient(), oauth2Client = client)
+            val vci = OpenId4VciProtocolClient(
+                vciClient = OpenId4VciClient(
+                    proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert()))
+                ), oauth2Client = client
+            )
             val format = vci.selectFormat(this)
             val token = TokenResponseParameters(
                 accessToken = uuid4().toString(),

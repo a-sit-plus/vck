@@ -46,6 +46,7 @@ import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.IssuerEncryptionService
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
@@ -63,7 +64,6 @@ import io.ktor.util.*
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
 
 /**
  * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] with our own internal [SimpleAuthorizationService].
@@ -215,7 +215,7 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
             client = OpenId4VciKtorClient(
                 httpClient = HttpClient(mockEngine),
                 oauth2Client = OAuth2Client(clientId = clientId),
-                vciClient = OpenId4VciClient(keyMaterial = credentialKeyMaterial),
+                vciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(credentialKeyMaterial))),
                 clientAttestation = ClientAttestation(clientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
@@ -251,7 +251,7 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
                 val httpClient = HttpClient(mockEngine) { followRedirects = false }
                 val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
                 client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
-                    refreshTokenStore = it.refreshToken!!
+                    refreshTokenStore = it.issued.single().refreshToken!!
                     it.verifySdJwtCredential(expectedAttributeName, expectedFamilyName, credentialKeyMaterial.publicKey)
                 }
             }
@@ -283,7 +283,7 @@ val OpenId4VciKtorClientWithEncryptionTest by matrixSuite {
             )
             client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
                 it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
-                    refreshTokenStore = it.refreshToken!!
+                    refreshTokenStore = it.issued.single().refreshToken!!
                     it.verifyIsoMdocCredential(expectedAttributeName, expectedAttributeValue)
                 }
             }

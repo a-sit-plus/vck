@@ -12,6 +12,7 @@ import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -66,7 +67,7 @@ val OidvciProofsTest by matrixSuite {
                 return authorizationService.token(tokenRequest, null).getOrThrow()
             }
 
-            var client = OpenId4VciClient()
+            var client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
         }
     } - {
         test("Do not send any proof when Issuer doesn't support any types") {

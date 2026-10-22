@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -87,7 +88,10 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
                 )
             )
         )
-        val client = OpenId4VciClient(remoteResourceRetriever = retriever::invoke)
+        val client = OpenId4VciClient(
+            remoteResourceRetriever = retriever::invoke,
+            proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert()))
+        )
         val input = URLBuilder("https://wallet.example.org").apply {
             parameters.append("credential_offer_uri", offerUri)
         }.buildString()

@@ -53,6 +53,7 @@ import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
@@ -283,7 +284,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             client = OpenId4VciKtorClient(
                 httpClient = HttpClient(mockEngine),
                 oauth2Client = OAuth2Client(clientId = walletClientId),
-                vciClient = OpenId4VciClient(keyMaterial = credentialKeyMaterial),
+                vciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(credentialKeyMaterial))),
                 clientAttestation = ClientAttestation(walletClientAuthKeyMaterial) {
                     catching {
                         BuildClientAttestationJwt(
@@ -321,7 +322,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                 val httpClient = HttpClient(mockEngine) { followRedirects = false }
                 val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
                 client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
-                    refreshTokenStore = it.refreshToken!!
+                    refreshTokenStore = it.issued.single().refreshToken!!
                     it.verifySdJwtCredential(
                         expectedAttributeName,
                         expectedAttributeValue,
@@ -373,7 +374,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                 // Without fix: aud = issuerPublicContext → AS rejects with InvalidClient (aud mismatch)
                 // With fix: aud = authServerPublicContext → AS accepts
                 client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also { result ->
-                    refreshTokenStore = result.refreshToken!!
+                    refreshTokenStore = result.issued.single().refreshToken!!
                     result.verifySdJwtCredential(
                         expectedAttributeName,
                         expectedAttributeValue,
@@ -413,7 +414,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             )
             client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
                 it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
-                    refreshTokenStore = it.refreshToken!!
+                    refreshTokenStore = it.issued.single().refreshToken!!
                     it.verifyIsoMdocCredential(expectedAttributeName, expectedAttributeValue)
                 }
             }

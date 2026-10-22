@@ -8,6 +8,7 @@ import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferUrlParameters
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
@@ -19,9 +20,11 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.BodyContentTypes
 import at.asitplus.wallet.lib.HttpBody
+import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.HttpExchange
 import at.asitplus.wallet.lib.PreparedHttpRequest
 import at.asitplus.wallet.lib.ProtocolRequest
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -33,6 +36,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2ProtocolClient
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils.insertWellKnownPath
 import at.asitplus.wallet.lib.oauth2.PlainExchange
 import at.asitplus.wallet.lib.oauth2.ValueExchange
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient.PreparedCredentialRequest
 import at.asitplus.wallet.lib.validation.IssuerMetadataValidation
 import at.asitplus.wallet.lib.validation.IssuerMetadataValidator
 import at.asitplus.wallet.lib.validation.ValidatedCredentialIssuer
@@ -41,7 +45,6 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmOverloads
-import kotlin.time.Clock
 
 /**
  * Implements the client side of
@@ -54,13 +57,14 @@ import kotlin.time.Clock
  *
  *  * Credential offer, if any: [loadCredentialOffer], then the pre-authorized code or authorization code flow for it.
  *  * Pre-authorized code: [loadIssuerMetadata], [parseCredentialMetadata], [OAuth2ProtocolClient.loadAuthorizationServerMetadata]
- *    of [selectAuthorizationServer], [OAuth2ProtocolClient.requestTokenWithPreAuthorizedCode], [nonceRequest],
- *    [createCredential], and [credentialRequest] for each of those credential requests.
+ *    of [selectAuthorizationServer], [OAuth2ProtocolClient.requestTokenWithPreAuthorizedCode],
+ *    [prepareCredentialRequests], and for each prepared request [nonceRequest], [createCredential], and
+ *    [credentialRequest], again once with a fresh nonce if the credential issuer rejects it, see [isInvalidNonce].
  *  * Authorization code: the same, but with [OAuth2ProtocolClient.startAuthorization], opening its URL in the browser,
  *    and [OAuth2ProtocolClient.requestTokenWithAuthCode] with the redirect back to the wallet, instead of the
  *    pre-authorized token request.
- *  * Refreshing a credential: [OAuth2ProtocolClient.requestTokenWithRefreshToken], [nonceRequest],
- *    [createCredential], and [credentialRequest].
+ *  * Refreshing a credential: [OAuth2ProtocolClient.requestTokenWithRefreshToken], then the same as for the
+ *    pre-authorized code from [prepareCredentialRequests] on.
  *
  * DPoP proofs and nonces for the credential issuer are handled by [oauth2Client].
  */
@@ -69,7 +73,7 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
      * Implements OID4VCI protocol, i.e. creates credential requests with proofs of possession for the credential key
      * material, and parses the credential responses.
      */
-    val vciClient: OpenId4VciClient = OpenId4VciClient(),
+    val vciClient: OpenId4VciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert()))),
     /** Implements OAuth 2.0 with the authorization server, and authenticates requests to the credential issuer. */
     val oauth2Client: OAuth2ProtocolClient = OAuth2ProtocolClient(oAuth2Client = OAuth2Client()),
     /**
@@ -300,6 +304,23 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
     )
 
     /**
+     * Creates the credential request for [request], prepared with [prepareCredentialRequests], with
+     * [OpenId4VciClient.createCredential], whose proof JWT names the `client_id` of [oauth2Client] as the issuer
+     * (OID4VCI 1.0, Appendix F.1). Create it right before sending it with [credentialRequest], with a fresh
+     * [clientNonce] from [nonceRequest], as the credential issuer may accept each `c_nonce` only once (13.8).
+     */
+    suspend fun createCredential(
+        request: PreparedCredentialRequest,
+        metadata: IssuerMetadata,
+        clientNonce: String? = null,
+    ): KmmResult<OpenId4VciClient.CredentialRequest> = vciClient.createCredential(
+        request = request,
+        metadata = metadata,
+        clientNonce = clientNonce,
+        clientId = oauth2Client.oAuth2Client.clientId
+    )
+
+    /**
      * Creates the credential request for exactly one credential with [OpenId4VciClient.createCredential], whose proof
      * JWT names the `client_id` of [oauth2Client] as the issuer. Send it with [credentialRequest].
      */
@@ -312,6 +333,26 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
         credentialConfigurationId = credentialConfigurationId,
         clientNonce = clientNonce,
         clientId = oauth2Client.oAuth2Client.clientId,
+    )
+
+    /**
+     * Prepares the credential requests the access token of [tokenResponse] grants for the credentials of
+     * [credentialFormats], with [OpenId4VciClient.prepareCredentialRequests]: one per credential, each with the
+     * configuration its proof and response depend on. Create each one with [createCredential] right before sending it.
+     *
+     * @param previouslyRequestedScope the `scope` value requested in the token request, since the authorization server
+     * may not set it in [tokenResponse]
+     */
+    fun prepareCredentialRequests(
+        metadata: IssuerMetadata,
+        tokenResponse: TokenResponseParameters,
+        credentialFormats: Set<SupportedCredentialFormat>,
+        previouslyRequestedScope: String? = null,
+    ): KmmResult<Collection<PreparedCredentialRequest>> = vciClient.prepareCredentialRequests(
+        metadata = metadata,
+        tokenResponse = tokenResponse,
+        previouslyRequestedScope = previouslyRequestedScope,
+        credentialFormats = credentialFormats,
     )
 
     /**
@@ -349,9 +390,17 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
                 isEncrypted = response.headers.isJwt(),
                 request = request,
                 representation = credentialFormat.format.toRepresentation(),
-            ).getOrThrow()
+            ).getOrThrow().toList()
         },
     )
+
+    /**
+     * Whether [throwable], the failure of a [credentialRequest], is the error `invalid_nonce` of the credential
+     * issuer, which rejected the `c_nonce` of a proof, so that the wallet "should retrieve a new c_nonce value"
+     * (OpenID4VCI 1.0, 8.3.1.2) and create the request again.
+     */
+    fun isInvalidNonce(throwable: Throwable): Boolean =
+        (throwable as? HttpErrorResponseException)?.oauth2Error?.error == OpenIdConstants.Errors.INVALID_NONCE
 
     private fun Headers.isJwt(): Boolean = catchingUnwrapped {
         get(HttpHeaders.ContentType)?.let { ContentType.parse(it) }

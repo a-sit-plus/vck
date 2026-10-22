@@ -99,7 +99,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 credentialSchemes = AttributeIndex.schemeSet,
                 credentialSchemeMapper = mapper,
             )
-            val client = OpenId4VciClient()
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 
@@ -278,18 +278,23 @@ val OidvciCodeFlowTest by matrixSuite {
 
         test("proof over different keys leads to different credentials") {
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-            val scope = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)?.scope
-                .shouldNotBeNull()
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+            val scope = credentialFormat?.scope.shouldNotBeNull()
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
             val token = it.getToken(scope)
-            val proof = it.client.createCredentialRequestProofJwt(
+            val proof = it.client.createCredentialProof(
                 clientNonce = clientNonce,
-                credentialIssuer = it.issuer.metadata.credentialIssuer,
-            )
-            val differentProof = OpenId4VciClient().createCredentialRequestProofJwt(
-                clientNonce = clientNonce,
-                credentialIssuer = it.issuer.metadata.credentialIssuer,
-            )
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientId = "https://wallet.a-sit.plus/app"
+            ).shouldNotBeNull()
+            val differentProof = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
+                .createCredentialProof(
+                    clientNonce = clientNonce,
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientId = "https://wallet.a-sit.plus/app"
+                ).shouldNotBeNull()
             val credentialRequest = CredentialRequestParameters(
                 credentialConfigurationId = scope,
                 proofs = CredentialRequestProofContainer(
@@ -715,7 +720,7 @@ val OidvciCodeFlowTest by matrixSuite {
             )
             // The client proves possession of the holder's key, so the holder accepts the credentials bound to it
             val holderKey = EphemeralKeyWithoutCert()
-            val client = OpenId4VciClient(keyMaterial = holderKey)
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(holderKey)))
             val requestOptions = RequestOptions(AttributeIndex.resolveIdentifier(MDL_DOCTYPE, ISO_MDOC), ISO_MDOC)
             val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
@@ -750,7 +755,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 requireTimeliness = true,
             )
 
-            val received = client.decodeCredentialResponse(batch, request, ISO_MDOC).getOrThrow()
+            val received = client.decodeCredentialResponse(batch, request, ISO_MDOC).getOrThrow().toList()
             received.shouldHaveSize(3)
             received[0].shouldBeInstanceOf<ReceivedCredential.Decoded>()
             received[1].shouldBeInstanceOf<ReceivedCredential.Undecodable>()
