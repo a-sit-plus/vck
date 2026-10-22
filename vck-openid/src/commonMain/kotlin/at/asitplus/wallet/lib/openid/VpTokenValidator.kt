@@ -7,22 +7,14 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.ResponseParametersFrom
-import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLQueryResponse
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.wallet.lib.MdocDeviceSignatureVerifier
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier.ChallengeSession
-import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialValidator
@@ -44,7 +36,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
@@ -53,10 +44,11 @@ import kotlin.time.Duration.Companion.seconds
  * that delivered it: URL/QR (see [OpenId4VpVerifier]) or the W3C Digital Credentials API (see [DcApiVerifier]).
  * The only transport-specific step, calculation of the ISO session transcript, is delegated to
  * the injected [SessionTranscriptCalculator].
+ *
+ * Every presentation is validated once with [credentialValidator]; the legacy [VpTokenValidationResultDCQL] is
+ * projected from these validations, see [legacyPresentationResult].
  */
 internal class VpTokenValidator(
-    /** Verifies the mdoc device signature against the session transcript. */
-    private val mdocDeviceSignatureVerifier: MdocDeviceSignatureVerifier,
     /** Calculates the ISO session transcript for the transport the response was received over. */
     private val createSessionTranscript: SessionTranscriptCalculator,
     /** Long-lived decryption key, when the request did not convey the key itself (it was distributed out-of-band). */
@@ -109,52 +101,40 @@ internal class VpTokenValidator(
                 ?: decryptionKeyMaterial?.jsonWebKey
         } else null
         val responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted
-        val presentationValidations = vpToken.presentations.mapValues { (credentialQueryId, relatedPresentations) ->
+        val validated = vpToken.presentations.mapValues { (credentialQueryId, relatedPresentations) ->
             val credentialQuery = vpToken.query.credentialQuery(credentialQueryId)!!
             val context = session.context(
                 audience = vpToken.audience,
                 transactionData = authnRequest.transactionData,
                 requireHolderBinding = credentialQuery.requireCryptographicHolderBinding != false,
             )
-            relatedPresentations.flatMap {
-                validatePresentation(credentialQuery.format, it, context) { challenge ->
-                    createSessionTranscript(
-                        clientId = authnRequest.clientId,
-                        nonce = challenge,
-                        responseUrl = responseUrl,
-                        clientIdRequired = responseParameters.clientIdRequired,
-                        origin = origin,
-                        recipientKey = recipientKey,
-                    )
-                }
+            relatedPresentations.map {
+                ValidatedEntry(
+                    compact = catching { it.extractContent() }.getOrNull().orEmpty(),
+                    validations = validatePresentation(credentialQuery.format, it, context) { challenge ->
+                        createSessionTranscript(
+                            clientId = authnRequest.clientId,
+                            nonce = challenge,
+                            responseUrl = responseUrl,
+                            clientIdRequired = responseParameters.clientIdRequired,
+                            origin = origin,
+                            recipientKey = recipientKey,
+                        )
+                    },
+                )
             }
         }
+        val presentationValidations = validated.mapValues { (_, entries) -> entries.flatMap { it.validations } }
         val submissionRequirements = DCQLQueryAdapter(vpToken.query).checkAcceptedSubmissions(
             presentationValidations.mapValues { (_, validations) -> validations.mapNotNull { it.presentation } }
-        ).fold(onSuccess = { CheckOutcome.Passed }, onFailure = { CheckOutcome.Failed(it) })
+        )
         val reports = presentationValidations.values.flatten().map { it.report }
         val result = catching {
-            val presentationResults = vpToken.presentations.mapValues { (credentialQueryId, relatedPresentations) ->
-                val credentialQuery = vpToken.query.credentialQuery(credentialQueryId)!!
-                relatedPresentations.map {
-                    verifyPresentationResult(
-                        credentialFormat = credentialQuery.format,
-                        relatedPresentation = it.jsonPrimitive,
-                        session = session,
-                        clientId = authnRequest.clientId,
-                        responseUrl = responseUrl,
-                        transactionData = authnRequest.transactionData,
-                        clientIdRequired = responseParameters.clientIdRequired,
-                        origin = origin,
-                        requireCryptographicHolderBinding = credentialQuery.requireCryptographicHolderBinding,
-                        recipientKey = recipientKey,
-                    )
-                }
-            }
             VpTokenValidationResultDCQL(
-                credentialQueryResponseValidations = presentationResults,
-                submissionRequirementsValidationResult =
-                    DCQLQueryAdapter(vpToken.query).validateSubmissionRequirements(presentationResults),
+                credentialQueryResponseValidations = validated.mapValues { (_, entries) ->
+                    entries.map { legacyPresentationResult(it.compact, it.validations, presentationPolicy) }
+                },
+                submissionRequirementsValidationResult = submissionRequirements,
                 presentationValidations = presentationValidations,
             )
         }
@@ -166,12 +146,20 @@ internal class VpTokenValidator(
                     responseParameters = responseParameters,
                     expectedOrigin = expectedOrigin,
                     requestState = reports.requestState(),
-                    submissionRequirements = submissionRequirements,
+                    submissionRequirements = submissionRequirements
+                        .fold(onSuccess = { CheckOutcome.Passed }, onFailure = { CheckOutcome.Failed(it) }),
                 ),
                 presentations = reports,
             ),
+            presentationValidations = presentationValidations,
         )
     }
+
+    /** One presentation of the `vp_token`, as transported, and its validations, see [validatePresentation]. */
+    private class ValidatedEntry(
+        val compact: String,
+        val validations: List<PresentationValidationResult>,
+    )
 
     /** The `vp_token` of a response, by the credential queries of the request's DCQL query. */
     private class ParsedVpToken(
@@ -272,78 +260,8 @@ internal class VpTokenValidator(
         }
     }.getOrElse { listOf(credentialValidator.rejectUndecodable(it)) }
 
-    private fun DCQLQueryAdapter.validateSubmissionRequirements(
-        presentation: Map<DCQLCredentialQueryIdentifier, List<KmmResult<VerifyPresentationResult>>>
-    ): KmmResult<Unit> = catching {
-        val queryResponse = DCQLQueryResponse(presentation.mapValues { entry ->
-            entry.value.map { result -> result.getOrThrow() }
-        })
-        checkSubmissionRequirements(queryResponse).getOrThrow()
-    }
-
     private fun DCQLQuery.credentialQuery(id: DCQLCredentialQueryIdentifier): DCQLCredentialQuery? =
         credentials.associateBy { it.id }[id]
-
-    private suspend fun verifyPresentationResult(
-        credentialFormat: CredentialFormatEnum,
-        relatedPresentation: JsonElement,
-        session: ChallengeSession,
-        clientId: String?,
-        responseUrl: String?,
-        transactionData: List<TransactionDataBase64Url>?,
-        clientIdRequired: Boolean,
-        origin: String?,
-        requireCryptographicHolderBinding: Boolean? = null,
-        recipientKey: JsonWebKey?,
-    ): KmmResult<VerifyPresentationResult> = catching {
-        when (credentialFormat) {
-            CredentialFormatEnum.DC_SD_JWT -> {
-                val sdJwt = SdJwtSigned.parseCatching(relatedPresentation.extractContent()).getOrElse {
-                    throw IllegalArgumentException("relatedPresentation")
-                }
-                session.verifyPresentationSdJwt(
-                    input = sdJwt,
-                    transactionData = transactionData,
-                    requireCryptographicHolderBinding = requireCryptographicHolderBinding != false,
-                    // OpenID4VP over DC API binds the KB-JWT to the calling Origin; other transports use client_id.
-                    audience = origin?.let { "origin:$it" } ?: clientId,
-                )
-            }
-
-            CredentialFormatEnum.JWT_VC -> if (requireCryptographicHolderBinding != false) {
-                session.verifyPresentationVcJwt(
-                    input = JwsCompactTyped<VerifiablePresentationJws>(
-                        relatedPresentation.extractContent()
-                    ),
-                )
-            } else {
-                session.verifyUnsignedVcJws(
-                    input = relatedPresentation.extractContent()
-                ).map {
-                    VerifyPresentationResult.SuccessUnsigned(it.vc)
-                }
-            }
-
-            CredentialFormatEnum.MSO_MDOC,
-            CredentialFormatEnum.MSO_MDOC_ZK -> session.verifyPresentationIsoMdoc(
-                input = relatedPresentation.extractContent().decodeToByteArray(Base64UrlStrict)
-                    .let { coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(it) },
-            ) { challenge ->
-                mdocDeviceSignatureVerifier.verifyDocument(
-                    sessionTranscript = createSessionTranscript(
-                        clientId = clientId,
-                        nonce = challenge,
-                        responseUrl = responseUrl,
-                        clientIdRequired = clientIdRequired,
-                        origin = origin,
-                        recipientKey = recipientKey,
-                    )
-                )
-            }
-
-            else -> throw IllegalArgumentException("descriptor.format: $credentialFormat")
-        }.getOrThrow()
-    }
 
     // To be reconsidered when supporting [DCQLCredentialQueryInstance.multiple]
     private fun JsonElement.extractContent(): String = when (this) {
@@ -361,6 +279,7 @@ internal class VpTokenValidator(
 internal class VpTokenValidation(
     val result: KmmResult<VpTokenValidationResult>,
     val report: ValidationReport,
+    val presentationValidations: Map<DCQLCredentialQueryIdentifier, List<PresentationValidationResult>> = emptyMap(),
 )
 
 /**

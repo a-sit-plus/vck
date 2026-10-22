@@ -36,6 +36,10 @@ interface Verifier {
      * verifier identifier. Protocol callers must supply their transport-specific audience; OpenID4VP normally uses
      * its Client Identifier, while OpenID4VP over the DC API uses `origin:<origin>`.
      */
+    @Deprecated(
+        "Validate presentations with at.asitplus.wallet.lib.validation.CredentialValidator, in the context of " +
+                "NonceChallengeVerifier.ChallengeSession.context(). To be removed in the next major release."
+    )
     suspend fun verifyPresentationSdJwt(
         input: SdJwtSigned,
         challenge: String,
@@ -49,6 +53,10 @@ interface Verifier {
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT] from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */
+    @Deprecated(
+        "Validate presentations with at.asitplus.wallet.lib.validation.CredentialValidator, in the context of " +
+                "NonceChallengeVerifier.ChallengeSession.context(). To be removed in the next major release."
+    )
     suspend fun verifyPresentationVcJwt(
         input: JwsCompactTyped<VerifiablePresentationJws>,
         challenge: String,
@@ -59,6 +67,10 @@ interface Verifier {
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT] from a holder,
      * without a holder key binding, which would be chacked in [verifyPresentationVcJwt].
      */
+    @Deprecated(
+        "Validate presentations with at.asitplus.wallet.lib.validation.CredentialValidator, in the context of " +
+                "NonceChallengeVerifier.ChallengeSession.context(). To be removed in the next major release."
+    )
     suspend fun verifyUnsignedVcJws(
         input: String
     ): KmmResult<VerifyPresentationResult.SuccessUnsigned>
@@ -68,6 +80,10 @@ interface Verifier {
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
      * with a challenge validated by the callback in [verifyDocument] (i.e. device authentication for OpenID4VP).
      */
+    @Deprecated(
+        "Validate presentations with at.asitplus.wallet.lib.validation.CredentialValidator, in the context of " +
+                "NonceChallengeVerifier.ChallengeSession.context(). To be removed in the next major release."
+    )
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         verifyDocument: suspend (MobileSecurityObject, Document) -> Boolean,

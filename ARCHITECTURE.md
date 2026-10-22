@@ -54,10 +54,13 @@ Important areas:
 
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent`
   Core application-facing abstractions and implementations: `Holder`, `HolderAgent`, `Issuer`, `IssuerAgent`,
-  `VerifierAgent`, `Validator`, `KeyMaterial`, credential stores, nonce/status helpers, and credential issuance
-  inputs/results.
+  `KeyMaterial`, credential stores, nonce/status helpers, and credential issuance inputs/results. `VerifierAgent` and
+  `Validator` are deprecated, see *Validation*.
+- `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/validation`
+  Validation of credentials, presentations, and the other artifacts with reports, see *Validation*.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent/validation`
-  Format-specific validation for VC-JWS, SD-JWT, ISO mDoc, and common timeliness/status checks.
+  The format-specific timeliness validators and VC-JWS content semantics that `CredentialValidator` uses, and the
+  deprecated legacy validators.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`
   DCQL matching and submission logic over stored credentials.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/iso`
@@ -312,6 +315,35 @@ Credential issuance and status-list publication are also separate responsibiliti
 `ReferencedTokenStore` owns status-list indices, identifiers, and revocation state. Keep custom persistence adapters at
 those interfaces instead of coupling status-list generation back to credential signing.
 
+### Validation
+
+Every artifact a party receives is validated in `vck/.../lib/validation` into a `ValidationReport`: a tree of named
+checks, each a `CheckOutcome` (passed, failed with its cause, blocked by a failed prerequisite, or not applicable),
+whose `decision` is derived from the checks, the children, and a `ValidationPolicy` by the pure rules in
+`ValidationRules.kt`. A result holds the report next to the validated value, which is present only if the report is
+accepted, so an unverified value is never exposed as validated. Rules to keep:
+
+- One validator per artifact kind: `CredentialValidator` for credentials and presentations, `StatusValidator` for
+  status list tokens, `RelyingPartyValidator` for WRPACs, WRPRCs and client identifier prefixes,
+  `KeyAttestationValidator`, `ClientAttestationValidator`, and `IssuerMetadataValidator`. They live in `vck`, also for
+  artifacts of `vck-openid` protocols, as the trust checks are internal to `vck`; the protocol checks its own parts,
+  e.g. nonces and proofs of possession, and passes their outcomes in.
+- Trust is configured as anchors per artifact kind, and for credentials per credential type
+  (`CredentialTrustAnchors`), never as an injected verification function that hides its anchors. A missing source
+  of trust blocks the check, and `TrustPolicy.RequireAuthorizedSigner` then rejects (fail closed).
+- The policy relaxes only trust, status, and timeliness of the artifact; parsing, signatures, holder binding and the
+  time of holder proofs, nonces, and audiences are never relaxed. A status is resolved only for an artifact that is
+  valid otherwise (draft-ietf-oauth-status-list-21, 8.3).
+- Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
+  `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy
+  results of the OpenID4VP verifiers) delegate to the new validation under a compatibility policy or the configured
+  policy, and project their old results from the report, so there is one implementation of every rule.
+- Every enforced rule cites its source inline in the KDoc next to it (spec, version, section). Reports carry causes,
+  so exception messages must not contain claim values, disclosures, or keys.
+- Known limitations: trust is evaluated for single-hop paths or by walking the WRP chain, without RFC 5280 path
+  building, `pathLenConstraint`, `keyUsage`, or certificate revocation; ZK mdoc presentations are validated like plain
+  mdocs.
+
 ### OpenID4VP Verifier Responses
 
 `OpenId4VpVerifier` and `DcApiVerifier` let `AuthnResponseProcessor.consume()` process every authorization response,
@@ -429,8 +461,8 @@ Common starting points:
 
 - Credential issue/present/verify behavior:
   `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent`
-- Credential validation:
-  `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent/validation`
+- Credential, presentation, and artifact validation:
+  `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/validation`
 - DCQL matching:
   `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`
 - ISO Device Retrieval matching and response creation:

@@ -76,7 +76,8 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
                 )
                 val verifierOid4vp = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
-                    clientIdScheme = ClientIdScheme.RedirectUri(clientId)
+                    clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+                    presentationPolicy = testPresentationPolicy,
                 )
             }
         }

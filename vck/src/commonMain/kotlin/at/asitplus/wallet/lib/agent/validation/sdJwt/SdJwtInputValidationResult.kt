@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.sdJwt
 
 import at.asitplus.KmmResult
@@ -6,6 +8,7 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.signum.supreme.sign.Verifier as SignumVerifier
 
+@Deprecated("Validate with at.asitplus.wallet.lib.validation.CredentialValidator, whose report holds every check. To be removed in the next major release.")
 data class SdJwtInputValidationResult(
     val input: SdJwtSigned,
     val integrityValidationResult: KmmResult<SignumVerifier.Success>,

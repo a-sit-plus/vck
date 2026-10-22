@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.mdoc
 
 import at.asitplus.iso.IssuerSigned
@@ -7,6 +9,7 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
 import io.github.aakira.napier.Napier
 
+@Deprecated("Validate with at.asitplus.wallet.lib.validation.CredentialValidator, whose report holds every check. To be removed in the next major release.")
 class MdocInputValidator(
     /**
      * Verifies the signature of the issuer on [IssuerSigned.issuerAuth], resolving the issuer key itself.

@@ -81,6 +81,7 @@ val PreRegisteredClientTest by matrixSuite {
                     keyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),
                     decryptionKeyMaterial = decryptionKeyMaterial,
+                    presentationPolicy = testPresentationPolicy,
                 )
                 val defaultRequestOptions = OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
@@ -165,6 +166,7 @@ val PreRegisteredClientTest by matrixSuite {
                     override suspend fun get(key: String): AuthenticationRequestParameters? = null
                     override suspend fun remove(key: String): AuthenticationRequestParameters? = null
                 },
+                presentationPolicy = testPresentationPolicy,
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 it.defaultRequestOptions, CreationOptions.Query(it.walletUrl)

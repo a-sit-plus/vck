@@ -78,6 +78,9 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
 import at.asitplus.wallet.lib.openid.directPostHttpResponse
 import at.asitplus.wallet.lib.openid.loadRequestObjectHttpResponse
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -272,6 +275,13 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 val verifier = OpenId4VpVerifier(
                     clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUri),
                     decryptionKeyMaterial = decryptionKeyMaterial,
+                    // the test issuers are on no trust list, and no status list token resolver is configured
+                    presentationPolicy = ValidationPolicy(
+                        trust = TrustPolicy.IntegrityOnly,
+                        status = StatusPolicy.Skip,
+                        timeLeeway = 5.minutes,
+                        requireTimeliness = true,
+                    ),
                 )
                 val responseEndpointPath = "/response"
                 val createdRequest = verifier.createAuthnRequest(

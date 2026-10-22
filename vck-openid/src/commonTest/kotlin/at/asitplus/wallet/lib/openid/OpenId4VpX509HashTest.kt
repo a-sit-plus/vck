@@ -35,8 +35,8 @@ val OpenId4VpX509HashTest by matrixSuite {
                 clientIdScheme = ClientIdScheme.CertificateHash(
                     listOf(verifierKeyMaterial.getCertificate()!!),
                     "https://example.com/redirect"
-                )
-
+                ),
+                presentationPolicy = testPresentationPolicy,
             )
 
             object {

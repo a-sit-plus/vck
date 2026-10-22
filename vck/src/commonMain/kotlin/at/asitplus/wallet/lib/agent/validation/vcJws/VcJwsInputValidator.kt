@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.vcJws
 
 /*
@@ -24,6 +26,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlin.jvm.JvmOverloads
 
+@Deprecated("Validate with at.asitplus.wallet.lib.validation.CredentialValidator, whose report holds every check. To be removed in the next major release.")
 data class VcJwsInputValidator @JvmOverloads constructor(
     val vcJwsContentSemanticsValidator: VcJwsContentSemanticsValidator = VcJwsContentSemanticsValidator(),
     val vpJwsValidator: VpJwsValidator = VpJwsValidator(),

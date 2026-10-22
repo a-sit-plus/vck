@@ -12,7 +12,9 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.StatusListAgent
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -49,12 +51,12 @@ val OpenId4VpValidationReportTest by matrixSuite {
                     val result = issuance.present(representation, issuance.verifier(issuance.validator()))
 
                     result.validationReport.decision shouldBe ACCEPTED
-                    result.vpTokenOrThrow().shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                        .presentationValidations.values.shouldBeSingleton().first()
+                    result.presentationValidations.values.shouldBeSingleton().first()
                         .shouldBeSingleton().first().presentation.shouldNotBeNull()
+                    result.legacyResult().getOrThrow().freshness().isFresh shouldBe true
                 }
 
-                "rejects a revoked credential, while the legacy result reports it as not fresh" {
+                "rejects a revoked credential, also in the legacy result" {
                     val issuance = trustedIssuance()
                     val result = issuance.present(representation, issuance.verifier(issuance.validator())) {
                         issuance.revoke(it)
@@ -73,7 +75,7 @@ val OpenId4VpValidationReportTest by matrixSuite {
                                 .outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
                         }
                     }
-                    result.vpTokenResult.isSuccess shouldBe true
+                    result.legacyResult().exceptionOrNull().shouldNotBeNull()
                 }
 
                 "rejects every presentation by default, without trust anchors" {
@@ -81,15 +83,28 @@ val OpenId4VpValidationReportTest by matrixSuite {
                     val result = issuance.present(representation, issuance.verifier(CredentialValidator()))
 
                     result.validationReport.decision shouldBe REJECTED
-                    result.vpTokenOrThrow().shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                        .presentationValidations.values.flatten().shouldBeSingleton().first().apply {
-                            presentation.shouldBeNull()
-                            report.children.shouldBeSingleton().first().checks.shouldBeInstanceOf<CredentialChecks>()
-                                .issuerTrust.outcome.shouldBeInstanceOf<CheckOutcome.Blocked>()
-                        }
+                    result.presentationValidations.values.flatten().shouldBeSingleton().first().apply {
+                        presentation.shouldBeNull()
+                        report.children.shouldBeSingleton().first().checks.shouldBeInstanceOf<CredentialChecks>()
+                            .issuerTrust.outcome.shouldBeInstanceOf<CheckOutcome.Blocked>()
+                    }
+                    result.legacyResult().exceptionOrNull().shouldNotBeNull()
                 }
             }
     }
+}
+
+/** The deprecated result of the single presentation of this response, projected from its validation. */
+@Suppress("DEPRECATION")
+private fun AuthnResponseResult.Success.legacyResult() =
+    vpTokenResult.getOrThrow().shouldBeInstanceOf<VpTokenValidationResultDCQL>()
+        .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first()
+
+private fun Verifier.VerifyPresentationResult.freshness(): CredentialFreshnessSummary = when (this) {
+    is Verifier.VerifyPresentationResult.SuccessSdJwt -> freshnessSummary
+    is Verifier.VerifyPresentationResult.SuccessUnsigned -> vc.freshnessSummary
+    is Verifier.VerifyPresentationResult.Success -> vp.freshVerifiableCredentials.single().freshnessSummary
+    is Verifier.VerifyPresentationResult.SuccessIso -> documents.single().freshnessSummary
 }
 
 private suspend fun trustedIssuance(): TrustedIssuance {

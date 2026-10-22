@@ -10,12 +10,15 @@ import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
+import at.asitplus.wallet.lib.validation.CredentialTrustScope
+import at.asitplus.wallet.lib.validation.CredentialTrustScopes
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.TrustPolicy
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -24,7 +27,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
  * A verifier evaluating trust in the credential's issuer during an OpenID4VP flow, i.e. an
- * [OpenId4VpVerifier] with a [VerifierAgent] that has a list of trusted issuer certificates.
+ * [OpenId4VpVerifier] with a [CredentialValidator] that has a list of trusted issuer certificates.
  */
 val OpenId4VpTrustedIssuerTest by matrixSuite {
 
@@ -65,7 +68,17 @@ private fun verifierTrusting(trustedIssuers: TrustedCertificates): OpenId4VpVeri
     val clientId = "https://example.com/rp/${uuid4()}"
     return OpenId4VpVerifier(
         clientIdScheme = ClientIdScheme.RedirectUri(clientId),
-        verifier = VerifierAgent(identifier = clientId, trustedIssuers = trustedIssuers),
+        credentialValidator = CredentialValidator(
+            trustAnchors = CredentialTrustScopes(
+                CredentialTrustScope(
+                    credentialIdentifiers = with(AtomicAttribute2023) { setOf(vcType, sdJwtType, isoDocType) },
+                    source = "test issuers",
+                    issuance = trustedIssuers,
+                    status = trustedIssuers,
+                )
+            ),
+        ),
+        presentationPolicy = testPresentationPolicy.copy(trust = TrustPolicy.RequireAuthorizedSigner),
     )
 }
 

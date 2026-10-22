@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
 import at.asitplus.KmmResult
@@ -18,12 +20,15 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCerti
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate.WrpJwtRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest.WrpDcqlCredentialQuery
+import at.asitplus.wallet.lib.validation.parseSingleRegistrationCertificate
+import at.asitplus.wallet.lib.validation.parseWrprcCose
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.decodeFromByteArray
 
 /**
  * Parses an authentication request and wraps necessary data for WRP validation.
  */
+@Deprecated("Validate relying parties with at.asitplus.wallet.lib.validation.RelyingPartyValidator. To be removed in the next major release.")
 object WrpAuthenticationRequestValidator {
 
     operator fun invoke(
@@ -106,36 +111,11 @@ object WrpAuthenticationRequestValidator {
         )
     }
 
-    /**
-     * Parses the only registration certificate in [this], keeping the cause in the exception if it can not be parsed.
-     */
-    internal fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsCompactTyped<WrpPayload> {
-        val registrationCertificates = filter { it.format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true) }
-        if (registrationCertificates.isEmpty()) {
-            throw MissingRegistrationCertificateException("No WRPRC in verifier_info")
-        }
-        val registrationCertificate = registrationCertificates.singleOrNull()
-            ?: throw InvalidRegistrationCertificateException(
-                "Request must contain exactly one WRPRC, but contains ${registrationCertificates.size}"
-            )
-        return catchingUnwrapped { JwsCompactTyped<WrpPayload>(registrationCertificate.data) }.getOrElse {
-            throw InvalidRegistrationCertificateException("Could not parse WRPRC", it)
-        }
-    }
-
     fun VerifierInfo.parseJws() = catchingUnwrapped {
         require(format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true))
         JwsCompactTyped<WrpPayload>(data)
     }.onFailure { Napier.w("Failed to parse JWS data for $this (${REGISTRATION_CERT_FORMAT}).", it) }
         .getOrNull()
 
-    fun parseCose(euWrprc: CoseSigned<ByteArray>): WrpPayload {
-        val type = euWrprc.protectedHeader.type ?: throw IllegalArgumentException("Missing typ header in euWrprc.")
-        if (type != "rc-wrp+cwt") {
-            throw IllegalArgumentException("Invalid typ header in euWrprc: expected 'rc-wrp+cwt', got '$type'.")
-        }
-
-        val payloadBytes = euWrprc.payload ?: throw IllegalStateException("euWrprc payload not found.")
-        return coseCompliantSerializer.decodeFromByteArray<WrpPayload>(bytes = payloadBytes)
-    }
+    fun parseCose(euWrprc: CoseSigned<ByteArray>): WrpPayload = parseWrprcCose(euWrprc)
 }

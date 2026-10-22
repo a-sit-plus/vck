@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
@@ -19,6 +21,7 @@ import io.github.aakira.napier.Napier
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 
+@Deprecated("Validate with at.asitplus.wallet.lib.validation.CredentialValidator, whose report holds every check. To be removed in the next major release.")
 class ValidatorMdoc @JvmOverloads constructor(
     private val verifySignature: VerifySignatureFun = VerifySignature(),
     /**

@@ -70,6 +70,7 @@ val RedirectUriClientTest by matrixSuite {
                 val verifierOid4vp: OpenId4VpVerifier = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+                    presentationPolicy = testPresentationPolicy,
                 )
             }
         }
@@ -175,6 +176,7 @@ val RedirectUriClientTest by matrixSuite {
                     override suspend fun get(key: String): AuthenticationRequestParameters? = null
                     override suspend fun remove(key: String): AuthenticationRequestParameters? = null
                 },
+                presentationPolicy = testPresentationPolicy,
             )
             val authnRequest = verifierOid4vp.createAuthnRequest(
                 defaultRequestOptions, CreationOptions.Query(it.walletUrl)

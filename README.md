@@ -126,11 +126,27 @@ Use `OpenId4VpVerifier` in the verifier/relying party and `OpenId4VpHolder` in t
 authorization request, sends the resulting URL to the wallet as a QR code or deep link, then validates the URL or POST
 body returned by the wallet.
 
+The verifier validates every presentation with a `CredentialValidator`: configure it with the trust anchors per
+credential type, e.g. from the trust lists of the EUDI Wallet ecosystem, and a status list token resolver. By default,
+issuers have to be trusted, a status is checked, and credentials have to be valid, so without anchors every
+presentation is rejected.
+
 ```kotlin
+val credentialValidator = CredentialValidator(
+    trustAnchors = CredentialTrustScopes(
+        loteFilterService.credentialTrustScope(
+            credentialIdentifiers = setOf(EuPidSdJwtScheme.sdJwtType),
+            profile = LoteProfile.PID,
+            source = "PID providers",
+            lists = { authenticatedPidProviderLists() },
+        ),
+    ),
+    statusValidator = StatusValidator(StatusListTokenResolver { uri -> fetchStatusListToken(uri) }),
+)
 val verifier = OpenId4VpVerifier(
     keyMaterial = verifierKeyMaterial,
     clientIdScheme = ClientIdScheme.RedirectUri("https://rp.example/callback"),
-    verifier = VerifierAgent(identifier = "https://rp.example/callback"),
+    credentialValidator = credentialValidator,
 )
 
 val request = verifier.createAuthnRequest(
@@ -160,8 +176,10 @@ val response = verifier.validateAuthnResponse(walletRedirectUrlOrDirectPostBody)
     return badRequest(it)
 }
 when (response) {
-    // The wallet presented: getOrThrow() fails for an invalid presentation
-    is AuthnResponseResult.Success -> response.vpTokenResult.getOrThrow()
+    // The wallet presented: the report tells whether the response is accepted, with every check of every presentation
+    is AuthnResponseResult.Success -> if (response.validationReport.decision == ValidationDecision.ACCEPTED) {
+        response.presentationValidations.values.flatten().mapNotNull { it.presentation }
+    } else showWhy(response.validationReport)
     // The wallet declined, e.g. with access_denied; escape the wallet's error_description when displaying it
     is AuthnResponseResult.Error -> response.error
 }
@@ -173,9 +191,10 @@ val answer = directPostHttpResponse(redirectUri = "https://rp.example/result#res
 Each `PreparedHttpResponse` is written out unchanged: its status, every header in `headers`, and `body`.
 
 On the wallet side, use the two-step API when the user must review and choose credentials. To establish trust in
-the relying party sending a request, pass a `relyingPartyTrust`: it verifies the request object per client identifier
-scheme, with trust anchors for `x509_san_dns` and `x509_hash`, trusted attesters for `verifier_attestation`, and a
-registry of known clients for `pre-registered`.
+the relying party sending a request, pass a `relyingPartyValidator` with `RelyingPartyTrustAnchors`: WRPAC anchors,
+also for `x509_san_dns` and `x509_hash`, WRPRC anchors, trusted attesters for `verifier_attestation`, and a registry
+of known clients for `pre-registered`. `startAuthorizationResponsePreparation(input, policy)` returns the report of
+the request next to the preparation state, also for a rejected request, so the wallet can show why.
 
 `OpenId4VpKtorHolder` from `vck-openid-ktor` sends the requests to the verifier with Ktor, i.e. it fetches a request
 object passed by reference and posts the response. It uses a copy of your `HttpClient` that doesn't follow redirects.

@@ -65,6 +65,7 @@ class HolderAgent @JvmOverloads constructor(
         "The validator parameters no longer take effect, and trustedIssuers trusts every issuer for every credential" +
                 " type: pass a credentialValidator with trust anchors per credential type instead"
     )
+    @Suppress("DEPRECATION")
     constructor(
         keyMaterial: KeyMaterial,
         subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),

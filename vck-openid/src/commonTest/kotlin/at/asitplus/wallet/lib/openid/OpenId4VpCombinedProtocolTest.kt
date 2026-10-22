@@ -82,6 +82,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 val verifierOid4vp: OpenId4VpVerifier = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+                    presentationPolicy = testPresentationPolicy,
                 )
             }
         }
@@ -183,7 +184,8 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessUnsigned>()
                 .vc
             vcFreshnessSummary.vcJws.vc.credentialSubject.shouldBeInstanceOf<JsonObject>()
-            vcFreshnessSummary.freshnessSummary.isFresh.shouldBeTrue()
+            // the status is not resolved under testPresentationPolicy, so the credential is not verifiably fresh
+            vcFreshnessSummary.freshnessSummary.timelinessValidationSummary.isTimely.shouldBeTrue()
         }
 
         test("sd-jwt dcql: if not available despite others with correct format or correct attribute, but not both") {

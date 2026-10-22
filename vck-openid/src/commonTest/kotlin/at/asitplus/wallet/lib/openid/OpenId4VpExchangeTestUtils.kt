@@ -8,8 +8,12 @@ import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.oauth2.FakeHttpStack
 import at.asitplus.wallet.lib.oauth2.scripted
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Prepares the authorization request [input] as a wallet does, i.e. with
@@ -52,3 +56,15 @@ fun requestUriEndpoint(
 /** The `vp_token` of a processed presentation, failing for an authorization error response or an invalid one. */
 fun AuthnResponseResult.vpTokenOrThrow(): VpTokenValidationResult =
     shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.getOrThrow()
+
+/**
+ * The policy for verifiers in tests whose issuers are on no trust list: signatures, holder binding, and time are
+ * validated as always, but issuers need not be authorized, and the status is not resolved, as no status list token
+ * resolver is configured.
+ */
+val testPresentationPolicy = ValidationPolicy(
+    trust = TrustPolicy.IntegrityOnly,
+    status = StatusPolicy.Skip,
+    timeLeeway = 5.minutes,
+    requireTimeliness = true,
+)
