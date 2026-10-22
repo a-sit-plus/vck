@@ -5,7 +5,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.jvm.JvmOverloads
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 @Serializable
 data class CredentialResponseParameters(
@@ -44,6 +46,26 @@ data class CredentialResponseParameters(
     @SerialName("notificationId")
     val notificationId: String? = null,
 ) {
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [Duration].
+     */
+    @JvmOverloads
+    internal constructor(
+        credentials: Set<CredentialResponseSingleCredential>?,
+        transactionId: String? = null,
+        intervalSeconds: Long? = null,
+        notificationId: String? = null,
+    ) : this(
+        credentials = credentials,
+        transactionId = transactionId,
+        interval = intervalSeconds?.seconds,
+        notificationId = notificationId,
+    )
+
+    /** Java-safe accessor for [interval], in seconds. */
+    val intervalSeconds: Long?
+        get() = interval?.inWholeSeconds
+
     fun extractCredentials(): List<String> =
         credentials?.let { it.mapNotNull { it.credentialString } } ?: listOf()
 }

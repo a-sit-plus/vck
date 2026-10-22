@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Whether the signer of an artifact has to be authorized by trust anchors: the issuer of a credential, the signer of
@@ -86,6 +87,34 @@ data class ValidationPolicy(
     init {
         require(timeLeeway.isFinite() && !timeLeeway.isNegative()) { "Time leeway has to be finite and not negative" }
     }
+
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [Duration].
+     * [requireTimeliness] precedes [timeLeewayMilliseconds], because the JVM signature would otherwise clash with
+     * the primary constructor's, where [Duration] is a `long` too.
+     */
+    @JvmOverloads
+    internal constructor(
+        trust: TrustPolicy,
+        status: StatusPolicy,
+        requireTimeliness: Boolean,
+        timeLeewayMilliseconds: Long,
+        holderBinding: HolderBindingPolicy = HolderBindingPolicy.None,
+        requiredClaims: RequiredClaimsPolicy = RequiredClaimsPolicy.Skip,
+        registration: RegistrationPolicy = RegistrationPolicy.Require,
+    ) : this(
+        trust = trust,
+        status = status,
+        timeLeeway = timeLeewayMilliseconds.milliseconds,
+        requireTimeliness = requireTimeliness,
+        holderBinding = holderBinding,
+        requiredClaims = requiredClaims,
+        registration = registration,
+    )
+
+    /** Java-safe accessor for [timeLeeway], in milliseconds. */
+    val timeLeewayMilliseconds: Long
+        get() = timeLeeway.inWholeMilliseconds
 }
 
 /**

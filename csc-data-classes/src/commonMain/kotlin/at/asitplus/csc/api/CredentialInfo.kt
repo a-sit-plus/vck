@@ -6,6 +6,7 @@ import at.asitplus.csc.api.collection_entries.KeyParameters
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
 
 /**
  * Data class that implements credentialInfo class defined
@@ -85,6 +86,36 @@ data class CredentialInfo(
     @SerialName("lang")
     val lang: String? = null,
 ) {
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [UInt].
+     */
+    @JvmOverloads
+    internal constructor(
+        keyParameters: KeyParameters,
+        multisign: Long,
+        credentialID: String? = null,
+        description: String? = null,
+        signatureQualifier: SignatureQualifier? = null,
+        certParameters: CertificateParameters? = null,
+        authParameters: AuthParameters? = null,
+        scal: ScalOptions? = ScalOptions.SCAL1,
+        lang: String? = null,
+    ) : this(
+        credentialID = credentialID,
+        description = description,
+        signatureQualifier = signatureQualifier,
+        keyParameters = keyParameters,
+        certParameters = certParameters,
+        authParameters = authParameters,
+        scal = scal,
+        multisign = multisign.toUIntFromJava("multisign"),
+        lang = lang,
+    )
+
+    /** Java-safe accessor for [multisign]. */
+    val multisignAsLong: Long
+        get() = multisign.toLong()
+
     enum class ScalOptions {
         /**
          * “1”: The hash to-be-signed is not linked to the signature
