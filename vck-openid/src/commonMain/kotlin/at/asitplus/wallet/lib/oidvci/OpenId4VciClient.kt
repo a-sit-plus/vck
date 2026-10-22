@@ -517,11 +517,11 @@ class OpenId4VciClient @JvmOverloads constructor(
             expectedHolderKey = keyMaterial.publicKey,
             expectedCredentialIdentifier = identifier,
         )
-        val binding = HolderBindingPolicy.RequireExpectedKey
+        val bound = policy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey)
         decryptCredentialResponse(response, request).extractCredentials().map { credential ->
             catchingUnwrapped { credential.toValidationInput(representation) }.fold(
-                onSuccess = { credentialValidator.validate(it, policy, binding, context) },
-                onFailure = { credentialValidator.rejectUndecodable(it, policy, binding) },
+                onSuccess = { credentialValidator.validate(it, bound, context) },
+                onFailure = { credentialValidator.rejectUndecodable(it, bound) },
             )
         }
     }

@@ -107,6 +107,9 @@ data class StatusValidation(
         require(claim == CheckOutcome.Passed || mechanisms.isEmpty()) {
             "Status mechanisms are only evaluated for a status claim that passed"
         }
+        require(mechanisms.isNotEmpty() || agreement != CheckOutcome.Passed) {
+            "Agreement can only pass over status mechanisms"
+        }
     }
 }
 
@@ -200,6 +203,7 @@ data class ProtocolResponseChecks(
  * The [decision] is always derived from [checks] and [children], so a report can only be created through the
  * factories in the companion, one per kind of [ValidationChecks]: [CheckOutcome.Blocked] never satisfies a required
  * check, and [CheckOutcome.NotApplicable] only one the policy makes optional or the artifact does not define.
+ * [namedChecks] records the requirement the policy put on every check, so the report can be shown as decided.
  * A report describes a validation at [evaluatedAt] under a particular policy: it is not a durable proof that a status
  * or trust decision remains valid.
  */
@@ -209,15 +213,20 @@ data class ValidationReport private constructor(
     val children: List<ValidationReport>,
     val decision: ValidationDecision,
     val evaluatedAt: Instant,
+    /**
+     * The checks of [checks] in declaration order, each with the requirement the policy of this report put on it: the
+     * report is accepted if every one of them is [NamedCheck.satisfied], and its children are accepted, unless it is
+     * the report of a protocol response, which keeps its rejected presentations.
+     */
+    val namedChecks: List<NamedCheck>,
 ) {
     companion object {
-        /** Report of a single credential, accepted if every check [policy] and [holderBinding] require passed. */
+        /** Report of a single credential, accepted if every check [policy] requires passed. */
         fun credential(
             checks: CredentialChecks,
             policy: ValidationPolicy,
-            holderBinding: HolderBindingPolicy,
             evaluatedAt: Instant,
-        ) = leaf(checks, checks.meets(policy, holderBinding), evaluatedAt)
+        ) = leaf(checks, checks.named(policy), evaluatedAt)
 
         /**
          * Report of a status list token, accepted if every check passed, and its signer is authorized as [signerTrust]
@@ -227,7 +236,7 @@ data class ValidationReport private constructor(
             checks: StatusListTokenChecks,
             signerTrust: TrustPolicy,
             evaluatedAt: Instant,
-        ) = leaf(checks, checks.meets(signerTrust), evaluatedAt)
+        ) = leaf(checks, checks.named(signerTrust), evaluatedAt)
 
         /**
          * Report of a presentation of one or more [credentials], accepted if no check of [checks] failed or was
@@ -242,7 +251,7 @@ data class ValidationReport private constructor(
                 "A presentation that could be parsed contains at least one credential"
             }
             credentials.requireChecks<CredentialChecks>()
-            return parent(checks, credentials, checks.satisfied(), evaluatedAt)
+            return parent(checks, credentials, checks.named(), evaluatedAt)
         }
 
         /**
@@ -258,7 +267,8 @@ data class ValidationReport private constructor(
         ): ValidationReport {
             presentations.requireChecks<PresentationChecks>()
             // Rejected presentations are kept, but only the accepted ones count, through submissionRequirements.
-            return ValidationReport(checks, presentations, checks.satisfied().toDecision(), evaluatedAt)
+            val named = checks.named()
+            return ValidationReport(checks, presentations, named.allSatisfied().toDecision(), evaluatedAt, named)
         }
 
         /**
@@ -271,7 +281,7 @@ data class ValidationReport private constructor(
             evaluatedAt: Instant,
         ): ValidationReport {
             val children = listOfNotNull(keyAttestation).requireChecks<KeyAttestationChecks>()
-            return parent(checks, children, checks.satisfied(), evaluatedAt)
+            return parent(checks, children, checks.named(), evaluatedAt)
         }
 
         /** Report of a key attestation, standalone as `attestation` proof, or embedded in a JWT proof. */
@@ -279,14 +289,14 @@ data class ValidationReport private constructor(
             checks: KeyAttestationChecks,
             policy: ValidationPolicy,
             evaluatedAt: Instant,
-        ) = leaf(checks, checks.meets(policy), evaluatedAt)
+        ) = leaf(checks, checks.named(policy), evaluatedAt)
 
         /** Report of a client (wallet instance) attestation together with its proof of possession. */
         fun clientAttestation(
             checks: ClientAttestationChecks,
             policy: ValidationPolicy,
             evaluatedAt: Instant,
-        ) = leaf(checks, checks.meets(policy), evaluatedAt)
+        ) = leaf(checks, checks.named(policy), evaluatedAt)
 
         /**
          * Report of an OpenID4VP request object, accepted if every check [policy] requires passed, and its
@@ -302,7 +312,7 @@ data class ValidationReport private constructor(
             listOfNotNull(verifierAttestation).requireChecks<VerifierAttestationChecks>()
             listOfNotNull(relyingParty).requireChecks<RelyingPartyChecks>()
             val children = listOfNotNull(verifierAttestation, relyingParty)
-            return parent(checks, children, checks.meets(policy), evaluatedAt)
+            return parent(checks, children, checks.named(policy), evaluatedAt)
         }
 
         /** Report of a verifier attestation, i.e. the `verifier_attestation` client identifier prefix. */
@@ -310,7 +320,7 @@ data class ValidationReport private constructor(
             checks: VerifierAttestationChecks,
             policy: ValidationPolicy,
             evaluatedAt: Instant,
-        ) = leaf(checks, checks.meets(policy), evaluatedAt)
+        ) = leaf(checks, checks.named(policy), evaluatedAt)
 
         /**
          * Report of a wallet-relying party, accepted if its request data could be extracted, its [accessCertificate]
@@ -325,7 +335,7 @@ data class ValidationReport private constructor(
             listOf(accessCertificate).requireChecks<AccessCertificateChecks>()
             registrationCertificates.requireChecks<RegistrationCertificateChecks>()
             val children = listOf(accessCertificate) + registrationCertificates
-            return parent(checks, children, checks.satisfied(), evaluatedAt)
+            return parent(checks, children, checks.named(), evaluatedAt)
         }
 
         /** Report of a wallet-relying party access certificate (WRPAC). */
@@ -333,14 +343,14 @@ data class ValidationReport private constructor(
             checks: AccessCertificateChecks,
             policy: ValidationPolicy,
             evaluatedAt: Instant,
-        ) = leaf(checks, checks.meets(policy), evaluatedAt)
+        ) = leaf(checks, checks.named(policy), evaluatedAt)
 
         /** Report of a wallet-relying party registration certificate (WRPRC). */
         fun registrationCertificate(
             checks: RegistrationCertificateChecks,
             policy: ValidationPolicy,
             evaluatedAt: Instant,
-        ) = leaf(checks, checks.meets(policy), evaluatedAt)
+        ) = leaf(checks, checks.named(policy), evaluatedAt)
 
         /**
          * Report of signed credential issuer metadata, as received by a wallet, accepted if every check [policy]
@@ -353,19 +363,25 @@ data class ValidationReport private constructor(
             registrationCertificate: ValidationReport? = null,
         ): ValidationReport {
             val children = listOfNotNull(registrationCertificate).requireChecks<RegistrationCertificateChecks>()
-            return parent(checks, children, checks.meets(policy), evaluatedAt)
+            return parent(checks, children, checks.named(policy), evaluatedAt)
         }
 
-        private fun leaf(checks: ValidationChecks, accepted: Boolean, evaluatedAt: Instant) =
-            ValidationReport(checks, emptyList(), accepted.toDecision(), evaluatedAt)
+        private fun leaf(checks: ValidationChecks, named: List<NamedCheck>, evaluatedAt: Instant) =
+            ValidationReport(checks, emptyList(), named.allSatisfied().toDecision(), evaluatedAt, named)
 
         /** A parent is accepted if its own checks are, and every child is accepted. */
         private fun parent(
             checks: ValidationChecks,
             children: List<ValidationReport>,
-            accepted: Boolean,
+            named: List<NamedCheck>,
             evaluatedAt: Instant,
-        ) = ValidationReport(checks, children, (accepted && children.allAccepted()).toDecision(), evaluatedAt)
+        ) = ValidationReport(
+            checks = checks,
+            children = children,
+            decision = (named.allSatisfied() && children.allAccepted()).toDecision(),
+            evaluatedAt = evaluatedAt,
+            namedChecks = named,
+        )
 
         private inline fun <reified T : ValidationChecks> List<ValidationReport>.requireChecks() = also {
             require(all { it.checks is T }) { "Children have to be reports of ${T::class.simpleName}" }

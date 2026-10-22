@@ -385,7 +385,6 @@ val ArtifactValidationRulesTest by matrixSuite {
                 status = validStatus,
             ),
             policy = strictPolicy,
-            holderBinding = HolderBindingPolicy.None,
             evaluatedAt = evaluatedAt,
         )
         val accepted = ValidationReport.presentation(passingPresentation, listOf(credential), evaluatedAt)
