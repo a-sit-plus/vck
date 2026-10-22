@@ -755,7 +755,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 requireTimeliness = true,
             )
 
-            val received = client.decodeCredentialResponse(batch, request, ISO_MDOC).getOrThrow()
+            val received = client.decodeCredentialResponse(batch, request, ISO_MDOC).getOrThrow().toList()
             received.shouldHaveSize(3)
             received[0].shouldBeInstanceOf<ReceivedCredential.Decoded>()
             received[1].shouldBeInstanceOf<ReceivedCredential.Undecodable>()

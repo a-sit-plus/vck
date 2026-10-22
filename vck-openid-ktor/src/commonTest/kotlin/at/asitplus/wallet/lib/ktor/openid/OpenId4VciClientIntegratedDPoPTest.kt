@@ -224,7 +224,7 @@ val OpenId4VciKtorClientIntegratedDPoPTest by matrixSuite {
                 val httpClient = HttpClient(context.mockEngine) { followRedirects = false }
                 val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
                 context.client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
-                    refreshTokenStore = it.refreshToken!!
+                    refreshTokenStore = it.issued.single().refreshToken!!
                     context.attributes.forEach { (key, value) ->
                         it.verifySdJwtCredential(key, value, context.credentialKeyMaterial.publicKey)
                     }

@@ -373,6 +373,11 @@ class OpenId4VciClient @JvmOverloads constructor(
      */
     data class PreparedCredentialRequest(
         /**
+         * The `credential_configuration_id` of the requested credential, also for a request by `credential_identifier`,
+         * whose authorization details name it (OpenID4VCI 1.0, 5.1.1, 6.2), as the identifier itself is opaque.
+         */
+        val credentialConfigurationId: String,
+        /**
          * Either the `credential_identifier` or the `credential_configuration_id` of the requested credential, still
          * without `proofs` and `credential_response_encryption` (OpenID4VCI 1.0, 8.2).
          */
@@ -402,7 +407,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         metadata: IssuerMetadata,
         credentialFormats: Collection<SupportedCredentialFormat>,
         previouslyRequestedScope: String? = null,
-    ): KmmResult<List<PreparedCredentialRequest>> = catching {
+    ): KmmResult<Collection<PreparedCredentialRequest>> = catching {
         prepareInternal(tokenResponse, previouslyRequestedScope, metadata, credentialFormats)
             .ifEmpty { throw InvalidToken("Token response grants none of the selected credentials") }
     }
@@ -423,7 +428,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
         previouslyRequestedScope: String? = null,
-    ): KmmResult<List<PreparedCredentialRequest>> = catching {
+    ): KmmResult<Collection<PreparedCredentialRequest>> = catching {
         prepareInternal(tokenResponse, previouslyRequestedScope, metadata, null)
             .ifEmpty { throw InvalidToken("Token response grants no credentials") }
     }
@@ -433,7 +438,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         previouslyRequestedScope: String?,
         metadata: IssuerMetadata,
         credentialFormats: Collection<SupportedCredentialFormat>?
-    ): List<PreparedCredentialRequest> {
+    ): Collection<PreparedCredentialRequest> {
         val authorizationDetails = tokenResponse.authorizationDetails
         val scope = tokenResponse.scope ?: previouslyRequestedScope
         val prepared = if (authorizationDetails != null) {
@@ -446,6 +451,7 @@ class OpenId4VciClient @JvmOverloads constructor(
                     .keys
             }.distinct().map {
                 PreparedCredentialRequest(
+                    credentialConfigurationId = it,
                     credentialRequestParameters = CredentialRequestParameters(credentialConfigurationId = it),
                     credentialFormat = metadata.supportedCredentialConfigurations.getValue(it),
                 )
@@ -474,9 +480,10 @@ class OpenId4VciClient @JvmOverloads constructor(
     fun prepareCredentialRequests(
         credentialConfigurationIds: Set<String>,
         metadata: IssuerMetadata,
-    ): KmmResult<List<PreparedCredentialRequest>> = catching {
+    ): KmmResult<Collection<PreparedCredentialRequest>> = catching {
         credentialConfigurationIds.map {
             PreparedCredentialRequest(
+                credentialConfigurationId = it,
                 credentialRequestParameters = CredentialRequestParameters(credentialConfigurationId = it),
                 credentialFormat = metadata.supportedCredentialConfigurations[it]
                     ?: throw UnknownCredentialConfiguration(it),
@@ -493,7 +500,7 @@ class OpenId4VciClient @JvmOverloads constructor(
     private fun OpenIdAuthorizationDetails.toPreparedCredentialRequests(
         metadata: IssuerMetadata,
         credentialFormats: Collection<SupportedCredentialFormat>?,
-    ): List<PreparedCredentialRequest> {
+    ): Collection<PreparedCredentialRequest> {
         val configurationId = credentialConfigurationId?.takeIf { it.isNotEmpty() }
             ?: throw InvalidToken("Authorization details contain no credential_configuration_id")
         val format = metadata.supportedCredentialConfigurations[configurationId]
@@ -502,7 +509,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         val parameters = credentialIdentifiers?.takeIf { it.isNotEmpty() }
             ?.map { CredentialRequestParameters(credentialIdentifier = it) }
             ?: listOf(CredentialRequestParameters(credentialConfigurationId = configurationId))
-        return parameters.map { PreparedCredentialRequest(it, format) }
+        return parameters.map { PreparedCredentialRequest(configurationId, it, format) }
     }
 
     /**
@@ -697,7 +704,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         isEncrypted: Boolean,
         request: CredentialRequest,
         representation: CredentialRepresentation,
-    ): KmmResult<List<ReceivedCredential>> = catching {
+    ): KmmResult<Collection<ReceivedCredential>> = catching {
         decodeCredentialResponse(
             response = response.toCredentialResponse(isEncrypted),
             request = request,
@@ -719,7 +726,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         response: CredentialResponse,
         request: CredentialRequest,
         representation: CredentialRepresentation,
-    ): KmmResult<List<ReceivedCredential>> = catching {
+    ): KmmResult<Collection<ReceivedCredential>> = catching {
         decryptCredentialResponse(response, request).credentials.orEmpty().map { credential ->
             catchingUnwrapped {
                 credential.credentialString?.toValidationInput(representation)

@@ -272,7 +272,7 @@ val OpenId4VciKtorClientTest by matrixSuite {
                 val authCode = httpClient.get(it.url).headers[HttpHeaders.Location]
                 client.resumeWithAuthCode(authCode!!, it.context).getOrThrow().also {
                     it.reissuingStoreEntryId shouldBe 42L
-                    refreshTokenStore = it.refreshToken!!
+                    refreshTokenStore = it.issued.single().refreshToken!!
                     it.verifySdJwtCredential(
                         expectedAttributeName,
                         expectedFamilyName,
@@ -399,7 +399,7 @@ val OpenId4VciKtorClientTest by matrixSuite {
             )
             client.loadCredentialWithOfferReturningResult(offer, selectedCredential, null).getOrThrow().also {
                 it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
-                    refreshTokenStore = it.refreshToken!!
+                    refreshTokenStore = it.issued.single().refreshToken!!
                     it.verifyIsoMdocCredential(expectedAttributeName, expectedAttributeValue)
                     // The deprecated credentials are decoded as before, without validation
                     @Suppress("DEPRECATION")

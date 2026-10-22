@@ -366,9 +366,12 @@ Release 9.0.0 (unreleased):
       and store them with `HolderAgent.storeAccepted`, or `HolderAgent.storeAfterUserConsent` after the user accepts a
       rejected report, e.g. of a credential missing claims its type requires (`ValidationPolicy.requiredClaims`). A
       credential that can not be decoded is reported as rejected instead of failing the issuance
-    - BREAKING: `CredentialIssuanceResult.Success` holds the `receivedCredentials` (`ReceivedCredential`), not validated
-      yet, and the `scheme` they have been requested as, instead of `credentials`. Deprecate `credentials`, which
-      decodes them without validating them, and fails for a credential that can not be decoded
+    - BREAKING: `CredentialIssuanceResult.Success` holds the credentials `issued` for each requested credential
+      configuration as `IssuedCredentials`: the `receivedCredentials` (`ReceivedCredential`), not validated yet, the
+      `scheme` they have been requested as, and their renewal info `refreshToken`, instead of `credentials` and
+      `refreshToken`. Deprecate `credentials`, which decodes the credentials of all configurations without validating
+      them, and fails for a credential that can not be decoded, and `refreshToken`, which is the one of the first
+      configuration
     - Add `OpenId4VciProtocolClient.loadIssuerMetadata(credentialIssuer, policy)` and
       `OpenId4VciKtorClient.loadIssuerMetadata(credentialIssuer, policy)`, asking for signed metadata
       (`application/jwt`) over unsigned ones (OpenID4VCI 1.0, 12.2.2), and returning `LoadedIssuerMetadata`: `Signed`
@@ -453,6 +456,16 @@ Release 9.0.0 (unreleased):
       the credentials of `credentialFormat` the token grants, instead of for every credential it grants with a proof
       for `credentialFormat`, and fails if it grants none of them. Authorization details of the token response without
       a `credential_configuration_id`, which is REQUIRED (5.1.1), are rejected
+    - Add overloads of `OpenId4VciKtorClient.startProvisioningWithAuthRequestReturningResult` and
+      `OpenId4VciKtorClient.loadCredentialWithOfferReturningResult` taking several `CredentialIdentifierInfo`s of one
+      credential issuer, requesting all of them with one authorization and one token, e.g. as a pre-authorized code can
+      usually be used only once. They are requested with `scope` if every one of them has one, else with
+      `authorization_details` (OpenID4VCI 1.0, 12.2.4). `ProvisioningContext.credentials` keeps them during the
+      authorization in the browser; a context stored by an earlier version requests its `credential`
+    - Fix: `OpenId4VciKtorClient` requests a fresh `c_nonce` for each credential request, as the credential issuer may
+      accept each one only once (13.8), and sends a request once more with a new one if the credential issuer rejects it
+      with `invalid_nonce` (8.3.1.2), see `OpenId4VciProtocolClient.isInvalidNonce`. Each credential is requested and
+      decoded with its own configuration, so that credentials of different formats can be issued in one flow
     - Fix: Proof JWTs of `OpenId4VciKtorClient` name the `client_id` of the OAuth 2.0 client that requested the token,
       instead of the one of `OpenId4VciClient`, which differed when the OAuth 2.0 client was passed separately
     - Add a constructor to `OpenId4VciKtorClient` taking the app's ktor `HttpClient`, the `OAuth2Client` (the only

@@ -123,8 +123,9 @@ object TestUtils {
         expectedClaimValue: String,
         credentialKey: CryptoPublicKey,
     ) {
-        scheme shouldBe AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
-        val input = receivedCredentials.shouldBeSingleton().first()
+        val group = issued.shouldBeSingleton().first()
+        group.scheme shouldBe AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+        val input = group.receivedCredentials.shouldBeSingleton().first()
             .shouldBeInstanceOf<ReceivedCredential.Decoded>().input
             .shouldBeInstanceOf<CredentialValidationInput.SdJwtVc>()
         ValidatorSdJwt().verifySdJwt(SdJwtSigned.parseCatching(input.compact).getOrThrow(), credentialKey).getOrThrow()
@@ -140,8 +141,9 @@ object TestUtils {
         claimName: String,
         expectedClaimValue: String,
     ): IssuerSigned {
-        scheme shouldBe AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
-        val input = receivedCredentials.shouldBeSingleton().first()
+        val group = issued.shouldBeSingleton().first()
+        group.scheme shouldBe AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
+        val input = group.receivedCredentials.shouldBeSingleton().first()
             .shouldBeInstanceOf<ReceivedCredential.Decoded>().input
             .shouldBeInstanceOf<CredentialValidationInput.IsoMdoc>()
         return coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.issuerSignedCbor).also {
