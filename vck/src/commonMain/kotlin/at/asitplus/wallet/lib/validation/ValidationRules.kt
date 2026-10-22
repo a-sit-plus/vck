@@ -273,10 +273,13 @@ internal fun VerifierAttestationChecks.named(policy: ValidationPolicy) = listOf(
     NamedCheck("clientId", clientId, REQUIRED),
 )
 
-/** The registration of a relying party is required by every policy, as for credential issuers. */
+/**
+ * The registration of a relying party has to pass, or is not applicable to a request without WRPRCs under
+ * [RegistrationPolicy.ValidateIfPresent].
+ */
 internal fun RelyingPartyChecks.named() = listOf(
     NamedCheck("requestData", requestData, REQUIRED),
-    NamedCheck("registration", registration, REQUIRED),
+    NamedCheck("registration", registration, REQUIRED_IF_APPLICABLE),
 )
 
 /**

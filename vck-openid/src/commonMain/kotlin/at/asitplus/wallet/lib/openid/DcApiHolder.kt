@@ -36,8 +36,8 @@ class DcApiHolder @JvmOverloads constructor(
         holder = holder,
     ),
     /**
-     * Validates the relying party behind ISO/IEC 18013-7 Annex C requests that carry registration certificates, see
-     * [RelyingPartyValidator]; configure the one for OpenID4VP requests on [openId4VpHolder].
+     * Validates the relying party behind ISO/IEC 18013-7 Annex C requests, see [RelyingPartyValidator]; configure
+     * the one for OpenID4VP requests on [openId4VpHolder].
      */
     private val relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
 ) {
@@ -73,7 +73,9 @@ class DcApiHolder @JvmOverloads constructor(
      * Validates [request] under [policy] and prepares credential selection like the overload without a policy, also
      * for a rejected request: check the decision of [DcApiRequestValidation.validationReport] before presenting.
      * For an ISO/IEC 18013-7 Annex C request, which has no request object, the report is the one of its relying
-     * party if it carries registration certificates, else `null`.
+     * party, reported like a proximity request, see [RelyingPartyValidator.validate]: a request without reader
+     * authentication is rejected as unsigned, and one without registration certificates as
+     * [ValidationPolicy.registration] says.
      */
     suspend fun startAuthorizationResponsePreparation(
         request: DcApiRequest,
@@ -90,10 +92,9 @@ class DcApiHolder @JvmOverloads constructor(
                 .getOrThrow().toDcApi()
 
             is IsoMdocDcApi -> {
-                val relyingParty = request.takeIf { it.carriesRegistrationCertificate() }
-                    ?.validateRelyingParty(relyingPartyValidator, policy)
+                val relyingParty = request.validateRelyingParty(relyingPartyValidator, policy)
                 DcApiRequestValidation(
-                    validationReport = relyingParty?.report,
+                    validationReport = relyingParty.report,
                     preparationState = DcApiPreparationState.Iso180137AnnexC(
                         request = request,
                         presentationRequest = iso180137AnnexCHolder.createPresentationRequest(request).getOrThrow(),
@@ -103,9 +104,6 @@ class DcApiHolder @JvmOverloads constructor(
             }
         }
     }
-
-    private fun IsoMdocDcApi.carriesRegistrationCertificate() =
-        parameters.isoMdocRequest.deviceRequest.docRequests.any { it.itemsRequest.value.requestInfo?.euWrprc != null }
 
     private fun AuthorizationRequestValidation.toDcApi() =
         DcApiRequestValidation(validationReport, DcApiPreparationState.OpenId4Vp(preparationState), relyingParty)
@@ -193,22 +191,22 @@ sealed class DcApiPreparationState {
  * with, also if the request is rejected, see [DcApiHolder.startAuthorizationResponsePreparation].
  */
 data class DcApiRequestValidation(
-    /** `null` only for an ISO/IEC 18013-7 Annex C request without registration certificates. */
-    val validationReport: ValidationReport?,
+    val validationReport: ValidationReport,
     val preparationState: DcApiPreparationState,
     /**
-     * The result of validating the relying party of a request carrying registration certificates (WRPRCs), with the
-     * relying party if accepted, and what its WRPRCs say in any case, see
+     * The result of validating the relying party of an OpenID4VP request carrying registration certificates
+     * (WRPRCs), or of any Annex C request, with the relying party if accepted, and what its WRPRCs say in any case,
+     * see
      * [RelyingPartyValidationResult.untrustedRegistrations]. Its report is the
      * [at.asitplus.wallet.lib.validation.RelyingPartyChecks] child of [validationReport] for an OpenID4VP request,
-     * and [validationReport] itself for an Annex C request. `null` for a request without one.
+     * and [validationReport] itself for an Annex C request. `null` for an OpenID4VP request without WRPRCs.
      */
     val relyingParty: RelyingPartyValidationResult? = null,
 ) {
     init {
         require(
             relyingParty == null || relyingParty.report == validationReport ||
-                    relyingParty.report in validationReport?.children.orEmpty()
+                    relyingParty.report in validationReport.children
         ) { "The report of the relying party is the report of the request, or a child of it" }
     }
 }

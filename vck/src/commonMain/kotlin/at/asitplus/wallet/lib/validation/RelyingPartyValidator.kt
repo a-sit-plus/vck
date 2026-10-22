@@ -75,9 +75,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
     }.let { validate(it, policy) }
 
     /**
-     * Validates the relying party of the ISO mdoc [request] under [policy]: every document request is
-     * authenticated by one WRPAC over [sessionTranscript] (ISO/IEC 18013-5:2021, 9.1.4), and carries the WRPRC for
-     * it in `euWrprc`. The clock is read once, all checks use that time.
+     * Validates the relying party of the ISO mdoc [request] under [policy], like the overload for its device
+     * request. The clock is read once, all checks use that time.
      */
     suspend fun validate(
         request: RequestParametersFrom.IsoMdocDcApi,
@@ -89,13 +88,20 @@ class RelyingPartyValidator @JvmOverloads constructor(
     /**
      * Validates the relying party of the ISO mdoc [deviceRequest] under [policy], e.g. of a proximity presentation
      * over BLE or NFC: every document request is authenticated by one WRPAC over [sessionTranscript] (ISO/IEC
-     * 18013-5:2021, 9.1.4), and carries the WRPRC for it in `euWrprc`. The clock is read once, all checks use that
+     * 18013-5:2021, 9.1.4), see [ReaderAuthenticationVerifier.authenticate], and carries the WRPRC for it in
+     * `euWrprc`, as far as [ValidationPolicy.registration] requires one. The clock is read once, all checks use that
      * time.
      *
      * Reader authentication is optional (9.1.4): a request without any is reported as unsigned, like an unsigned
      * authorization request, with the `signature` of the WRPAC not applicable and `requestData` failing with an
      * [UnsupportedWrpRequestException], so that a wallet can tell an unauthenticated reader from one whose reader
-     * authentication does not verify, whose `signature` fails.
+     * authentication does not verify, whose `signature` fails. A request that authenticates only some of its document
+     * requests (ISO/IEC DIS 18013-5:2025, 12.5.4) fails `requestData` alike, as the others are not bound to the
+     * reader, while its `signature` passes.
+     *
+     * A reader may sign the request with several `readerAuthAll` signatures, e.g. one for each trust framework it
+     * takes part in: the report is about the first chain whose WRPAC is accepted and links to every WRPRC, else the
+     * first one whose WRPAC is accepted, else the first one.
      */
     suspend fun validate(
         deviceRequest: DeviceRequest,
@@ -223,18 +229,21 @@ class RelyingPartyValidator @JvmOverloads constructor(
         policy: ValidationPolicy,
     ): RelyingPartyValidationResult {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
-        val access = evaluateAccessCertificate(
-            chain = request.accessCertificateChain,
-            signature = request.signature,
-            clientId = request.clientId,
-            anchors = trust.accessCertificates,
-            source = ACCESS_CERTIFICATE_PROVIDERS,
+        val registration = request.registration.takeUnless {
+            policy.registration == RegistrationPolicy.ValidateIfPresent &&
+                    it.cause() is MissingRegistrationCertificateException
+        } ?: NotApplicable
+        val access = selectAccessCertificate(
+            request = request,
+            requireIdentifier = request.registrationCertificates.isNotEmpty() ||
+                    policy.registration == RegistrationPolicy.Require,
+            policy = policy,
             now = timeScope.now,
         )
         val registrations = request.registrationCertificates.map { (certificate, requests) ->
             val evaluation = evaluateRegistrationCertificate(
                 certificate = certificate,
-                accessIdentifier = access.identifier,
+                accessIdentifier = access.evaluation.identifier,
                 purpose = RegistrationPurpose.Presentation(requests),
                 anchors = trust.registrationCertificates,
                 source = REGISTRATION_CERTIFICATE_PROVIDERS,
@@ -253,8 +262,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
             certificate to ValidationReport.registrationCertificate(checks, policy, timeScope.now)
         }
         val report = ValidationReport.relyingParty(
-            checks = RelyingPartyChecks(requestData = request.requestData, registration = request.registration),
-            accessCertificate = ValidationReport.accessCertificate(access.checks, policy, timeScope.now),
+            checks = RelyingPartyChecks(requestData = request.requestData, registration = registration),
+            accessCertificate = access.report,
             registrationCertificates = registrations.map { it.second },
             evaluatedAt = timeScope.now,
         )
@@ -263,12 +272,42 @@ class RelyingPartyValidator @JvmOverloads constructor(
             .map { it.first.payload }
         val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
             ValidatedRelyingParty(
-                accessCertificateChain = requireNotNull(request.accessCertificateChain),
-                identifier = requireNotNull(access.identifier),
+                accessCertificateChain = requireNotNull(access.chain),
+                identifier = access.evaluation.identifier,
                 registrationCertificates = untrustedRegistrations,
             )
         } else null
         return RelyingPartyValidationResult(report, relyingParty, untrustedRegistrations)
+    }
+
+    /**
+     * Evaluates every chain the request is authenticated with, and selects the first whose WRPAC is accepted and
+     * links to every WRPRC of the request, else the first whose WRPAC is accepted, else the first one.
+     */
+    private suspend fun selectAccessCertificate(
+        request: ExtractedRequest,
+        requireIdentifier: Boolean,
+        policy: ValidationPolicy,
+        now: Instant,
+    ): AccessCertificateCandidate {
+        val registrations = request.registrationCertificates.keys.map { it.payload }
+        val candidates = request.accessCertificateChains.ifEmpty { listOf(null) }.map { chain ->
+            val evaluation = evaluateAccessCertificate(
+                chain = chain,
+                signature = request.signature,
+                clientId = request.clientId,
+                anchors = trust.accessCertificates,
+                source = ACCESS_CERTIFICATE_PROVIDERS,
+                now = now,
+                requireIdentifier = requireIdentifier,
+            )
+            AccessCertificateCandidate(chain, evaluation, ValidationReport.accessCertificate(evaluation.checks, policy, now))
+        }
+        val accepted = candidates.filter { it.report.decision == ValidationDecision.ACCEPTED }
+        return accepted.firstOrNull { candidate ->
+            val identifier = candidate.evaluation.identifier
+            registrations.all { identifier != null && it.isLinkedTo(identifier) }
+        } ?: accepted.firstOrNull() ?: candidates.first()
     }
 
     /** A JAR, signed with the leaf of its `x5c`, with one WRPRC in `verifier_info` for its DCQL query. */
@@ -293,7 +332,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         val requests: List<WrpCredentialRequest>? =
             parameters.dcqlQuery?.credentials?.map { WrpCredentialRequest.WrpDcqlCredentialQuery(it) }
         return ExtractedRequest(
-            accessCertificateChain = chain,
+            accessCertificateChains = listOfNotNull(chain),
             signature = chain?.let { signatureCheck.verify(jws).outcome }
                 ?: Blocked(IllegalArgumentException("The request transports no certificate chain")),
             clientId = parameters.clientId.orEmpty(),
@@ -314,7 +353,18 @@ class RelyingPartyValidator @JvmOverloads constructor(
     ): ExtractedRequest {
         if (deviceRequest.readerAuthAll.isNullOrEmpty() && deviceRequest.docRequests.all { it.readerAuth == null })
             return unsigned("The request has no reader authentication")
-        val chain = ReaderAuthenticationVerifier()(deviceRequest, sessionTranscript)
+        val reader = ReaderAuthenticationVerifier().authenticate(deviceRequest, sessionTranscript)
+        val unauthenticated = reader.getOrNull()?.unauthenticatedDocRequests.orEmpty()
+        if (unauthenticated.isNotEmpty()) return ExtractedRequest(
+            accessCertificateChains = reader.getOrThrow().chains,
+            signature = Passed,
+            clientId = null,
+            requestData = Failed(
+                UnsupportedWrpRequestException("The DocRequests at $unauthenticated have no reader authentication")
+            ),
+            registration = Blocked(),
+            registrationCertificates = emptyMap(),
+        )
         val registrationCertificates = catching<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
             if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
                 throw MissingRegistrationCertificateException("No DocRequest contains a registration certificate")
@@ -335,8 +385,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
             }.groupBy({ it.first }, { it.second })
         }
         return ExtractedRequest(
-            accessCertificateChain = chain.getOrNull(),
-            signature = chain.toOutcome(),
+            accessCertificateChains = reader.getOrNull()?.chains.orEmpty(),
+            signature = reader.toOutcome(),
             clientId = null,
             requestData = Passed,
             registration = registrationCertificates.toOutcome(),
@@ -349,7 +399,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
      * the request: its WRPRCs are not extracted, as anyone can copy them into a request.
      */
     private fun unsigned(message: String) = ExtractedRequest(
-        accessCertificateChain = null,
+        accessCertificateChains = emptyList(),
         signature = NotApplicable,
         clientId = null,
         requestData = Failed(UnsupportedWrpRequestException(message)),
@@ -358,7 +408,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
     )
 
     private fun unsupported(message: String) = ExtractedRequest(
-        accessCertificateChain = null,
+        accessCertificateChains = emptyList(),
         signature = Blocked(),
         clientId = null,
         requestData = Failed(UnsupportedWrpRequestException(message)),
@@ -368,16 +418,24 @@ class RelyingPartyValidator @JvmOverloads constructor(
 
     /** What a request transports of its relying party. */
     private class ExtractedRequest(
-        val accessCertificateChain: CertificateChain?,
-        /** Whether the request is signed by the leaf of [accessCertificateChain]. */
+        /** The chains the request is signed with, alternatives of one another, empty if it is not authenticated. */
+        val accessCertificateChains: List<CertificateChain>,
+        /** Whether the request is signed by the leaf of each of [accessCertificateChains]. */
         val signature: CheckOutcome,
         /** The client identifier of a JAR, `null` for mdoc reader authentication. */
         val clientId: String?,
         /** Whether the credential requests could be extracted from a request this validator supports. */
         val requestData: CheckOutcome,
-        /** Whether the request carries its WRPRCs as required, and they could be parsed. */
+        /** Whether the request carries its WRPRCs, and they could be parsed. */
         val registration: CheckOutcome,
         val registrationCertificates: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>,
+    )
+
+    /** A chain the request is signed with, its evaluation, and the report of its WRPAC. */
+    private class AccessCertificateCandidate(
+        val chain: CertificateChain?,
+        val evaluation: AccessCertificateEvaluation,
+        val report: ValidationReport,
     )
 
     private companion object {
@@ -419,8 +477,11 @@ data class RelyingPartyValidationResult(
 /** A wallet-relying party that passed every required check. */
 data class ValidatedRelyingParty(
     val accessCertificateChain: CertificateChain,
-    /** The identifier of the relying party in its WRPAC, which every WRPRC is issued to. */
-    val identifier: WrpacIdentifier,
+    /**
+     * The identifier of the relying party in its WRPAC, which every WRPRC is issued to. `null` for a reader without
+     * WRPRCs, accepted with [RegistrationPolicy.ValidateIfPresent], whose certificate is no WRPAC.
+     */
+    val identifier: WrpacIdentifier?,
     /** What the relying party is registered for, e.g. to show its name and its purposes to the user. */
     val registrationCertificates: List<WrpPayload>,
 )

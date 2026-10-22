@@ -69,7 +69,20 @@ Release 9.0.0 (unreleased):
       prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
       request in one report; `IsoMdocDcApi.validateRelyingParty(validator, policy)` in `vck-openid`. An unregistered
       request fails with an `UnregisteredRequestException`. `RelyingPartyValidator.validate(deviceRequest, sessionTranscript, policy)`
-      validates the reader of a proximity presentation, e.g. over BLE or NFC (ISO/IEC 18013-5:2021, 9.1.4)
+      validates the reader of a proximity presentation, e.g. over BLE or NFC (ISO/IEC 18013-5:2021, 9.1.4): of
+      several `readerAuthAll` signatures, the report is about the first whose WRPAC is accepted and links to every
+      WRPRC, and a request that authenticates only some of its document requests fails `requestData` with an
+      `UnsupportedWrpRequestException`, while its `signature` passes
+    - Add `ValidationPolicy.registration` (`RegistrationPolicy.Require` by default, or `ValidateIfPresent`): whether
+      a relying party has to transport WRPRCs, so that a wallet can accept mdoc readers outside of the EUDI Wallet
+      ecosystem, e.g. the wallet apps of other wallet providers, trusted through
+      `RelyingPartyTrustAnchors.accessCertificates`. Without WRPRCs, `registration` is not applicable, the reader
+      certificate need not carry the identifier of a WRPAC, and `ValidatedRelyingParty.identifier` is `null`
+    - Add `ReaderAuthenticationVerifier.authenticate(request, transcript)`, returning an `AuthenticatedReader` with the
+      chain of every `readerAuthAll` signature that verifies, and the document requests without reader
+      authentication (ISO/IEC DIS 18013-5:2025, 12.5.4). Deprecate its `invoke`, which returns only the first chain.
+      A `readerAuthAll` that does not verify fails as such, instead of falling back to the `readerAuth` of document
+      requests
     - Add `AuthorizationRequestValidator.validate(request, policy)`, and
       `OpenId4VpHolder.startAuthorizationResponsePreparation(input, policy)` and its `DcApiHolder` overload,
       returning the report of the request next to the preparation state, also for a rejected request; also
@@ -77,7 +90,8 @@ Release 9.0.0 (unreleased):
       and in `OpenId4VpKtorHolder` `startAuthorizationResponsePreparation(input, policy)`, its overload for parsed
       requests, and `prepareDcApiRequest(request, policy)`.
       `AuthorizationRequestValidation.relyingParty` and `DcApiRequestValidation.relyingParty` carry the
-      `RelyingPartyValidationResult` of a request with a WRPRC, and `RelyingPartyValidationResult.untrustedRegistrations`
+      `RelyingPartyValidationResult` of a request with a WRPRC, or of every Annex C request, validated like a
+      proximity request, whose report is `DcApiRequestValidation.validationReport`, and `RelyingPartyValidationResult.untrustedRegistrations`
       the payloads of its WRPRCs whose parsing passed, whatever the decision, to show them next to a warning instead of
       parsing them with the deprecated `WrpAuthenticationRequestValidator`.
       `OpenId4VpHolder`, `OpenId4VpKtorHolder`, and `DcApiHolder` take a `relyingPartyValidator`; deprecate
@@ -109,8 +123,8 @@ Release 9.0.0 (unreleased):
           the `signature` and `parsing` of the WRPAC are not applicable, `requestData` fails with an
           `UnsupportedWrpRequestException`, and their WRPRCs are not evaluated, while a reader authentication that does
           not verify fails the `signature`, so that a wallet can tell an unauthenticated reader from a forged one
-        - A relying party reports its WRPRCs in the new named check `registration` of `RelyingPartyChecks`, required by
-          every policy: a missing WRPRC (`MissingRegistrationCertificateException`) or one that can not be parsed
+        - A relying party reports its WRPRCs in the new named check `registration` of `RelyingPartyChecks`, required
+          unless `ValidationPolicy.registration` is `ValidateIfPresent`: a missing WRPRC (`MissingRegistrationCertificateException`) or one that can not be parsed
           (`InvalidRegistrationCertificateException`) fails `registration` instead of `requestData`, which keeps the
           extraction of the request, e.g. its `client_id` and DCQL query, and fails for unsigned requests, whose
           `registration` is blocked
