@@ -215,7 +215,7 @@ private fun registration() = WrpPayload(
     registryUri = "https://registrar.example.com",
     serviceDescription = listOf(WrpLangString(lang = "en", value = "Sells things")),
     entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
-    privacyPolicies = listOf("https://shop.example.com/privacy"),
+    privacyPolicy = "https://shop.example.com/privacy",
     infoUris = listOf("https://shop.example.com"),
     supportUris = listOf("https://shop.example.com/support"),
     supervisoryAuthority = WrpSupervisoryAuthority(),

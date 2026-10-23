@@ -26,7 +26,7 @@ val WrpServiceDescriptionSerializationTest by matrixSuite {
         registryUri = "https://registrar.example.com",
         serviceDescription = listOf(shop, laden),
         entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
-        privacyPolicies = listOf("https://example.com/privacy"),
+        privacyPolicy = "https://example.com/privacy",
         infoUris = listOf("https://example.com/info"),
         supportUris = listOf("https://example.com/support"),
         supervisoryAuthority = WrpSupervisoryAuthority(emails = listOf("dpa@example.com")),

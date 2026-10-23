@@ -276,7 +276,7 @@ private class SigningIssuer private constructor(
                 registryUri = "https://registrar.example.com",
                 serviceDescription = listOf(WrpLangString(lang = "en", value = "Issues PIDs")),
                 entitlements = listOf(WrpConstants.ENTITLEMENT_PID_PROVIDER),
-                privacyPolicies = listOf("$ISSUER/privacy"),
+                privacyPolicy = "$ISSUER/privacy",
                 infoUris = listOf(ISSUER),
                 supportUris = listOf("$ISSUER/support"),
                 supervisoryAuthority = WrpSupervisoryAuthority(emails = listOf("dpa@example.com")),

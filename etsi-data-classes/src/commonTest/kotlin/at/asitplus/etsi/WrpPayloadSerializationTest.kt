@@ -74,6 +74,7 @@ val WrpPayloadSerializationTest by matrixSuite {
         val payload = decode(annexCObject)
 
         payload.policyId shouldBe listOf(WrpConstants.POLICY_IDENTIFIER)
+        payload.privacyPolicy shouldBe "https://example.com/privacy-policy"
         payload.providesAttestations?.single()?.claim.shouldBeNull()
         payload.intermediary?.sub shouldBe "LEIXG-INTERMEDIARY-1234567890"
         payload.intermediary?.sname.shouldBeNull()
@@ -83,7 +84,6 @@ val WrpPayloadSerializationTest by matrixSuite {
         val payload = decode(annexCObject)
 
         payload.subjectLegalNames shouldBe listOf("Example Company GmbH")
-        payload.privacyPolicies shouldBe listOf("https://example.com/privacy-policy")
         payload.infoUris shouldBe listOf("https://example.com/info")
         payload.supportUris shouldBe listOf("https://example.com/support")
         payload.supervisoryAuthority shouldBe WrpSupervisoryAuthority(
@@ -102,7 +102,7 @@ val WrpPayloadSerializationTest by matrixSuite {
 
         val encoded = joseCompliantSerializer.encodeToString(WrpPayload.serializer(), decode(annexCObject))
         encoded shouldContain """"sub_ln":["Example Company GmbH"]"""
-        encoded shouldContain """"privacy_policy":["https://example.com/privacy-policy"]"""
+        encoded shouldContain """"privacy_policy":"https://example.com/privacy-policy""""
         encoded shouldContain """"info_uri":["https://example.com/info"]"""
         encoded shouldContain """"support_uri":["https://example.com/support"]"""
         encoded shouldContain """"email":["supervisory@dpa.com"]"""
@@ -111,6 +111,13 @@ val WrpPayloadSerializationTest by matrixSuite {
     "rejects an empty array or other values than strings" - {
         listOf("[]", "1", "[1]", "{}", "null").asData() test { value ->
             shouldThrowAny { decode(annexCObject.with("support_uri", value)) }
+        }
+    }
+
+    // Table 7 maps privacy_policy from the single policyURI of clause B.2.8
+    "rejects other values than a single string for privacy_policy" - {
+        listOf("""["https://example.com/privacy-policy"]""", "[]", "1", "{}", "null").asData() test { value ->
+            shouldThrowAny { decode(annexCObject.with("privacy_policy", value)) }
         }
     }
 
@@ -143,7 +150,7 @@ val WrpPayloadSerializationTest by matrixSuite {
     }
 
     "rejects a payload without a required field" - {
-        listOf("policy_id", "support_uri", "supervisory_authority").asData() test { key ->
+        listOf("policy_id", "privacy_policy", "support_uri", "supervisory_authority").asData() test { key ->
             shouldThrowAny { decode(annexCObject.without(key)) }
         }
     }

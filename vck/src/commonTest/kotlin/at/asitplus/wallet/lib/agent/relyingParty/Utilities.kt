@@ -226,7 +226,7 @@ fun buildWrpPayload(
     registryUri = "https://localhost/wrp",
     serviceDescription = listOf(WrpLangString(lang = "en", value = "Service description")),
     entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
-    privacyPolicies = listOf("https://localhost/privacy"),
+    privacyPolicy = "https://localhost/privacy",
     infoUris = listOf("https://localhost/info"),
     supportUris = listOf("https://localhost/support"),
     supervisoryAuthority = WrpSupervisoryAuthority(),

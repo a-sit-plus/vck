@@ -55,12 +55,12 @@ data class WrpPayload(
     val entitlements: List<String>,
 
     /**
-     * URLs of the privacy policy explaining data processing and storage practices (Table 7; privacyPolicy `[1..*]`,
-     * clause B.2.7), always encoded as an array, see [WrpStringListSerializer].
+     * URL of the privacy policy explaining data processing and storage practices, mapped from the single
+     * `policyURI` of the Policy class (Table 7; policyURI `[1..1]`, clause B.2.8; Annex C; CIR (EU) 2025/848
+     * Article 8(2)(g) and Annex V point 3).
      */
     @SerialName("privacy_policy")
-    @Serializable(with = WrpStringListSerializer::class)
-    val privacyPolicies: List<String>,
+    val privacyPolicy: String,
 
     /**
      * General-purpose URLs providing public information about the relying party (Table 7), absent when the registry
@@ -150,7 +150,6 @@ data class WrpPayload(
         require(purpose?.isNotEmpty() != false) { "purpose must not be empty" } // B.2.7: [1..*]
         require(credentials?.isNotEmpty() != false) { "credentials must not be empty" } // B.2.7: [1..*]
         require(subjectLegalNames?.isNotEmpty() != false) { "sub_ln must not be empty" } // B.2.3: [1..*]
-        require(privacyPolicies.isNotEmpty()) { "privacy_policy must not be empty" } // B.2.7: [1..*]
         require(infoUris?.isNotEmpty() != false) { "info_uri must not be empty" } // B.2.2: [0..*], absent if none
         require(supportUris.isNotEmpty()) { "support_uri must not be empty" } // B.2.1: [1..*]
     }
@@ -162,10 +161,6 @@ data class WrpPayload(
     @Deprecated("Several legal names may be registered", ReplaceWith("subjectLegalNames?.first()"))
     val subjectLegalName: String?
         get() = subjectLegalNames?.first()
-
-    @Deprecated("Several privacy policies may be registered", ReplaceWith("privacyPolicies.first()"))
-    val privacyPolicy: String
-        get() = privacyPolicies.first()
 
     @Deprecated("Several information URLs may be registered", ReplaceWith("infoUris?.first()"))
     val infoUri: String?
