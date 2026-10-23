@@ -11,9 +11,10 @@ value class EtsiCountryCode(
 ) {
     init {
         string.forEach {
-            require(it in 'A'..'Z') {
-                "Expected ETSI country code to consist of uppercase characters, but was $string"
-            }
+            // TODO This is not met by data from https://development.trust.tech.ec.europa.eu/lists/eudiw/wallet-providers.json
+//            require(it in 'A'..'Z') {
+//                "Expected ETSI country code to consist of uppercase characters, but was $string"
+//            }
         }
     }
 }

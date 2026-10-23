@@ -59,8 +59,18 @@ val EtsiModelConformanceTest by matrixSuite {
         Json.parseToJsonElement(Json.encodeToString(Json.decodeFromString<PolicyOrLegalNotice>(wire))) shouldBe
                 Json.parseToJsonElement(wire)
     }
+    test("a legal notice may be a plain string, as published lists use it") {
+        val wire = """[{"LoTELegalNotice":"Terms of use"},{"LoTELegalNotice":{"lang":"en","value":"Notice"}}]"""
+        val notices = Json.decodeFromString<PolicyOrLegalNotice>(wire)
+        notices.first().legalNoticeText shouldBe "Terms of use"
+        notices.first().legalNotice shouldBe null
+        Json.parseToJsonElement(Json.encodeToString(notices)) shouldBe Json.parseToJsonElement(wire)
+    }
     listOf(
         "[{}]",
+        """[{"LoTELegalNotice":1}]""",
+        """[{"LoTELegalNotice":"Notice","LoTEPolicy":{"lang":"en","uriValue":"https://example.org/policy"}}]""",
+        """[{"LoTELegalNotice":"Notice"},{"LoTEPolicy":{"lang":"en","uriValue":"https://example.org/policy"}}]""",
         """[{"LoTELegalNotice":{"lang":"en","value":"Notice"},"LoTEPolicy":{"lang":"en","uriValue":"https://example.org/policy"}}]""",
         """[{"LoTELegalNotice":{"lang":"en","value":"Notice"}},{"LoTEPolicy":{"lang":"en","uriValue":"https://example.org/policy"}}]""",
     ).asData() test { wire ->
@@ -92,13 +102,16 @@ val EtsiModelConformanceTest by matrixSuite {
         Json.decodeFromString<ElectronicAddress>(contacts)
         Json.decodeFromString<TEElectronicAddress>(contacts)
     }
-    test("trusted entity contacts accept email without a website") {
-        val wire = """[{"lang":"en","uriValue":"mailto:support@example.org"}]"""
+    // Published lists provide only an e-mail address or only a website, see TEElectronicAddress
+    listOf(
+        """[{"lang":"en","uriValue":"mailto:support@example.org"}]""",
+        """[{"lang":"en","uriValue":"https://www.brz.gv.at"}]""",
+    ).asData() test { wire ->
         Json.parseToJsonElement(Json.encodeToString(Json.decodeFromString<TEElectronicAddress>(wire))) shouldBe
                 Json.parseToJsonElement(wire)
-        shouldThrow<IllegalArgumentException> {
-            Json.decodeFromString<TEElectronicAddress>("""[{"lang":"en","uriValue":"https://example.org/support"}]""")
-        }
+    }
+    test("trusted entity contacts are not empty") {
+        shouldThrow<IllegalArgumentException> { Json.decodeFromString<TEElectronicAddress>("[]") }
     }
     test("ListAndSchemeInformation and the list envelope keep their existing optionality") {
         Json.decodeFromString<ListOfTrustedEntities>("{}")

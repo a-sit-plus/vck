@@ -11,7 +11,7 @@ value class PolicyOrLegalNotice(
 ) : List<PolicyOrLegalNoticeItem> by list {
     init {
         require(list.isNotEmpty()) { "Expected at least one PolicyOrLegalNotice entry." }
-        require(list.all { it.policy != null } || list.all { it.legalNotice != null }) {
+        require(list.all { it.policy != null } || list.all { it.policy == null }) {
             "Expected only policy pointers or only legal notices."
         }
     }

@@ -38,11 +38,14 @@ Release 9.0.0 (unreleased):
       `x509Certificates` is now `null`. Other-list pointers carry `LoTEQualifiers` containing `LoTEQualifier` objects, including a required MIME type
     - BREAKING: Policy and legal-notice arrays must use one alternative consistently. Open service, trusted-entity and
       associated-body extensions preserve their JSON `content`
+    - Accept a plain string as `LoTELegalNotice`, as the Annex A.1 JSON schema declares and published lists use it,
+      in the new `PolicyOrLegalNoticeItem.legalNoticeText`
     - Allow an explicitly null `NextUpdate` for closed lists while keeping that member required; accept optional
       certificate `encoding` and `specRef` metadata without discarding the certificate
     - Reject empty required arrays, empty digital identities, null certificate wire entries, missing scheme-operator
-      and associated-body website contacts, and timestamps without a four-digit year. Trusted-entity contacts allow
-      email without a website. Other `ListAndSchemeInformation` requirements remain unchanged
+      and associated-body website contacts, and timestamps without a four-digit year. Trusted-entity contacts need not
+      contain both an email address and a website, as published lists contain only one of them. Other
+      `ListAndSchemeInformation` requirements remain unchanged
     - BREAKING: `WrpClaim.path` is a claims path pointer of `WrpClaimPathSegment`s (a name, `null` for all elements
       of an array, or an index), and `WrpClaim.values` a list of `WrpClaimValue`s (a string, integer, or boolean), as
       ETSI TS 119 475 V1.2.1, B.2.10 refers to OpenID4VP for them; `WrpClaim.named(...)` creates a path of names. A
