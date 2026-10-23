@@ -43,7 +43,12 @@ internal fun ResponseParametersFrom.authorizationError(): OAuth2Error? {
         require(errorUri?.all { it.isErrorUriChar() } != false) {
             "error_uri contains characters not allowed by RFC 6749"
         }
-        return OAuth2Error(error, errorDescription, errorUri, state)
+        return OAuth2Error(
+            error = error,
+            errorDescription = errorDescription,
+            errorUri = errorUri,
+            state = state
+        )
     }
 }
 

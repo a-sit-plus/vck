@@ -23,6 +23,10 @@ data class OAuth2Error(
     @SerialName("error_description")
     val errorDescription: String? = null,
 
+    /** Not covered by the spec, but some servers put the description into this field */
+    @SerialName("description")
+    val description: String? = null,
+
     /**
      * OPTIONAL.  A URI identifying a human-readable web page with information about the error, used to provide the
      * client developer with additional information about the error. Values for the [errorUri] parameter MUST conform

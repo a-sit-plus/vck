@@ -59,10 +59,11 @@ open class HttpErrorResponseException(
         problemDetails = json?.takeIf { headers.isProblemJson() }?.toProblemDetails(),
     )
 
-    override val message: String = oauth2Error?.errorDescription
-        ?: oauth2Error?.error
-        ?: problemDetails?.detail
-        ?: problemDetails?.title
+    override val message: String = oauth2Error?.errorDescription?.takeIf { it.isNotBlank() }
+        ?: oauth2Error?.description?.takeIf { it.isNotBlank() }
+        ?: oauth2Error?.error?.takeIf { it.isNotBlank() }
+        ?: problemDetails?.detail?.takeIf { it.isNotBlank() }
+        ?: problemDetails?.title?.takeIf { it.isNotBlank() }
         ?: responseBody.takeIf { it.isNotBlank() }
         ?: "HTTP $status"
 }
