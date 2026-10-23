@@ -36,6 +36,13 @@ internal enum class TrustRule {
     ISSUED_BY_ANCHOR_OR_LISTED,
 
     /**
+     * As [ISSUED_BY_ANCHOR_OR_LISTED], and a signing certificate issued under an anchor, i.e. under the IACA
+     * certificate of an mdoc issuer, is of the same country and state or province as that anchor, see
+     * [requireSameIssuingAuthority]: issuers of ISO mdocs (ISO/IEC 18013-5:2021, 9.3.3; second edition, 12.8.3).
+     */
+    ISSUED_BY_IACA_OR_LISTED,
+
+    /**
      * Every certificate of the chain is valid and issued by the next one, and the last one is an anchor or issued by
      * one: wallet-relying party access and registration certificates, as `WrpChainValidator`.
      */
@@ -63,7 +70,13 @@ internal suspend fun checkTrust(
         ?: return Failed(IllegalArgumentException("No certificate transported with the signed object"))
     return catchingUnwrapped {
         when (rule) {
-            TrustRule.ISSUED_BY_ANCHOR_OR_LISTED -> requireListedOrIssuedByAnchor(signer, anchors, at)
+            TrustRule.ISSUED_BY_ANCHOR_OR_LISTED -> {
+                requireListedOrIssuedByAnchor(signer, anchors, at)
+            }
+
+            TrustRule.ISSUED_BY_IACA_OR_LISTED -> requireListedOrIssuedByAnchor(signer, anchors, at)
+                ?.let { iaca -> requireSameIssuingAuthority(iaca, signer.leaf) }
+
             TrustRule.CHAIN_TO_ANCHOR -> requireChainToAnchor(signer, anchors, at)
         }
     }.toOutcome()
@@ -74,8 +87,14 @@ internal suspend fun checkTrust(
  * [requireChainToAnchor]: every certificate certifies the previous one (RFC 7515, 4.1.6) and is valid at [at], and the
  * last one is issued by one of [anchors]. Then no anchor may be transported, as its certificate must be known
  * out-of-band, and the signing certificate must not be self-signed (OpenID4VC HAIP 1.0, 4.5.1, 6.1, 6.1.1).
+ *
+ * @return the anchor that issued the last certificate of [chain], or `null` if the chain is a listed anchor itself
  */
-private fun requireListedOrIssuedByAnchor(chain: CertificateChain, anchors: Set<X509Certificate>, at: Instant) {
+private fun requireListedOrIssuedByAnchor(
+    chain: CertificateChain,
+    anchors: Set<X509Certificate>,
+    at: Instant,
+): X509Certificate? {
     // Compare the full certificate, not just its key: a listed signer does not confer trust on other certificates
     // sharing that key
     fun isListed(certificate: X509Certificate) = anchors.any {
@@ -85,19 +104,20 @@ private fun requireListedOrIssuedByAnchor(chain: CertificateChain, anchors: Set<
     val signer = chain.leaf
     if (chain.size == 1 && isListed(signer)) {
         require(signer.isValidAt(at)) { "Signing certificate is not valid at $at" }
-        return
+        return null
     }
     require(chain.none(::isListed)) {
         "The certificate of the trust anchor must not be transported with the signed object"
     }
     require(signer.isIssuerOf(signer).isFailure) { "The signing certificate must not be self-signed" }
     requireChainToAnchor(chain, anchors, at)
+    return anchors.firstOrNull { it.isIssuerOf(chain.last()).isSuccess }
 }
 
 /**
  * Whether [chain] is authorized for [purpose] by the anchors of the signed [credentialIdentifier], see
  * [CredentialTrustAnchors]: issuers and status list signers alike may be issued by an anchor or listed themselves,
- * see [TrustRule.ISSUED_BY_ANCHOR_OR_LISTED].
+ * see [TrustRule.ISSUED_BY_ANCHOR_OR_LISTED], issuers of ISO mdocs as [TrustRule.ISSUED_BY_IACA_OR_LISTED].
  *
  * Blocked if no [CredentialTrustAnchors] are configured, no scope covers the type, or its anchors are unavailable.
  */
@@ -106,6 +126,7 @@ internal suspend fun CredentialTrustAnchors?.checkCredentialTrust(
     purpose: TrustPurpose,
     chain: CertificateChain?,
     at: Instant,
+    rule: TrustRule = TrustRule.ISSUED_BY_ANCHOR_OR_LISTED,
 ): TrustValidation {
     if (this == null) {
         return TrustValidation(
@@ -124,7 +145,7 @@ internal suspend fun CredentialTrustAnchors?.checkCredentialTrust(
 
         )
     return TrustValidation(
-        outcome = checkTrust(chain, anchors.certificates, at, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED),
+        outcome = checkTrust(chain, anchors.certificates, at, rule),
         credentialIdentifier = credentialIdentifier,
         source = anchors.source
     )

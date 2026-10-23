@@ -116,6 +116,7 @@ val NamedChecksTest by matrixSuite {
             "status.claim",
             "status.mechanisms[0]",
             "status.agreement",
+            "expiryWithinCertificate",
         )
     }
 
@@ -140,6 +141,7 @@ val NamedChecksTest by matrixSuite {
         strict.getValue("timeliness") shouldBe REQUIRED
         strict.getValue("holderBinding") shouldBe REQUIRED
         strict.getValue("status.claim") shouldBe REQUIRED
+        strict.getValue("expiryWithinCertificate") shouldBe OPTIONAL
 
         val relaxed = credentialChecks.namedUnder(relaxedPolicy).requirements()
         relaxed.getValue("issuerTrust") shouldBe OPTIONAL

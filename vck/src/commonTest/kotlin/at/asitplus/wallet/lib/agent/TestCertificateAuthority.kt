@@ -34,6 +34,8 @@ class TestCertificateAuthority private constructor(
     val name: String = "Test CA ${Random.nextInt()}",
     private val key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
     private val validity: Duration = 5.minutes,
+    /** Attributes of the subject name besides the common name, e.g. `countryName`. */
+    private val attributes: List<AttributeTypeAndValue> = listOf(),
     /** The certificate to put on a trust list. */
     val certificate: X509Certificate,
 ) {
@@ -53,6 +55,8 @@ class TestCertificateAuthority private constructor(
         certificateAuthority: Boolean = false,
         /** `pathLenConstraint` of [certificateAuthority], omitted when `null`. */
         pathLength: Int? = null,
+        /** Attributes of the subject name besides the common name, e.g. `countryName`. */
+        subjectAttributes: List<AttributeTypeAndValue> = listOf(),
     ): KeyMaterial = KeyWithFixedCert(
         key = key,
         certificate = certificateFor(
@@ -63,6 +67,8 @@ class TestCertificateAuthority private constructor(
             validity = validity,
             validFrom = validFrom,
             extensions = if (certificateAuthority) extensions + basicConstraintsCa(pathLength) else extensions,
+            subjectAttributes = subjectAttributes,
+            issuerAttributes = attributes,
         ),
     )
 
@@ -76,14 +82,16 @@ class TestCertificateAuthority private constructor(
             validity: Duration = 5.minutes,
             validFrom: Instant = Clock.System.now(),
             extensions: List<X509CertificateExtension> = listOf(),
+            subjectAttributes: List<AttributeTypeAndValue> = listOf(),
+            issuerAttributes: List<AttributeTypeAndValue> = listOf(),
         ): X509Certificate {
             val algorithm = issuerKey.signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
             val notBefore = validFrom.truncateToSeconds()
             val tbsCertificate = TbsCertificate(
                 version = 2,
                 serialNumber = Random.nextBytes(8),
-                issuerName = listOf(RelativeDistinguishedName(commonName(issuerName))),
-                subjectName = listOf(RelativeDistinguishedName(commonName(subjectName))),
+                issuerName = distinguishedName(issuerName, issuerAttributes),
+                subjectName = distinguishedName(subjectName, subjectAttributes),
                 validFrom = Asn1Time(notBefore),
                 validUntil = Asn1Time((notBefore + validity).truncateToSeconds()),
                 signatureAlgorithm = algorithm,
@@ -97,6 +105,9 @@ class TestCertificateAuthority private constructor(
         private fun commonName(value: String) =
             AttributeTypeAndValue.CommonName(Asn1String.UTF8(value))
 
+        private fun distinguishedName(commonName: String, attributes: List<AttributeTypeAndValue>) =
+            (listOf(commonName(commonName)) + attributes).map { RelativeDistinguishedName(it) }
+
         suspend operator fun invoke(
             name: String = "Test CA ${Random.nextInt()}",
             key: EphemeralKeyWithoutCert = EphemeralKeyWithoutCert(),
@@ -108,10 +119,13 @@ class TestCertificateAuthority private constructor(
             certificateAuthority: Boolean = true,
             /** `pathLenConstraint` of [certificateAuthority], omitted when `null`. */
             pathLength: Int? = null,
+            /** Attributes of the subject name besides the common name, e.g. `countryName`. */
+            attributes: List<AttributeTypeAndValue> = listOf(),
         ) = TestCertificateAuthority(
             name = name,
             key = key,
             validity = validity,
+            attributes = attributes,
             certificate = certificateFor(
                 publicKey = key.publicKey,
                 subjectName = name,
@@ -119,6 +133,8 @@ class TestCertificateAuthority private constructor(
                 issuerKey = key,
                 validity = validity,
                 extensions = if (certificateAuthority) listOf(basicConstraintsCa(pathLength)) else listOf(),
+                subjectAttributes = attributes,
+                issuerAttributes = attributes,
             )
         )
     }

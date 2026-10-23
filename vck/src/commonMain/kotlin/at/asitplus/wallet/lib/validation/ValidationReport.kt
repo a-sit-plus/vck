@@ -152,6 +152,12 @@ data class CredentialChecks(
     val holderBinding: CheckOutcome,
     val timeliness: TimelinessValidation,
     val status: StatusValidation,
+    /**
+     * Whether the credential expires no later than the certificate it is signed with: the `validUntil` of an mdoc MSO
+     * no later than the `notAfter` of its document signer certificate (ISO/IEC 18013-5:2021, 9.1.2.4). Recorded only,
+     * as a reader may, but need not, reject such an mdoc (9.3.1 step 5). Not applicable to other formats.
+     */
+    val expiryWithinCertificate: CheckOutcome = CheckOutcome.NotApplicable,
 ) : ValidationChecks
 
 /**
