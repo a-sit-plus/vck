@@ -20,6 +20,7 @@ import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.EncryptionInfo
 import at.asitplus.iso.EncryptionParameters
+import at.asitplus.iso.OtherDocument
 import at.asitplus.iso.ReaderAuthentication
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.serializeOrigin
@@ -40,6 +41,8 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.wallet.lib.DefaultNonceService
+import at.asitplus.wallet.lib.DefaultZlibService
+import at.asitplus.wallet.lib.IsoSdJwtKeyBinding
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -194,6 +197,9 @@ class DcApiVerifier @JvmOverloads constructor(
 
     /** Cipher suite to decrypt responses acc. to ISO/IEC 18013-7 Annex C */
     private val hpke = HPKE(HPKE.KEM.DHKEM_P256_HKDF_SHA256, HPKE.KDF.HKDF_SHA256, HPKE.AEAD.AES_128_GCM)
+
+    /** Decompresses SD-JWT VCs in `otherDocuments` of a `DeviceResponse` (WG10 N2933 v2), bounded in size. */
+    private val zlibService = DefaultZlibService()
 
     private val nonceAwareVerifier = NonceChallengeVerifier(
         verifierId = clientIdScheme.clientId,
@@ -473,7 +479,7 @@ class DcApiVerifier @JvmOverloads constructor(
             // ISO/IEC 18013-5, 10.3.6: "If the mdoc returns a status code different than 0, it shall not return any
             // documents"; the request has been consumed above, so the error ends it like a presentation
             with(deviceResponse) {
-                require(listOf(documents, zkDocuments, encryptedDocuments).all { it.isNullOrEmpty() }) {
+                require(listOf(documents, zkDocuments, encryptedDocuments, otherDocuments).all { it.isNullOrEmpty() }) {
                     "Device response with status $status must not contain documents"
                 }
             }
@@ -481,8 +487,9 @@ class DcApiVerifier @JvmOverloads constructor(
         }
 
         // a document of a type we never asked for must not be mistaken for the requested one
-        val requestedDocTypes = isoMdocRequest.deviceRequest.docRequests
-            .map { it.itemsRequest.value.docType }.toSet()
+        val deviceRequest = isoMdocRequest.deviceRequest
+        val requestedDocTypes = deviceRequest.docRequests.map { it.itemsRequest.value }
+            .filterNot { it.requestInfo?.isSdJwt == true }.map { it.docType }.toSet()
         deviceResponse.documents.orEmpty().forEach { document ->
             require(document.docType in requestedDocTypes) {
                 "Response contains docType '${document.docType}', but requested were $requestedDocTypes"
@@ -495,9 +502,13 @@ class DcApiVerifier @JvmOverloads constructor(
             audience = "origin:$expectedOrigin",
             sessionTranscript = sessionTranscript,
         )
-        val presentationValidations = deviceResponse.documents.orEmpty().map {
+        val mdocValidations = deviceResponse.documents.orEmpty().map {
             credentialValidator.validate(PresentationValidationInput.MdocDocument(it), context, presentationPolicy)
         }
+        val sdJwtValidations = deviceResponse.otherDocuments.orEmpty().map {
+            it.validateSdJwt(deviceRequest, sessionTranscript)
+        }
+        val presentationValidations = mdocValidations + sdJwtValidations.map { it.second }
         Iso180137AnnexCWrapper(
             documents = legacyIsoDocuments(presentationValidations),
             presentationValidations = presentationValidations,
@@ -509,7 +520,7 @@ class DcApiVerifier @JvmOverloads constructor(
                     encryption = CheckOutcome.Passed,
                     expectedOrigin = CheckOutcome.Passed,
                     requestState = CheckOutcome.Passed,
-                    submissionRequirements = requestedDocTypes.submissionRequirements(presentationValidations),
+                    submissionRequirements = deviceRequest.submissionRequirements(mdocValidations, sdJwtValidations),
                 ),
                 presentations = presentationValidations.map { it.report },
             ),
@@ -517,13 +528,61 @@ class DcApiVerifier @JvmOverloads constructor(
     }
 
     /**
-     * Every requested document has to be answered by an accepted one: the mdoc may return only some of the requested
-     * documents (ISO/IEC 18013-5:2021, 8.3.2.1.2.2), which does not satisfy the request.
+     * Validates an SD-JWT VC returned in `otherDocuments` (WG10 N2933 v2, "DeviceResponse changes") for the single SD-JWT
+     * document request of [deviceRequest] it names, with its key binding JWT bound to [sessionTranscript] and to the
+     * reader authentication of the request, see [IsoSdJwtKeyBinding]. One that can not be decompressed is rejected
+     * like a presentation that can not be parsed.
+     *
+     * @return the index of the document request it answers, with the result
      */
-    private fun Set<String>.submissionRequirements(presentations: List<PresentationValidationResult>): CheckOutcome {
-        val accepted = presentations.mapNotNull { it.presentation as? ValidatedPresentation.MdocDocument }
+    private suspend fun OtherDocument.validateSdJwt(
+        deviceRequest: DeviceRequest,
+        sessionTranscript: SessionTranscript,
+    ): Pair<Int, PresentationValidationResult> {
+        require(docFormat == DocRequestInfo.DOC_FORMAT_SD_JWT) { "Response contains a document of format $docFormat" }
+        val index = requireNotNull(docRequestIds.singleOrNull()?.toInt()) {
+            "An SD-JWT VC in the response has to answer exactly one document request"
+        }
+        val itemsRequest = deviceRequest.docRequests.getOrNull(index)?.itemsRequest?.value
+            ?.takeIf { it.requestInfo?.isSdJwt == true }
+            ?: throw IllegalArgumentException("Document request at index $index does not request an SD-JWT VC")
+        val compact = zlibService.decompress(data)?.decodeToString()
+            ?: return index to credentialValidator.rejectUndecodable(
+                IllegalArgumentException("The SD-JWT VC can not be decompressed")
+            )
+        val result = credentialValidator.validate(
+            input = PresentationValidationInput.SdJwt(compact),
+            context = PresentationContext(
+                challenge = IsoSdJwtKeyBinding.nonce(sessionTranscript),
+                audience = IsoSdJwtKeyBinding.audience(deviceRequest, index),
+            ),
+            policy = presentationPolicy,
+        )
+        (result.presentation as? ValidatedPresentation.SdJwt)?.let {
+            val vct = it.credential.credential.verifiableCredentialType
+            require(vct == itemsRequest.docType) {
+                "Response contains vct '$vct' for document request at index $index, but requested was ${itemsRequest.docType}"
+            }
+        }
+        return index to result
+    }
+
+    /**
+     * Every requested document has to be answered by an accepted one: the mdoc may return only some of the requested
+     * documents (ISO/IEC 18013-5:2021, 8.3.2.1.2.2), which does not satisfy the request. An mdoc answers a request of
+     * its document type, an SD-JWT VC the document request it names.
+     */
+    private fun DeviceRequest.submissionRequirements(
+        mdocs: List<PresentationValidationResult>,
+        sdJwts: List<Pair<Int, PresentationValidationResult>>,
+    ): CheckOutcome {
+        val acceptedDocTypes = mdocs.mapNotNull { it.presentation as? ValidatedPresentation.MdocDocument }
             .map { it.document.docType }.toSet()
-        val missing = this - accepted
+        val acceptedSdJwts = sdJwts.filter { it.second.presentation is ValidatedPresentation.SdJwt }.map { it.first }
+        val missing = docRequests.map { it.itemsRequest.value }.filterIndexed { index, itemsRequest ->
+            if (itemsRequest.requestInfo?.isSdJwt == true) index !in acceptedSdJwts
+            else itemsRequest.docType !in acceptedDocTypes
+        }.map { it.docType }.toSet()
         return if (missing.isEmpty())
             CheckOutcome.Passed
         else
