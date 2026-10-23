@@ -166,9 +166,7 @@ class OpenId4VciKtorClient private constructor(
     ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
         Napier.i("loadCredentialMetadata: $host")
         val issuerMetadata = oauth2Client.execute(vci.loadIssuerMetadata(host))
-        vci.parseCredentialMetadata(issuerMetadata).also {
-            Napier.i("loadCredentialMetadata for $host returns $it")
-        }.getOrThrow()
+        vci.parseCredentialMetadata(issuerMetadata).getOrThrow()
     }
 
     /**

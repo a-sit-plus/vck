@@ -35,7 +35,9 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.validation.KeyAttestationValidator
 import at.asitplus.wallet.lib.validation.StatusValidator
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -277,9 +279,11 @@ class OpenId4VciServer @JvmOverloads constructor(
             ).getOrElse {
                 throw CredentialRequestDenied("No credential from issuer", it)
             }
-        }.toCredentialResponseParameters()
+        }.toCredentialResponseParameters().also {
+            Napier.i("credential returns")
+            Napier.d("credential returns $it")
+        }
         encryptionService.encryptResponse(responseParameters, request)
-            .also { Napier.i("credential returns"); Napier.d("credential returns $it") }
     }
 
     private suspend fun loadUserInfo(

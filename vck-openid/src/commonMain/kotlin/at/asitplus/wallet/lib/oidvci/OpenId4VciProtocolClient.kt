@@ -191,8 +191,6 @@ class OpenId4VciProtocolClient @JvmOverloads constructor(
                 supportedCredentialFormat = it.value,
                 issuer = issuer,
             )
-        }.also {
-            Napier.i("parseCredentialMetadata returns $it")
         }
     }
 

@@ -439,7 +439,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         }
         with(actualRequest) {
             issueCodeForUserInfo(userInfo, actualRequest, authenticatedClient)
-                .also { Napier.i("authorize returns $it") }
         }
     }
 

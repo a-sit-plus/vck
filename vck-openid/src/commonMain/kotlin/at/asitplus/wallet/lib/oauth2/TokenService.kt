@@ -87,10 +87,7 @@ interface TokenService {
             authorizationDetails = validated.authorizationDetails,
             scope = validated.scope,
             validatedClientKey = validatedClientKey,
-        ).also {
-            Napier.i("tokenExchange returns")
-            Napier.d("tokenExchange returns $it")
-        }
+        )
     }
 
     suspend fun dpopNonce() = generation.dpopNonce()
