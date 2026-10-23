@@ -179,10 +179,11 @@ internal class PresentationResponseCreator(
         val deviceRequest = presentation.presentationRequest.deviceRequest
         val submissions = presentation.submissions
             ?: matchDeviceRequest(deviceRequest).getOrThrow().toDefaultSubmission().getOrThrow()
-        val selectedCredentials = DeviceRetrievalProcedure.validateSubmission(deviceRequest, submissions).getOrThrow()
+        val selection = DeviceRetrievalProcedure.validateSubmission(deviceRequest, submissions).getOrThrow()
         val result = verifiablePresentationFactory.createVerifiablePresentation(
             request = request,
-            isoPresentationParameters = selectedCredentials,
+            isoPresentationParameters = selection.mdocs,
+            sdJwtPresentationParameters = selection.sdJwts,
         ).getOrThrow()
         return PresentationResponseParameters.DeviceRetrievalParameters(result.deviceResponse)
     }

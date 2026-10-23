@@ -54,7 +54,7 @@ internal suspend fun Document.verifyDeviceMac(
 }
 
 /** `SessionTranscriptBytes`, i.e. the encoded [SessionTranscript] wrapped in CBOR tag 24 (ISO/IEC 18013-5:2021, 9.1.5.1). */
-internal fun SessionTranscript.sessionTranscriptBytes(): ByteArray =
+fun SessionTranscript.sessionTranscriptBytes(): ByteArray =
     coseCompliantSerializer.encodeToByteArray(coseCompliantSerializer.encodeToByteArray(this)).wrapInCborTag(24)
 
 private fun ByteArray.contentEqualsConstantTime(other: ByteArray): Boolean {

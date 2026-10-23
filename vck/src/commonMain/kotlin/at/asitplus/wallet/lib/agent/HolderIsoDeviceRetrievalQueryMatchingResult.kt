@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 
 data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
     override val credentials: List<Credential>,
@@ -16,9 +15,7 @@ data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
                 DeviceRequestCredentialDisclosure(
                     docRequestIndex = docRequestIndex,
                     credential = credentials[match.credentialIndex],
-                    disclosedAttributes = match.requestedClaims.map {
-                        NormalizedJsonPath() + it.namespace + it.claimName
-                    },
+                    disclosedAttributes = match.requestedClaims.map { it.path },
                 )
             }
         }
