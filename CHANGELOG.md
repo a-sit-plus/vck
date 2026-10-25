@@ -289,6 +289,10 @@ Release 9.0.0 (unreleased):
       JWK SHA-256 thumbprint in `jkt`, and `token_type` `DPoP` (RFC 9449, 6.2), and
       `RemoteOAuth2AuthorizationServerAdapter.getTokenInfo` passes it on, so that a resource server can check that the
       DPoP proof of a request is signed with that key (RFC 9449, 7.1)
+- ISO mDoc zero-knowledge proofs:
+    - Upgrade to Multipaz 0.102.0, which moves its Longfellow ZK backend to the more efficient Rust port (accessed
+      through JNA). This also fixes Android x86_64 builds of `vck-longfellow`, which previously bundled an incorrect
+      32-bit binary for x86_64.
 
 Release 8.0.0:
 
