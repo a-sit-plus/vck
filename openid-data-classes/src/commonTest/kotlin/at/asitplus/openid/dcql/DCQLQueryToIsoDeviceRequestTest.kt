@@ -5,6 +5,7 @@ import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.IndexSegment
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NullSegment
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -35,19 +36,25 @@ val DCQLQueryToIsoDeviceRequestTest by matrixSuite {
         val itemsRequest = sdJwtQuery(
             DCQLJsonClaimsQuery(id = DCQLClaimsQueryIdentifier("name"), path = DCQLClaimsPathPointer("given_name")),
             DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(NameSegment("nationalities"), NullSegment)),
+            DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer("address", "formatted")),
+            DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(NameSegment("nationalities"), IndexSegment(0U))),
         ).toDeviceRequest().docRequests.single().itemsRequest.value
 
         itemsRequest.docType shouldBe VCT
         itemsRequest.namespaces.keys shouldBe setOf(DocRequestInfo.SD_JWT_NAMESPACE)
         itemsRequest.namespaces.getValue(DocRequestInfo.SD_JWT_NAMESPACE).entries shouldBe listOf(
             SingleItemsRequest("name", false),
-            SingleItemsRequest("claim_1", false),
+            SingleItemsRequest("nationalities.*", false),
+            SingleItemsRequest("address.formatted", false),
+            SingleItemsRequest("nationalities.0", false),
         )
         itemsRequest.requestInfo.shouldNotBeNull().apply {
             docFormat shouldBe DocRequestInfo.DOC_FORMAT_SD_JWT
             dataElementIdentifierMapping shouldBe mapOf(
                 "name" to DCQLClaimsPathPointer("given_name"),
-                "claim_1" to DCQLClaimsPathPointer(NameSegment("nationalities"), NullSegment),
+                "nationalities.*" to DCQLClaimsPathPointer(NameSegment("nationalities"), NullSegment),
+                "address.formatted" to DCQLClaimsPathPointer("address", "formatted"),
+                "nationalities.0" to DCQLClaimsPathPointer(NameSegment("nationalities"), IndexSegment(0U)),
             )
         }
     }
@@ -61,7 +68,7 @@ val DCQLQueryToIsoDeviceRequestTest by matrixSuite {
             sdJwtQuery(given, vctValues = listOf(VCT, "urn:eudi:pid:at:1")),
             sdJwtQuery(
                 DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer("given_name")),
-                DCQLJsonClaimsQuery(id = DCQLClaimsQueryIdentifier("claim_0"), path = DCQLClaimsPathPointer("x")),
+                DCQLJsonClaimsQuery(id = DCQLClaimsQueryIdentifier("given_name"), path = DCQLClaimsPathPointer("x")),
             ),
         ).forEach { query ->
             shouldThrow<IllegalArgumentException> { query.toDeviceRequest() }

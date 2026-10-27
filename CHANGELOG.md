@@ -678,7 +678,8 @@ check the entries marked BREAKING when migrating.
       `SessionTranscript.sessionTranscriptBytes()` public
     - `DCQLQuery.toIso180137AnnexCDeviceRequest()`, and so `DcApiVerifier` with `DcApiCreationOptions.Iso180137AnnexC`,
       request a `DCQLSdJwtCredentialQuery` with enumerated claims as such a document request of its single `vct`, each
-      claims query a data element identified by its `id`, or else by `claim_<index>`. Queries with `claim_sets` or
+      claims query a data element identified by its `id`, or else by its path, e.g. `address.formatted` or
+      `nationalities.*`. Queries with `claim_sets` or
       claim `values` are rejected, as before for every SD-JWT query
     - `DcApiVerifier` validates the SD-JWT VCs in `otherDocuments` of an Annex C response with `CredentialValidator`,
       each for the single SD-JWT document request it names, with the key binding JWT `nonce` and `aud` of
