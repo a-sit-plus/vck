@@ -123,6 +123,12 @@ Release 9.0.0 (unreleased):
       ephemeral private key, the new `PresentationContext.eReaderKey`, which was rejected as not supported before.
       Without that key, the device authentication of such a document is blocked. A document with both a device
       signature and a device MAC fails
+    - Check the `keyAuthorizations` of the MSO for the data elements an mdoc document returns in `DeviceSigned`
+      (ISO/IEC 18013-5:2021, 9.1.2.4 and 9.1.3.4), in the new named check `keyAuthorization` of `PresentationChecks`,
+      which is never relaxed and not applicable to other formats. If the MSO has `keyAuthorizations`, every such
+      element has to be authorized by its namespace or as a data element; without them, the device key is not
+      restricted yet. Empty `keyAuthorizations`, empty arrays in them, or a namespace that is authorized both as a
+      whole and per data element fail the check, also for a document without elements in `DeviceSigned`
     - Add `PresentationContext.forMdoc(sessionTranscript, eReaderKey)`, the context of mdoc device authentication,
       e.g. of an ISO/IEC 18013-5 proximity reader, without challenge and audience. A blank challenge or audience of a
       context is never answered, so presentations of other formats are rejected with it

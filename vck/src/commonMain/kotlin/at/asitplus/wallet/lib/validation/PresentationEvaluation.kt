@@ -272,7 +272,8 @@ internal suspend fun evaluateVcJwtPresentation(
  * authentication over `DeviceAuthenticationBytes` with the device key the MSO binds, which is only authoritative once
  * the issuer signature verified: either its device signature (ISO/IEC 18013-5:2021, 9.1.3.6), or its device MAC
  * with the reader's ephemeral key [PresentationContext.eReaderKey] (9.1.3.5). The session transcript binds the
- * request, so nonce and audience are not applicable.
+ * request, so nonce and audience are not applicable. The MSO has to authorize the device key for every element in
+ * `DeviceSigned` (9.1.3.4), see [authorizes].
  */
 internal suspend fun evaluateMdocPresentation(
     input: PresentationValidationInput.MdocDocument,
@@ -291,8 +292,10 @@ internal suspend fun evaluateMdocPresentation(
     )
     val credential = complete(evaluation, HolderBindingPolicy.None)
     val issuerSigned = (evaluation as? FormatEvaluation.Evaluated)?.credential as? ValidatedCredential.IsoMdoc
-    val deviceKey: CryptoPublicKey? =
-        issuerSigned?.issuerSigned?.issuerAuth?.payload?.deviceKeyInfo?.deviceKey?.toCryptoPublicKey()?.getOrNull()
+    val deviceKeyInfo = issuerSigned?.issuerSigned?.issuerAuth?.payload?.deviceKeyInfo
+    val deviceKey: CryptoPublicKey? = deviceKeyInfo?.deviceKey?.toCryptoPublicKey()?.getOrNull()
+    val keyAuthorization = deviceKeyInfo?.let { it.keyAuthorizations.authorizes(document.deviceSigned.namespaces.value) }
+        ?: Blocked(IllegalStateException("The issuer signature of the MSO did not verify"))
     val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature
     val deviceMac = document.deviceSigned.deviceAuth.deviceMac
     val transcript = context.sessionTranscript
@@ -318,7 +321,7 @@ internal suspend fun evaluateMdocPresentation(
     }
     val validated = credential.credential as? ValidatedCredential.IsoMdoc
     return PresentationEvaluation(
-        checks = notApplicable().copy(signature = signature),
+        checks = notApplicable().copy(signature = signature, keyAuthorization = keyAuthorization),
         credential = credential,
         presentation = validated?.let { ValidatedPresentation.MdocDocument(document, it) },
     )

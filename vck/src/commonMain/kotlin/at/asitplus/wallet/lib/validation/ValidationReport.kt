@@ -192,6 +192,12 @@ data class PresentationChecks(
     val audience: CheckOutcome,
     /** What else binds the proof to this presentation, i.e. the SD-JWT `sd_hash` and transaction data hashes. */
     val presentationBinding: CheckOutcome,
+    /**
+     * Whether the `keyAuthorizations` of the MSO authorize the device key to authenticate every data element an mdoc
+     * returns in `DeviceSigned` (ISO/IEC 18013-5:2021, 9.1.3.4). Never relaxed by the policy. Not applicable to other
+     * formats.
+     */
+    val keyAuthorization: CheckOutcome = CheckOutcome.NotApplicable,
 ) : ValidationChecks
 
 /**

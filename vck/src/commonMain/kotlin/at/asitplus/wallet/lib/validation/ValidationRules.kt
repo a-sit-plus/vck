@@ -218,6 +218,7 @@ internal fun PresentationChecks.named() = listOf(
     NamedCheck("challenge", challenge, REQUIRED_IF_APPLICABLE),
     NamedCheck("audience", audience, REQUIRED_IF_APPLICABLE),
     NamedCheck("presentationBinding", presentationBinding, REQUIRED_IF_APPLICABLE),
+    NamedCheck("keyAuthorization", keyAuthorization, REQUIRED_IF_APPLICABLE),
 )
 
 internal fun ProtocolResponseChecks.named() = listOf(
