@@ -12,7 +12,7 @@
 [![A-SIT Plus Official](https://raw.githubusercontent.com/a-sit-plus/a-sit-plus.github.io/709e802b3e00cb57916cbb254ca5e1a5756ad2a8/A-SIT%20Plus_%20official_opt.svg)](https://plus.a-sit.at/open-source.html)
 [![GitHub license](https://img.shields.io/badge/license-Apache%20License%202.0-brightgreen.svg?style=flat)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Kotlin](https://img.shields.io/badge/kotlin-multiplatform--mobile-orange.svg?logo=kotlin)](http://kotlinlang.org)
-[![Kotlin](https://img.shields.io/badge/kotlin-2.3.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Java](https://img.shields.io/badge/java-17-blue.svg?logo=OPENJDK)](https://www.oracle.com/java/technologies/downloads/#java17)
 [![Android](https://img.shields.io/badge/Android-SDK--30-37AA55?logo=android)](https://developer.android.com/tools/releases/platforms#11)
 [![Maven Central](https://img.shields.io/maven-central/v/at.asitplus.wallet/vck)](https://mvnrepository.com/artifact/at.asitplus.wallet/vck)
@@ -52,19 +52,44 @@ VC-K provides full implementations of the OpenID protocol family for credential 
     - Pre-authorized code grants
     - Authorization code flow
     - Credential selection with authorization details and scopes
-    - Pushed authorization requests
-    - See classes `OpenId4VciClient` and `OpenId4VciServer`
+    - Pushed authorization requests, DPoP, and attestation-based client authentication, e.g. with a Wallet Instance
+      Attestation
+    - Proofs of possession with key attestations, and encrypted credential requests and responses
+    - Signed credential issuer metadata, validated against the access and registration certificates of the provider
+    - See classes `OpenId4VciClient`, `OpenId4VciProtocolClient`, `OpenId4VciKtorClient` and `OpenId4VciServer`
 
 - **OpenID4VP (OpenID for Verifiable Presentations)**: Complete holder and verifier implementation ([OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)), supporting:
     - Same device and cross-device flows
-    - Response modes: `direct_post` and `direct_post.jwt`
-    - Request objects by value or reference
+    - Response modes: `direct_post`, `direct_post.jwt`, `dc_api` and `dc_api.jwt`
+    - Request objects by value or reference, signed and/or encrypted
     - Verifier attestations
     - `verifier_info` attestations with profile-defined formats (for example `registration_cert`)
     - Signed and/or encrypted responses
     - Digital Credential Query Language (DCQL)
     - ISO DeviceRequest presentation for direct ISO 18013-5 and DC API transports
-    - See classes `OpenId4VpVerifier`, `OpenId4VpHolder` and `OpenId4VpProtocolClient`
+    - See classes `OpenId4VpVerifier`, `OpenId4VpHolder`, `OpenId4VpProtocolClient` and `OpenId4VpKtorHolder`
+
+The protocol clients in `vck-openid` (`OAuth2ProtocolClient`, `OpenId4VciProtocolClient`, `OpenId4VpProtocolClient`)
+never send requests themselves: each call returns an `HttpExchange` to send with any HTTP stack, while the clients in
+`vck-openid-ktor` send them with Ktor. Server-side, results convert to a `PreparedHttpResponse` to write out unchanged.
+
+## Validation and Trust
+
+Credentials, presentations, relying parties, and credential issuers are validated by one API in the package
+`at.asitplus.wallet.lib.validation`: `CredentialValidator`, `RelyingPartyValidator`, and `IssuerMetadataValidator`
+return a `ValidationReport` with every check (passed, failed with its cause, blocked, or not applicable), whose
+`decision` follows from the `ValidationPolicy` you choose:
+
+- **Trust**: issuers, status list signers, and relying parties are trusted through anchors configured per credential
+  type, e.g. filtered from the EU Lists of Trusted Entities (LoTE, ETSI TS 119 602) with `LoTEFilterService`
+- **Status**: Token Status List entries are resolved with a `StatusValidator` and your `StatusListTokenResolver`
+- **Timeliness, holder binding, and required claims**, e.g. the claims the type metadata of a credential mark as
+  mandatory
+- **Registration**: access certificates (WRPAC) and registration certificates (WRPRC, ETSI TS 119 475) of relying
+  parties and credential issuers, including whether a relying party is registered for the data it requests
+
+A relaxed policy lets a wallet show a report instead of rejecting, e.g. to warn about an untrusted relying party, or to
+store a credential of an untrusted issuer after the user accepts it.
 
 ## EUDI Wallet Compatibility
 
@@ -89,13 +114,13 @@ VC-K uses a modular structure to separate concerns. Hence, depending on the use 
 
 |        Artefact        | Info                                                                                                                                                                                                                    |
 |:----------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|         `vck`          | VC-K base functionality. Contains business logic for creating, issuing, presenting, and verifying credentials.                                                                                                          |
-|      `vck-openid`      | OpenID protocol implementation, including OpenID4VCI. Contains client and server authentication business logic and the actual issuing protocol.                                                                         |
-|   `vck-openid-ktor`    | Contains ktor-based OpenID4VCI client and OpenID4VP wallet implementations.                                                                                                                                             |
+|         `vck`          | VC-K base functionality. Contains business logic for creating, issuing, presenting, and verifying credentials, and the validation API for credentials, presentations, relying parties, and credential issuers.           |
+|      `vck-openid`      | OAuth 2.0, OpenID4VCI, and OpenID4VP for wallets, issuers, and verifiers, with protocol clients returning `HttpExchange`s for any HTTP stack, and servers returning `PreparedHttpResponse`s.                             |
+|   `vck-openid-ktor`    | Contains ktor-based OAuth 2.0 and OpenID4VCI client and OpenID4VP holder implementations.                                                                                                                               |
 |    `vck-longfellow`    | Implementation of a registerable backend for ISO mDoc zero-knowledge proofs using [LongfellowZk](https://github.com/longfellow-zk/longfellow-zk)                                                                        |
-| `openid-data-classes`  | OpenID data classes. **Only depends on `csc-data-classes`** and can hence be used independently of VC-K!                                                                                                                |
-|   `csc-data-classes`   | [CSC](https://cloudsignatureconsortium.org/wp-content/uploads/2025/01/csc-api-2.1.0.1.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                     |
-|  `etsi-data-classes`   | [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K! |
+| `openid-data-classes`  | OpenID data classes. **Only depends on `csc-data-classes`, `etsi-data-classes` and `rfc3986-uri-syntax`** and can hence be used independently of VC-K!                                                                  |
+|   `csc-data-classes`   | [CSC](https://cloudsignatureconsortium.org/wp-content/uploads/2025/01/csc-api-2.1.0.1.pdf) API and data model data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!  |
+|  `etsi-data-classes`   | [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf) (LoTE) and ETSI TS 119 475 (WRPAC, WRPRC) data classes. **Only depends on `rfc3986-uri-syntax`** and can hence be used independently of VC-K! |
 |  `rfc3986-uri-syntax`  | [RFC 3986 URI Syntax](https://datatracker.ietf.org/doc/html/rfc3986) data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!                                           |
 | `sd-jwt-type-metadata` | [SD-JWT VC](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/) type metadata data classes. **Only depends on `rfc3986-uri-syntax`** and can hence be used independently of VC-K!                             |
 
@@ -194,7 +219,9 @@ On the wallet side, use the two-step API when the user must review and choose cr
 the relying party sending a request, pass a `relyingPartyValidator` with `RelyingPartyTrustAnchors`: WRPAC anchors,
 also for `x509_san_dns` and `x509_hash`, WRPRC anchors, trusted attesters for `verifier_attestation`, and a registry
 of known clients for `pre-registered`. `startAuthorizationResponsePreparation(input, policy)` returns the report of
-the request next to the preparation state, also for a rejected request, so the wallet can show why.
+the request next to the preparation state, also for a rejected request, so the wallet can show why. With
+`ValidationPolicy.registration` set to `RegistrationPolicy.ValidateIfPresent`, relying parties without a WRPRC, e.g.
+mdoc readers outside the EUDI Wallet ecosystem, are accepted through their access certificate alone.
 
 `OpenId4VpKtorHolder` from `vck-openid-ktor` sends the requests to the verifier with Ktor, i.e. it fetches a request
 object passed by reference and posts the response. It uses a copy of your `HttpClient` that doesn't follow redirects.
@@ -206,9 +233,25 @@ val wallet = OpenId4VpKtorHolder(
     httpClient = httpClient, // your app's Ktor HttpClient
     keyMaterial = holderKeyMaterial,
     holder = holderAgent,
+    relyingPartyValidator = RelyingPartyValidator(
+        RelyingPartyTrustAnchors(accessCertificates = wrpacAnchors, registrationCertificates = wrprcAnchors),
+    ),
 )
 
-val preparation = wallet.startAuthorizationResponsePreparation(requestUrlFromQrOrDeepLink).getOrThrow()
+// There is no default policy: choose which checks have to pass
+val relyingPartyPolicy = ValidationPolicy(
+    trust = TrustPolicy.RequireAuthorizedSigner,
+    status = StatusPolicy.ValidateIfPresent(signerTrust = TrustPolicy.RequireAuthorizedSigner),
+    timeLeeway = 5.minutes,
+    requireTimeliness = true,
+)
+val validation = wallet.startAuthorizationResponsePreparation(requestUrlFromQrOrDeepLink, relyingPartyPolicy)
+    .getOrThrow()
+if (validation.validationReport.decision == ValidationDecision.REJECTED) {
+    // Show why, e.g. validation.validationReport.firstRejection(), and what the relying party claims to be, i.e.
+    // validation.relyingParty?.untrustedRegistrations; continue only if the user decides to
+}
+val preparation = validation.preparationState
 val matches = wallet.getMatchingCredentials(preparation).getOrThrow()
 
 // Show preparation.verifierInfo and matches to the user, then continue after consent.
@@ -287,27 +330,37 @@ The authorization server works the same way: convert the results of `SimpleAutho
 
 On the wallet side, three layers build on each other:
 
-- `OpenId4VciClient` creates credential requests (proofs, encryption) and parses credential responses.
+- `OpenId4VciClient` creates credential requests (proofs with its `ProofCreator`s, encryption) and decodes credential
+  responses.
 - `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` add everything HTTP, i.e. DPoP, client attestation, nonces,
   and retries, but never send requests themselves: each call returns an `HttpExchange`.
 - `OpenId4VciKtorClient` sends those exchanges with Ktor and runs the complete flows. It uses a copy of your
   `HttpClient` that doesn't follow redirects. Its plugins must not re-send requests or react to error statuses,
   because DPoP proofs are single-use.
 
-With Ktor, load the offer (or, without one, the metadata with `loadCredentialMetadata(issuerUrl)` and start with
-`startProvisioningWithAuthRequestReturningResult`):
+With Ktor, load the offer (or, without one, start with `loadIssuerMetadata(issuerUrl, policy)` and
+`startProvisioningWithAuthRequestReturningResult`). Signed issuer metadata are preferred and validated with the
+`issuerMetadataValidator`; received credentials are validated by the `HolderAgent`, configured with a
+`CredentialValidator`, before they are stored:
 
 ```kotlin
 val client = OpenId4VciKtorClient(
     httpClient = httpClient, // your app's Ktor HttpClient, ideally with a persistent cookie storage
     oauth2Client = OAuth2Client(clientId = walletClientId, redirectUrl = walletRedirectUrl),
-    vciClient = OpenId4VciClient(keyMaterial = holderKeyMaterial),
+    vciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(holderKeyMaterial))),
     // Optional: attestation-based client authentication, e.g. with a WIA; its key is also the DPoP key
     clientAttestation = ClientAttestation(attestedKeyMaterial) { loadWalletInstanceAttestation(it) },
+    // Anchors of the providers of access certificates (WRPAC) and registration certificates (WRPRC)
+    issuerMetadataValidator = IssuerMetadataValidator(
+        accessCertificates = wrpacAnchors,
+        registrationCertificates = wrprcAnchors,
+    ),
 )
 
 val offer = client.loadCredentialOffer(credentialOfferUrl).getOrThrow()
-val credentials = client.loadCredentialMetadata(offer.credentialIssuer).getOrThrow()
+// LoadedIssuerMetadata.Signed carries the report of rejected metadata, Unsigned ones are not authenticated at all
+val metadata = client.loadIssuerMetadata(offer.credentialIssuer, policy).getOrThrow()
+val credentials = client.parseCredentialMetadata(metadata).getOrThrow()
 val selectedCredential = credentials.first { it.credentialIdentifier in offer.configurationIds }
 
 when (val result = client.loadCredentialWithOfferReturningResult(offer, selectedCredential).getOrThrow()) {
@@ -316,14 +369,21 @@ when (val result = client.loadCredentialWithOfferReturningResult(offer, selected
         openBrowser(result.url)
     }
 
-    is CredentialIssuanceResult.Success -> {
-        result.credentials.forEach { holderAgent.storeCredential(it, result.refreshToken) }
-    }
+    is CredentialIssuanceResult.Success -> store(result)
 }
 
 // After the browser redirects back to the wallet app in the authorization-code flow:
-val success = client.resumeWithAuthCode(redirectUrl, loadProvisioningContext()).getOrThrow()
-success.credentials.forEach { holderAgent.storeCredential(it, success.refreshToken) }
+store(client.resumeWithAuthCode(redirectUrl, loadProvisioningContext()).getOrThrow())
+
+suspend fun store(result: CredentialIssuanceResult.Success) =
+    result.prepareCredentialStorage(holderAgent, policy).getOrThrow().forEach { prepared ->
+        if (holderAgent.storeAccepted(prepared).getOrThrow().storedEntry == null) {
+            // Rejected: show prepared.validation.report, e.g. of an untrusted issuer or missing required claims, and
+            // store it only after the user accepts it, as long as it is intact
+            if (prepared.validation.unacceptedCredential != null && userAccepts(prepared.validation.report))
+                holderAgent.storeAfterUserConsent(prepared).getOrThrow()
+        }
+    }
 ```
 
 Without Ktor, send the requests of each exchange with your HTTP stack and pass the responses back; the KDoc of
@@ -338,12 +398,44 @@ suspend fun <T> execute(exchange: HttpExchange<T>): T {
 }
 
 val vci = OpenId4VciProtocolClient(
-    vciClient = OpenId4VciClient(clientId = walletClientId, keyMaterial = holderKeyMaterial),
+    vciClient = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(holderKeyMaterial))),
     oauth2Client = OAuth2ProtocolClient(oAuth2Client = OAuth2Client(clientId = walletClientId)),
+    issuerMetadataValidator = issuerMetadataValidator,
 )
 val offer = execute(vci.loadCredentialOffer(credentialOfferUrl))
-val issuerMetadata = execute(vci.loadIssuerMetadata(offer.credentialIssuer))
+val issuerMetadata = execute(vci.loadIssuerMetadata(offer.credentialIssuer, policy))
 ```
+
+Decode credential responses with `OpenId4VciClient.decodeCredentialResponse` and validate each `ReceivedCredential`
+with `prepareCredentialStorage(holderAgent, scheme, policy, renewalInfo)`, then store it as above.
+
+### Credential validation
+
+The `ValidationPolicy` has no defaults or presets: choose whether signers have to be authorized by trust anchors,
+whether a status is checked, and whether an expired or not yet valid credential is rejected. Configure the trust
+anchors per credential type and the status list token resolver once, in a `CredentialValidator`, and pass it to the
+`HolderAgent`, `OpenId4VpVerifier`, or `DcApiVerifier`:
+
+```kotlin
+val credentialValidator = CredentialValidator(
+    trustAnchors = CredentialTrustScopes(/* one CredentialTrustScope per credential type, e.g. from a LoTE */),
+    statusValidator = StatusValidator(StatusListTokenResolver { uri -> fetchStatusListToken(uri) }),
+)
+val holderAgent = HolderAgent(keyMaterial = holderKeyMaterial, credentialValidator = credentialValidator)
+
+val policy = ValidationPolicy(
+    trust = TrustPolicy.RequireAuthorizedSigner,
+    status = StatusPolicy.ValidateIfPresent(signerTrust = TrustPolicy.RequireAuthorizedSigner),
+    timeLeeway = 5.minutes,
+    requireTimeliness = true,
+    requiredClaims = RequiredClaimsPolicy.RequireMandatory,
+)
+```
+
+Each `ValidationReport` lists its `namedChecks` with the `Requirement` the policy put on each, so that a report can be
+displayed as it has been decided, including the checks a relaxed policy tolerates; `firstRejection()` tells why a
+report has been rejected. The validators and agents that predate this API, e.g. `Validator`, `VerifierAgent`,
+`WrprcValidator`, and `TokenStatusValidator`, are deprecated, see [CHANGELOG.md](CHANGELOG.md).
 
 ### Registering credential schemes
 
@@ -417,8 +509,11 @@ val request = options.toRequestParametersFrom(
 val dcApiHolder = DcApiHolder(
     keyMaterial = holderKeyMaterial,
     holder = holderAgent,
+    relyingPartyValidator = relyingPartyValidator,
 )
-val preparation = dcApiHolder.startAuthorizationResponsePreparation(request).getOrThrow()
+// Validates the relying party, e.g. its WRPAC and WRPRCs, see validation.validationReport and validation.relyingParty
+val validation = dcApiHolder.startAuthorizationResponsePreparation(request, relyingPartyPolicy).getOrThrow()
+val preparation = validation.preparationState
 val matches = dcApiHolder.getMatchingCredentials(preparation).getOrThrow()
 
 // Render preparation.presentationRequest and matches, then build the selected CredentialPresentation after consent.
@@ -430,7 +525,7 @@ val iosResponseBytes = response.toIosIsoMdocResponseBytes()
 ```
 
 On iOS, `IosDcApiMdocPreRequestSummary` represents the system's pre-request disclosure summary without depending on
-Apple frameworks. It can be converted for early matching with `toDifInputDescriptors()`. Once the full Annex C
+Apple frameworks. It can be converted for early matching with `toDeviceRequest()`. Once the full Annex C
 request arrives, require `summary.isConsistentWith(request.parameters.isoMdocRequest)` before continuing so that the
 final request cannot ask for different data than the system showed. The iOS response encoder accepts Annex C
 responses only; OpenID4VP responses use a different platform return path.
@@ -458,8 +553,10 @@ IsoMdocZkBackendRegistry.Default.register(LongfellowBackend()).fold(
  - Several parts of the W3C VC Data Model have not been fully implemented, i.e. everything around resolving cryptographic key material.
  - Anything related to ledgers (e.g. resolving DID documents) is out of scope.
  - JSON-LD is not supported for W3C credentials.
- - Trust relationships are mostly up to clients using this library.
- - ISO mDoc zero-knowledge proof verification is not yet (fully) implemented.
+ - Trust in certificates is evaluated by walking the transported chain, without RFC 5280 path building,
+   `pathLenConstraint` or `keyUsage`, and without certificate revocation (CRL, OCSP).
+ - ISO mDoc zero-knowledge proof verification is not yet implemented: ZK mdoc presentations are validated like plain
+   mdocs, their proofs are not verified.
 
 ## Contributing
 External contributions are greatly appreciated! Be sure to observe the contribution guidelines (see [CONTRIBUTING.md](CONTRIBUTING.md)).
