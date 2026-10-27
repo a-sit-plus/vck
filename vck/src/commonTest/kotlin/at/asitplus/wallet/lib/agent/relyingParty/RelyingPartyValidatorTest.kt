@@ -164,7 +164,7 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
-    "an mdoc request with WRPRCs of different relying parties fails the registration" {
+    "an mdoc request of an intermediary with WRPRCs of different subjects fails the registration" {
         val fixture = buildWrpFixture(wrpIdentifier = INTERMEDIARY)
         val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
         val other = buildWrpPayload("LEIXG-ANOTHER-RELYING-PARTY").copy(intermediary = WrpIntermediary(INTERMEDIARY))
@@ -179,6 +179,52 @@ val RelyingPartyValidatorTest by matrixSuite {
             report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
                 .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
                 .shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+            report.children.drop(1).map {
+                it.checks.shouldBeInstanceOf<RegistrationCertificateChecks>().linkage
+            } shouldBe listOf(CheckOutcome.Passed, CheckOutcome.Passed)
+        }
+    }
+    
+    "an mdoc request with a WRPRC of another relying party, without an intermediary, fails its linkage" {
+        val fixture = buildWrpFixture()
+        val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+        val request = fixture.isoRequest(
+            fixture.docRequestWithWrprc(),
+            transcript,
+            fixture.docRequestWithWrprc(payload = buildWrpPayload("LEIXG-ANOTHER-RELYING-PARTY")),
+        )
+
+        fixture.validator().validate(request, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration shouldBe CheckOutcome.Passed
+            val (own, other) = report.children.drop(1)
+                .map { it.checks.shouldBeInstanceOf<RegistrationCertificateChecks>() }
+            own.linkage shouldBe CheckOutcome.Passed
+            other.linkage.shouldBeInstanceOf<CheckOutcome.Failed>()
+            untrustedRegistrations.map { it.subjectIdentifier } shouldBe
+                    listOf(fixture.wrpIdentifier, "LEIXG-ANOTHER-RELYING-PARTY")
+        }
+    }
+
+    "an mdoc request with a WRPRC naming the WRPAC as intermediary for another relying party fails the registration" {
+        val fixture = buildWrpFixture()
+        val transcript = SessionTranscript.DcApi(DCAPIHandover(DCAPIHandover.TYPE_DCAPI, ByteArray(32)))
+        val other = buildWrpPayload("LEIXG-ANOTHER-RELYING-PARTY")
+            .copy(intermediary = WrpIntermediary(fixture.wrpIdentifier))
+        val request = fixture.isoRequest(
+            fixture.docRequestWithWrprc(),
+            transcript,
+            fixture.docRequestWithWrprc(payload = other),
+        )
+
+        fixture.validator().validate(request, transcript, policy).apply {
+            report.decision shouldBe REJECTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().registration
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                .shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+            report.children.drop(1).map {
+                it.checks.shouldBeInstanceOf<RegistrationCertificateChecks>().linkage
+            } shouldBe listOf(CheckOutcome.Passed, CheckOutcome.Passed)
         }
     }
 

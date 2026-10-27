@@ -123,11 +123,13 @@ data class RelyingPartyChecks(
      */
     val requestData: CheckOutcome,
     /**
-     * Whether the request carries its WRPRCs, one in `verifier_info` of an OpenID4VP request, or one in `euWrprc` of
-     * every document request of an ISO mdoc request, and they could be parsed and identify one relying party,
-     * failing with a `MissingRegistrationCertificateException` or an `InvalidRegistrationCertificateException`
-     * otherwise. Not applicable to a request without WRPRCs under [RegistrationPolicy.ValidateIfPresent]. Blocked for
-     * a request whose `requestData` failed without them being extracted.
+     * Whether the request carries its WRPRCs, they can be parsed, and they are all issued to one relying party:
+     * an OpenID4VP request carries one in `verifier_info`, an ISO mdoc request one in `euWrprc` of every document
+     * request. Fails with a `MissingRegistrationCertificateException` if there are none, and with an
+     * `InvalidRegistrationCertificateException` otherwise. WRPRCs that do not link fail their own `linkage` instead.
+     *
+     * Not applicable to a request without WRPRCs under [RegistrationPolicy.ValidateIfPresent]. Blocked if
+     * `requestData` failed before the WRPRCs could be extracted.
      */
     val registration: CheckOutcome,
 ) : ValidationChecks
