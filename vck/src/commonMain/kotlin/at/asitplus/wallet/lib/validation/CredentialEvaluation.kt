@@ -35,6 +35,8 @@ internal sealed interface FormatEvaluation {
         /** The status claim, `null` if the credential has none. */
         val status: TokenStatusInfo?,
         val credential: ValidatedCredential,
+        /** See [CredentialChecks.expiryWithinCertificate]. */
+        val expiryWithinCertificate: CheckOutcome = NotApplicable,
     ) : FormatEvaluation
 }
 

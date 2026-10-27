@@ -159,10 +159,18 @@ class CredentialValidator @JvmOverloads constructor(
         timeScope: TimeScope,
     ): CredentialChecks {
         val identifier = evaluation.credentialIdentifier
+        val trustRule = if (evaluation.credential is ValidatedCredential.IsoMdoc) TrustRule.ISSUED_BY_IACA_OR_LISTED
+        else TrustRule.ISSUED_BY_ANCHOR_OR_LISTED
         val issuerTrust = when (policy.trust) {
             IntegrityOnly -> TrustValidation(NotApplicable, identifier)
             RequireAuthorizedSigner -> identifier?.let {
-                trustAnchors.checkCredentialTrust(it, TrustPurpose.ISSUANCE, evaluation.certificateChain, timeScope.now)
+                trustAnchors.checkCredentialTrust(
+                    credentialIdentifier = it,
+                    purpose = TrustPurpose.ISSUANCE,
+                    chain = evaluation.certificateChain,
+                    at = timeScope.now,
+                    rule = trustRule,
+                )
             } ?: TrustValidation(Blocked(IllegalArgumentException("The credential type is ambiguous")))
         }
         val withoutStatus = CredentialChecks(
@@ -181,6 +189,7 @@ class CredentialValidator @JvmOverloads constructor(
             holderBinding = evaluation.holderBinding,
             timeliness = evaluation.timeliness,
             status = StatusValidation(NotApplicable, emptyList(), NotApplicable),
+            expiryWithinCertificate = evaluation.expiryWithinCertificate,
         )
         return withoutStatus.copy(status = status(evaluation, withoutStatus, policy, timeScope))
     }

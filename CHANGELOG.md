@@ -123,6 +123,26 @@ Release 9.0.0 (unreleased):
       ephemeral private key, the new `PresentationContext.eReaderKey`, which was rejected as not supported before.
       Without that key, the device authentication of such a document is blocked. A document with both a device
       signature and a device MAC fails
+    - Check the `keyAuthorizations` of the MSO for the data elements an mdoc document returns in `DeviceSigned`
+      (ISO/IEC 18013-5:2021, 9.1.2.4 and 9.1.3.4), in the new named check `keyAuthorization` of `PresentationChecks`,
+      which is never relaxed and not applicable to other formats. If the MSO has `keyAuthorizations`, every such
+      element has to be authorized by its namespace or as a data element; without them, the device key is not
+      restricted yet. Empty `keyAuthorizations`, empty arrays in them, or a namespace that is authorized both as a
+      whole and per data element fail the check, also for a document without elements in `DeviceSigned`
+    - Inspect ISO mdocs against their document signer certificate (ISO/IEC 18013-5:2021, 9.3.1 and 9.3.3; ISO/IEC DIS
+      18013-5 second edition, 12.8.1 and 12.8.3):
+        - The `semantics` of an mdoc fail if its MSO was not signed within the validity period of its document signer
+          certificate (with the time leeway of the policy), if `validFrom` is before `signed` or `validUntil` not after
+          `validFrom` (9.1.2.4), or if a disclosed `issuing_country` of an mDL differs from the `countryName` of its
+          document signer, or a disclosed `issuing_jurisdiction` from its `stateOrProvinceName`, if it has one (7.2.1).
+          A document signer without `countryName`, which violates its profile (B.1.4), is not compared, as
+          certificate profiles are not validated
+        - The `issuerTrust` of an mdoc whose document signer certificate is issued under an anchor, i.e. its IACA,
+          fails if their subjects differ in `countryName`, or in `stateOrProvinceName` where both have one. A document
+          signer listed as an anchor itself is not compared
+        - Add the named check `expiryWithinCertificate` of `CredentialChecks`, whether the MSO is valid until no later
+          than its document signer certificate (9.1.2.4). It is recorded only, as a reader may, but need not, reject
+          such an mdoc, and not applicable to other formats
     - Add `PresentationContext.forMdoc(sessionTranscript, eReaderKey)`, the context of mdoc device authentication,
       e.g. of an ISO/IEC 18013-5 proximity reader, without challenge and audience. A blank challenge or audience of a
       context is never answered, so presentations of other formats are rejected with it

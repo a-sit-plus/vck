@@ -124,7 +124,8 @@ private fun List<NamedCheck>.firstRejection(): Throwable? =
 
 /**
  * Every supplied item has to be valid, there is no partial acceptance of a credential. The required claims and the
- * holder binding are required as [ValidationPolicy.requiredClaims] and [ValidationPolicy.holderBinding] say.
+ * holder binding are required as [ValidationPolicy.requiredClaims] and [ValidationPolicy.holderBinding] say. Whether
+ * the credential expires within its certificate is only recorded, see [CredentialChecks.expiryWithinCertificate].
  */
 internal fun CredentialChecks.named(policy: ValidationPolicy) =
     listOf(
@@ -141,7 +142,8 @@ internal fun CredentialChecks.named(policy: ValidationPolicy) =
         NamedCheck("requiredClaims", requiredClaims.outcome, policy.requiredClaims.requirement, claims = requiredClaims),
         NamedCheck("holderBinding", holderBinding, policy.holderBinding.requirement),
         NamedCheck("timeliness", timeliness.outcome, policy.timelinessRequirement),
-    ) + status.named(policy.status)
+    ) + status.named(policy.status) +
+            NamedCheck("expiryWithinCertificate", expiryWithinCertificate, OPTIONAL)
 
 /** Whether every check that [policy] requires has passed. */
 internal fun CredentialChecks.meets(policy: ValidationPolicy): Boolean = named(policy).allSatisfied()
@@ -218,6 +220,7 @@ internal fun PresentationChecks.named() = listOf(
     NamedCheck("challenge", challenge, REQUIRED_IF_APPLICABLE),
     NamedCheck("audience", audience, REQUIRED_IF_APPLICABLE),
     NamedCheck("presentationBinding", presentationBinding, REQUIRED_IF_APPLICABLE),
+    NamedCheck("keyAuthorization", keyAuthorization, REQUIRED_IF_APPLICABLE),
 )
 
 internal fun ProtocolResponseChecks.named() = listOf(

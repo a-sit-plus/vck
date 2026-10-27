@@ -3,7 +3,12 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.DeviceSignedItem
+import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.Document
+import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.KeyAuthorization
+import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
@@ -31,6 +36,9 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier
+import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
+import at.asitplus.wallet.lib.cbor.CoseHeaderNone
+import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.KeyBindingJws
@@ -133,14 +141,37 @@ private suspend fun Issuance.vcJwt() =
 
 private fun sessionTranscript() = SessionTranscript.Qr(Random.nextBytes(16), Random.nextBytes(16))
 
-/** A document of the issued mdoc, its device signature over [signedTranscript], signed by [signer]. */
+/** The issued mdoc, its MSO signed by the issuer again with [keyAuthorizations] of the device key. */
+private suspend fun Issuance.issuerSigned(keyAuthorizations: KeyAuthorization?): IssuerSigned {
+    val issued = (issue(CredentialRepresentation.ISO_MDOC) as Issuer.IssuedCredential.Iso).issuerSigned
+    val mso = issued.issuerAuth.payload.shouldNotBeNull()
+    val issuerAuth = SignCose<MobileSecurityObject>(issuer.keyMaterial, CoseHeaderNone(), CoseHeaderCertificate())(
+        null,
+        null,
+        mso.copy(deviceKeyInfo = mso.deviceKeyInfo.copy(keyAuthorizations = keyAuthorizations)),
+        MobileSecurityObject.serializer(),
+    ).getOrThrow()
+    return IssuerSigned.fromIssuerSignedLists(issued.namespaces.shouldNotBeNull(), issuerAuth)
+}
+
+/** The element identifiers [elements] of the namespace of [scheme], as the holder returns them in `DeviceSigned`. */
+private fun deviceSignedItems(vararg elements: String) =
+    mapOf(scheme.isoNamespace to elements.map { DeviceSignedItem(it, "value of $it") })
+
+/**
+ * A document of the issued mdoc, or of [issuerSigned], returning [deviceSignedItems] in `DeviceSigned`, its device
+ * signature over [signedTranscript], signed by [signer].
+ */
 private suspend fun Issuance.document(
     signedTranscript: SessionTranscript,
     signer: KeyMaterial = holderKey,
     docType: String = scheme.isoDocType,
+    issuerSigned: IssuerSigned? = null,
+    deviceSignedItems: Map<String, List<DeviceSignedItem>> = emptyMap(),
 ): Document {
-    val issuerSigned = (issue(CredentialRepresentation.ISO_MDOC) as Issuer.IssuedCredential.Iso).issuerSigned
-    val namespaces = ByteStringWrapper(DeviceNameSpaces(emptyMap()))
+    val issuerSigned = issuerSigned
+        ?: (issue(CredentialRepresentation.ISO_MDOC) as Issuer.IssuedCredential.Iso).issuerSigned
+    val namespaces = ByteStringWrapper(DeviceNameSpaces(deviceSignedItems.mapValues { DeviceSignedItemList(it.value) }))
     val unsigned = Document(docType, issuerSigned, DeviceSigned(namespaces, DeviceAuth()))
     val deviceSignature = SignCoseDetached<ByteArray>(signer)(
         null, null, unsigned.deviceAuthenticationBytes(signedTranscript), ByteArraySerializer()
@@ -378,6 +409,7 @@ val PresentationValidationTest by matrixSuite {
             result.report.decision shouldBe ACCEPTED
             result.checks.signature shouldBe Passed
             result.checks.challenge shouldBe NotApplicable
+            result.checks.keyAuthorization shouldBe Passed
             result.presentation.shouldBeInstanceOf<ValidatedPresentation.MdocDocument>()
         }
 
@@ -459,6 +491,85 @@ val PresentationValidationTest by matrixSuite {
             result.report.decision shouldBe REJECTED
             result.report.children.single().checks.shouldBeInstanceOf<CredentialChecks>().semantics
                 .shouldBeInstanceOf<Failed>()
+        }
+
+        "elements in DeviceSigned that the MSO authorizes, or does not restrict, are accepted" - {
+            val namespace = scheme.isoNamespace
+            listOf<Pair<String, KeyAuthorization?>>(
+                "no keyAuthorizations" to null,
+                "the namespace" to KeyAuthorization(namespaces = arrayOf(namespace)),
+                "every data element" to KeyAuthorization(dataElements = mapOf(namespace to arrayOf("a", "b"))),
+                "a data element and another namespace" to KeyAuthorization(
+                    namespaces = arrayOf("org.example.other"),
+                    dataElements = mapOf(namespace to arrayOf("a", "b")),
+                ),
+            ).asData(nameFn = { (name, _) -> "with $name" }) test { (_, keyAuthorizations) ->
+                val issuance = issuance()
+                val transcript = sessionTranscript()
+                val document = issuance.document(
+                    signedTranscript = transcript,
+                    issuerSigned = issuance.issuerSigned(keyAuthorizations),
+                    deviceSignedItems = deviceSignedItems("a", "b"),
+                )
+                val result = issuance.validatePresentation(
+                    PresentationValidationInput.MdocDocument(document),
+                    presentationContext(sessionTranscript = transcript),
+                )
+
+                result.report.decision shouldBe ACCEPTED
+                result.checks.signature shouldBe Passed
+                result.checks.keyAuthorization shouldBe Passed
+            }
+        }
+
+        "an element in DeviceSigned that the MSO does not authorize fails, although the device signature passes" - {
+            val namespace = scheme.isoNamespace
+            listOf(
+                "authorizing other data elements" to KeyAuthorization(dataElements = mapOf(namespace to arrayOf("a"))),
+                "authorizing another namespace" to KeyAuthorization(namespaces = arrayOf("org.example.other")),
+            ).asData(nameFn = { (name, _) -> name }) test { (_, keyAuthorizations) ->
+                val issuance = issuance()
+                val transcript = sessionTranscript()
+                val document = issuance.document(
+                    signedTranscript = transcript,
+                    issuerSigned = issuance.issuerSigned(keyAuthorizations),
+                    deviceSignedItems = deviceSignedItems("a", "b"),
+                )
+                val result = issuance.validatePresentation(
+                    PresentationValidationInput.MdocDocument(document),
+                    presentationContext(sessionTranscript = transcript),
+                )
+
+                result.report.decision shouldBe REJECTED
+                result.checks.signature shouldBe Passed
+                result.checks.keyAuthorization.shouldBeInstanceOf<Failed>()
+                result.presentation.shouldBeNull()
+            }
+        }
+
+        "malformed keyAuthorizations fail, also without elements in DeviceSigned" - {
+            val namespace = scheme.isoNamespace
+            listOf(
+                "empty" to KeyAuthorization(),
+                "with an empty array of namespaces" to KeyAuthorization(namespaces = arrayOf()),
+                "with an empty map of data elements" to KeyAuthorization(dataElements = mapOf()),
+                "with an empty array of data elements" to KeyAuthorization(dataElements = mapOf(namespace to arrayOf())),
+                "authorizing a namespace as a whole and per data element" to KeyAuthorization(
+                    namespaces = arrayOf(namespace),
+                    dataElements = mapOf(namespace to arrayOf("a")),
+                ),
+            ).asData(nameFn = { (name, _) -> name }) test { (_, keyAuthorizations) ->
+                val issuance = issuance()
+                val transcript = sessionTranscript()
+                val document = issuance.document(transcript, issuerSigned = issuance.issuerSigned(keyAuthorizations))
+                val result = issuance.validatePresentation(
+                    PresentationValidationInput.MdocDocument(document),
+                    presentationContext(sessionTranscript = transcript),
+                )
+
+                result.report.decision shouldBe REJECTED
+                result.checks.keyAuthorization.shouldBeInstanceOf<Failed>()
+            }
         }
     }
 
