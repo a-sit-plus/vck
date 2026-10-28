@@ -5,7 +5,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.supreme.UserInitiatedCancellationReason
+import at.asitplus.signum.indispensable.sign.UserInitiatedCancellation
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -199,7 +199,7 @@ class OpenId4VpWallet(
             preparationState = preparationState,
             credentialPresentation = credentialPresentation
         ).getOrElse {
-            if (it !is UserInitiatedCancellationReason) {
+            if (it !is UserInitiatedCancellation) {
                 sendAuthnErrorResponse(it, preparationState)
             }
             throw it

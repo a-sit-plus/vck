@@ -49,11 +49,11 @@ import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.legacy.JwsHeader
+import at.asitplus.legacy.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -105,7 +105,7 @@ class WalletService @JvmOverloads constructor(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Handles credential request encryption and credential response decryption. */
     private val encryptionService: WalletEncryptionService = WalletEncryptionService(),
-    private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt, JwsHeader>>)? = null,
+    private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompact<JwsHeader, KeyAttestationJwt>>)? = null,
     /**
      * Selects the key binding to embed in the [JwsHeader] of a credential request proof JWT,
      * as defined in the OpenID for Verifiable Credential Issuance specification.
@@ -502,7 +502,7 @@ class WalletService @JvmOverloads constructor(
         if (keyAttestationRequired != null && loadKeyAttestation == null) {
             throw IllegalArgumentException("Key attestation required, none provided")
         }
-        val keyAttestation: JwsCompactTyped<KeyAttestationJwt, JwsHeader>? = if (keyAttestationRequired != null) {
+        val keyAttestation: JwsCompact<JwsHeader, KeyAttestationJwt>? = if (keyAttestationRequired != null) {
             loadKeyAttestation?.invoke(
                 KeyAttestationInput(
                     credentialIssuer = credentialIssuer,
@@ -525,10 +525,10 @@ class WalletService @JvmOverloads constructor(
 
                     when {
                         jsonWebKey != null && keyId.isNullOrEmpty() ->
-                            header.copy(jsonWebKey = jsonWebKey, keyAttestation = keyAttestation?.jws)
+                            header.copy(jsonWebKey = jsonWebKey, keyAttestation = keyAttestation?.raw)
 
                         jsonWebKey == null && !keyId.isNullOrEmpty() ->
-                            header.copy(keyId = keyId, keyAttestation = keyAttestation?.jws)
+                            header.copy(keyId = keyId, keyAttestation = keyAttestation?.raw)
 
                         jsonWebKey != null && !keyId.isNullOrEmpty() ->
                             throw IllegalArgumentException(
@@ -550,7 +550,7 @@ class WalletService @JvmOverloads constructor(
                         nonce = clientNonce,
                     ),
                     JsonWebToken.serializer(),
-                ).getOrThrow().jws
+                ).getOrThrow().raw
             )
         )
     }
@@ -569,11 +569,11 @@ class WalletService @JvmOverloads constructor(
                     supportedAlgorithms = supportedAlgorithms,
                     preferredKeyStorageStatusPeriod = keyAttestationRequired?.preferredTtl,
                 )
-            )?.getOrThrow()?.jws ?: throw IllegalArgumentException("Key attestation required, none provided"))
+            )?.getOrThrow()?.raw ?: throw IllegalArgumentException("Key attestation required, none provided"))
         )
     )
 
-    private fun JwsCompactTyped<KeyAttestationJwt, JwsHeader>.requireKeyMaterialAtAttestedKeyIndex0() {
+    private fun JwsCompact<JwsHeader, KeyAttestationJwt>.requireKeyMaterialAtAttestedKeyIndex0() {
         val attestedKey = payload.attestedKeys.firstOrNull()
             ?: throw IllegalArgumentException("Key attestation required, none provided")
         if (attestedKey.jwkThumbprintPlain != keyMaterial.jsonWebKey.jwkThumbprintPlain) {
@@ -590,7 +590,7 @@ class WalletService @JvmOverloads constructor(
         credentialScheme: CredentialScheme,
     ): Holder.StoreCredentialInput = when (credentialRepresentation) {
         PLAIN_JWT -> Vc(
-            signedVcJws = JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(this),
+            signedVcJws = JwsCompact<JwsHeader, VerifiableCredentialJws>(this),
             vcJws = this,
             scheme = credentialScheme as VcJwtCredentialScheme
         )

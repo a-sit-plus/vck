@@ -10,7 +10,7 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

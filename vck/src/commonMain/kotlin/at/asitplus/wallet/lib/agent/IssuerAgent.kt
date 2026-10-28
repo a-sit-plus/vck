@@ -23,7 +23,7 @@ import at.asitplus.iso.ValueDigestList
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.legacy.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
@@ -246,7 +246,7 @@ class IssuerAgent constructor(
         ).getOrElse {
             throw IllegalStateException("Could not sign SD-JWT", it)
         }
-        val sdJwtSigned = SdJwtSigned.issued(jws.jws, disclosures.toList())
+        val sdJwtSigned = SdJwtSigned.issued(jws.raw, disclosures.toList())
             .also { Napier.i("issueVcSd: $it") }
         return Issuer.IssuedCredential.VcSdJwt(
             sdJwtVc = vcSdJwt,

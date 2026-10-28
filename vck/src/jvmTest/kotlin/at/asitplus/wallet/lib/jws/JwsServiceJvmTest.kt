@@ -126,7 +126,7 @@ val JwsServiceJvmTest by matrixSuite {
                     val signed = jwsSigner(
                         JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
                     ).getOrThrow()
-                    val selfVerify = verifyJwsSignatureObject(signed.jws)
+                    val selfVerify = verifyJwsSignatureObject(signed.raw)
                     withClue("$algo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         selfVerify.getOrThrow()
                     }
@@ -144,7 +144,7 @@ val JwsServiceJvmTest by matrixSuite {
 
                     // Parsing to our structure verifying payload
                     val signedLibObject = libObject.serialize()
-                    val parsedJwsSigned = JwsCompact(signedLibObject)
+                    val parsedJwsSigned = JwsCompact.Raw(signedLibObject)
                     parsedJwsSigned.getPayload<JsonElement>()
                         .getOrThrow().jsonPrimitive.content shouldBe randomPayload.content
                     val parsedSig = parsedJwsSigned.plainSignature.encodeToString(Base64UrlStrict)

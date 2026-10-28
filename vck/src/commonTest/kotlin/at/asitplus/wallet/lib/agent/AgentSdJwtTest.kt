@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.sha256
@@ -15,7 +15,6 @@ import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
@@ -452,7 +451,7 @@ private suspend fun createSdJwtPresentation(
     val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
     val keyBinding = createKeyBindingJws(signKeyBindingJws, audienceId, challenge, issuerJwtPlusDisclosures)
     val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-    val jwsFromIssuer = catching { JwsCompact(sdJwtSerialized) }.getOrElse {
+    val jwsFromIssuer = catching { JwsCompact.Raw(sdJwtSerialized) }.getOrElse {
         throw PresentationException(it)
     }
     val sdJwt = SdJwtSigned.presented(jwsFromIssuer, filteredDisclosures, keyBinding)
@@ -464,7 +463,7 @@ private suspend fun createKeyBindingJws(
     audienceId: String,
     challenge: String,
     issuerJwtPlusDisclosures: String,
-): JwsCompactTyped<KeyBindingJws, JwsHeader> = signKeyBindingJws(
+): JwsCompact<JwsHeader, KeyBindingJws> = signKeyBindingJws(
     JwsContentTypeConstants.KB_JWT,
     KeyBindingJws(
         issuedAt = Clock.System.now(),

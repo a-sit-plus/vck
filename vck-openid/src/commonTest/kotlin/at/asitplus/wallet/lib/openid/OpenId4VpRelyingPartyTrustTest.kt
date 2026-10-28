@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.awesn1.Asn1EncapsulatingOctetString
@@ -9,9 +9,9 @@ import at.asitplus.awesn1.Asn1String
 import at.asitplus.awesn1.KnownOIDs
 import at.asitplus.awesn1.encoding.Asn1
 import at.asitplus.awesn1.subjectAltName_2_5_29_17
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.legacy.ConfirmationClaim
+import at.asitplus.legacy.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.awesn1.crypto.pki.X509GeneralName
 import at.asitplus.signum.indispensable.pki.CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -253,7 +253,7 @@ private suspend fun attestationJwt(
     attester: KeyMaterial,
     subject: String,
     confirmedKey: KeyMaterial,
-): JwsCompactTyped<JsonWebToken, JwsHeader> = SignJwt<JsonWebToken>(attester, JwsHeaderNone())(
+): JwsCompact<JwsHeader, JsonWebToken> = SignJwt<JsonWebToken>(attester, JwsHeaderNone())(
     null,
     JsonWebToken(
         issuer = "https://attester.example.com",

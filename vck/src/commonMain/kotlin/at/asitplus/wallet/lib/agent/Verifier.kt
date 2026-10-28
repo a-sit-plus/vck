@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
@@ -8,7 +8,7 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
@@ -51,7 +51,7 @@ interface Verifier {
      * that shall include the [challenge] (sent by this verifier).
      */
     suspend fun verifyPresentationVcJwt(
-        input: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>,
+        input: JwsCompact<JwsHeader, VerifiablePresentationJws>,
         challenge: String,
     ): KmmResult<VerifyPresentationResult.Success>
 

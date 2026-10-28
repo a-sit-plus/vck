@@ -561,7 +561,7 @@ val OAuth2KtorClientTest by matrixSuite {
             val attestedKey = request.clientAttestation.shouldNotBeNull()
                 .payload.confirmationClaim.shouldNotBeNull()
                 .jsonWebKey.shouldNotBeNull()
-            val dpopKey = request.dpop.shouldNotBeNull().jws.jwsHeader.jsonWebKey.shouldNotBeNull()
+            val dpopKey = request.dpop.shouldNotBeNull().header.jsonWebKey.shouldNotBeNull()
 
             // Without this the DPoP proof says nothing about possession of the attested key
             dpopKey.jwkThumbprint shouldBe attestedKey.jwkThumbprint
@@ -701,7 +701,7 @@ val OAuth2KtorClientTest by matrixSuite {
 
             request.clientAttestationPop.shouldNotBeNull()
             dpop.payload.nonce.shouldBeNull()
-            dpop.jws.jwsHeader.jsonWebKey.shouldNotBeNull().jwkThumbprint shouldNotBe attestedKey.jwkThumbprint
+            dpop.header.jsonWebKey.shouldNotBeNull().jwkThumbprint shouldNotBe attestedKey.jwkThumbprint
         }
     }
 

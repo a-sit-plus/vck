@@ -10,8 +10,7 @@ import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.signum.indispensable.digest.digest
@@ -50,7 +49,7 @@ val JwsServiceTest by matrixSuite {
         test("signed object with bytes can be verified") {
             val payload = it.randomPayload.encodeToByteArray()
             val signed = it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
-            it.verifierJwsService(signed.jws).getOrThrow()
+            it.verifierJwsService(signed.raw).getOrThrow()
         }
 
         test("Object can be reconstructed") {
@@ -58,22 +57,22 @@ val JwsServiceTest by matrixSuite {
             val signed =
                 it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow().toString()
 
-            val parsed = JwsCompactTyped<ByteArray, JwsHeader>(signed)
+            val parsed = JwsCompact<JwsHeader, ByteArray>(signed)
             parsed.toString() shouldBe signed
             parsed.payload shouldBe payload
-            it.verifierJwsService(parsed.jws).getOrThrow()
+            it.verifierJwsService(parsed.raw).getOrThrow()
         }
 
         test("signed object can be verified") {
             val payload = it.randomPayload.encodeToByteArray()
             val signed = it.signJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
-            it.verifierJwsService(signed.jws).getOrThrow()
+            it.verifierJwsService(signed.raw).getOrThrow()
         }
 
         test("signed object with jsonWebKey can be verified") {
             val signer = SignJwt<String>(it.keyMaterial, JwsHeaderJwk())
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
-            it.verifierJwsService(signed.jws).getOrThrow()
+            it.verifierJwsService(signed.raw).getOrThrow()
         }
 
         test("signed object with kid from jku can be verified") {
@@ -82,7 +81,7 @@ val JwsServiceTest by matrixSuite {
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
             val validKey = it.keyMaterial.jsonWebKey
             val jwkSetRetriever = JwkSetRetrieverFunction { JsonWebKeySet(keys = listOf(validKey)) }
-            VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)(signed.jws).getOrThrow()
+            VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)(signed.raw).getOrThrow()
         }
 
         test("signed object with kid from jku, returning invalid key, can not be verified") {
@@ -91,14 +90,14 @@ val JwsServiceTest by matrixSuite {
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
             val invalidKey = EphemeralKeyWithoutCert().jsonWebKey
             val jwkSetRetriever = JwkSetRetrieverFunction { JsonWebKeySet(keys = listOf(invalidKey)) }
-            shouldThrowAny { VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)(signed.jws).getOrThrow() }
+            shouldThrowAny { VerifyJwsObject(jwkSetRetriever = jwkSetRetriever)(signed.raw).getOrThrow() }
         }
 
         test("signed object without public key in header can not be verified") {
             val signer = SignJwt<String>(it.keyMaterial, JwsHeaderNone())
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
-            shouldThrowAny { VerifyJwsObject()(signed.jws).getOrThrow() }
+            shouldThrowAny { VerifyJwsObject()(signed.raw).getOrThrow() }
         }
 
         test("signed object without public key in header, but with a trusted key can be verified") {
@@ -106,7 +105,7 @@ val JwsServiceTest by matrixSuite {
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
             val trustedKeys = PublicJsonWebKeyLookup { _ -> setOf(it.keyMaterial.jsonWebKey) }
-            VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow()
+            VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.raw).getOrThrow()
         }
 
         test("signed object with jsonWebKey in header, that key being trusted, can be verified") {
@@ -114,7 +113,7 @@ val JwsServiceTest by matrixSuite {
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
             val trustedKeys = PublicJsonWebKeyLookup { _ -> setOf(it.keyMaterial.jsonWebKey) }
-            VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow()
+            VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.raw).getOrThrow()
         }
 
         test("signed object with jsonWebKey in header, that key not being trusted, can not be verified") {
@@ -122,7 +121,7 @@ val JwsServiceTest by matrixSuite {
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
             val trustedKeys = PublicJsonWebKeyLookup { _ -> setOf(EphemeralKeyWithoutCert().jsonWebKey) }
-            shouldThrowAny { VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow() }
+            shouldThrowAny { VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.raw).getOrThrow() }
         }
 
         test("signed object can not be verified against an empty trust list") {
@@ -130,7 +129,7 @@ val JwsServiceTest by matrixSuite {
             val signed = signer(null, it.randomPayload, String.serializer()).getOrThrow()
 
             val trustedKeys = PublicJsonWebKeyLookup { _ -> null }
-            shouldThrowAny { VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.jws).getOrThrow() }
+            shouldThrowAny { VerifyJwsObjectTrusted(trustedKeys = trustedKeys)(signed.raw).getOrThrow() }
         }
 
         test("encrypted object can be decrypted") {
@@ -166,11 +165,11 @@ val JwsServiceTest by matrixSuite {
                 ByteArraySerializer()
             ).getOrThrow()
 
-            // Extract the actual JwsCompact to match the rest of the test suite
-            val baseJws = signed.jws
+            // Extract the actual JwsCompact.Raw to match the rest of the test suite
+            val baseJws = signed.raw
 
             val validB64Url = Digest.SHA384
-                .digest(signed.wrappedHeader.header.certificateChain!!.leaf.encodeToDer())
+                .digest(signed.header.certificateChain!!.leaf.encodeToDer())
                 .encodeToString(Base64UrlStrict)
 
             val patchedJws = baseJws.patchHeader {
@@ -186,8 +185,8 @@ val JwsServiceTest by matrixSuite {
         test("JAdES verification fails if x5t#o is present but x5c chain is missing") {
             val signed = it.signJwt(JwsContentTypeConstants.JWT, it.randomPayload.encodeToByteArray(), ByteArraySerializer()).getOrThrow()
 
-            // Call .patchHeader on .jws
-            val patchedJws = signed.jws.patchHeader {
+            // Call .patchHeader on .raw
+            val patchedJws = signed.raw.patchHeader {
                 put("x5t#o", buildJsonObject {
                     put("digAlg", "S384")
                     put("digVal", "dummyValue")
@@ -205,7 +204,7 @@ val JwsServiceTest by matrixSuite {
                 ByteArraySerializer()
             ).getOrThrow()
 
-            val patchedJws = signed.jws.patchHeader {
+            val patchedJws = signed.raw.patchHeader {
                 put("x5t#o", buildJsonObject {
                     put("digAlg", "S256")
                     put("digVal", "dummyValue")
@@ -223,7 +222,7 @@ val JwsServiceTest by matrixSuite {
                 ByteArraySerializer()
             ).getOrThrow()
 
-            val patchedJws = signed.jws.patchHeader {
+            val patchedJws = signed.raw.patchHeader {
                 put("x5t#o", buildJsonObject {
                     put("digAlg", "S384")
                     put("digVal", "invalidMismatchedThumbprint")
@@ -236,7 +235,7 @@ val JwsServiceTest by matrixSuite {
         test("JAdES verification skips validation and succeeds if x5t#o parameter is absent") {
             val signed = it.signJwt(JwsContentTypeConstants.JWT, it.randomPayload.encodeToByteArray(), ByteArraySerializer()).getOrThrow()
 
-            jadesVerifier(signed.jws).isSuccess shouldBe true
+            jadesVerifier(signed.raw).isSuccess shouldBe true
         }
     }
 }
@@ -245,7 +244,7 @@ val JwsServiceTest by matrixSuite {
  * Mutates a serialized JWS string by injecting custom parameters directly into the unverified JSON header block.
  * NOTE: This deliberately invalidates the cryptographic signature. Use for testing only.
  */
-fun JwsCompact.patchHeader(patcher: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): JwsCompact {
+fun JwsCompact.Raw.patchHeader(patcher: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): JwsCompact.Raw {
     val rawHeaderJson = joseCompliantSerializer.decodeFromString<JsonObject>(plainProtectedHeader.decodeToString())
 
     val updatedHeaderJson = buildJsonObject {
@@ -261,7 +260,7 @@ fun JwsCompact.patchHeader(patcher: kotlinx.serialization.json.JsonObjectBuilder
     val parts = this.toString().split('.')
     val newJwsStr = "$updatedHeaderB64.${parts[1]}.${parts[2]}"
 
-    return JwsCompact(newJwsStr)
+    return JwsCompact.Raw(newJwsStr)
 }
 
 /**

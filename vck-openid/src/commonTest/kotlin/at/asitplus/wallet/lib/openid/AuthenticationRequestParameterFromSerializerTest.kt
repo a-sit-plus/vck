@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestObjectParameters
@@ -8,10 +8,10 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.toJwsFlattened
+import at.asitplus.signum.indispensable.josef.toFlattened
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -69,7 +69,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val authnRequest = joseCompliantSerializer.encodeToString(
                 verifierOid4vp.createAuthnRequest(reqOptions, byReference).getOrThrow()
                     .loadRequestObject.shouldNotBeNull().invoke(RequestObjectParameters()).getOrThrow().run {
-                        JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>(this).payload
+                        JwsCompact<JwsHeader, AuthenticationRequestParameters>(this).payload
                     }
             )
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
@@ -84,7 +84,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
         "DcApiUnsigned test $representation" {
             val parameters = verifierOid4vp.createAuthnRequest(reqOptions, byReference).getOrThrow()
                 .loadRequestObject.shouldNotBeNull().invoke(RequestObjectParameters()).getOrThrow().run {
-                    JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>(this).payload
+                    JwsCompact<JwsHeader, AuthenticationRequestParameters>(this).payload
                 }
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiUnsigned(
                 parameters = parameters,
@@ -152,9 +152,9 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
-            val compactTyped = JwsTyped<AuthenticationRequestParameters, JwsHeader>(serializedRequest)
+            val compactTyped = JwsTyped<JwsHeader, AuthenticationRequestParameters>(serializedRequest)
             val authnRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped<AuthenticationRequestParameters, JwsHeader>(listOf(compactTyped.jws.toJwsFlattened())),
+                jwsTyped = JwsTyped<JwsHeader, AuthenticationRequestParameters>(listOf(compactTyped.raw.toFlattened())),
                 credentialIds = listOf("1"),
                 callingPackageName = "com.example.app",
                 callingOrigin = "https://example.com"
@@ -184,8 +184,8 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             Url(authnRequestUrl).decodeFromQuery<JarRequestParameters>().request.shouldNotBeNull()
 
         val params = RequestParametersFrom.Jws<AuthenticationRequestParameters>(
-            jws = JwsTyped<AuthenticationRequestParameters, JwsHeader>(serializedRequest).jws,
-            parameters = JwsTyped<AuthenticationRequestParameters, JwsHeader>(serializedRequest).payload,
+            jws = JwsTyped<JwsHeader, AuthenticationRequestParameters>(serializedRequest).raw,
+            parameters = JwsTyped<JwsHeader, AuthenticationRequestParameters>(serializedRequest).payload,
             decryptedFrom = JweHeader(
                 algorithm = JweAlgorithm.ECDH_ES,
                 encryption = JweEncryption.A128GCM,

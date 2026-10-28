@@ -3,10 +3,9 @@
 package at.asitplus.legacy
 
 import at.asitplus.catching
+import at.asitplus.signum.indispensable.josef.JwtPayload
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.EudiWalletInfo
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,7 +31,7 @@ data class JsonWebToken(
      * value.  Use of this claim is OPTIONAL.
      */
     @SerialName("iss")
-    val issuer: String? = null,
+    override val issuer: String? = null,
 
     /**
      * RFC 7519: The "sub" (subject) claim identifies the principal that is the
@@ -44,7 +43,7 @@ data class JsonWebToken(
      * value.  Use of this claim is OPTIONAL.
      */
     @SerialName("sub")
-    val subject: String? = null,
+    override val subject: String? = null,
 
     /**
      * RFC 7519: The "aud" (audience) claim identifies the recipients that the JWT is
@@ -60,7 +59,7 @@ data class JsonWebToken(
      * Use of this claim is OPTIONAL.
      */
     @SerialName("aud")
-    val audience: String? = null,
+    override val audience: String? = null,
 
     /**
      * OAuth2 Attestation Based Client Auth: Challenge as a nonce for proof of possession. See
@@ -83,7 +82,7 @@ data class JsonWebToken(
      */
     @SerialName("nbf")
     @Serializable(with = InstantLongSerializer::class)
-    val notBefore: Instant? = null,
+    override val notBefore: Instant? = null,
 
     /**
      * RFC 7519: The "iat" (issued at) claim identifies the time at which the JWT was
@@ -93,7 +92,7 @@ data class JsonWebToken(
      */
     @SerialName("iat")
     @Serializable(with = InstantLongSerializer::class)
-    val issuedAt: Instant? = null,
+    override val issuedAt: Instant? = null,
 
     /**
      * RFC 7519: The "exp" (expiration time) claim identifies the expiration time on
@@ -106,7 +105,7 @@ data class JsonWebToken(
      */
     @SerialName("exp")
     @Serializable(with = InstantLongSerializer::class)
-    val expiration: Instant? = null,
+    override val expiration: Instant? = null,
 
     /**
      * RFC 7519: The "jti" (JWT ID) claim provides a unique identifier for the JWT.
@@ -119,7 +118,7 @@ data class JsonWebToken(
      * sensitive string.  Use of this claim is OPTIONAL.
      */
     @SerialName("jti")
-    val jwtId: String? = null,
+    override val jwtId: String? = null,
 
     /**
      * OID4VP: This claim contains the confirmation method as defined in RFC7800. It MUST contain a JWK as defined in
@@ -199,7 +198,7 @@ data class JsonWebToken(
     @Deprecated("TS3 WUA 1.5 replaced top-level status with client_status.")
     @SerialName("status")
     val status: JsonObject? = null,
-) {
+) : JwtPayload {
 
 
     @Deprecated("To be removed in next release")

@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.josef.typed
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JsonWebToken
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.digest.digest
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.legacy.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.matrix.fixture
@@ -110,7 +110,7 @@ val ValidatorSdJwtTest by matrixSuite {
                 ).getOrElse {
                     throw RuntimeException("Signing failed", it)
                 }
-                val sdJwtSigned = SdJwtSigned.issued(jws.jws, disclosures.toList())
+                val sdJwtSigned = SdJwtSigned.issued(jws.raw, disclosures.toList())
                 val vcInSdJwt = (listOf(jws.toString()) + disclosures).joinToString("~", postfix = "~")
                 vcInSdJwt shouldBe sdJwtSigned.serialize()
                 return Issuer.IssuedCredential.VcSdJwt(
@@ -222,7 +222,7 @@ val ValidatorSdJwtTest by matrixSuite {
             }
             val credential = it.issuer.issueCredential(credentialDataWithVctm).getOrThrow()
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>().also {
-                    it.signedSdJwtVc.jws.typed<JsonWebToken, JwsHeader>().wrappedHeader.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                    it.signedSdJwtVc.jws.typed<JwsHeader, JsonWebToken>().header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
                         it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
                             joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
                         }
@@ -230,7 +230,7 @@ val ValidatorSdJwtTest by matrixSuite {
                 }
 
             it.validator.verifySdJwt(credential.signedSdJwtVc, it.holderKeyMaterial.publicKey).getOrThrow().apply {
-                sdJwtSigned.jws.typed<JsonWebToken, JwsHeader>().wrappedHeader.header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
+                sdJwtSigned.jws.typed<JwsHeader, JsonWebToken>().header.vcTypeMetadata.shouldNotBeNull().shouldBeSingleton().first().let {
                     it.decodeToByteArray(Base64UrlStrict).decodeToString().let {
                         joseCompliantSerializer.decodeFromString<SdJwtTypeMetadata>(it)
                     }

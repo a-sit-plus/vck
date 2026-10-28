@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
 /**
- * OpenID Connect ID Token, usually signed as JWS in `id_token` in a URL
+ * OpenID Connect ID Token, usually signed as JwsRaw in `id_token` in a URL
  */
 @Serializable
 data class IdToken(

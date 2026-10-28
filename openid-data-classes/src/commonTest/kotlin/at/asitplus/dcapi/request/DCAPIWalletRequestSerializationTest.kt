@@ -5,13 +5,13 @@ import at.asitplus.dcapi.request.verifier.testSignedOpenId4VpRequest
 import at.asitplus.dcapi.request.verifier.testUnsignedOpenId4VpRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsFlattened
-import at.asitplus.signum.indispensable.josef.JwsGeneralTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsGeneral
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.toJwsFlattened
-import at.asitplus.signum.indispensable.josef.toJwsGeneral
+import at.asitplus.signum.indispensable.josef.toFlattened
+import at.asitplus.signum.indispensable.josef.toGeneral
 import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
@@ -44,7 +44,7 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
     }
 
     test("openid4vp signed request round-trips") {
-        val request: JwsCompactTyped<AuthenticationRequestParameters, JwsHeader> = testSignedOpenId4VpRequest.data.request.typed()
+        val request: JwsCompact<JwsHeader, AuthenticationRequestParameters> = testSignedOpenId4VpRequest.data.request.typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
             jwsTyped = request,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
@@ -63,9 +63,9 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
     }
 
     test("openid4vp multisigned request round-trips") {
-        val requestElement: JwsFlattened = testSignedOpenId4VpRequest.data.request.toJwsFlattened()
-        val request: JwsGeneralTyped<AuthenticationRequestParameters, JwsHeader> =
-            (0..5).map { requestElement }.toJwsGeneral().typed()
+        val requestElement: JwsFlattened.Raw = testSignedOpenId4VpRequest.data.request.toFlattened()
+        val request: JwsGeneral<JwsHeader, AuthenticationRequestParameters> =
+            (0..5).map { requestElement }.toGeneral().typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
             jwsTyped = request,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),
@@ -88,8 +88,8 @@ val DCAPIWalletRequestSerializationTest by matrixSuite {
     }
 
     test("openid4vp multisigned request can be decoded from external dc api discriminator value") {
-        val requestElement: JwsFlattened = testSignedOpenId4VpRequest.data.request.toJwsFlattened()
-        val request: JwsGeneralTyped<AuthenticationRequestParameters, JwsHeader> = listOf(requestElement).toJwsGeneral().typed()
+        val requestElement: JwsFlattened.Raw = testSignedOpenId4VpRequest.data.request.toFlattened()
+        val request: JwsGeneral<JwsHeader, AuthenticationRequestParameters> = listOf(requestElement).toGeneral().typed()
         val walletRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
             jwsTyped = request,
             credentialIds = listOf("044c78be429198ffc2a66d935ff86e4e2bdb8ca2ab0cd1bacc85f3a73d8347b4"),

@@ -3,12 +3,12 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.iso.sha256
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.ClientStatus
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.legacy.ClientStatus
+import at.asitplus.legacy.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -36,7 +36,7 @@ object BuildDPoPHeader {
         accessToken: String? = null,
         nonce: String? = null,
         randomSource: RandomSource = RandomSource.Secure
-    ): JwsCompactTyped<JsonWebToken, JwsHeader> = signDpop(
+    ): JwsCompact<JwsHeader, JsonWebToken> = signDpop(
         type = JwsContentTypeConstants.DPOP_JWT,
         payload = JsonWebToken(
             jwtId = randomSource.nextBytes(12).encodeToString(Base64UrlStrict),
@@ -80,7 +80,7 @@ object BuildClientAttestationJwt {
         walletLink: String? = null,
         lifetime: Duration = 60.minutes,
         clockSkew: Duration = 3.minutes,
-    ): JwsCompactTyped<JsonWebToken, JwsHeader> = signJwt(
+    ): JwsCompact<JwsHeader, JsonWebToken> = signJwt(
         type = JwsContentTypeConstants.CLIENT_ATTESTATION_JWT,
         payload = JsonWebToken(
             subject = clientId,
@@ -123,7 +123,7 @@ object BuildClientAttestationPoPJwt {
         nonce: String? = null,
         clockSkew: Duration = 3.minutes,
         randomSource: RandomSource = RandomSource.Secure
-    ): JwsCompactTyped<JsonWebToken, JwsHeader> = signJwt(
+    ): JwsCompact<JwsHeader, JsonWebToken> = signJwt(
         type = JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT,
         payload = JsonWebToken(
             audience = audience,

@@ -1,12 +1,11 @@
 package at.asitplus.openid
 
 import at.asitplus.catchingUnwrapped
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.josef.JwsCompactRawStringSerializer
+import at.asitplus.legacy.JwsHeader
+import at.asitplus.legacy.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.typed
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -20,7 +19,7 @@ data class CredentialRequestProofContainer(
      * See [jwtParsed].
      */
     @SerialName("jwt")
-    val jwt: Set<@Serializable(JwsCompactStringSerializer::class) JwsCompact>? = null,
+    val jwt: Set<@Serializable(JwsCompactRawStringSerializer::class) JwsCompact.Raw>? = null,
 
     /**
      * A JWT [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519) representing a key attestation without using a
@@ -30,18 +29,18 @@ data class CredentialRequestProofContainer(
      * See [attestationParsed].
      */
     @SerialName("attestation")
-    val attestation: Set<@Serializable(JwsCompactStringSerializer::class) JwsCompact>? = null,
+    val attestation: Set<@Serializable(JwsCompactRawStringSerializer::class) JwsCompact.Raw>? = null,
 ) {
 
-    val jwtParsed: Collection<JwsCompactTyped<JsonWebToken, JwsHeader>>? by lazy {
+    val jwtParsed: Collection<JwsCompact<JwsHeader, JsonWebToken>>? by lazy {
         jwt?.mapNotNull {
-            catchingUnwrapped<JwsCompactTyped<JsonWebToken, JwsHeader>> { it.typed() }.getOrNull()
+            catchingUnwrapped<JwsCompact<JwsHeader, JsonWebToken>> { it.typed() }.getOrNull()
         }
     }
 
-    val attestationParsed: Collection<JwsCompactTyped<KeyAttestationJwt, JwsHeader>>? by lazy {
+    val attestationParsed: Collection<JwsCompact<JwsHeader, KeyAttestationJwt>>? by lazy {
         attestation?.mapNotNull {
-            catchingUnwrapped<JwsCompactTyped<KeyAttestationJwt, JwsHeader>> { it.typed() }.getOrNull()
+            catchingUnwrapped<JwsCompact<JwsHeader, KeyAttestationJwt>> { it.typed() }.getOrNull()
         }
     }
 }

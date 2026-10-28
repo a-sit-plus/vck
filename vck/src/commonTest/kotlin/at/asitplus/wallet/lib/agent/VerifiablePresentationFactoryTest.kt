@@ -121,7 +121,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             ).getOrThrow()
 
             val credential = SubjectCredentialStore.StoreEntry.SdJwt(
-                vcSerialized = "${issuerSignedJws.jws}~$rawDisclosure~",
+                vcSerialized = "${issuerSignedJws.raw}~$rawDisclosure~",
                 sdJwt = VerifiableCredentialSdJwt(
                     verifiableCredentialType = "https://example.com/credentials/unknown",
                 ),

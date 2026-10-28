@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.encodeToDer
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.catching
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
@@ -75,7 +75,7 @@ class StatusListAgent @JvmOverloads constructor(
     override suspend fun issueStatusListJwt(
         time: Instant?,
         kind: RevocationList.Kind
-    ): JwsCompactTyped<StatusListTokenPayload, JwsHeader> =
+    ): JwsCompact<JwsHeader, StatusListTokenPayload> =
         issueStatusListJwt(time.toTimePeriod(), kind)
 
     /**
@@ -91,7 +91,7 @@ class StatusListAgent @JvmOverloads constructor(
     override suspend fun issueStatusListJwt(
         timePeriod: Int,
         kind: RevocationList.Kind
-    ): JwsCompactTyped<StatusListTokenPayload, JwsHeader> =
+    ): JwsCompact<JwsHeader, StatusListTokenPayload> =
         catching {
             require(kind == STATUS_LIST) { "JWT only supports revocation list kind StatusList" }
         }.transform {

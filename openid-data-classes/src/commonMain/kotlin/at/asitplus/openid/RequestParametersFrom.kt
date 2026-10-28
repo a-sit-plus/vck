@@ -3,13 +3,12 @@ package at.asitplus.openid
 import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
-import at.asitplus.signum.indispensable.josef.JWS
+import at.asitplus.signum.indispensable.josef.JwsRaw
 import at.asitplus.signum.indispensable.josef.JweHeader
-import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompactRawStringSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsGeneral
-import at.asitplus.signum.indispensable.josef.JwsGeneralTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.typed
 import io.ktor.http.*
@@ -37,7 +36,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
      * (e.g., classic OpenID requests or DC-API signed requests).
      */
     sealed class RequestParametersSigned<T : RequestParameters> : RequestParametersFrom<T>() {
-        abstract val jwsTyped: JwsTyped<*, T, JwsHeader>
+        abstract val jwsTyped: JwsTyped<*, JwsHeader, T>
     }
 
     /**
@@ -67,7 +66,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     @SerialName(SerialNames.TYPE_JWS)
     data class Jws<T : RequestParameters> @JvmOverloads constructor(
         @SerialName(SerialNames.JWS)
-        val jws: JWS,
+        val jws: JwsRaw,
         @SerialName(SerialNames.PARAMETERS)
         override val parameters: T,
         @SerialName(SerialNames.PARENT)
@@ -83,7 +82,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     data class OpenId4VpDcApiMultiSigned @JvmOverloads constructor(
         @Serializable(with = JwsGeneralAuthParamSerializer::class)
         @SerialName(SerialNames.JWS)
-        override val jwsTyped: JwsGeneralTyped<AuthenticationRequestParameters, JwsHeader>,
+        override val jwsTyped: JwsGeneral<JwsHeader, AuthenticationRequestParameters>,
         @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
         @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
@@ -99,10 +98,10 @@ sealed class RequestParametersFrom<S : RequestParameters> {
             get() = ExchangeProtocolIdentifier.OpenId4VpV1Multisigned
 
         object JwsGeneralAuthParamSerializer :
-            KSerializer<JwsGeneralTyped<AuthenticationRequestParameters, JwsHeader>> by TransformingSerializerTemplate(
-                parent = JwsGeneral.serializer(),
-                encodeAs = { it.jws },
-                decodeAs = { it.typed<AuthenticationRequestParameters, JwsHeader>() }
+            KSerializer<JwsGeneral<JwsHeader, AuthenticationRequestParameters>> by TransformingSerializerTemplate(
+                parent = JwsGeneral.Raw.serializer(),
+                encodeAs = { it.raw },
+                decodeAs = { it.typed<JwsHeader, AuthenticationRequestParameters>() }
             )
     }
 
@@ -111,7 +110,7 @@ sealed class RequestParametersFrom<S : RequestParameters> {
     data class OpenId4VpDcApiSigned(
         @Serializable(JwsCompactAuthParamSerializer::class)
         @SerialName(SerialNames.JWS)
-        override val jwsTyped: JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>,
+        override val jwsTyped: JwsCompact<JwsHeader, AuthenticationRequestParameters>,
         @SerialName(DcApiRequest.SerialNames.CREDENTIAL_IDS)
         override val credentialIds: Collection<String>,
         @SerialName(DcApiRequest.SerialNames.CALLING_PACKAGE_NAME)
@@ -127,10 +126,10 @@ sealed class RequestParametersFrom<S : RequestParameters> {
             get() = ExchangeProtocolIdentifier.OpenId4VpV1Signed
 
         object JwsCompactAuthParamSerializer :
-            KSerializer<JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>> by TransformingSerializerTemplate(
-                parent = JwsCompactStringSerializer,
-                encodeAs = { it.jws },
-                decodeAs = { it.typed<AuthenticationRequestParameters, JwsHeader>() }
+            KSerializer<JwsCompact<JwsHeader, AuthenticationRequestParameters>> by TransformingSerializerTemplate(
+                parent = JwsCompactRawStringSerializer,
+                encodeAs = { it.raw },
+                decodeAs = { it.typed<JwsHeader, AuthenticationRequestParameters>() }
             )
 
     }

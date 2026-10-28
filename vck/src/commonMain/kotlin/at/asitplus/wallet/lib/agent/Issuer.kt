@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
@@ -38,7 +38,7 @@ interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.
          */
         data class VcJwt(
             val vc: VerifiableCredential,
-            val signedVcJws: JwsCompactTyped<VerifiableCredentialJws, JwsHeader>,
+            val signedVcJws: JwsCompact<JwsHeader, VerifiableCredentialJws>,
             override val scheme: VcJwtCredentialScheme,
             override val subjectPublicKey: CryptoPublicKey,
             override val userInfo: OidcUserInfoExtended,

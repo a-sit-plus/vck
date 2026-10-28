@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.legacy.ConfirmationClaim
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

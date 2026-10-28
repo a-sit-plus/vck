@@ -12,13 +12,13 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -183,8 +183,8 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             authnRequest.clientId shouldBe it.clientId
             val jar = authnRequest.request.shouldNotBeNull()
-            val jwsObject = JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>(jar)
-            VerifyJwsObject().invoke(jwsObject.jws).getOrThrow()
+            val jwsObject = JwsCompact<JwsHeader, AuthenticationRequestParameters>(jar)
+            VerifyJwsObject().invoke(jwsObject.raw).getOrThrow()
 
             val authnResponse = it.holderOid4vp.createAuthnResponse(jar).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -347,7 +347,7 @@ val PreRegisteredClientTest by matrixSuite {
                 }
         }
 
-        "test with request object from request_uri as JWS" {
+        "test with request object from request_uri as JwsRaw" {
             val requestUrl = "https://www.example.com/request/${uuid4()}"
             val (authRequestUrlWithRequestUri, jar) = it.verifierOid4vp.createAuthnRequest(
                 requestOptionsAtomicAttribute(),
@@ -429,7 +429,7 @@ val PreRegisteredClientTest by matrixSuite {
                 remoteResourceRetriever = {
                     if (it.url == requestUrl) {
                         jar.invoke(it.requestObjectParameters).getOrThrow().also {
-                            JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>(it).payload.walletNonce.also {
+                            JwsCompact<JwsHeader, AuthenticationRequestParameters>(it).payload.walletNonce.also {
                                 it.shouldNotBeNull()
                                 nonceMap.contains(it).shouldBeTrue()
                             }

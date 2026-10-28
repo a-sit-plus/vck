@@ -1,10 +1,11 @@
 # Changelog
 
 Release 9.0.0 (unreleased):
-- `vck-openid` JOSE: add explicit `JwsHeader` generics while retaining existing payload types, and migrate decoded headers and signatures to the new typed JWS APIs.
+- JOSE: migrate to Signum 3.26.3-SNAPSHOT and Supreme 0.16.3-SNAPSHOT. Raw JWS values now use `JwsRaw` and `JwsCompact.Raw`/`JwsGeneral.Raw`; typed views use header-first generics such as `JwsCompact<JwsHeader, Payload>`, with `.raw` and `.header` accessors.
+- Reuse the former Signum header, JWT, confirmation-claim, and attestation data classes from `at.asitplus.legacy` in `openid-data-classes`, preserving their wire formats. The concrete headers and JWT payloads implement Signum's `JwsHeader` and `JwtPayload` interfaces.
+- JWS signing uses Signum's `JwsSigner`. `SignJwtFun`, `SignJwtExtFun`, and their implementations now require a `KSerializer<P>` instead of a `SerializationStrategy<P>`.
 - `vck-openid`: migrate certificates, signature algorithms, key agreement, and ASN.1 types to the Signum snapshot APIs. Session transcript hashing and `ClientIdScheme.CertificateHash` creation are now suspend operations.
-- Core `vck` JOSE: migrate typed JWS views to explicit `JwsHeader` generics while retaining specific payload types, and read decoded headers and signatures through the new indispensable-josef APIs.
-- Core `vck`: migrate to the Signum 3.26.1 snapshot crypto APIs, using `Certificate` and `SignatureVerifier`. Ephemeral key material now accepts `Signer.WithExportableKey`. Digest-based helpers, certificate verification, and `SdJwtDecoded` creation are now suspend operations.
+- Core `vck`: migrate to the Signum 3.26.3 snapshot crypto APIs, using `Certificate` and `SignatureVerifier`. Ephemeral key material now accepts `Signer.WithExportableKey`. Digest-based helpers, certificate verification, and `SdJwtDecoded` creation are now suspend operations.
 - CSC data classes:
     - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
     - Implement CSC Data Model 1.0.0

@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -11,7 +11,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlin.time.Instant
 
 data class StatusListJwt(
-    val value: JwsCompactTyped<StatusListTokenPayload, JwsHeader>,
+    val value: JwsCompact<JwsHeader, StatusListTokenPayload>,
     override val resolvedAt: Instant?,
 ) : StatusListToken() {
 
@@ -27,7 +27,7 @@ data class StatusListJwt(
      * depending on token type.
      */
     suspend fun validate(
-        /** When using HAIP use [at.asitplus.wallet.lib.jws.VerifyStatusListTokenHAIP] otherwise [VerifyJwsObject] is sufficient */
+        /** When using HAIP use [at.asitplus.wallet.lib.raw.VerifyStatusListTokenHAIP] otherwise [VerifyJwsObject] is sufficient */
         verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
         revocationListInfo: RevocationListInfo,
         isInstantInThePast: (Instant) -> Boolean,
@@ -48,10 +48,10 @@ data class StatusListJwt(
         statusListToken: StatusListJwt
     ): KmmResult<StatusListTokenPayload> = catching {
         val jwsSigned = statusListToken.value
-        verifyJwsObject(jwsSigned.jws).getOrElse {
+        verifyJwsObject(jwsSigned.raw).getOrElse {
             throw IllegalStateException("Invalid signature", it)
         }
-        val type = jwsSigned.wrappedHeader.header.type?.lowercase()
+        val type = jwsSigned.header.type?.lowercase()
             ?: throw IllegalArgumentException("Invalid type header")
         if (type != MediaTypes.STATUSLIST_JWT.lowercase()) {
             throw IllegalArgumentException("Invalid type header: $type")

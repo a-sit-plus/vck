@@ -15,7 +15,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
@@ -33,6 +33,7 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.jws.patchHeader
 import at.asitplus.wallet.lib.randomCwtOrJwtResolver
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -41,6 +42,7 @@ import io.kotest.matchers.comparables.shouldNotBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -131,16 +133,14 @@ val ValidatorVcTest by matrixSuite {
                 ).getOrThrow().toString()
 
             suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws) =
-                SignJwt<VerifiableCredentialJws>(
-                    issuerKeyMaterial
-                ) { header: JwsHeader, _: KeyMaterial ->
-                    // this should be issuerKeyMaterial.jsonWebKey, but is a wrong key
-                    header.copy(jsonWebKey = EphemeralKeyWithoutCert().jsonWebKey)
-                }(
+                issuerSignVc(
                     JwsContentTypeConstants.JWT,
                     vcJws,
                     VerifiableCredentialJws.serializer()
-                ).getOrThrow().toString()
+                ).getOrThrow().raw.patchHeader {
+                    // Insert the wrong key after signing: JwsSigner rejects mismatched header keys.
+                    put("jwk", joseCompliantSerializer.encodeToJsonElement(EphemeralKeyWithoutCert().jsonWebKey))
+                }.toString()
 
         }
     } - {

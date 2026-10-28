@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.dcapi.OpenId4VpResponse
@@ -8,7 +8,7 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.josef.JweDecrypted
 import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.jws.DecryptJwe
@@ -76,8 +76,8 @@ class ResponseParser @JvmOverloads constructor(
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
     internal suspend fun ResponseParametersFrom.extractFromJar() = parameters.response?.let { encodedResponse ->
-        catching { JwsCompactTyped<AuthenticationResponseParameters, JwsHeader>(encodedResponse) }.getOrNull()?.let { jws ->
-            verifyJwsObject(jws.jws).getOrElse {
+        catching { JwsCompact<JwsHeader, AuthenticationResponseParameters>(encodedResponse) }.getOrNull()?.let { jws ->
+            verifyJwsObject(jws.raw).getOrElse {
                 throw IllegalArgumentException("JWS not verified: $encodedResponse", it)
             }
             ResponseParametersFrom.JwsSigned(jws, this, jws.payload, this.clientIdRequired)

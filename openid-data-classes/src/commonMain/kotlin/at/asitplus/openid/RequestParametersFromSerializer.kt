@@ -8,14 +8,12 @@ import at.asitplus.openid.RequestParametersFrom.SerialNames.PARAMETERS
 import at.asitplus.openid.RequestParametersFrom.SerialNames.PARENT
 import at.asitplus.openid.RequestParametersFrom.SerialNames.URL
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
-import at.asitplus.signum.indispensable.josef.JWS
+import at.asitplus.signum.indispensable.josef.JwsRaw
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JwsGeneral
-import at.asitplus.signum.indispensable.josef.JwsGeneralTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -33,7 +31,7 @@ import kotlinx.serialization.SerializationException
  * request metadata is represented directly on the surrogate, matching
  * [RequestParametersFrom.DcApiRequest]. Plain JSON, JWS, and URI requests are
  * selected from their respective fields.
- * [JwsFlattened] is recognized but not implemented.
+ * [JwsFlattened.Raw] is recognized but not implemented.
  */
 class RequestParametersFromSerializer<T : RequestParameters>(
     parameterSerializer: KSerializer<T>,
@@ -48,7 +46,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
     @SerialName(PARAMETERS)
     val parameters: T,
     @SerialName(JWS)
-    val jws: JWS? = null,
+    val jws: JwsRaw? = null,
     @SerialName(JSON_STRING)
     val jsonString: String? = null,
     @Serializable(UrlSerializer::class)
@@ -72,7 +70,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
         parameters = value.parameters,
         jws = when (value) {
             is RequestParametersFrom.Jws -> value.jws
-            is RequestParametersFrom.RequestParametersSigned -> value.jwsTyped.jws
+            is RequestParametersFrom.RequestParametersSigned -> value.jwsTyped.raw
             else -> null
         },
         jsonString = when (value) {
@@ -103,7 +101,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
     fun toRequestParametersFrom(): RequestParametersFrom<T> = when {
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Multisigned ->
             RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = requireJwsGeneral().typedWithPayload(requireAuthenticationRequestParameters()) as JwsGeneralTyped<AuthenticationRequestParameters, JwsHeader>,
+                jwsTyped = requireJwsGeneral().typedWithPayload(requireAuthenticationRequestParameters()) as JwsGeneral<JwsHeader, AuthenticationRequestParameters>,
                 credentialIds = requireCredentialIds(),
                 callingPackageName = requireCallingPackageName(),
                 callingOrigin = requireCallingOrigin(),
@@ -111,7 +109,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
 
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Signed ->
             RequestParametersFrom.OpenId4VpDcApiSigned(
-                jwsTyped = requireJwsCompact().typedWithPayload(requireAuthenticationRequestParameters()) as JwsCompactTyped<AuthenticationRequestParameters, JwsHeader>,
+                jwsTyped = requireJwsCompact().typedWithPayload(requireAuthenticationRequestParameters()) as JwsCompact<JwsHeader, AuthenticationRequestParameters>,
                 credentialIds = requireCredentialIds(),
                 callingPackageName = requireCallingPackageName(),
                 callingOrigin = requireCallingOrigin(),
@@ -135,7 +133,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
                 callingOrigin = requireCallingOrigin(),
             ).cast()
 
-        jws is JwsFlattened -> throw UnsupportedOperationException("Not implemented yet")
+        jws is JwsFlattened.Raw -> throw UnsupportedOperationException("Not implemented yet")
 
         jsonString != null ->
             RequestParametersFrom.Json(
@@ -170,12 +168,12 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
         parameters as? RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper
             ?: throw SerializationException("Expected IsoMdocRequestWrapper for protocol $protocol")
 
-    private fun requireJwsCompact(): JwsCompact =
-        jws as? JwsCompact
+    private fun requireJwsCompact(): JwsCompact.Raw =
+        jws as? JwsCompact.Raw
             ?: throw SerializationException("Expected compact JWS for protocol $protocol")
 
-    private fun requireJwsGeneral(): JwsGeneral =
-        jws as? JwsGeneral
+    private fun requireJwsGeneral(): JwsGeneral.Raw =
+        jws as? JwsGeneral.Raw
             ?: throw SerializationException("Expected general JWS for protocol $protocol")
 
     private fun requireJsonString(): String =

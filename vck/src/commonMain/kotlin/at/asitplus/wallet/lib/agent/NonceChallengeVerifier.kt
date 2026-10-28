@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.Document
 import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.openid.TransactionDataBase64Url
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
@@ -86,7 +86,7 @@ class NonceChallengeVerifier @JvmOverloads constructor(
 
         /** @see Verifier.verifyPresentationVcJwt */
         suspend fun verifyPresentationVcJwt(
-            input: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>,
+            input: JwsCompact<JwsHeader, VerifiablePresentationJws>,
         ): KmmResult<VerifyPresentationResult.Success> = verifier.verifyPresentationVcJwt(
             input = input,
             challenge = challenge,

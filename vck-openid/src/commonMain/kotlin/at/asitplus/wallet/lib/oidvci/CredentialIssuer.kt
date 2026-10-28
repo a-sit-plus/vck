@@ -13,8 +13,8 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.signum.indispensable.sign.SignatureAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -153,7 +153,7 @@ class CredentialIssuer @JvmOverloads constructor(
      * Implements OID4VCI 1.0, Section 12.2.3, i.e. sets `typ` to [OpenIdConstants.ISSUER_METADATA_JWT_TYPE] and adds
      * the claims `sub` and `iat` to [metadata].
      */
-    suspend fun signedMetadata(): KmmResult<JwsCompactTyped<IssuerMetadata, JwsHeader>> = signMetadata(
+    suspend fun signedMetadata(): KmmResult<JwsCompact<JwsHeader, IssuerMetadata>> = signMetadata(
         OpenIdConstants.ISSUER_METADATA_JWT_TYPE,
         metadata.copy(subject = metadata.credentialIssuer, issuedAt = clock.now()),
         IssuerMetadata.serializer(),

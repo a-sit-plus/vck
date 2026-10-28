@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent.relyingParty
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.etsi.relyingParty.WrpClaim
@@ -15,7 +15,7 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyWithFixedCert
@@ -283,7 +283,7 @@ val WrprcJwtTest by matrixSuite {
     "Deprecated constructor maps a missing certificate validation to a failure" {
         val fixture = buildWrpFixture()
         val wrprcJws = signWrprc(fixture.wrprcSigningKeyMaterial, buildWrpPayload(fixture.wrpIdentifier))
-        val certificate = WrpRegistrationCertificate.WrpJwtRegistrationCertificate(JwsCompactTyped<WrpPayload, JwsHeader>(wrprcJws))
+        val certificate = WrpRegistrationCertificate.WrpJwtRegistrationCertificate(JwsCompact<JwsHeader, WrpPayload>(wrprcJws))
 
         @Suppress("DEPRECATION")
         val result = WrprcValidationResult(

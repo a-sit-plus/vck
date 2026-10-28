@@ -24,7 +24,7 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.SerializationStrategy
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
@@ -217,7 +217,7 @@ private suspend fun signRequestObject(
 
 private suspend fun <P : Any> signRequestObject(
     payload: P,
-    serializer: SerializationStrategy<P>,
+    serializer: KSerializer<P>,
     typ: String? = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST,
 ): String = SignJwt<P>(EphemeralKeyWithoutCert(), JwsHeaderNone())(typ, payload, serializer).getOrThrow().toString()
 

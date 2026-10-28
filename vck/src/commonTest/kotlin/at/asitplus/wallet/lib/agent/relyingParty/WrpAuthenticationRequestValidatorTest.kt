@@ -59,11 +59,11 @@ val WrpAuthenticationRequestValidatorTest by matrixSuite {
             .getOrThrow()
 
         val data = WrpAuthenticationRequestValidator(
-            RequestParametersFrom.Jws(jws = signedRequest.jws, parameters = parameters)
+            RequestParametersFrom.Jws(jws = signedRequest.raw, parameters = parameters)
         ).getOrThrow()
 
         data.clientId shouldBe fixture.clientId
-        data.accessCertificate.certificateChain shouldBe signedRequest.wrappedHeader.header.certificateChain
+        data.accessCertificate.certificateChain shouldBe signedRequest.header.certificateChain
         val (certificate, requests) = data.registrationCertificate.entries.single()
         certificate.shouldBeInstanceOf<WrpRegistrationCertificate.WrpJwtRegistrationCertificate>()
             .payload shouldBe wrprcPayload
@@ -187,7 +187,7 @@ private suspend fun WrpFixture.signedRequest(parameters: AuthenticationRequestPa
         type = "oauth-authz-req+jwt",
         payload = parameters,
         serializer = AuthenticationRequestParameters.serializer(),
-    ).getOrThrow().let { RequestParametersFrom.Jws(jws = it.jws, parameters = parameters) }
+    ).getOrThrow().let { RequestParametersFrom.Jws(jws = it.raw, parameters = parameters) }
 
 private fun DocRequest.withEuWrprc(euWrprc: ByteArray) =
     copy(itemsRequest = ByteStringWrapper(itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = euWrprc))))

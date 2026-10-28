@@ -309,6 +309,11 @@ VC-K uses Signum for crypto, ASN.1, JOSE, and COSE types. Do not introduce paral
 external API requires an adapter. Application-facing signing hooks usually flow through `KeyMaterial`, `Signer`, or
 specific signing/verification function types.
 
+During the Signum snapshot transition, reuse the concrete JOSE header and JWT payload models in
+`openid-data-classes` under `at.asitplus.legacy`. They implement Signum's `JwsHeader` and `JwtPayload` interfaces
+while retaining the existing wire fields. Signed bytes live in `JwsRaw` and the concrete `Raw` types; decoded
+views use header-first generics such as `JwsCompact<JwsHeader, Payload>` and retain those bytes in `.raw`.
+
 Use `KmmResult` for public multiplatform APIs that need Swift-friendly result handling. Avoid replacing it with
 Kotlin's inline `Result` in public APIs. Use `catching` to produce `KmmResult`, and `catchingUnwrapped` when an internal
 Kotlin `Result` is sufficient. Both let fatal exceptions and cancellation bubble up.

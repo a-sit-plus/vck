@@ -14,7 +14,7 @@ package at.asitplus.wallet.lib.agent
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
@@ -33,7 +33,6 @@ import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.digest.digest
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
@@ -283,7 +282,7 @@ class VerifiablePresentationFactory(
         val keyBinding = createKeyBindingJws(request, digestInput, digest)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
-            catching { JwsCompact(issuerSignedJwsSerialized) }
+            catching { JwsCompact.Raw(issuerSignedJwsSerialized) }
                 .getOrElse { throw PresentationException(it) }
         val sdJwt = SdJwtSigned.presented(issuerSignedJws, disclosures, keyBinding)
         return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
@@ -306,7 +305,7 @@ class VerifiablePresentationFactory(
         // whitespace, and digests are computed over the exact bytes (RFC 9901, section 4.2.3)
         val disclosuresByDigest = disclosures.entries.associateBy { it.key.hashDisclosure(digest) }
         val issuerSignedJwsSerialized = vcSerialized.substringBefore("~")
-        val payload = JwsCompact(issuerSignedJwsSerialized).getPayload<JsonObject>()
+        val payload = JwsCompact.Raw(issuerSignedJwsSerialized).getPayload<JsonObject>()
             .getOrElse { throw PresentationException(it) }
         return requestedClaims.flatMapTo(mutableSetOf()) { claim ->
             payload.loadDisclosuresForPath(claim, disclosuresByDigest)
@@ -410,7 +409,7 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         hashInput: String,
         digest: Digest,
-    ): JwsCompactTyped<KeyBindingJws, JwsHeader> = signKeyBinding(
+    ): JwsCompact<JwsHeader, KeyBindingJws> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
             issuedAt = Clock.System.now().truncateToSeconds(),

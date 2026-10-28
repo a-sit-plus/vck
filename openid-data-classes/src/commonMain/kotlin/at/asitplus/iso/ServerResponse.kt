@@ -1,7 +1,7 @@
 package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactRawStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -13,7 +13,7 @@ data class ServerResponse(
     @SerialName("version")
     val version: String,
     @SerialName("documents")
-    val documentsJws: Array<@Serializable(JwsCompactStringSerializer::class) JwsCompact>,
+    val documentsJws: Array<@Serializable(JwsCompactRawStringSerializer::class) JwsCompact.Raw>,
     @SerialName("documentErrors")
     val documentErrors: Map<String, Int>? = null,
 ) {

@@ -1,17 +1,19 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.signum.indispensable.josef.typed
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -139,8 +141,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
 
                 @Suppress("DEPRECATION")
                 suspend fun par(
-                    clientAttestation: JwsCompactTyped<JsonWebToken, JwsHeader> = this.clientAttestation,
-                    clientAttestationPop: JwsCompactTyped<JsonWebToken, JwsHeader>? = null,
+                    clientAttestation: JwsCompact<JwsHeader, JsonWebToken> = this.clientAttestation,
+                    clientAttestationPop: JwsCompact<JwsHeader, JsonWebToken>? = null,
                 ) = server.par(
                     client.createAuthRequestJar(state = uuid4().toString(), scope = scope),
                     RequestInfo(
@@ -689,9 +691,8 @@ val OAuth2ClientAuthenticationTest by matrixSuite {
     }
 }
 
-private suspend fun JwsCompactTyped<JsonWebToken, JwsHeader>.withHeaderAlg(alg: JwsAlgorithm.Signature) =
-    JwsCompact(
-        protectedHeader = wrappedHeader.header.copy(algorithm = alg),
-        payload = jws.plainPayload,
-        signer = { jws.plainSignature },
-    ).typed<JsonWebToken, JwsHeader>()
+private fun JwsCompact<JwsHeader, JsonWebToken>.withHeaderAlg(alg: JwsAlgorithm.Signature): JwsCompact<JwsHeader, JsonWebToken> {
+    val protectedHeader = joseCompliantSerializer.encodeToString(JwsHeader.serializer(), header.copy(algorithm = alg))
+        .encodeToByteArray().encodeToString(Base64UrlStrict)
+    return JwsCompact<JwsHeader, JsonWebToken>("$protectedHeader.${raw.toString().substringAfter('.')}")
+}

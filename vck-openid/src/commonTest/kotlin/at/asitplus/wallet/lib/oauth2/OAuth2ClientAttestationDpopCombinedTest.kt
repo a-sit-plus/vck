@@ -1,14 +1,14 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.catching
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH_DPOP
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.legacy.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultNonceService
@@ -134,7 +134,7 @@ val OAuth2ClientAttestationDpopCombinedTest by matrixSuite {
                     server: SimpleAuthorizationService = combinedOnly,
                     url: String = "https://example.com/",
                     method: HttpMethod = HttpMethod.Post,
-                    attestation: JwsCompactTyped<JsonWebToken, JwsHeader> = clientAttestation,
+                    attestation: JwsCompact<JwsHeader, JsonWebToken> = clientAttestation,
                     dpopSigner: SignJwtFun<JsonWebToken> = SignJwt(clientKey, JwsHeaderJwk()),
                 ): RequestInfo {
                     val dpop = BuildDPoPHeader(

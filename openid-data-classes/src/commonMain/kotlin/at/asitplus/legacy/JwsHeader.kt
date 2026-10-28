@@ -8,19 +8,13 @@ import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsProtectedHeaderSerializer
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactRawStringSerializer
 import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.leaf
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.jsonObject
 import kotlin.time.Instant
 
 /**
@@ -30,9 +24,8 @@ import kotlin.time.Instant
  * Effective JWS header as defined in [RFC 7515](https://datatracker.ietf.org/doc/html/rfc7515)
  * after combining protected and unprotected header members.
  *
- * [at.asitplus.signum.indispensable.josef.JwsCompact] carries this header entirely in the protected section. [at.asitplus.signum.indispensable.josef.JwsFlattened], [at.asitplus.signum.indispensable.josef.JwsGeneral], and
- * [at.asitplus.signum.indispensable.josef.SignatureElement] represent the protected and unprotected fragments as [Part] and reconstruct the effective
- * header with [fromParts].
+ * [JwsCompact] carries this header entirely in the protected section. Flattened and general JWS views
+ * reconstruct the effective header with [at.asitplus.signum.indispensable.josef.JwsHeaderWrapped].
  *
  * Individual fragments may be incomplete. Only the combination of protected and unprotected parameters must
  * constitute a valid [JwsHeader].
@@ -52,7 +45,7 @@ data class JwsHeader(
      * parameter value.
      */
     @SerialName(SerialNames.KEY_ID)
-    val keyId: String? = null,
+    override val keyId: String? = null,
 
     /**
      * The "typ" (type) Header Parameter is used by JWS applications to
@@ -67,7 +60,7 @@ data class JwsHeader(
      * Use of this Header Parameter is OPTIONAL.
      */
     @SerialName(SerialNames.TYPE)
-    val type: String? = null,
+    override val type: String? = null,
 
     /**
      * The "alg" (algorithm) Header Parameter identifies the cryptographic
@@ -83,7 +76,7 @@ data class JwsHeader(
      * implementations.
      */
     @SerialName(SerialNames.ALGORITHM)
-    val algorithm: JwsAlgorithm,
+    override val algorithm: JwsAlgorithm,
 
     /**
      * The "cty" (content type) Header Parameter is used by JWS applications
@@ -98,7 +91,7 @@ data class JwsHeader(
      * Parameter is OPTIONAL.
      */
     @SerialName(SerialNames.CONTENT_TYPE)
-    val contentType: String? = null,
+    override val contentType: String? = null,
 
     /**
      * The "x5c" (X.509 certificate chain) Header Parameter contains the
@@ -118,7 +111,7 @@ data class JwsHeader(
      */
     @SerialName(SerialNames.CERTIFICATE_CHAIN)
     @Serializable(with = CertificateChainBase64Serializer::class)
-    val certificateChain: CertificateChain? = null,
+    override val certificateChain: CertificateChain? = null,
 
     /**
      * RFC 7519: The "nbf" (not before) claim identifies the time before which the JWT
@@ -163,7 +156,7 @@ data class JwsHeader(
      * OPTIONAL.
      */
     @SerialName(SerialNames.JSON_WEB_KEY)
-    val jsonWebKey: JsonWebKey? = null,
+    override val jsonWebKey: JsonWebKey? = null,
 
     /**
      * The "jku" (JWK Set URL) Header Parameter is a URI (RFC3986) that
@@ -178,7 +171,7 @@ data class JwsHeader(
      * OPTIONAL.
      */
     @SerialName(SerialNames.JSON_WEB_KEY_SET_URL)
-    val jsonWebKeySetUrl: String? = null,
+    override val jsonWebKeySetUrl: String? = null,
 
     /**
      * The "x5u" (X.509 URL) Header Parameter is a URI (RFC3986) that refers
@@ -199,7 +192,7 @@ data class JwsHeader(
      * Parameter is OPTIONAL.
      */
     @SerialName(SerialNames.CERTIFICATE_URL)
-    val certificateUrl: String? = null,
+    override val certificateUrl: String? = null,
 
     /**
      * The "x5t" (X.509 certificate SHA-1 thumbprint) Header Parameter is a
@@ -211,7 +204,7 @@ data class JwsHeader(
      */
     @SerialName(SerialNames.CERTIFICATE_SHA1_THUMBPRINT)
     @Serializable(with = ByteArrayBase64UrlSerializer::class)
-    val certificateSha1Thumbprint: ByteArray? = null,
+    override val certificateSha1Thumbprint: ByteArray? = null,
 
     /**
      * The "x5t#S256" (X.509 certificate SHA-256 thumbprint) Header
@@ -223,23 +216,23 @@ data class JwsHeader(
      */
     @SerialName(SerialNames.CERTIFICATE_SHA256_THUMBPRINT)
     @Serializable(with = ByteArrayBase64UrlSerializer::class)
-    val certificateSha256Thumbprint: ByteArray? = null,
+    override val certificateSha256Thumbprint: ByteArray? = null,
 
     /**
      * OID4VP: Verifier Attestation JWT, used to authenticate a Verifier, by providing a JWT signed by a trusted
-     * third party. May be parsed as a [at.asitplus.signum.indispensable.josef.JwsCompact], with [JsonWebToken] as the payload.
+     * third party. May be parsed as a [at.asitplus.signum.indispensable.josef.JwsCompact.Raw], with [JsonWebToken] as the payload.
      */
     @SerialName(SerialNames.ATTESTATION_JWT)
-    @Serializable(with = JwsCompactStringSerializer::class)
-    val attestationJwt: JwsCompact? = null,
+    @Serializable(with = JwsCompactRawStringSerializer::class)
+    val attestationJwt: JwsCompact.Raw? = null,
 
     /**
      * OpenID4VCI: Optional. JOSE Header containing a key attestation as described in Appendix D.
-     * Should be a [JwsCompact], with [JsonWebToken] as the payload
+     * Should be a [JwsCompact.Raw], with [JsonWebToken] as the payload
      */
     @SerialName(SerialNames.KEY_ATTESTATION)
-    @Serializable(with = JwsCompactStringSerializer::class)
-    val keyAttestation: JwsCompact? = null,
+    @Serializable(with = JwsCompactRawStringSerializer::class)
+    val keyAttestation: JwsCompact.Raw? = null,
 
     /**
      * SD-JWT VC: Credentials MAY encode Type Metadata directly, providing it as "glue information"
@@ -266,110 +259,10 @@ data class JwsHeader(
      */
     @SerialName(SerialNames.CLIENT_ID)
     val clientId: String? = null,
-) {
-    /**
-     * Typed representation of either the protected or unprotected JWS header fragment.
-     *
-     * A [Part] may be incomplete and does not have to be a valid [JwsHeader] on its own. Only the merged protected
-     * plus unprotected representation must decode to a valid [JwsHeader].
-     */
-    @Serializable
-    data class Part(
-        @SerialName(SerialNames.KEY_ID)
-        val keyId: String? = null,
-        @SerialName(SerialNames.TYPE)
-        val type: String? = null,
-        @SerialName(SerialNames.ALGORITHM)
-        val algorithm: JwsAlgorithm? = null,
-        @SerialName(SerialNames.CONTENT_TYPE)
-        val contentType: String? = null,
-        @SerialName(SerialNames.CERTIFICATE_CHAIN)
-        @Serializable(with = CertificateChainBase64Serializer::class)
-        val certificateChain: CertificateChain? = null,
-        @SerialName(SerialNames.NOT_BEFORE)
-        @Serializable(with = InstantLongSerializer::class)
-        val notBefore: Instant? = null,
-        @SerialName(SerialNames.ISSUED_AT)
-        @Serializable(with = InstantLongSerializer::class)
-        val issuedAt: Instant? = null,
-        @SerialName(SerialNames.EXPIRATION)
-        @Serializable(with = InstantLongSerializer::class)
-        val expiration: Instant? = null,
-        @SerialName(SerialNames.JSON_WEB_KEY)
-        val jsonWebKey: JsonWebKey? = null,
-        @SerialName(SerialNames.JSON_WEB_KEY_SET_URL)
-        val jsonWebKeySetUrl: String? = null,
-        @SerialName(SerialNames.CERTIFICATE_URL)
-        val certificateUrl: String? = null,
-        @SerialName(SerialNames.CERTIFICATE_SHA1_THUMBPRINT)
-        @Serializable(with = ByteArrayBase64UrlSerializer::class)
-        val certificateSha1Thumbprint: ByteArray? = null,
-        @SerialName(SerialNames.CERTIFICATE_SHA256_THUMBPRINT)
-        @Serializable(with = ByteArrayBase64UrlSerializer::class)
-        val certificateSha256Thumbprint: ByteArray? = null,
-        @SerialName(SerialNames.ATTESTATION_JWT)
-        @Serializable(with = JwsCompactStringSerializer::class)
-        val attestationJwt: JwsCompact? = null,
-        @SerialName(SerialNames.KEY_ATTESTATION)
-        @Serializable(with = JwsCompactStringSerializer::class)
-        val keyAttestation: JwsCompact? = null,
-        @SerialName(SerialNames.VC_TYPE_METADATA)
-        val vcTypeMetadata: Set<String>? = null,
-        @SerialName(SerialNames.CLIENT_ID)
-        val clientId: String? = null,
-    ) {
-        fun toJsonObject(): JsonObject =
-            joseCompliantSerializer.encodeToJsonElement(serializer(), this).jsonObject
 
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || this::class != other::class) return false
-
-            other as Part
-
-            if (keyId != other.keyId) return false
-            if (type != other.type) return false
-            if (algorithm != other.algorithm) return false
-            if (contentType != other.contentType) return false
-            if (certificateChain != other.certificateChain) return false
-            if (notBefore != other.notBefore) return false
-            if (issuedAt != other.issuedAt) return false
-            if (expiration != other.expiration) return false
-            if (jsonWebKey != other.jsonWebKey) return false
-            if (jsonWebKeySetUrl != other.jsonWebKeySetUrl) return false
-            if (certificateUrl != other.certificateUrl) return false
-            if (!certificateSha1Thumbprint.contentEquals(other.certificateSha1Thumbprint)) return false
-            if (!certificateSha256Thumbprint.contentEquals(other.certificateSha256Thumbprint)) return false
-            if (attestationJwt != other.attestationJwt) return false
-            if (keyAttestation != other.keyAttestation) return false
-            if (vcTypeMetadata != other.vcTypeMetadata) return false
-            if (clientId != other.clientId) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = keyId.hashCode()
-            result = 31 * result + type.hashCode()
-            result = 31 * result + algorithm.hashCode()
-            result = 31 * result + contentType.hashCode()
-            result = 31 * result + certificateChain.hashCode()
-            result = 31 * result + notBefore.hashCode()
-            result = 31 * result + issuedAt.hashCode()
-            result = 31 * result + expiration.hashCode()
-            result = 31 * result + jsonWebKey.hashCode()
-            result = 31 * result + jsonWebKeySetUrl.hashCode()
-            result = 31 * result + certificateUrl.hashCode()
-            result = 31 * result + (certificateSha1Thumbprint?.contentHashCode() ?: 0)
-            result = 31 * result + (certificateSha256Thumbprint?.contentHashCode() ?: 0)
-            result = 31 * result + attestationJwt.hashCode()
-            result = 31 * result + keyAttestation.hashCode()
-            result = 31 * result + vcTypeMetadata.hashCode()
-            result = 31 * result + clientId.hashCode()
-            return result
-        }
-
-    }
+    @SerialName("crit")
+    override val crit: List<String>? = null,
+) : at.asitplus.signum.indispensable.josef.JwsHeader {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -394,6 +287,7 @@ data class JwsHeader(
         if (keyAttestation != other.keyAttestation) return false
         if (vcTypeMetadata != other.vcTypeMetadata) return false
         if (clientId != other.clientId) return false
+        if (crit != other.crit) return false
         if (publicKey != other.publicKey) return false
         if (keyAttestationParsed != other.keyAttestationParsed) return false
         if (verifierAttestationParsed != other.verifierAttestationParsed) return false
@@ -419,6 +313,7 @@ data class JwsHeader(
         result = 31 * result + keyAttestation.hashCode()
         result = 31 * result + vcTypeMetadata.hashCode()
         result = 31 * result + clientId.hashCode()
+        result = 31 * result + crit.hashCode()
         result = 31 * result + publicKey.hashCode()
         result = 31 * result + keyAttestationParsed.hashCode()
         result = 31 * result + verifierAttestationParsed.hashCode()
@@ -432,14 +327,14 @@ data class JwsHeader(
     val publicKey: CryptoPublicKey? by lazy {
         jsonWebKey?.toCryptoPublicKey()?.getOrNull()
             ?: keyId?.let { catching { CryptoPublicKey.fromDid(it) } }?.getOrNull()
-            ?: certificateChain?.leaf?.decodedPublicKey?.getOrNull()
+            ?: certificateChain?.leaf?.publicKey
     }
 
-    val keyAttestationParsed: JwsCompactTyped<KeyAttestationJwt>? by lazy {
+    val keyAttestationParsed: JwsCompact<JwsHeader, KeyAttestationJwt>? by lazy {
         keyAttestation?.typed()
     }
 
-    val verifierAttestationParsed: JwsCompactTyped<JsonWebToken>? by lazy {
+    val verifierAttestationParsed: JwsCompact<JwsHeader, JsonWebToken>? by lazy {
         attestationJwt?.typed()
     }
 
@@ -462,41 +357,6 @@ data class JwsHeader(
         const val VC_TYPE_METADATA = "vctm"
         const val CLIENT_ID = "client_id"
     }
-
-    companion object {
-        /**
-         * Merges protected and unprotected header fragments into the effective [JwsHeader].
-         *
-         * Either fragment may be partial, but their combined content must form a valid header.
-         */
-        fun fromParts(
-            protectedHeader: Part? = null,
-            unprotectedHeader: Part? = null,
-        ): JwsHeader = fromJsonObjects(
-            protectedHeader = protectedHeader?.toJsonObject(),
-            unprotectedHeader = unprotectedHeader?.toJsonObject(),
-        )
-
-        /**
-         * Decodes the protected fragment and merges it with the optional unprotected fragment.
-         *
-         * This is the form used when reading serialized JWS values such as [JwsCompact] or [at.asitplus.signum.indispensable.josef.JwsFlattened].
-         */
-        fun fromParts(
-            protectedHeader: ByteArray? = null,
-            unprotectedHeader: Part? = null,
-        ): JwsHeader = fromJsonObjects(
-            protectedHeader = protectedHeader?.let(JwsProtectedHeaderSerializer::decodeToJsonObject),
-            unprotectedHeader = unprotectedHeader?.toJsonObject(),
-        )
-
-        internal fun fromJsonObjects(
-            protectedHeader: JsonObject? = null,
-            unprotectedHeader: JsonObject? = null,
-        ): JwsHeader = joseCompliantSerializer.decodeFromJsonElement<JwsHeader>(
-            protectedHeader.strictUnion(unprotectedHeader)
-        )
-    }
 }
 
 internal fun JsonObject?.strictUnion(other: JsonObject?): JsonObject {
@@ -510,29 +370,3 @@ internal fun JsonObject?.strictUnion(other: JsonObject?): JsonObject {
 
     return JsonObject(this + other)
 }
-
-/**
- * Converts the effective header into a single [JwsHeader.Part].
- *
- * Use this when one fragment should represent the whole header, for example the protected header in [JwsCompact].
- * When protected and unprotected members differ, construct the two [JwsHeader.Part] values explicitly.
- */
-fun JwsHeader.toPart(): JwsHeader.Part = JwsHeader.Part(
-    keyId = keyId,
-    type = type,
-    algorithm = algorithm,
-    contentType = contentType,
-    certificateChain = certificateChain,
-    notBefore = notBefore,
-    issuedAt = issuedAt,
-    expiration = expiration,
-    jsonWebKey = jsonWebKey,
-    jsonWebKeySetUrl = jsonWebKeySetUrl,
-    certificateUrl = certificateUrl,
-    certificateSha1Thumbprint = certificateSha1Thumbprint,
-    certificateSha256Thumbprint = certificateSha256Thumbprint,
-    attestationJwt = attestationJwt,
-    keyAttestation = keyAttestation,
-    vcTypeMetadata = vcTypeMetadata,
-    clientId = clientId,
-)

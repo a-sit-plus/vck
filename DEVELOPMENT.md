@@ -20,6 +20,10 @@ without publishing — clone it into a directory called `signum` beside this rep
 then picks it up as a composite build automatically and it takes precedence over the published `signum` artifact
 pinned in `gradle/libs.versions.toml`. Remove `../signum` to go back to the published version.
 
+For snapshot artifacts in Maven local, keep the snapshot versions in `gradle/libs.versions.toml`. The build
+conventions resolve local Signum snapshots before remote repositories, including timestamped snapshots copied
+into the local Maven repository.
+
 ## Building & testing
 
 Tests run on **TestBalloon** (`val Name by testSuite { "..." { ... } }`) with **Kotest** matchers and property

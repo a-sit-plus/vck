@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.OpenId4VpResponseMultiSigned
 import at.asitplus.dcapi.OpenId4VpResponseSigned
@@ -13,10 +13,9 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.toJwsFlattened
+import at.asitplus.signum.indispensable.josef.toFlattened
 import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -97,8 +96,9 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     holder = holderAgent,
                     openId4VpHolder = holderOid4vp,
                 )
+                val verifierKeyMaterial = EphemeralKeyWithoutCert()
                 val dcApiVerifier = DcApiVerifier(
-                    keyMaterial = EphemeralKeyWithoutCert(),
+                    keyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.PreRegistered(
                         clientId = "dc-api-rp-${uuid4()}",
                         redirectUri = "https://example.com/callback",
@@ -136,11 +136,11 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 /** Extracts the signed authn request from the browser-facing [CredentialRequestOptions]. */
                 suspend fun createSignedAuthnRequest(
                     reqOptions: OpenId4VpRequestOptions,
-                ): JwsCompactTyped<AuthenticationRequestParameters, JwsHeader> = dcApiVerifier
+                ): JwsCompact<JwsHeader, AuthenticationRequestParameters> = dcApiVerifier
                     .createAuthnRequest(reqOptions, DcApiCreationOptions.OpenId4VpSigned).getOrThrow()
                     .singleRequest<DigitalCredentialGetRequest.OpenId4VpSigned>()
                     .data.request
-                    .typed<AuthenticationRequestParameters, JwsHeader>()
+                    .typed<JwsHeader, AuthenticationRequestParameters>()
 
                 suspend fun preparationStateFor(
                     presentationRequest: CredentialPresentationRequest?,
@@ -599,7 +599,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped<AuthenticationRequestParameters, JwsHeader>(listOf(signedRequest.jws.toJwsFlattened())),
+                jwsTyped = JwsTyped<JwsHeader, AuthenticationRequestParameters>(listOf(signedRequest.raw.toFlattened())),
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = callingOrigin,
@@ -656,8 +656,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             ).getOrThrow()
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped<AuthenticationRequestParameters, JwsHeader>(
-                    listOf(signedRequest.jws.toJwsFlattened(), untyped.jws.toJwsFlattened())
+                jwsTyped = JwsTyped<JwsHeader, AuthenticationRequestParameters>(
+                    listOf(signedRequest.raw.toFlattened(), untyped.raw.toFlattened())
                 ),
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
@@ -679,7 +679,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
 
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = JwsTyped<AuthenticationRequestParameters, JwsHeader>(listOf(signedRequest.jws.toJwsFlattened())),
+                jwsTyped = JwsTyped<JwsHeader, AuthenticationRequestParameters>(listOf(signedRequest.raw.toFlattened())),
                 credentialIds = listOf(credentialId),
                 callingPackageName = callingPackageName,
                 callingOrigin = "https://evil.example.com",  // does not match expectedOrigins
@@ -781,9 +781,13 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val signedRequest = f.createSignedAuthnRequest(reqOptions)
 
             // Simulate a (third-party) signed request that omits expected_origins entirely.
-            val withoutExpectedOrigins = signedRequest.copy(
+            val withoutExpectedOrigins = SignJwt<AuthenticationRequestParameters>(
+                f.verifierKeyMaterial, JwsHeaderNone()
+            )(
+                type = signedRequest.header.type,
                 payload = signedRequest.payload.copy(expectedOrigins = null),
-            )
+                serializer = AuthenticationRequestParameters.serializer(),
+            ).getOrThrow()
             val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiSigned(
                 jwsTyped = withoutExpectedOrigins,
                 credentialIds = listOf(credentialId),

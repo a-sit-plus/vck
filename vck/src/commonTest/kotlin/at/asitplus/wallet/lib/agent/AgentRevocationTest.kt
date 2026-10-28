@@ -122,7 +122,7 @@ val AgentRevocationTest by matrixSuite {
         "revocation credential should be valid" {
             it.statusListIssuer.issueStatusListJwt().apply {
                 shouldNotBeNull()
-                VerifyJwsObject().invoke(this.jws).getOrThrow()
+                VerifyJwsObject().invoke(this.raw).getOrThrow()
             }
             it.statusListIssuer.issueStatusListCwt().apply {
                 shouldNotBeNull()

@@ -1,6 +1,7 @@
 package at.asitplus.legacy
 
 import at.asitplus.catching
+import at.asitplus.signum.indispensable.josef.JwtPayload
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -16,19 +17,15 @@ import kotlin.time.Instant
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#keyattestation-jwt)
  */
 @Serializable
-@Deprecated(
-    "Moved to VCK",
-    replaceWith = ReplaceWith("KeyAttestationPayload", "at.asitplus.data.jwtpayload.payloads.KeyAttestationPayload")
-)
 data class KeyAttestationJwt(
     @SerialName("iss")
-    val issuer: String? = null,
+    override val issuer: String? = null,
 
     @SerialName("sub")
-    val subject: String? = null,
+    override val subject: String? = null,
 
     @SerialName("aud")
-    val audience: String? = null,
+    override val audience: String? = null,
 
     /**
      * Optional. String that represents a nonce provided by the Issuer to prove that a key attestation was freshly
@@ -39,14 +36,14 @@ data class KeyAttestationJwt(
 
     @SerialName("nbf")
     @Serializable(with = InstantLongSerializer::class)
-    val notBefore: Instant? = null,
+    override val notBefore: Instant? = null,
 
     /**
      * Integer for the time at which the key attestation was issued using the syntax defined in RFC7519.
      */
     @SerialName("iat")
     @Serializable(with = InstantLongSerializer::class)
-    val issuedAt: Instant,
+    override val issuedAt: Instant,
 
     /**
      * Integer for the time at which the key attestation and the key(s) it is attesting expire, using the syntax
@@ -54,7 +51,7 @@ data class KeyAttestationJwt(
      */
     @SerialName("exp")
     @Serializable(with = InstantLongSerializer::class)
-    val expiration: Instant? = null,
+    override val expiration: Instant? = null,
 
     /**
      * Data class containing information for instance/unit attestation
@@ -107,7 +104,9 @@ data class KeyAttestationJwt(
     @Deprecated("TS3 WUA 1.5 replaced top-level status with key_storage_status.")
     @SerialName("status")
     val status: JsonObject? = null,
-) {
+) : JwtPayload {
+
+    override val jwtId: String? get() = null
 
     @Deprecated("To be removed in next release")
     fun serialize() = joseCompliantSerializer.encodeToString(this)

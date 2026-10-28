@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.pki.CertificateChain
@@ -17,7 +17,7 @@ sealed interface WrpRegistrationCertificate {
     val payload: WrpPayload
 
     data class WrpJwtRegistrationCertificate(
-        val jwsTyped: JwsCompactTyped< WrpPayload, JwsHeader>,
+        val jwsTyped: JwsCompact<JwsHeader, WrpPayload>,
         override val payload: WrpPayload = jwsTyped.payload
     ) : WrpRegistrationCertificate
 

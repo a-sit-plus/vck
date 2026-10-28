@@ -200,7 +200,7 @@ private suspend fun signJws(
     headerModifier: JwsHeaderIdentifierFun = JwsHeaderCertOrJwk(),
 ) = SignJwt<String>(keyMaterial, headerModifier)(
     null, "payload", String.serializer()
-).getOrThrow().jws
+).getOrThrow().raw
 
 private suspend fun signCose(keyMaterial: KeyMaterial) =
     SignCose<ByteArray>(keyMaterial, unprotectedHeaderModifier = CoseHeaderCertificate())(

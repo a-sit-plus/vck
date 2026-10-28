@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.jsonpath.core.NormalizedJsonPath
@@ -10,7 +10,7 @@ import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -116,7 +116,7 @@ sealed interface CreatePresentationResult {
 
     data class VpJws(
         val serialized: String,
-        val jwsSigned: JwsCompactTyped<VerifiablePresentationJws, JwsHeader>,
+        val jwsSigned: JwsCompact<JwsHeader, VerifiablePresentationJws>,
     ) : VcJwsPresentationData
 
     data class SdJwt(

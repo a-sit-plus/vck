@@ -9,10 +9,10 @@ import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod.Attestation
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod.DpopCombined
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -41,7 +41,7 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
         setOf(AttestationPopJwt),
     /**
      * Used to verify client attestation JWTs. Client attestations are required to carry an `x5c`, so pass
-     * [at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate] with the certificates of the trusted wallet
+     * [at.asitplus.wallet.lib.raw.VerifyJwsObjectTrustedCertificate] with the certificates of the trusted wallet
      * providers to establish trust in the attestation. The default only verifies the attestation against the
      * certificate it carries itself, i.e. it makes no trust decision.
      */
@@ -100,7 +100,7 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
             ?: throw InvalidClient("client attestation header missing")
 
         instanceAttestation.validateWalletInstanceAttestation(clientId)
-        verifyJwsObject(instanceAttestation.jws).getOrElse {
+        verifyJwsObject(instanceAttestation.raw).getOrElse {
             throw InvalidClient("client attestation JWT not verified", it)
         }
 
@@ -116,7 +116,7 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
         if (instanceAttestationPopJwt != null) {
             if (acceptedPopMethods.singleOrNull() == DpopCombined)
                 throw InvalidClient("client attestation PoP header not allowed in combined-only mode")
-            if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt.jws, cnf))
+            if (!verifyJwsSignatureWithCnf(instanceAttestationPopJwt.raw, cnf))
                 throw InvalidClient("client attestation PoP JWT not verified")
             instanceAttestationPopJwt.validateWalletInstanceAttestationPop(instanceAttestation.payload.subject)
         } else if (acceptsCombined) {
@@ -134,8 +134,8 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
         )
     }
 
-    private fun JwsCompactTyped<JsonWebToken, JwsHeader>.validateWalletInstanceAttestation(clientId: String?) {
-        with(wrappedHeader.header) {
+    private fun JwsCompact<JwsHeader, JsonWebToken>.validateWalletInstanceAttestation(clientId: String?) {
+        with(header) {
             if (type != JwsContentTypeConstants.CLIENT_ATTESTATION_JWT) {
                 throw InvalidClient("invalid client attestation typ: $type")
             }
@@ -185,10 +185,10 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
         }
     }
 
-    private suspend fun JwsCompactTyped<JsonWebToken, JwsHeader>.validateWalletInstanceAttestationPop(
+    private suspend fun JwsCompact<JwsHeader, JsonWebToken>.validateWalletInstanceAttestationPop(
         attestationSubject: String?
     ) {
-        with(wrappedHeader.header) {
+        with(header) {
             if (type != JwsContentTypeConstants.CLIENT_ATTESTATION_POP_JWT) {
                 throw InvalidClient("invalid client attestation PoP typ: $type")
             }

@@ -68,7 +68,7 @@ class ValidatorSdJwt @JvmOverloads constructor(
             // asserted by the KB-JWT itself would prove nothing about the holder, so a missing cnf is an error.
             val confirmationClaim = vcSdJwt.confirmationClaim
                 ?: throw Throwable("No cnf in SD-JWT to verify the key binding JWT against")
-            if (!verifyJwsSignatureWithCnf(keyBindingSigned.jws, confirmationClaim)) {
+            if (!verifyJwsSignatureWithCnf(keyBindingSigned.raw, confirmationClaim)) {
                 throw Throwable("Key binding JWT not verified (from cnf)")
             }
 

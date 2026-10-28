@@ -7,7 +7,7 @@ import at.asitplus.csc.api.serializers.HashesSerializer
 import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.awesn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

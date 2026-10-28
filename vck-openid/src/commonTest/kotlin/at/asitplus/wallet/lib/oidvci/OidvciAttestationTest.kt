@@ -20,6 +20,9 @@ package at.asitplus.wallet.lib.oidvci
  */
 
 import at.asitplus.signum.indispensable.josef.JwsHeaderWrapped
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
@@ -30,13 +33,12 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
-import at.asitplus.signum.indispensable.josef.KeyStorageStatus
+import at.asitplus.legacy.JwsHeader
+import at.asitplus.legacy.KeyAttestationJwt
+import at.asitplus.legacy.KeyStorageStatus
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultZlibService
@@ -193,7 +195,7 @@ val OidvciAttestationTest by matrixSuite {
                     .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
                     .response
 
-                JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
+                JwsCompact<JwsHeader, VerifiableCredentialJws>(
                     credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull(),
                 ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                     shouldNotThrowAny {
@@ -257,7 +259,7 @@ val OidvciAttestationTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 validator.validateProofExtractSubjectPublicKeys(
                     CredentialRequestParameters(
-                        proofs = CredentialRequestProofContainer(attestation = setOf(rogueAttestation.jws))
+                        proofs = CredentialRequestProofContainer(attestation = setOf(rogueAttestation.raw))
                     )
                 )
             }.message shouldContain "key attestation not verified"
@@ -270,7 +272,7 @@ val OidvciAttestationTest by matrixSuite {
             )
             validator.validateProofExtractSubjectPublicKeys(
                 CredentialRequestParameters(
-                    proofs = CredentialRequestProofContainer(attestation = setOf(trustedAttestation.jws))
+                    proofs = CredentialRequestProofContainer(attestation = setOf(trustedAttestation.raw))
                 )
             ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
         }
@@ -294,7 +296,7 @@ val OidvciAttestationTest by matrixSuite {
                 )
                 validator.validateProofExtractSubjectPublicKeys(
                     CredentialRequestParameters(
-                        proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws))
+                        proofs = CredentialRequestProofContainer(attestation = setOf(attestation.raw))
                     )
                 ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
             }
@@ -307,7 +309,7 @@ val OidvciAttestationTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 validator.validateProofExtractSubjectPublicKeys(
                     CredentialRequestParameters(
-                        proofs = CredentialRequestProofContainer(attestation = setOf(rogueAttestation.jws))
+                        proofs = CredentialRequestProofContainer(attestation = setOf(rogueAttestation.raw))
                     )
                 )
             }.message shouldContain "key attestation not verified"
@@ -324,7 +326,7 @@ val OidvciAttestationTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 validator.validateProofExtractSubjectPublicKeys(
                     CredentialRequestParameters(
-                        proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws))
+                        proofs = CredentialRequestProofContainer(attestation = setOf(attestation.raw))
                     )
                 )
             }.message shouldContain "key attestation not verified"
@@ -347,7 +349,7 @@ val OidvciAttestationTest by matrixSuite {
             shouldThrow<OAuth2Exception> {
                 validator.validateProofExtractSubjectPublicKeys(
                     CredentialRequestParameters(
-                        proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws))
+                        proofs = CredentialRequestProofContainer(attestation = setOf(attestation.raw))
                     )
                 )
             }.message shouldContain "TokenStatus invalid"
@@ -370,7 +372,7 @@ val OidvciAttestationTest by matrixSuite {
 
             validator.validateProofExtractSubjectPublicKeys(
                 CredentialRequestParameters(
-                    proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws))
+                    proofs = CredentialRequestProofContainer(attestation = setOf(attestation.raw))
                 )
             ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
         }
@@ -509,7 +511,7 @@ val OidvciAttestationTest by matrixSuite {
                     .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
                     .response
 
-                JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
+                JwsCompact<JwsHeader, VerifiableCredentialJws>(
                     credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull(),
                 ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                     shouldNotThrowAny {
@@ -533,7 +535,7 @@ val OidvciAttestationTest by matrixSuite {
                 signerKeyMaterial = it.walletProviderKeyMaterial,
                 attestedKey = it.clientKeyMaterial,
                 nonce = nonce,
-            ).jws.withHeaderAlg(JwsAlgorithm.Signature.RS256)
+            ).raw.withHeaderAlg(JwsAlgorithm.Signature.RS256)
 
             val jwtProof = SignJwt<JsonWebToken>(
                 it.clientKeyMaterial,
@@ -551,7 +553,7 @@ val OidvciAttestationTest by matrixSuite {
             ).getOrThrow()
 
             val params = CredentialRequestParameters(
-                proofs = CredentialRequestProofContainer(jwt = setOf(jwtProof.jws))
+                proofs = CredentialRequestProofContainer(jwt = setOf(jwtProof.raw))
             )
 
             shouldThrow<OAuth2Exception> {
@@ -763,5 +765,9 @@ private suspend fun buildValidKeyAttestation(
     serializer = KeyAttestationJwt.serializer(),
 ).getOrThrow()
 
-private suspend fun JwsCompact.withHeaderAlg(alg: JwsAlgorithm.Signature): JwsCompact =
-    JwsCompact(JwsHeaderWrapped.fromParts<JwsHeader>(plainProtectedHeader).header.copy(algorithm = alg), plainPayload) { byteArrayOf() }
+private fun JwsCompact.Raw.withHeaderAlg(alg: JwsAlgorithm.Signature): JwsCompact.Raw {
+    val header = JwsHeaderWrapped.fromParts<JwsHeader>(plainProtectedHeader).header.copy(algorithm = alg)
+    val protectedHeader = joseCompliantSerializer.encodeToString(JwsHeader.serializer(), header)
+        .encodeToByteArray().encodeToString(Base64UrlStrict)
+    return JwsCompact.Raw("$protectedHeader.${toString().substringAfter('.')}")
+}

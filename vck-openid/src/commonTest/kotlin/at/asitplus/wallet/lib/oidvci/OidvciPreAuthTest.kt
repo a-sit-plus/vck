@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferGrantsPreAuthCodeTransactionCode
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -288,7 +288,7 @@ val OidvciPreAuthTest by matrixSuite {
                 .shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
             credentials.map {
-                JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
+                JwsCompact<JwsHeader, VerifiableCredentialJws>(
                     it.credentialString.shouldNotBeNull()
                 ).payload.subject
             }.toSet().shouldHaveSize(2)

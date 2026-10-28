@@ -17,10 +17,10 @@ package at.asitplus.wallet.lib.procedures.dcql
  */
 
 import at.asitplus.signum.indispensable.josef.typed
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import at.asitplus.awesn1.encoding.decodeFromDer
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLIsoMdocCredential
@@ -41,7 +41,7 @@ import at.asitplus.awesn1.authorityKeyIdentifier_2_5_29_35
 import at.asitplus.awesn1.decodeRethrowing
 import at.asitplus.awesn1.encoding.Asn1
 import at.asitplus.awesn1.encoding.decode
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.pki.Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
@@ -114,7 +114,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         return DCQLVcJwsCredential(
             satisfiesCryptographicHolderBinding = !credential.vcJws.subject.isNullOrEmpty(),
             types = credential.vcJws.vc.type,
-            authorityKeyIdentifiers = vp.jws.wrappedHeader.header.certificateChain?.flatMap {
+            authorityKeyIdentifiers = vp.jws.header.certificateChain?.flatMap {
                 it.getAuthorityKeyIdentifier()
             } ?: listOf(),
             claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
@@ -150,7 +150,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
     private fun VerifyPresentationResult.SuccessSdJwt.toDCQLCredential() = DCQLSdJwtCredential(
         claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(reconstructedJsonObject),
         satisfiesCryptographicHolderBinding = verifiableCredentialSdJwt.confirmationClaim != null,
-        authorityKeyIdentifiers = sdJwtSigned.jws.typed<JsonWebToken, JwsHeader>().wrappedHeader.header.certificateChain?.flatMap {
+        authorityKeyIdentifiers = sdJwtSigned.jws.typed<JwsHeader, JsonWebToken>().header.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         type = verifiableCredentialSdJwt.verifiableCredentialType,
@@ -185,7 +185,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         satisfiesCryptographicHolderBinding = sdJwt.confirmationClaim != null,
         authorityKeyIdentifiers = SdJwtSigned.parseCatching(
             vcSerialized
-        ).getOrThrow().jws.typed<JsonWebToken, JwsHeader>().wrappedHeader.header.certificateChain?.flatMap {
+        ).getOrThrow().jws.typed<JwsHeader, JsonWebToken>().header.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         type = sdJwt.verifiableCredentialType,
@@ -196,9 +196,9 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             CredentialToJsonConverter.toJsonElement(this.vc)
         ),
         satisfiesCryptographicHolderBinding = !vc.subject.isNullOrEmpty(),
-        authorityKeyIdentifiers = JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
+        authorityKeyIdentifiers = JwsCompact<JwsHeader, VerifiableCredentialJws>(
             vcSerialized
-        ).wrappedHeader.header.certificateChain?.flatMap {
+        ).header.certificateChain?.flatMap {
             it.getAuthorityKeyIdentifier()
         } ?: listOf(),
         types = vc.vc.type,

@@ -6,7 +6,7 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.truncateToSeconds
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.legacy.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService

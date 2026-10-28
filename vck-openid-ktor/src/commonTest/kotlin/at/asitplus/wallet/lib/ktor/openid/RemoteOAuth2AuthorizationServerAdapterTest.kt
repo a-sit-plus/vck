@@ -178,7 +178,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
             TokenIntrospectionResponse(active = true, scope = "scope"),
             TokenIntrospectionResponse.serializer()
-        ).getOrThrow().jws.toString()
+        ).getOrThrow().raw.toString()
 
         val mockEngine = MockEngine { request ->
             when {

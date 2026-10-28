@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -9,7 +9,6 @@ import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.matrix.fixture
@@ -162,9 +161,9 @@ val OpenId4VpInteropTest by matrixSuite {
             val parameters = state.request
                 .shouldBeInstanceOf<RequestParametersFrom.Jws<AuthenticationRequestParameters>>()
 
-            val jar = parameters.jws.shouldBeInstanceOf<JwsCompact>()
-            jar.typed<AuthenticationRequestParameters, JwsHeader>().wrappedHeader.header.algorithm shouldBe JwsAlgorithm.Signature.ES256
-            jar.typed<AuthenticationRequestParameters, JwsHeader>().wrappedHeader.header.type shouldBe "oauth-authz-req+jwt"
+            val jar = parameters.jws.shouldBeInstanceOf<JwsCompact.Raw>()
+            jar.typed<JwsHeader, AuthenticationRequestParameters>().header.algorithm shouldBe JwsAlgorithm.Signature.ES256
+            jar.typed<JwsHeader, AuthenticationRequestParameters>().header.type shouldBe "oauth-authz-req+jwt"
 
             val jarPayload = jar.getPayload<AuthenticationRequestParameters>().getOrThrow()
             jarPayload.issuer shouldBe it.verifierIssuerUrl
@@ -178,7 +177,7 @@ val OpenId4VpInteropTest by matrixSuite {
             jarPayload.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
             jarPayload.responseUrl.shouldNotBeNull()
 
-            if (jar.typed<AuthenticationRequestParameters, JwsHeader>().wrappedHeader.header.keyId != null) { // web-based key lookup is optional in profile 2.0
+            if (jar.typed<JwsHeader, AuthenticationRequestParameters>().header.keyId != null) { // web-based key lookup is optional in profile 2.0
                 val verifierRequestSigningKey = it.verifierKeyMaterial.jsonWebKey.shouldNotBeNull()
                 VerifyJwsSignatureWithKey()(jar, verifierRequestSigningKey).isSuccess shouldBe true
             } else {
@@ -195,7 +194,7 @@ val OpenId4VpInteropTest by matrixSuite {
                     .jsonPrimitive.content
                 val sdJwt = SdJwtSigned.parseCatching(presentation).getOrThrow()
                 sdJwt.keyBindingJws.shouldNotBeNull().apply {
-                    wrappedHeader.header.apply {
+                    header.apply {
                         algorithm shouldBe JwsAlgorithm.Signature.ES256
                         type shouldBe "kb+jwt"
                     }
@@ -206,7 +205,7 @@ val OpenId4VpInteropTest by matrixSuite {
                         sdHash.shouldNotBeNull()
                     }
                 }
-                sdJwt.jws.typed<VerifiableCredentialSdJwt, JwsHeader>().wrappedHeader.header.apply {
+                sdJwt.jws.typed<JwsHeader, VerifiableCredentialSdJwt>().header.apply {
                     if (keyId != null)
                         keyId shouldBe it.issuerKeyId
                     else

@@ -12,10 +12,10 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.legacy.JwsHeader
+import at.asitplus.legacy.ConfirmationClaim
+import at.asitplus.legacy.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -111,7 +111,7 @@ private suspend fun buildAttestationJwt(
     sprsKeyMaterial: KeyMaterial,
     clientId: String,
     verifierKeyMaterial: KeyMaterial,
-): JwsCompactTyped<JsonWebToken, JwsHeader> = SignJwt<JsonWebToken>(sprsKeyMaterial, JwsHeaderNone())(
+): JwsCompact<JwsHeader, JsonWebToken> = SignJwt<JsonWebToken>(sprsKeyMaterial, JwsHeaderNone())(
     null,
     JsonWebToken(
         issuer = "sprs", // allows Wallet to determine the issuer's key

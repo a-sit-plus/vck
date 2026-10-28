@@ -3,8 +3,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.wallet.lib.data.KeyBindingJws
 
 /**
@@ -17,11 +16,11 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 data class SdJwtSigned(
     /**
      * Holds signed JWS in compact representation. To access the payload use
-     * [at.asitplus.signum.indispensable.josef.JWS.getPayload]
+     * [at.asitplus.signum.indispensable.josef.JwsRaw.getPayload]
      */
-    val jws: JwsCompact,
+    val jws: JwsCompact.Raw,
     val rawDisclosures: List<String>,
-    val keyBindingJws: JwsCompactTyped<KeyBindingJws, JwsHeader>? = null,
+    val keyBindingJws: JwsCompact<JwsHeader, KeyBindingJws>? = null,
     val hashInput: String,
 ) {
     override fun equals(other: Any?): Boolean {
@@ -63,7 +62,7 @@ data class SdJwtSigned(
 
     companion object {
         fun issued(
-            jws: JwsCompact,
+            jws: JwsCompact.Raw,
             disclosures: List<String>,
         ) = SdJwtSigned(
             jws = jws,
@@ -73,9 +72,9 @@ data class SdJwtSigned(
         )
 
         fun presented(
-            jws: JwsCompact,
+            jws: JwsCompact.Raw,
             disclosures: Set<String>,
-            keyBinding: JwsCompactTyped<KeyBindingJws, JwsHeader>,
+            keyBinding: JwsCompact<JwsHeader, KeyBindingJws>,
         ) = SdJwtSigned(
             jws = jws,
             rawDisclosures = disclosures.toList(),
@@ -87,14 +86,14 @@ data class SdJwtSigned(
             require(input.contains("~")) { "Could not parse SD-JWT: $input" }
             val stringList = input.replace("[^A-Za-z0-9-_.~]".toRegex(), "").split("~")
             require(stringList.isNotEmpty()) { "Could not parse SD-JWT: $input" }
-            val jws = JwsCompact(stringList.first())
+            val jws = JwsCompact.Raw(stringList.first())
             val stringListWithoutJws = stringList.drop(1)
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
                 .filterNot { it.isEmpty() }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString?.takeIf { it.isNotEmpty() }?.let {
-                JwsCompactTyped<KeyBindingJws, JwsHeader>(it)
+                JwsCompact<JwsHeader, KeyBindingJws>(it)
             }
             val hashInput = input.substringBeforeLast("~") + "~"
             SdJwtSigned(jws, rawDisclosures, keyBindingJws, hashInput)
@@ -105,9 +104,9 @@ data class SdJwtSigned(
          * disclosures and key binding appended, separated by a tilde.
          */
         fun serializePresentation(
-            jwsFromIssuer: JwsCompact,
+            jwsFromIssuer: JwsCompact.Raw,
             filteredDisclosures: Set<String>,
-            keyBinding: JwsCompactTyped<KeyBindingJws, JwsHeader>,
+            keyBinding: JwsCompact<JwsHeader, KeyBindingJws>,
         ) = (listOf(jwsFromIssuer.toString()) + filteredDisclosures + keyBinding.toString()).joinToString("~")
 
     }

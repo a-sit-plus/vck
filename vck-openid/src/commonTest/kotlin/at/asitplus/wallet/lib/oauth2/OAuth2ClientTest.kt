@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.catching
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
@@ -8,7 +8,7 @@ import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionRequest.ResponseFormat
 import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -120,7 +120,7 @@ val OAuth2ClientTest by matrixSuite {
                 null
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionJwtResponse>()
-            val parsed = JwsCompactTyped<TokenIntrospectionResponse, JwsHeader>(jwtResponse.jwt)
+            val parsed = JwsCompact<JwsHeader, TokenIntrospectionResponse>(jwtResponse.jwt)
             parsed.payload.active shouldBe true
         }
         test("process with pushed authorization request and JAR") {

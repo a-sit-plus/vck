@@ -24,9 +24,10 @@ import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -98,13 +99,13 @@ class OAuth2KtorClient(
     /** Source for random bytes, i.e., nonces for proof-of-possession of key material for sender-constrained tokens. */
     private val randomSource: RandomSource = RandomSource.Secure,
     /** Verifies signed token introspection responses. By default, every syntactically valid JWS is accepted. */
-    private val verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean = { true },
+    private val verifyTokenIntrospectionJwt: suspend (JwsCompact<JwsHeader, TokenIntrospectionResponse>) -> Boolean = { true },
     /**
      * Return a new Wallet Instance Attestation (WIA) to authenticate the Wallet App to the
      * Authorization Service with OAuth Attestation Based Client Auth.
      * Returned JWT MUST reference [keyMaterial] in [JsonWebToken.confirmationClaim].
      */
-    val loadInstanceAttestation: (suspend (LoadInstanceAttestationInput) -> KmmResult<JwsCompactTyped<JsonWebToken>>)? = null,
+    val loadInstanceAttestation: (suspend (LoadInstanceAttestationInput) -> KmmResult<JwsCompact<JwsHeader, JsonWebToken>>)? = null,
 ) {
 
     /** Used in [OAuth2KtorClient.loadInstanceAttestation] to provide information about the authorization server. */
@@ -635,8 +636,8 @@ class OAuth2KtorClient(
 
         return {
             headers {
-                clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it.jws.toString()) }
-                clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it.jws.toString()) }
+                clientAttJwt?.let { append(HttpHeaders.OAuthClientAttestation, it.raw.toString()) }
+                clientAttPop?.let { append(HttpHeaders.OAuthClientAttestationPop, it.raw.toString()) }
                 dpopHeader?.let { append(HttpHeaders.DPoP, it.toString()) }
             }
         }
@@ -672,7 +673,7 @@ data class TokenResponseWithDpopNonce(
 
 private suspend fun parseTokenIntrospectionResponse(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean,
+    verifyTokenIntrospectionJwt: suspend (JwsCompact<JwsHeader, TokenIntrospectionResponse>) -> Boolean,
     requestedResponseFormat: TokenIntrospectionRequest.ResponseFormat?,
 ): TokenIntrospectionResponse = catchingUnwrapped {
     if (requestedResponseFormat == TokenIntrospectionRequest.ResponseFormat.JWT) {
@@ -690,10 +691,10 @@ private suspend fun parseTokenIntrospectionResponse(
 
 private suspend fun parseJwt(
     body: String,
-    verifyTokenIntrospectionJwt: suspend (JwsCompactTyped<TokenIntrospectionResponse>) -> Boolean
+    verifyTokenIntrospectionJwt: suspend (JwsCompact<JwsHeader, TokenIntrospectionResponse>) -> Boolean
 ): TokenIntrospectionResponse =
     joseCompliantSerializer.decodeFromString(TokenIntrospectionJwtResponse.serializer(), body).let { jwtResponse ->
-        JwsCompactTyped<TokenIntrospectionResponse>(jwtResponse.jwt).run {
+        JwsCompact<JwsHeader, TokenIntrospectionResponse>(jwtResponse.jwt).run {
             require(verifyTokenIntrospectionJwt(this)) { "Token introspection JWT validation failed" }
             payload
         }

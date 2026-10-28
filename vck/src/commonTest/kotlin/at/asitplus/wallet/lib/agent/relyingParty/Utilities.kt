@@ -7,7 +7,7 @@ import at.asitplus.signum.indispensable.pki.X500Name
 import at.asitplus.awesn1.Asn1Integer
 import at.asitplus.signum.indispensable.sign.sign
 import at.asitplus.signum.indispensable.encodeToDer
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
@@ -44,7 +44,7 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
 import at.asitplus.signum.indispensable.pki.Certificate
@@ -324,7 +324,7 @@ suspend fun WrpFixture.validateWrprc(
 ) = catching {
     val wrprcJws = signWrprc(signingKeyMaterial, payload, type = jwsType)
     val registrationCertificate: WrpRegistrationCertificate =
-        WrpRegistrationCertificate.WrpJwtRegistrationCertificate(jwsTyped = JwsCompactTyped<WrpPayload, JwsHeader>(wrprcJws))
+        WrpRegistrationCertificate.WrpJwtRegistrationCertificate(jwsTyped = JwsCompact<JwsHeader, WrpPayload>(wrprcJws))
     val credentialRequests = request?.toWrpCredentialRequest() ?: emptyList()
     val validationData = WrpRequestData(
         clientId = clientId,

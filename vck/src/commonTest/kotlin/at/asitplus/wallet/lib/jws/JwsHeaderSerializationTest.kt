@@ -13,7 +13,7 @@ import at.asitplus.signum.indispensable.sign.EcdsaAlgorithm
 import at.asitplus.awesn1.Asn1String
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate

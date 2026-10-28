@@ -12,14 +12,14 @@ package at.asitplus.wallet.lib.oidvci
  * see the "LICENSE" file for more details
  */
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.legacy.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -134,7 +134,7 @@ val OidvciSameScopeTest by matrixSuite {
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
-            JwsCompactTyped<VerifiableCredentialJws, JwsHeader>(
+            JwsCompact<JwsHeader, VerifiableCredentialJws>(
                 serializedCredential
             ).payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
         }
@@ -347,7 +347,7 @@ val OidvciSameScopeTest by matrixSuite {
 }
 
 private fun String.assertSdJwtReceived(): Int =
-    JwsCompactTyped<VerifiableCredentialSdJwt, JwsHeader>(
+    JwsCompact<JwsHeader, VerifiableCredentialSdJwt>(
         substringBefore("~")
     ).payload.disclosureDigests
         .shouldNotBeNull()

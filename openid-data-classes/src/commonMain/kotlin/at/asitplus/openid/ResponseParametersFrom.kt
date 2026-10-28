@@ -1,8 +1,8 @@
 package at.asitplus.openid
 
 import at.asitplus.dcapi.OpenId4VpResponse
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.legacy.JwsHeader
 import io.ktor.http.*
 
 /**
@@ -15,7 +15,7 @@ sealed class ResponseParametersFrom {
     abstract val hasBeenEncrypted: Boolean
 
     data class JwsSigned(
-        val jwsSigned: JwsCompactTyped<AuthenticationResponseParameters, JwsHeader>,
+        val jwsSigned: JwsCompact<JwsHeader, AuthenticationResponseParameters>,
         val parent: ResponseParametersFrom,
         override val parameters: AuthenticationResponseParameters,
         override val clientIdRequired: Boolean,

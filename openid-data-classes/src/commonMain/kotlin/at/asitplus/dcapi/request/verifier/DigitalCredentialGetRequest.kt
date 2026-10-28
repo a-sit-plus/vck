@@ -4,7 +4,7 @@ import at.asitplus.dcapi.request.ExchangeProtocolIdentifier
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompactRawStringSerializer
 import at.asitplus.signum.indispensable.josef.JwsGeneral
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -30,14 +30,14 @@ sealed class DigitalCredentialGetRequest {
         @Serializable
         data class SignedDataElement(
             @SerialName(SerialNames.REQUEST)
-            @Serializable(with = JwsCompactStringSerializer::class)
-            val request: JwsCompact
+            @Serializable(with = JwsCompactRawStringSerializer::class)
+            val request: JwsCompact.Raw
         )
 
         @Serializable
         data class MultiSignedDataElement(
             @SerialName(SerialNames.REQUEST)
-            val request: JwsGeneral
+            val request: JwsGeneral.Raw
         )
     }
 

@@ -11,7 +11,7 @@ import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.digest.Digest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE

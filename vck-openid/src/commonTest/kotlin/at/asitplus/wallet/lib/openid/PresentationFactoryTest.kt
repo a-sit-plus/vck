@@ -40,7 +40,7 @@ val PresentationFactoryTest by matrixSuite {
                 SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
                     JwsContentTypeConstants.SD_JWT, JsonObject(emptyMap()), JsonObject.serializer()
                 ).getOrThrow()
-            }.let { SdJwtSigned.issued(it.jws, emptyList()) }
+            }.let { SdJwtSigned.issued(it.raw, emptyList()) }
                 .let { CreatePresentationResult.SdJwt(it.serialize(), it) }
         }
     } - {

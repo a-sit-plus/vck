@@ -67,6 +67,16 @@ class VcLibConventions : K2Conventions() {
             target.pluginManager.apply("org.jetbrains.dokka")
             target.pluginManager.apply("de.infix.testBalloon")
             super.apply(target)
+            val mavenLocal = target.repositories.mavenLocal()
+            // Also support timestamped snapshots copied from a Maven repository.
+            val localSignumSnapshots = target.repositories.maven {
+                name = "localSignumSnapshots"
+                url = mavenLocal.url
+                content { includeGroup("at.asitplus.signum") }
+                mavenContent { snapshotsOnly() }
+            }
+            target.repositories.remove(localSignumSnapshots)
+            target.repositories.addFirst(localSignumSnapshots)
             //if we do this properly, cinterop (swift-klib) blows up, so we hack!
             target.afterEvaluate {
                 (project.kotlinExtension as KotlinMultiplatformExtension).sourceSets

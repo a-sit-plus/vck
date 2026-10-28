@@ -10,10 +10,10 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -156,15 +156,15 @@ class JwtTokenVerificationService(
         if (!dpopNonceService.verifyAndRemoveNonce(nonce)) {
             throw UseDpopNonce(dpopNonceService.provideNonce(), "DPoP JWT nonce not valid: $nonce")
         }
-        dpopProof.wrappedHeader.header.jsonWebKey
+        dpopProof.header.jsonWebKey
             ?: throw InvalidDpopProof("DPoP JWT contains no public key")
     }
 
     private suspend fun verifyDpopProof(
         httpRequest: RequestInfo,
-    ): JwsCompactTyped<JsonWebToken, JwsHeader> = httpRequest.dpop?.also {
-        verifyJwsObject(it.jws).getOrElse { throw InvalidDpopProof("DPoP JWT not verified.", it) }
-        with(it.wrappedHeader.header) {
+    ): JwsCompact<JwsHeader, JsonWebToken> = httpRequest.dpop?.also {
+        verifyJwsObject(it.raw).getOrElse { throw InvalidDpopProof("DPoP JWT not verified.", it) }
+        with(it.header) {
             if (type != JwsContentTypeConstants.DPOP_JWT) {
                 throw InvalidDpopProof("DPoP JWT invalid type: $type")
             }
@@ -199,7 +199,7 @@ class JwtTokenVerificationService(
     /** @param validatedClientKey the key from the extracted DPoP proof */
     internal suspend fun validateDpopProof(
         accessToken: String?,
-        tokenJwt: JwsCompactTyped<OpenId4VciAccessToken, JwsHeader>,
+        tokenJwt: JwsCompact<JwsHeader, OpenId4VciAccessToken>,
         httpRequest: RequestInfo?,
         dpopNonceService: NonceService,
         validatedClientKey: JsonWebKey?,
@@ -207,8 +207,8 @@ class JwtTokenVerificationService(
         val dpopProof = verifyDpopProof(httpRequest ?: throw InvalidDpopProof("Missing RequestInfo"))
         val jwkThumbprintFromToken = tokenJwt.payload.confirmationClaim?.jsonWebKeyThumbprint
         if (jwkThumbprintFromToken == null ||
-            dpopProof.wrappedHeader.header.jsonWebKey == null ||
-            dpopProof.wrappedHeader.header.jsonWebKey!!.jwkThumbprintPlain != jwkThumbprintFromToken
+            dpopProof.header.jsonWebKey == null ||
+            dpopProof.header.jsonWebKey!!.jwkThumbprintPlain != jwkThumbprintFromToken
         ) {
             throw InvalidDpopProof("DPoP JWT JWK not matching cnf.jkt")
         }
@@ -239,14 +239,14 @@ class JwtTokenVerificationService(
         accessToken: String,
         expectedType: String,
         nonceService: NonceService = this.nonceService,
-    ): JwsCompactTyped<OpenId4VciAccessToken, JwsHeader> {
-        val jwt = catching { JwsCompactTyped<OpenId4VciAccessToken, JwsHeader>(accessToken) }
+    ): JwsCompact<JwsHeader, OpenId4VciAccessToken> {
+        val jwt = catching { JwsCompact<JwsHeader, OpenId4VciAccessToken>(accessToken) }
             .getOrElse { throw InvalidToken("could not parse DPoP Token", it) }
-        verifyJwsSignatureWithKey(jwt.jws, issuerKey).getOrElse {
+        verifyJwsSignatureWithKey(jwt.raw, issuerKey).getOrElse {
             throw InvalidToken("DPoP Token not verified")
         }
-        if (jwt.wrappedHeader.header.type != expectedType) {
-            throw InvalidToken("typ not valid: ${jwt.wrappedHeader.header.type}")
+        if (jwt.header.type != expectedType) {
+            throw InvalidToken("typ not valid: ${jwt.header.type}")
         }
         if (jwt.payload.jwtId == null || !nonceService.verifyNonce(jwt.payload.jwtId!!)) {
             throw InvalidToken("jti not valid: ${jwt.payload.jwtId}")

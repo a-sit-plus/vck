@@ -279,7 +279,7 @@ val SdJwtCreatorTest by matrixSuite {
             serializer = JsonObject.serializer()
         ).getOrThrow()
 
-        val serialized = SdJwtSigned.issued(jws.jws, disclosures.toList()).serialize()
+        val serialized = SdJwtSigned.issued(jws.raw, disclosures.toList()).serialize()
         val parsed = SdJwtSigned.parseCatching(serialized).getOrThrow()
         val reconstructed = SdJwtDecoded(parsed).reconstructedJsonObject.shouldNotBeNull()
 
@@ -295,7 +295,7 @@ private suspend fun Pair<JsonObject, Collection<String>>.signDecodeReconstruct()
             JwsContentTypeConstants.SD_JWT,
             payload = first,
             serializer = JsonObject.serializer()
-        ).getOrThrow().jws, second.toList()
+        ).getOrThrow().raw, second.toList()
     )
 ).reconstructedJsonObject.shouldNotBeNull()
 

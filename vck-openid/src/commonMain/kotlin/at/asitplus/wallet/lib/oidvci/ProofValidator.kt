@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.KmmResult
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
@@ -11,10 +11,10 @@ import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.legacy.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.legacy.KeyAttestationJwt
 import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
@@ -129,12 +129,12 @@ class ProofValidator @JvmOverloads constructor(
         else -> null
     }
 
-    private suspend fun JwsCompactTyped<JsonWebToken, JwsHeader>.validateJwtProof(): KeysAndNonces {
-        if (wrappedHeader.header.type != OpenIdConstants.PROOF_JWT_TYPE) {
-            throw InvalidProof("invalid typ: ${wrappedHeader.header.type}")
+    private suspend fun JwsCompact<JwsHeader, JsonWebToken>.validateJwtProof(): KeysAndNonces {
+        if (header.type != OpenIdConstants.PROOF_JWT_TYPE) {
+            throw InvalidProof("invalid typ: ${header.type}")
         }
-        if (wrappedHeader.header.algorithm !is JwsAlgorithm.Signature || wrappedHeader.header.algorithm !in supportedAlgorithms) {
-            throw InvalidProof("unsupported proof alg: ${wrappedHeader.header.algorithm}")
+        if (header.algorithm !is JwsAlgorithm.Signature || header.algorithm !in supportedAlgorithms) {
+            throw InvalidProof("unsupported proof alg: ${header.algorithm}")
         }
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             throw InvalidNonce("invalid nonce: ${payload.nonce}")
@@ -145,13 +145,13 @@ class ProofValidator @JvmOverloads constructor(
         if (payload.issuedAt == null || payload.issuedAt!! > (clock.now() + timeLeeway)) {
             throw InvalidProof("issuedAt in future: ${payload.issuedAt}")
         }
-        val keyAttestation = wrappedHeader.header.keyAttestationParsed
+        val keyAttestation = header.keyAttestationParsed
         if (requireKeyAttestation && keyAttestation == null) {
             throw InvalidProof("key_attestation not contained in JWT proof")
         }
         if (keyAttestation != null) {
             val attestedKeys = keyAttestation.validateKeyAttestation()
-            verifyJwsSignatureWithKey(jws, keyAttestation.payload.attestedKeys.first()).getOrElse {
+            verifyJwsSignatureWithKey(raw, keyAttestation.payload.attestedKeys.first()).getOrElse {
                 throw InvalidProof("JWT proof not signed with key at index 0 of attested_keys", it)
             }
             return KeysAndNonces(
@@ -160,12 +160,12 @@ class ProofValidator @JvmOverloads constructor(
             )
         }
 
-        verifyJwsObject(jws).getOrElse {
+        verifyJwsObject(raw).getOrElse {
             throw InvalidProof("invalid signature: $this.", it)
         }
         return KeysAndNonces(
             keys = listOf(
-                wrappedHeader.header.publicKey ?: throw InvalidProof("could not extract public key from ${wrappedHeader.header}")
+                header.publicKey ?: throw InvalidProof("could not extract public key from ${header}")
             ),
             nonces = setOf(payload.nonce!!)
         )
@@ -175,7 +175,7 @@ class ProofValidator @JvmOverloads constructor(
      * OID4VCI 8.2.1.3: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
      * in the `attested_keys` claim.
      */
-    private suspend fun JwsCompactTyped<KeyAttestationJwt, JwsHeader>.validateAttestationProof(): KeysAndNonces {
+    private suspend fun JwsCompact<JwsHeader, KeyAttestationJwt>.validateAttestationProof(): KeysAndNonces {
         if (payload.nonce == null || !clientNonceService.verifyNonce(payload.nonce!!)) {
             throw InvalidNonce("invalid nonce: ${payload.nonce}")
         }
@@ -185,14 +185,14 @@ class ProofValidator @JvmOverloads constructor(
         )
     }
 
-    private suspend fun JwsCompactTyped<KeyAttestationJwt, JwsHeader>.validateKeyAttestation(): Collection<CryptoPublicKey> {
-        if (wrappedHeader.header.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
-            throw InvalidProof("invalid typ: ${wrappedHeader.header.type}")
+    private suspend fun JwsCompact<JwsHeader, KeyAttestationJwt>.validateKeyAttestation(): Collection<CryptoPublicKey> {
+        if (header.type != OpenIdConstants.KEY_ATTESTATION_JWT_TYPE) {
+            throw InvalidProof("invalid typ: ${header.type}")
         }
-        if (wrappedHeader.header.algorithm !is JwsAlgorithm.Signature ||
-            wrappedHeader.header.algorithm !in supportedAlgorithms
+        if (header.algorithm !is JwsAlgorithm.Signature ||
+            header.algorithm !in supportedAlgorithms
         ) {
-            throw InvalidProof("unsupported key attestation alg: ${wrappedHeader.header.algorithm}")
+            throw InvalidProof("unsupported key attestation alg: ${header.algorithm}")
         }
         if (payload.issuer != null) {
             throw InvalidProof("key attestation must not contain iss")
@@ -230,7 +230,7 @@ class ProofValidator @JvmOverloads constructor(
             throw InvalidProof("TokenStatus invalid")
         }
 
-        verifyKeyAttestationSignature(jws)
+        verifyKeyAttestationSignature(raw)
             .onFailure { throw InvalidProof("key attestation not verified: $this", it) }
 
         return payload.attestedKeys.map { it.toCryptoPublicKey().getOrThrow() }

@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.legacy.JwsHeader
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 
@@ -13,7 +13,7 @@ class JwsHeaderClientIdScheme(val clientIdScheme: ClientIdScheme) : JwsHeaderIde
         is ClientIdScheme.CertificateSanDns -> it.copy(certificateChain = clientIdScheme.chain)
         is ClientIdScheme.VerifierAttestation -> it.copy(
             jsonWebKey = keyMaterial.jsonWebKey,
-            attestationJwt = clientIdScheme.attestationJwt.jws
+            attestationJwt = clientIdScheme.attestationJwt.raw
         )
 
         else -> it.copy(jsonWebKey = keyMaterial.jsonWebKey)

@@ -205,7 +205,7 @@ class DcApiVerifier @JvmOverloads constructor(
                 requestFactory.createSignedRequestObject(
                     requestOptions,
                     RequestObjectSigning.DcApi,
-                ).getOrThrow().jws
+                ).getOrThrow().raw
             )
         )
 
