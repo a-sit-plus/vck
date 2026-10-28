@@ -1,5 +1,9 @@
 # Changelog
 
+Next:
+- Status lists:
+    - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still emitted as stored blocks.
+
 Release 9.0.0 (unreleased):
 
 The new validation API (`CredentialValidator`, `RelyingPartyValidator`, `IssuerMetadataValidator`) reports every check

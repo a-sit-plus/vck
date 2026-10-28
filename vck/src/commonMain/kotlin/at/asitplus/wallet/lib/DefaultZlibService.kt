@@ -3,13 +3,25 @@ package at.asitplus.wallet.lib
 private const val ZLIB_HEADER_CMF = 0x78
 private const val ZLIB_HEADER_FLG = 0x9C
 private const val MAX_STORED_BLOCK_SIZE = 0xFFFF
+private const val END_OF_BLOCK = 256
+private const val MIN_MATCH = 3
+private const val MAX_MATCH = 258
+private const val WINDOW_SIZE = 32768
+private const val WINDOW_MASK = WINDOW_SIZE - 1
+private const val HASH_SIZE = 1 shl 15
+
+/** Candidates looked at per position, bounding the time for input with many hash collisions. */
+private const val MAX_CHAIN = 128
 
 /**
  * Pure Kotlin ZLIB service:
  * - RFC1950 container (CMF/FLG + ADLER32 trailer)
  * - RFC1951 DEFLATE payload
  *
- * Compression intentionally emits only "stored" deflate blocks (no LZ/Huffman), which is simple and deterministic.
+ * Compression emits one block with fixed Huffman codes (RFC1951 3.2.6), using back-references found by a greedy search
+ * over the 32 KiB window (3.2.5). Input that does not get smaller this way (e.g. random bytes) is emitted as "stored"
+ * blocks instead. The output depends only on the input, on every platform. Token Status Lists are mostly runs of zero
+ * bytes, which this reduces to a few bytes per 258 bytes of input.
  * Decompression supports stored, fixed-Huffman, and dynamic-Huffman blocks for interoperability.
  */
 class DefaultZlibService : ZlibService {
@@ -20,26 +32,8 @@ class DefaultZlibService : ZlibService {
     private val maxDecompressedSize = 5 * 1024 * 1024
 
     override fun compress(input: ByteArray): ByteArray? = try {
-        val output = ByteArrayBuilder(input.size + 16)
-        // RFC1950: CMF/FLG for DEFLATE with a common/default window setting.
-        output.appendByte(ZLIB_HEADER_CMF)
-        output.appendByte(ZLIB_HEADER_FLG)
-
-        if (input.isEmpty()) {
-            output.appendStoredBlock(input, 0, 0, isFinal = true)
-        } else {
-            var offset = 0
-            while (offset < input.size) {
-                val blockSize = minOf(MAX_STORED_BLOCK_SIZE, input.size - offset)
-                val isFinal = offset + blockSize >= input.size
-                output.appendStoredBlock(input, offset, blockSize, isFinal)
-                offset += blockSize
-            }
-        }
-
-        // RFC1950 trailer: ADLER32 checksum of the uncompressed payload.
-        output.appendUInt32BE(adler32(input))
-        output.toByteArray()
+        val compressed = compressWithFixedHuffmanCodes(input)
+        if (compressed.size < storedSize(input.size)) compressed else compressStored(input)
     } catch (_: Throwable) {
         null
     }
@@ -81,6 +75,171 @@ class DefaultZlibService : ZlibService {
     } catch (_: Throwable) {
         null
     }
+}
+
+private fun compressStored(input: ByteArray): ByteArray {
+    val output = ByteArrayBuilder(input.size + 16)
+    // RFC1950: CMF/FLG for DEFLATE with a common/default window setting.
+    output.appendByte(ZLIB_HEADER_CMF)
+    output.appendByte(ZLIB_HEADER_FLG)
+
+    if (input.isEmpty()) {
+        output.appendStoredBlock(input, 0, 0, isFinal = true)
+    } else {
+        var offset = 0
+        while (offset < input.size) {
+            val blockSize = minOf(MAX_STORED_BLOCK_SIZE, input.size - offset)
+            val isFinal = offset + blockSize >= input.size
+            output.appendStoredBlock(input, offset, blockSize, isFinal)
+            offset += blockSize
+        }
+    }
+
+    // RFC1950 trailer: ADLER32 checksum of the uncompressed payload.
+    output.appendUInt32BE(adler32(input))
+    return output.toByteArray()
+}
+
+/** Size of the output of [compressStored]: header, 5 bytes per stored block header, data, trailer. */
+private fun storedSize(inputSize: Int): Int {
+    val blocks = maxOf(1, (inputSize + MAX_STORED_BLOCK_SIZE - 1) / MAX_STORED_BLOCK_SIZE)
+    return 2 + 5 * blocks + inputSize + 4
+}
+
+private fun compressWithFixedHuffmanCodes(input: ByteArray): ByteArray {
+    val output = DeflateBitWriter(input.size / 4 + 16)
+    // RFC1950: CMF/FLG for DEFLATE with a common/default window setting.
+    output.writeByte(ZLIB_HEADER_CMF)
+    output.writeByte(ZLIB_HEADER_FLG)
+    // BFINAL=1, BTYPE=01 (fixed Huffman codes)
+    output.writeBits(1, 1)
+    output.writeBits(0b01, 2)
+
+    // Hash chains over 3 byte prefixes: head[hash] is the latest position with that hash, prev[position] the one
+    // before it. Positions are inserted in increasing order, so each chain runs from near to far.
+    val head = IntArray(HASH_SIZE) { -1 }
+    val prev = IntArray(WINDOW_SIZE)
+    fun insert(position: Int) {
+        if (position + MIN_MATCH > input.size) return
+        val hash = input.hashAt(position)
+        prev[position and WINDOW_MASK] = head[hash]
+        head[hash] = position
+    }
+
+    var position = 0
+    while (position < input.size) {
+        var bestLength = 0
+        var bestDistance = 0
+        if (position + MIN_MATCH <= input.size) {
+            val maxLength = minOf(MAX_MATCH, input.size - position)
+            var candidate = head[input.hashAt(position)]
+            var remainingChain = MAX_CHAIN
+            // A candidate within the window still has its own entry in prev, as later positions overwriting it
+            // are at least WINDOW_SIZE further on, i.e. not inserted yet.
+            while (candidate >= 0 && position - candidate <= WINDOW_SIZE && remainingChain-- > 0) {
+                val length = input.matchLength(candidate, position, maxLength)
+                // Strictly longer, so on equal length the nearer candidate is kept.
+                if (length > bestLength) {
+                    bestLength = length
+                    bestDistance = position - candidate
+                    if (length == maxLength) break
+                }
+                candidate = prev[candidate and WINDOW_MASK]
+            }
+        }
+
+        if (bestLength >= MIN_MATCH) {
+            output.writeLength(bestLength)
+            output.writeDistance(bestDistance)
+            repeat(bestLength) { insert(position + it) }
+            position += bestLength
+        } else {
+            output.writeLiteralOrLength(input[position].toUByte().toInt())
+            insert(position)
+            position++
+        }
+    }
+
+    output.writeLiteralOrLength(END_OF_BLOCK)
+    output.alignToByte()
+    // RFC1950 trailer: ADLER32 checksum of the uncompressed payload.
+    output.writeUInt32BE(adler32(input))
+    return output.toByteArray()
+}
+
+private fun ByteArray.hashAt(position: Int): Int =
+    ((this[position].toUByte().toInt() shl 10) xor
+        (this[position + 1].toUByte().toInt() shl 5) xor
+        this[position + 2].toUByte().toInt()) and (HASH_SIZE - 1)
+
+/** Length of the common prefix at [earlier] and [later], up to [maxLength]; the two may overlap. */
+private fun ByteArray.matchLength(earlier: Int, later: Int, maxLength: Int): Int {
+    var length = 0
+    while (length < maxLength && this[earlier + length] == this[later + length]) length++
+    return length
+}
+
+private fun DeflateBitWriter.writeLength(length: Int) {
+    val index = LENGTH_BASE.indexOfLast { it <= length }
+    writeLiteralOrLength(257 + index)
+    writeBits(length - LENGTH_BASE[index], LENGTH_EXTRA[index])
+}
+
+private fun DeflateBitWriter.writeDistance(distance: Int) {
+    val index = DISTANCE_BASE.indexOfLast { it <= distance }
+    // RFC1951 3.2.6: distance codes 0-29 are fixed 5 bit codes.
+    writeHuffmanCode(index, 5)
+    writeBits(distance - DISTANCE_BASE[index], DISTANCE_EXTRA[index])
+}
+
+/** RFC1951 3.2.6: the fixed Huffman code of literal/length symbol [symbol]. */
+private fun DeflateBitWriter.writeLiteralOrLength(symbol: Int) = when {
+    symbol <= 143 -> writeHuffmanCode(0b00110000 + symbol, 8)
+    symbol <= 255 -> writeHuffmanCode(0b110010000 + (symbol - 144), 9)
+    symbol <= 279 -> writeHuffmanCode(symbol - 256, 7)
+    else -> writeHuffmanCode(0b11000000 + (symbol - 280), 8)
+}
+
+/** RFC1951 3.1.1: Huffman codes are packed starting with their most significant bit. */
+private fun DeflateBitWriter.writeHuffmanCode(code: Int, length: Int) = writeBits(reverseBits(code, length), length)
+
+/** Writes bits starting with the least significant bit of each byte (RFC1951 3.1.1). */
+private class DeflateBitWriter(initialCapacity: Int) {
+    private val output = ByteArrayBuilder(initialCapacity)
+    private var currentByte = 0
+    private var bitCount = 0
+
+    /** Writes the [count] lowest bits of [value], least significant first. */
+    fun writeBits(value: Int, count: Int) {
+        repeat(count) { bit ->
+            currentByte = currentByte or (((value ushr bit) and 1) shl bitCount)
+            if (++bitCount == 8) {
+                output.appendByte(currentByte)
+                currentByte = 0
+                bitCount = 0
+            }
+        }
+    }
+
+    fun alignToByte() {
+        if (bitCount > 0) {
+            output.appendByte(currentByte)
+            currentByte = 0
+            bitCount = 0
+        }
+    }
+
+    fun writeByte(value: Int) {
+        check(bitCount == 0) { "Not at a byte boundary" }
+        output.appendByte(value)
+    }
+
+    fun writeUInt32BE(value: UInt) {
+        check(bitCount == 0) { "Not at a byte boundary" }
+        output.appendUInt32BE(value)
+    }
+
+    fun toByteArray(): ByteArray = output.toByteArray()
 }
 
 private fun decompressStoredBlock(reader: BitReader, output: ByteAccumulator): Boolean {
