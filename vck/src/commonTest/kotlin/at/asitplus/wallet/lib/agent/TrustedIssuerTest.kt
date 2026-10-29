@@ -66,6 +66,18 @@ val TrustedIssuerTest by matrixSuite {
         )(signed).getOrThrow()
     }
 
+    "JWS signed by a directly listed certificate transported with its unlisted issuer is verified" {
+        val ca = TestCertificateAuthority()
+        val signer = ca.issue()
+        val signed = signJws(signer, JwsHeaderIdentifierFun { header, keyMaterial ->
+            header.copy(certificateChain = listOf(keyMaterial.getCertificate()!!, ca.certificate))
+        })
+
+        VerifyJwsObjectTrustedCertificate(
+            trustedIssuers = { setOf(signer.getCertificate()!!) },
+        )(signed).getOrThrow()
+    }
+
     "JWS signed by an untrusted self-signed certificate is not verified" {
         val signed = signJws(selfSignedKey())
 

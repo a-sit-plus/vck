@@ -57,9 +57,9 @@ fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCo
  * `BasicConstraints` with `cA` set, see [isTrustedBy] and
  * [at.asitplus.wallet.lib.etsi.isCertificateAuthority].
  *
- * Unless [allowDirectTrust] is disabled, one case is exempt from all of those rules: a chain consisting of
- * exactly one certificate that is itself contained in [trustedIssuers], regardless of whether it is self-signed
- * or CA-issued. This directly listed certificate verifies the signed object, not another certificate, so it
+ * Unless [allowDirectTrust] is disabled, one case is exempt from all of those rules: a signing certificate that is
+ * itself contained in [trustedIssuers], regardless of whether it is self-signed or CA-issued, and of the certificates
+ * transported with it. This directly listed certificate verifies the signed object, not another certificate, so it
  * need not be a CA.
  *
  * @return the signing certificate, for use in signature verification
@@ -70,7 +70,7 @@ fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCo
 suspend fun CertificateChain?.requireTrustedSigningCertificate(
     trustedIssuers: TrustedCertificates,
     at: Instant = Clock.System.now(),
-    /** Whether a chain of exactly one certificate contained in [trustedIssuers] counts as directly trusted. */
+    /** Whether a signing certificate contained in [trustedIssuers] counts as directly trusted. */
     allowDirectTrust: Boolean = true,
 ): X509Certificate {
     val transported = this?.takeIf { it.isNotEmpty() }
@@ -88,7 +88,8 @@ suspend fun CertificateChain?.requireTrustedSigningCertificate(
     // A transported anchor confers no trust, as it is compared to the listed ones anyway, so tolerate it at the end
     // of the chain, where signers transporting it put it
     val chain = if (transported.size > 1 && isListed(transported.last())) transported.dropLast(1) else transported
-    val isDirectlyTrusted = allowDirectTrust && chain.size == 1 && isListed(signingCertificate)
+    // A listed signer is trusted itself, so the certificates transported with it, e.g. its issuer, confer nothing
+    val isDirectlyTrusted = allowDirectTrust && isListed(signingCertificate)
     if (!isDirectlyTrusted) {
         require(chain.none(::isListed)) {
             "The certificate of the trust anchor must only be transported as the last one of the chain"

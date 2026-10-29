@@ -48,9 +48,10 @@ class ClientAttestationValidator @JvmOverloads constructor(
      *    present (EUDI TS3, 2.3.1); and the proof of possession is well-formed, see [ClientAttestationPossession];
      *  - `signature`: with the signing certificate in `x5c` (EUDI TS3, 2.2.1.2);
      *  - `trust`: the signing certificate is one of [walletProviderAnchors] (ETSI TS 119 472-3 V1.1.1,
-     *    AUTH-REQ-PROC-4.4.3-01, TOKEN-REQ-PROC-4.5.2-01), or it leads to one of them through intermediate
-     *    certificates in `x5c`, which contains the anchor only as its last certificate, if at all (EUDI TS3,
-     *    2.2.1.2; OpenID4VC HAIP 1.0, 4.4.1);
+     *    AUTH-REQ-PROC-4.4.3-01, TOKEN-REQ-PROC-4.5.2-01; CIR (EU) 2024/2979 as amended by CIR (EU) 2026/1731,
+     *    Article 6(1), Annex Ib, TR-WIA-4.1), regardless of the certificates transported with it, or it leads to one
+     *    of them through intermediate certificates in `x5c`, which contains the anchor only as its last certificate,
+     *    if at all (EUDI TS3, 2.2.1.2; OpenID4VC HAIP 1.0, 4.4.1);
      *  - `timeliness`: `exp` is not in the past (EUDI TS3, 2.2.1.2), `iat`, which is optional, not in the future, the
      *    lifetime less than 24 hours (EUDI TS3, 2.2.1.1), and `client_status.exp` not in the past, being how long the
      *    wallet provider maintains the status (EUDI TS3, 2.4.1);
