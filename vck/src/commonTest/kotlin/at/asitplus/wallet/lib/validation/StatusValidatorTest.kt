@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
+import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.selfSignedKey
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
@@ -137,6 +138,24 @@ val StatusValidatorTest by matrixSuite {
             status.single().observed shouldBe TokenStatus.Valid
             status.single().token.decision shouldBe ValidationDecision.ACCEPTED
             status.single().token.tokenChecks().signerTrust shouldBe TrustValidation(Passed, PID_VCT, "PID")
+        }
+
+        "a token validated again is verified once, while signer and status are checked for each reference" {
+            val revocation = TestCertificateAuthority()
+            var verifications = 0
+            val signatureCheck = SignatureCheck { input, signature, algorithm, publicKey ->
+                verifications++
+                VerifySignature()(input, signature, algorithm, publicKey)
+            }
+            val validator = StatusValidator(resolver(STATUS_LIST_URI to jwt(revocation.issue())), signatureCheck)
+
+            validator.check(statusAt(0), revocation.pidStatusAnchors()).single().observed shouldBe TokenStatus.Valid
+            validator.check(statusAt(1), revocation.pidStatusAnchors()).single().observed shouldBe TokenStatus.Invalid
+            // other anchors are applied, although the signature is not verified again
+            validator.check(statusAt(0), TestCertificateAuthority().pidStatusAnchors()).single().token
+                .tokenChecks().signerTrust.outcome.shouldBeInstanceOf<Failed>()
+
+            verifications shouldBe 1
         }
 
         "a revoked status fails with the status, which is kept as observed" {
