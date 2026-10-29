@@ -144,7 +144,6 @@ class OpenId4VciServer @JvmOverloads constructor(
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
             nonceEndpointUrl = "$publicContext$nonceEndpointPath",
             supportedCredentialConfigurations = supportedCredentialConfigurations,
-            batchCredentialIssuance = BatchCredentialIssuanceMetadata(1),
             credentialResponseEncryption = encryptionService.metadataCredentialResponseEncryption,
             credentialRequestEncryption = encryptionService.metadataCredentialRequestEncryption,
             preferredClientStatusPeriod = preferredClientStatusPeriod,
