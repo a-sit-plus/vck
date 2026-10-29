@@ -53,6 +53,20 @@ val HolderAgentCredentialOrderTest by matrixSuite {
 
                     holder.orderedCredentials() shouldBe listOf(revoked, valid)
                 }
+
+                "the ordering validator orders credentials instead of the credential validator" {
+                    val issuance = issuance()
+                    val holder = HolderAgent(
+                        issuance.holderKey,
+                        credentialValidator = issuance.validator(),
+                        // e.g. a validator resolving cached status list tokens only, here none at all
+                        orderingValidator = CredentialValidator(trustAnchors = issuance.trustAnchors),
+                    )
+                    val revoked = holder.store(issuance, representation) { issuance.revoke(it) }
+                    val valid = holder.store(issuance, representation)
+
+                    holder.orderedCredentials() shouldBe listOf(revoked, valid)
+                }
             }
     }
 }

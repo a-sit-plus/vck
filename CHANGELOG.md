@@ -35,6 +35,10 @@ check the entries marked BREAKING when migrating.
       credentials in `getValidCredentialsByPriority()`, demoting only verified problems. Deprecate the constructor
       taking `validator`, `validatorVcJws`, `validatorSdJwt`, `validatorMdoc` (which no longer take effect), and
       `trustedIssuers` (adapted as anchors for every credential type)
+    - Add the parameter `orderingValidator` of `HolderAgent`, `credentialValidator` by default, which orders stored
+      credentials when matching them against a presentation request, e.g. with a status list token resolver that
+      returns cached tokens only, so that matching and creating a presentation never wait for status lists to be
+      retrieved, which they did for every stored credential, also those the request does not ask for
     - Add `OpenId4VciClient.decodeCredentialResponse(response, request, representation)`, decoding every credential
       of a (batch) response into a `ReceivedCredential`, also one that can not be decoded, and
       `ReceivedCredential.prepareCredentialStorage(holder, scheme, policy, renewalInfo)`, validating it for storage by
