@@ -8,7 +8,7 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
-import at.asitplus.wallet.lib.agent.validation.extractTokenStatus
+import at.asitplus.wallet.lib.agent.validation.RevocationListLookup
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
@@ -23,6 +23,8 @@ import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -72,6 +74,10 @@ class StatusValidator @JvmOverloads constructor(
     internal val resolvesStatus: Boolean
         get() = statusListTokenResolver != null
 
+    /** The tokens validated last, most recent last, see [verified]. */
+    private val verifiedTokens = ArrayDeque<VerifiedToken>()
+    private val verifiedTokensMutex = Mutex()
+
     /**
      * Validates [status], the status claim of an artifact (`null` if it has none), under [policy], at [evaluatedAt]
      * with [timeLeeway]. Every mechanism is resolved, concurrently, and reported.
@@ -112,15 +118,18 @@ class StatusValidator @JvmOverloads constructor(
             onSuccess = { checks(it, reference, signerAnchors, timeLeeway, evaluatedAt) },
             onFailure = { notRetrieved(it) },
         )
-        val payload = retrieved.getOrNull()?.parsedPayload?.getOrNull()
+        val lookup = retrieved.getOrNull()?.let { verified(it).lookup }
         val token = ValidationReport.statusListToken(checks, signerTrust, evaluatedAt)
-        val resolved: KmmResult<TokenStatus> = payload?.takeIf { token.decision == ValidationDecision.ACCEPTED }
-            ?.let { extractTokenStatus(it.revocationList, reference, zlibService) }
+        val resolved: KmmResult<TokenStatus> = lookup?.takeIf { token.decision == ValidationDecision.ACCEPTED }
+            ?.status(reference)
             ?: KmmResult.failure(IllegalStateException("The status list token is not accepted"))
         return statusMechanismValidation(reference, token, resolved, policy)
     }
 
-    /** The checks of a retrieved [token]. */
+    /**
+     * The checks of a retrieved [token]: its media type and signature are taken from [verified], as they do not
+     * depend on the time or the anchors, which its signer, subject, and time are checked with on every call.
+     */
     private suspend fun checks(
         token: StatusListToken,
         reference: RevocationListInfo,
@@ -128,6 +137,29 @@ class StatusValidator @JvmOverloads constructor(
         timeLeeway: Duration,
         evaluatedAt: Instant,
     ): StatusListTokenChecks {
+        val verified = verified(token)
+        val signature = verified.signature
+        // The claims of the token are only authoritative once its signature verified
+        val claims = verified.payload?.takeIf { verified.parsing == Passed && signature.outcome == Passed }
+        return StatusListTokenChecks(
+            retrieval = Passed,
+            parsing = verified.parsing,
+            signature = signature.outcome,
+            signerTrust = if (signature.outcome == Passed) {
+                signerAnchors.authorize(signature.certificateChain, evaluatedAt)
+            } else TrustValidation(Blocked(), signerAnchors.credentialIdentifier),
+            subject = claims?.let { subject(it, reference) } ?: Blocked(),
+            timeliness = claims?.let { timeliness(it, token.resolvedAt, timeLeeway, evaluatedAt) } ?: Blocked(),
+        )
+    }
+
+    /**
+     * What validating [token] yields independently of the time and the anchors, kept for the last
+     * [MAX_VERIFIED_TOKENS] tokens by identity: e.g. when the stored credentials of a wallet are validated one after
+     * the other, their shared status list is parsed, its signature verified, and the list decompressed only once.
+     */
+    private suspend fun verified(token: StatusListToken): VerifiedToken {
+        verifiedTokensMutex.withLock { verifiedTokens.lastOrNull { it.token === token } }?.let { return it }
         val payload = token.parsedPayload.getOrNull()
         val parsing = catchingUnwrapped {
             requireNotNull(payload) { "The status list token payload can not be decoded" }
@@ -150,19 +182,28 @@ class StatusValidator @JvmOverloads constructor(
             is StatusListJwt -> signatureCheck.verify(token.value.jws)
             is StatusListCwt -> signatureCheck.verify(token.value)
         }
-        // The claims of the token are only authoritative once its signature verified
-        val claims = payload?.takeIf { parsing == Passed && signature.outcome == Passed }
-        return StatusListTokenChecks(
-            retrieval = Passed,
+        val verified = VerifiedToken(
+            token = token,
+            payload = payload,
             parsing = parsing,
-            signature = signature.outcome,
-            signerTrust = if (signature.outcome == Passed) {
-                signerAnchors.authorize(signature.certificateChain, evaluatedAt)
-            } else TrustValidation(Blocked(), signerAnchors.credentialIdentifier),
-            subject = claims?.let { subject(it, reference) } ?: Blocked(),
-            timeliness = claims?.let { timeliness(it, token.resolvedAt, timeLeeway, evaluatedAt) } ?: Blocked(),
+            signature = signature,
+            lookup = payload?.let { RevocationListLookup(it.revocationList, zlibService) },
         )
+        verifiedTokensMutex.withLock {
+            verifiedTokens.addLast(verified)
+            while (verifiedTokens.size > MAX_VERIFIED_TOKENS) verifiedTokens.removeFirst()
+        }
+        return verified
     }
+
+    private class VerifiedToken(
+        val token: StatusListToken,
+        val payload: StatusListTokenPayload?,
+        val parsing: CheckOutcome,
+        val signature: SignatureVerification,
+        /** The statuses of the token, only to be read once it is accepted. */
+        val lookup: RevocationListLookup?,
+    )
 
     private fun notRetrieved(cause: Throwable) = StatusListTokenChecks(
         retrieval = Blocked(cause),
@@ -240,3 +281,6 @@ class StatusValidator @JvmOverloads constructor(
         get() = (this as? StatusSignerAnchors.OfCredentialType)?.credentialIdentifier
 
 }
+
+/** How many tokens [StatusValidator] keeps what it verified of, e.g. the status lists of the credentials of a wallet. */
+private const val MAX_VERIFIED_TOKENS = 32

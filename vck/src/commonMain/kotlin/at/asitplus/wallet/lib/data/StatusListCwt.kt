@@ -23,8 +23,10 @@ data class StatusListCwt(
     /** Encodes the signed token for publication as the tagged COSE_Sign1 required by Token Status List Section 5.2. */
     fun encodeForPublication(): ByteArray = value.serialize(ByteArraySerializer()).wrapInCborTag(18)
 
-    override val parsedPayload: KmmResult<StatusListTokenPayload>
-        get() = catching { coseCompliantSerializer.decodeFromByteArray<StatusListTokenPayload>(value.payload!!) }
+    /** Decoded once, as validating a token reads it several times. */
+    override val parsedPayload: KmmResult<StatusListTokenPayload> by lazy {
+        catching { coseCompliantSerializer.decodeFromByteArray<StatusListTokenPayload>(value.payload!!) }
+    }
 
     /**
      * Validate the Status List Token:

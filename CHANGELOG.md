@@ -197,6 +197,11 @@ check the entries marked BREAKING when migrating.
     - BREAKING: Remove `additionalAnchors` of `LoTETrustAnchorProvider`, which was added to the anchors of every credential type and every list, and so merged trust sources across types. Trust further sources for a type with a `CredentialTrustScope` instead
 - Status lists:
     - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
+    - `StatusValidator` keeps what it verified of the last 32 status list tokens, by identity: their media type,
+      signature, and decompressed list, so that validating many credentials referencing one token parses it,
+      verifies its signature, and decompresses it once. Its signer, subject, and time are still checked on every
+      validation. `StatusListCwt.parsedPayload` is decoded once, and an identifier list is indexed once per token
+      instead of encoding every identifier for every lookup
 - DCQL:
     - Claim paths preserve numeric object keys as strings and reject invalid or overflowing indices
     - `DCQLClaimsPathPointer.query` processes claims path pointers as OpenID4VP 1.0, 7.1.1 specifies: if any selected element is not an object for a name component, or not an array for an index or `null` component, the result is empty, i.e. the claim does not match, instead of continuing with the other selected elements; other options of `claim_sets` that do not request the claim may still match
