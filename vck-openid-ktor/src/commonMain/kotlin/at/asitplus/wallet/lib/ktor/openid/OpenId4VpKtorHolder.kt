@@ -25,6 +25,7 @@ import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationRequestValidation
+import at.asitplus.wallet.lib.openid.AuthorizationRequestValidationPendingStatus
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.openid.DcApiHolder
 import at.asitplus.wallet.lib.openid.DcApiPreparationState
@@ -320,6 +321,20 @@ class OpenId4VpKtorHolder(
         policy: ValidationPolicy,
     ): KmmResult<AuthorizationRequestValidation> = catching {
         client.execute(protocolClient.prepareAuthorizationResponse(input, policy))
+    }
+
+    /**
+     * Parses [input], loads the request object, and validates the request under [policy] like
+     * [startAuthorizationResponsePreparation], but without waiting for the status of the registration certificates
+     * of its relying party, see [OpenId4VpHolder.startAuthorizationResponsePreparationDeferringStatus]: show the
+     * validation at once, and resolve the status with [AuthorizationRequestValidationPendingStatus.resolveStatus]
+     * before sending the response. The `wallet_nonce` is consumed, so validate a request once.
+     */
+    suspend fun startAuthorizationResponsePreparationDeferringStatus(
+        input: String,
+        policy: ValidationPolicy,
+    ): KmmResult<AuthorizationRequestValidationPendingStatus> = catching {
+        client.execute(protocolClient.prepareAuthorizationResponseDeferringStatus(input, policy))
     }
 
     /**

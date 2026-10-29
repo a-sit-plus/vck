@@ -266,8 +266,7 @@ internal suspend fun registrationStatus(
     statusValidator: StatusValidator,
     anchors: TrustedCertificates?,
 ): StatusValidation {
-    val withoutStatus = evaluation.checks(StatusValidation(NotApplicable, emptyList(), NotApplicable))
-    if (policy.status != StatusPolicy.Skip && !withoutStatus.meets(policy.copy(status = StatusPolicy.Skip))) {
+    if (policy.status != StatusPolicy.Skip && !evaluation.meetsWithoutStatus(policy)) {
         return StatusValidation(
             claim = Blocked(IllegalStateException("The status of an invalid WRPRC is not resolved")),
             agreement = NotApplicable,
@@ -281,6 +280,22 @@ internal suspend fun registrationStatus(
         evaluatedAt = now,
     )
 }
+
+/**
+ * Whether [registrationStatus] retrieves a status list for [evaluation], i.e. may wait for the network: only for a
+ * WRPRC that is valid otherwise, under a [policy] that checks the status, with a [statusValidator] that resolves it.
+ * Otherwise [registrationStatus] decides without retrieving anything.
+ */
+internal fun registrationStatusIsRetrieved(
+    evaluation: RegistrationCertificateEvaluation,
+    policy: ValidationPolicy,
+    statusValidator: StatusValidator,
+): Boolean = policy.status != StatusPolicy.Skip && statusValidator.resolvesStatus &&
+        evaluation.meetsWithoutStatus(policy)
+
+/** Whether [this] meets [policy] in every check but the status, which is resolved only then. */
+private fun RegistrationCertificateEvaluation.meetsWithoutStatus(policy: ValidationPolicy): Boolean =
+    checks(StatusValidation(NotApplicable, emptyList(), NotApplicable)).meets(policy.copy(status = StatusPolicy.Skip))
 
 private const val REGISTRATION_STATUS_SIGNERS = "WRPRC status list signers"
 

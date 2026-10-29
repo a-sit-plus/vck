@@ -57,7 +57,19 @@ class RelyingPartyValidator @JvmOverloads constructor(
     suspend fun validate(
         request: RequestParametersFrom<*>,
         policy: ValidationPolicy,
-    ): RelyingPartyValidationResult = when (request) {
+    ): RelyingPartyValidationResult = validate(extract(request), policy)
+
+    /**
+     * Validates the relying party of [request] under [policy] like [validate], but without waiting for the status of
+     * its WRPRCs, the only check that may retrieve something from the network: see
+     * [RelyingPartyValidationPendingStatus], whose [RelyingPartyValidationPendingStatus.resolveStatus] resolves it.
+     */
+    suspend fun validateDeferringStatus(
+        request: RequestParametersFrom<*>,
+        policy: ValidationPolicy,
+    ): RelyingPartyValidationPendingStatus = evaluate(extract(request), policy).deferringStatus()
+
+    private suspend fun extract(request: RequestParametersFrom<*>): ExtractedRequest = when (request) {
         is RequestParametersFrom.Jws<*> -> extractSigned(
             jws = request.jws as? JwsCompact,
             parameters = request.parameters as? AuthenticationRequestParameters,
@@ -72,7 +84,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
             unsupported("The session transcript is required for ISO mdoc reader authentication")
 
         else -> unsigned("The request is not signed by a wallet-relying party")
-    }.let { validate(it, policy) }
+    }
 
     /**
      * Validates the relying party of the ISO mdoc [request] under [policy], like the overload for its device
@@ -108,6 +120,17 @@ class RelyingPartyValidator @JvmOverloads constructor(
         sessionTranscript: SessionTranscript,
         policy: ValidationPolicy,
     ): RelyingPartyValidationResult = validate(extractMdoc(deviceRequest, sessionTranscript), policy)
+
+    /**
+     * Validates the relying party of the ISO mdoc [deviceRequest] like [validate], but without waiting for the status
+     * of its WRPRCs, see [validateDeferringStatus].
+     */
+    suspend fun validateDeferringStatus(
+        deviceRequest: DeviceRequest,
+        sessionTranscript: SessionTranscript,
+        policy: ValidationPolicy,
+    ): RelyingPartyValidationPendingStatus =
+        evaluate(extractMdoc(deviceRequest, sessionTranscript), policy).deferringStatus()
 
     /**
      * Whether trust in the client identifier of a request can be decided for any client identifier prefix, see
@@ -227,7 +250,13 @@ class RelyingPartyValidator @JvmOverloads constructor(
     private suspend fun validate(
         request: ExtractedRequest,
         policy: ValidationPolicy,
-    ): RelyingPartyValidationResult {
+    ): RelyingPartyValidationResult = evaluate(request, policy).withStatus()
+
+    /** Evaluates every check of [request] but the status of its WRPRCs, see [Evaluation]. */
+    private suspend fun evaluate(
+        request: ExtractedRequest,
+        policy: ValidationPolicy,
+    ): Evaluation {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
         val registration = request.registration.takeUnless {
             policy.registration == RegistrationPolicy.ValidateIfPresent &&
@@ -241,7 +270,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
             now = timeScope.now,
         )
         val registrations = request.registrationCertificates.map { (certificate, requests) ->
-            val evaluation = evaluateRegistrationCertificate(
+            certificate to evaluateRegistrationCertificate(
                 certificate = certificate,
                 accessIdentifier = access.evaluation.identifier,
                 purpose = RegistrationPurpose.Presentation(requests),
@@ -251,36 +280,78 @@ class RelyingPartyValidator @JvmOverloads constructor(
                 maxValidity = maxRegistrationValidity,
                 timeScope = timeScope,
             )
-            val status = registrationStatus(
-                evaluation = evaluation,
-                policy = policy,
-                now = timeScope.now,
-                statusValidator = statusValidator,
-                anchors = trust.registrationStatus,
-            )
-            val checks = evaluation.checks(status)
-            certificate to ValidationReport.registrationCertificate(checks, policy, timeScope.now)
         }
-        val report = ValidationReport.relyingParty(
-            checks = RelyingPartyChecks(requestData = request.requestData, registration = registration),
-            accessCertificate = access.report,
-            registrationCertificates = registrations.map { it.second },
-            evaluatedAt = timeScope.now,
+        return Evaluation(request, policy, timeScope, registration, access, registrations)
+    }
+
+    /**
+     * Every check of [request] under [policy] but the status of its [registrations], which is the only one that may
+     * retrieve something, so that it can be resolved later, see [deferringStatus].
+     */
+    private inner class Evaluation(
+        val request: ExtractedRequest,
+        val policy: ValidationPolicy,
+        val timeScope: TimeScope,
+        val registration: CheckOutcome,
+        val access: AccessCertificateCandidate,
+        val registrations: List<Pair<WrpRegistrationCertificate, RegistrationCertificateEvaluation>>,
+    ) {
+        /** Resolves the status of every WRPRC, see [registrationStatus]. */
+        suspend fun withStatus(): RelyingPartyValidationResult = result(
+            registrations.map { (_, evaluation) -> status(evaluation) to policy }
         )
-        val untrustedRegistrations = registrations
-            .filter { (it.second.checks as RegistrationCertificateChecks).parsing == Passed }
-            .map { it.first.payload }
-        val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
-            val identifier = access.evaluation.identifier
-            ValidatedRelyingParty(
-                accessCertificateChain = requireNotNull(access.chain),
-                identifier = identifier,
-                registrationCertificates = untrustedRegistrations,
-                intermediated = identifier != null &&
-                        untrustedRegistrations.any { it.isPresentedByIntermediary(identifier) },
+
+        /**
+         * The result without waiting for any status list: the status of a WRPRC that [registrationStatus] would
+         * retrieve one for is not resolved yet, recorded as [Blocked] by a [StatusPendingException], and its report is
+         * decided as under [StatusPolicy.Skip], so that its status does not decide the result before it is resolved.
+         */
+        suspend fun deferringStatus(): RelyingPartyValidationPendingStatus {
+            val retrieved = registrations.map { (_, evaluation) ->
+                registrationStatusIsRetrieved(evaluation, policy, statusValidator)
+            }
+            if (retrieved.none { it }) return RelyingPartyValidationPendingStatus(withStatus())
+            val pending = registrations.mapIndexed { index, (_, evaluation) ->
+                if (retrieved[index]) PENDING_STATUS to policy.copy(status = StatusPolicy.Skip)
+                else status(evaluation) to policy
+            }
+            return RelyingPartyValidationPendingStatus(result(pending)) { withStatus() }
+        }
+
+        private suspend fun status(evaluation: RegistrationCertificateEvaluation) = registrationStatus(
+            evaluation = evaluation,
+            policy = policy,
+            now = timeScope.now,
+            statusValidator = statusValidator,
+            anchors = trust.registrationStatus,
+        )
+
+        /** The result with the status of each WRPRC, and the policy its report is decided under. */
+        private fun result(statuses: List<Pair<StatusValidation, ValidationPolicy>>): RelyingPartyValidationResult {
+            val registrationReports = registrations.zip(statuses) { (certificate, evaluation), (status, policy) ->
+                certificate to ValidationReport.registrationCertificate(evaluation.checks(status), policy, timeScope.now)
+            }
+            val report = ValidationReport.relyingParty(
+                checks = RelyingPartyChecks(requestData = request.requestData, registration = registration),
+                accessCertificate = access.report,
+                registrationCertificates = registrationReports.map { it.second },
+                evaluatedAt = timeScope.now,
             )
-        } else null
-        return RelyingPartyValidationResult(report, relyingParty, untrustedRegistrations)
+            val untrustedRegistrations = registrationReports
+                .filter { (it.second.checks as RegistrationCertificateChecks).parsing == Passed }
+                .map { it.first.payload }
+            val relyingParty = if (report.decision == ValidationDecision.ACCEPTED) {
+                val identifier = access.evaluation.identifier
+                ValidatedRelyingParty(
+                    accessCertificateChain = requireNotNull(access.chain),
+                    identifier = identifier,
+                    registrationCertificates = untrustedRegistrations,
+                    intermediated = identifier != null &&
+                            untrustedRegistrations.any { it.isPresentedByIntermediary(identifier) },
+                )
+            } else null
+            return RelyingPartyValidationResult(report, relyingParty, untrustedRegistrations)
+        }
     }
 
     /**
@@ -485,6 +556,35 @@ data class RelyingPartyValidationResult(
         }
     }
 }
+
+/**
+ * The validation of a relying party whose WRPRC status may not be resolved yet, see
+ * [RelyingPartyValidator.validateDeferringStatus]: show [withoutStatus] at once, and replace it with the result of
+ * [resolveStatus] once that returns.
+ */
+class RelyingPartyValidationPendingStatus internal constructor(
+    /**
+     * Every check but the status of a WRPRC whose status list is not retrieved yet: that status is [Blocked] by a
+     * [StatusPendingException], and does not decide the result yet, which an unaccepted status may still change.
+     * The complete result if not [isPending].
+     */
+    val withoutStatus: RelyingPartyValidationResult,
+    private val resolve: (suspend () -> RelyingPartyValidationResult)? = null,
+) {
+    /** Whether the status of a WRPRC remains to be resolved with [resolveStatus]. */
+    val isPending: Boolean
+        get() = resolve != null
+
+    /**
+     * Retrieves the status lists of the WRPRCs and returns the complete result, as
+     * [RelyingPartyValidator.validate] would have at the time of the validation, or [withoutStatus] if not
+     * [isPending]. Retrieves them again on each call.
+     */
+    suspend fun resolveStatus(): RelyingPartyValidationResult = resolve?.invoke() ?: withoutStatus
+}
+
+/** The status of a WRPRC whose status list is not retrieved yet. */
+private val PENDING_STATUS = StatusValidation(claim = Blocked(StatusPendingException()), agreement = NotApplicable)
 
 /** A wallet-relying party that passed every required check. */
 data class ValidatedRelyingParty(

@@ -109,17 +109,45 @@ internal class AuthorizationRequestValidator(
         policy: ValidationPolicy,
     ): RequestValidation = validate(request, policy, validateRelyingParty = true)
 
+    /**
+     * Validates [request] like [validate], but without waiting for the status of the registration certificates of
+     * its relying party, see [RelyingPartyValidator.validateDeferringStatus]. Consumes its `wallet_nonce` once, also
+     * when the status is resolved later.
+     */
+    suspend fun validateDeferringStatus(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        policy: ValidationPolicy,
+    ): RequestValidationPendingStatus = validate(request, policy, validateRelyingParty = true, deferStatus = true)
+
     /** The [report] of a request, and the result of validating its [relyingParty], whose report is a child of it. */
     class RequestValidation(
         val report: ValidationReport,
         val relyingParty: RelyingPartyValidationResult?,
     )
 
+    /** A [validation] whose relying party status is resolved by [resolveStatus], see [validateDeferringStatus]. */
+    class RequestValidationPendingStatus(
+        val validation: RequestValidation,
+        private val resolve: (suspend () -> RequestValidation)?,
+    ) {
+        val isPending: Boolean
+            get() = resolve != null
+
+        suspend fun resolveStatus(): RequestValidation = resolve?.invoke() ?: validation
+    }
+
     private suspend fun validate(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         policy: ValidationPolicy,
         validateRelyingParty: Boolean,
-    ): RequestValidation {
+    ): RequestValidation = validate(request, policy, validateRelyingParty, deferStatus = false).validation
+
+    private suspend fun validate(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        policy: ValidationPolicy,
+        validateRelyingParty: Boolean,
+        deferStatus: Boolean,
+    ): RequestValidationPendingStatus {
         val timeScope = TimeScope(clock.now(), policy.timeLeeway)
         val prefix = catchingUnwrapped { request.evaluatePrefix(policy, timeScope) }.getOrElse {
             PrefixEvaluation(signature = Failed(it), trust = TrustValidation(Blocked()), clientId = Blocked())
@@ -133,17 +161,26 @@ internal class AuthorizationRequestValidator(
             walletNonce = request.walletNonce(),
             expectedOrigin = request.expectedOrigin(),
         )
-        val relyingParty = if (validateRelyingParty && request.carriesRegistrationCertificate())
-            relyingPartyValidator.validate(request, policy)
+        val validatesRelyingParty = validateRelyingParty && request.carriesRegistrationCertificate()
+        val pending = if (validatesRelyingParty && deferStatus)
+            relyingPartyValidator.validateDeferringStatus(request, policy)
         else null
-        val report = ValidationReport.requestObject(
-            checks = checks,
-            policy = policy,
-            verifierAttestation = prefix.verifierAttestation,
-            relyingParty = relyingParty?.report,
-            evaluatedAt = timeScope.now,
+        val relyingParty = pending?.withoutStatus
+            ?: if (validatesRelyingParty) relyingPartyValidator.validate(request, policy) else null
+        fun validation(relyingParty: RelyingPartyValidationResult?) = RequestValidation(
+            report = ValidationReport.requestObject(
+                checks = checks,
+                policy = policy,
+                verifierAttestation = prefix.verifierAttestation,
+                relyingParty = relyingParty?.report,
+                evaluatedAt = timeScope.now,
+            ),
+            relyingParty = relyingParty,
         )
-        return RequestValidation(report, relyingParty)
+        return RequestValidationPendingStatus(
+            validation = validation(relyingParty),
+            resolve = pending?.takeIf { it.isPending }?.let { { validation(it.resolveStatus()) } },
+        )
     }
 
     /**

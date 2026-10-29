@@ -62,3 +62,30 @@ data class AuthorizationRequestValidation(
         }
     }
 }
+
+/**
+ * The [validation] of an authorization request whose relying party may have a registration certificate (WRPRC) whose
+ * status is not resolved yet, see [OpenId4VpHolder.startAuthorizationResponsePreparationDeferringStatus]: show
+ * [validation] at once, and replace it with the result of [resolveStatus] once that returns. Its
+ * [AuthorizationRequestValidation.preparationState] does not depend on the status.
+ */
+class AuthorizationRequestValidationPendingStatus internal constructor(
+    /**
+     * The validation with the status of each such WRPRC not resolved yet: recorded as blocked by a
+     * [at.asitplus.wallet.lib.validation.StatusPendingException], it does not decide the report until resolved. The
+     * complete validation if not [isPending].
+     */
+    val validation: AuthorizationRequestValidation,
+    private val resolve: (suspend () -> AuthorizationRequestValidation)?,
+) {
+    /** Whether the status of a WRPRC remains to be resolved with [resolveStatus]. */
+    val isPending: Boolean
+        get() = resolve != null
+
+    /**
+     * Retrieves the status lists of the WRPRCs, and returns the complete validation, with the same
+     * [AuthorizationRequestValidation.preparationState], or [validation] if not [isPending]. The request is not
+     * validated again, so its `wallet_nonce` is not consumed again. Retrieves the status lists again on each call.
+     */
+    suspend fun resolveStatus(): AuthorizationRequestValidation = resolve?.invoke() ?: validation
+}

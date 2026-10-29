@@ -381,6 +381,30 @@ class OpenId4VpHolder @JvmOverloads constructor(
         )
     }
 
+    /**
+     * Validates and prepares [params] like [startAuthorizationResponsePreparation] with a policy, but without waiting
+     * for the status of the registration certificates (WRPRCs) of its relying party, the only check that may retrieve
+     * something from the network: show [AuthorizationRequestValidationPendingStatus.validation] at once, and resolve
+     * the status with [AuthorizationRequestValidationPendingStatus.resolveStatus] while the user decides, before
+     * sending the response.
+     */
+    suspend fun startAuthorizationResponsePreparationDeferringStatus(
+        params: RequestParametersFrom<AuthenticationRequestParameters>,
+        policy: ValidationPolicy,
+    ): KmmResult<AuthorizationRequestValidationPendingStatus> = catching {
+        val pending = authorizationRequestValidator.validateDeferringStatus(params, policy)
+        val preparationState = prepare(params)
+        fun validation(validation: AuthorizationRequestValidator.RequestValidation) = AuthorizationRequestValidation(
+            validationReport = validation.report,
+            preparationState = preparationState,
+            relyingParty = validation.relyingParty,
+        )
+        AuthorizationRequestValidationPendingStatus(
+            validation = validation(pending.validation),
+            resolve = if (pending.isPending) ({ validation(pending.resolveStatus()) }) else null,
+        )
+    }
+
     private suspend fun prepare(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): AuthorizationResponsePreparationState {

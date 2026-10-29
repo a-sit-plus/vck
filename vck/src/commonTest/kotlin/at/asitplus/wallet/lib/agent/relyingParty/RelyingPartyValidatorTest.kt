@@ -63,6 +63,7 @@ import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import at.asitplus.wallet.lib.validation.StatusPolicy
 import at.asitplus.wallet.lib.validation.StatusValidator
 import at.asitplus.wallet.lib.validation.TimelinessException
+import at.asitplus.wallet.lib.validation.StatusPendingException
 import at.asitplus.wallet.lib.validation.TokenStatusException
 import at.asitplus.wallet.lib.validation.TrustPolicy
 import at.asitplus.wallet.lib.validation.UnregisteredRequestException
@@ -77,6 +78,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -278,6 +280,74 @@ val RelyingPartyValidatorTest by matrixSuite {
         result.untrustedRegistrations shouldBe listOf(payload)
         result.registrationChecks().status.mechanisms.shouldBeSingleton().first().outcome
             .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<TokenStatusException>()
+    }
+
+    "a revoked WRPRC is accepted while its status is pending, without retrieving it, and rejected once resolved" {
+        val fixture = buildWrpFixture()
+        var retrievals = 0
+        val validator = fixture.validator(
+            statusValidator = StatusValidator(StatusListTokenResolver {
+                retrievals++
+                buildStatusListToken(it, revokedIndex = 1)
+            })
+        )
+        val payload = buildWrpPayload(fixture.wrpIdentifier, statusListIdx = 1)
+
+        val pending = validator.validateDeferringStatus(fixture.request(payload), policy)
+
+        retrievals shouldBe 0
+        pending.isPending shouldBe true
+        pending.withoutStatus.apply {
+            report.decision shouldBe ACCEPTED
+            relyingParty.shouldNotBeNull()
+            registrationChecks().status.claim.shouldBeInstanceOf<CheckOutcome.Blocked>()
+                .cause.shouldBeInstanceOf<StatusPendingException>()
+        }
+        pending.resolveStatus().apply {
+            report.decision shouldBe REJECTED
+            relyingParty.shouldBeNull()
+            untrustedRegistrations shouldBe listOf(payload)
+            registrationChecks().status.mechanisms.shouldBeSingleton().first().outcome
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<TokenStatusException>()
+        }
+        retrievals shouldBe 1
+    }
+
+    "a valid WRPRC is accepted with its status once resolved" {
+        val fixture = buildWrpFixture()
+        val request = fixture.request(buildWrpPayload(fixture.wrpIdentifier))
+
+        val resolved = fixture.validator().validateDeferringStatus(request, policy).resolveStatus()
+
+        resolved.report.decision shouldBe ACCEPTED
+        resolved.registrationChecks().status.apply {
+            claim shouldBe CheckOutcome.Passed
+            mechanisms.shouldBeSingleton().first().outcome shouldBe CheckOutcome.Passed
+        }
+    }
+
+    "the status of an invalid WRPRC is not pending, as it is not resolved" {
+        val fixture = buildWrpFixture()
+
+        val pending = fixture.validator()
+            .validateDeferringStatus(fixture.request(buildWrpPayload("another relying party")), policy)
+
+        pending.isPending shouldBe false
+        pending.withoutStatus.report.decision shouldBe REJECTED
+        pending.withoutStatus.registrationChecks().status.claim.shouldBeInstanceOf<CheckOutcome.Blocked>()
+            .cause.shouldNotBeNull().shouldNotBeInstanceOf<StatusPendingException>()
+        pending.resolveStatus() shouldBe pending.withoutStatus
+    }
+
+    "without a status list token resolver, no status is pending" {
+        val fixture = buildWrpFixture()
+
+        val pending = fixture.validator(statusValidator = StatusValidator())
+            .validateDeferringStatus(fixture.request(buildWrpPayload(fixture.wrpIdentifier)), policy)
+
+        // nothing can be retrieved, so the status is decided at once: not accepted without a status list
+        pending.isPending shouldBe false
+        pending.withoutStatus.report.decision shouldBe REJECTED
     }
 
     "unregistered claims are rejected, naming the request" {
@@ -603,9 +673,12 @@ private val optionalRegistration = policy.copy(registration = RegistrationPolicy
 private fun WrpFixture.statusValidator() =
     StatusValidator(StatusListTokenResolver { buildStatusListToken(it, revokedIndex = 1) })
 
-private fun WrpFixture.validator(clock: Clock = Clock.System) = RelyingPartyValidator(
+private fun WrpFixture.validator(
+    clock: Clock = Clock.System,
+    statusValidator: StatusValidator = statusValidator(),
+) = RelyingPartyValidator(
     trust = RelyingPartyTrustAnchors(accessCertificates = trustAnchors, registrationCertificates = trustAnchors),
-    statusValidator = statusValidator(),
+    statusValidator = statusValidator,
     clock = clock,
 )
 
