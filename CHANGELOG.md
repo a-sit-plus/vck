@@ -510,6 +510,9 @@ check the entries marked BREAKING when migrating.
     - Fix: Error responses over the Digital Credentials API follow OpenID4VP 1.0, A.4: `data` is an object with the
       single property `error`, never encrypted, also for `dc_api.jwt`; before, the whole error including `state` and
       description was passed in `response`, encrypted for `dc_api.jwt`, which verifiers could not process
+    - `OpenId4VpKtorHolder` logs the `client_id`, response mode, and `response_uri` or `redirect_uri` of a request
+      instead of the whole request, including its request object and `client_metadata`, and the URL of a posted
+      response instead of the response
 - OpenID for Verifiable Presentations verifier:
     - Add `error`, `errorDescription` and `errorUri` to `AuthenticationResponseParameters`, so that authorization error
       responses keep their parameters when decoded from a form post (OpenID4VP 1.0, 8.2), the payload of an encrypted
