@@ -126,6 +126,6 @@ val BasicConstraintsTest by matrixSuite {
                 allowDirectTrust = false,
             )
         }.exceptionOrNull().shouldNotBeNull()
-            .message.shouldNotBeNull() shouldContain "must not be transported"
+            .message.shouldNotBeNull() shouldContain "trust anchor must only be transported"
     }
 }

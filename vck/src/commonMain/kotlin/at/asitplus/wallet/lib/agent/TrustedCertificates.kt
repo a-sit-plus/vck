@@ -52,7 +52,8 @@ fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCo
  * The signing certificate, and its issuer when applicable, must be valid at [at], see [isTrustedBy].
  *
  * The certificate of the trust anchor must be known out-of-band, so no certificate from [trustedIssuers] may
- * appear in this chain, and the signing certificate must not be self-signed. The anchor must also assert
+ * appear in this chain, except as its last certificate, which is then ignored, and the signing certificate must not
+ * be self-signed. The anchor must also assert
  * `BasicConstraints` with `cA` set, see [isTrustedBy] and
  * [at.asitplus.wallet.lib.etsi.isCertificateAuthority].
  *
@@ -72,9 +73,9 @@ suspend fun CertificateChain?.requireTrustedSigningCertificate(
     /** Whether a chain of exactly one certificate contained in [trustedIssuers] counts as directly trusted. */
     allowDirectTrust: Boolean = true,
 ): X509Certificate {
-    val chain = this?.takeIf { it.isNotEmpty() }
+    val transported = this?.takeIf { it.isNotEmpty() }
         ?: throw IllegalArgumentException("No certificate transported with the signed object")
-    val signingCertificate = chain.leaf
+    val signingCertificate = transported.leaf
     val trusted = trustedIssuers()
     require(trusted.isNotEmpty()) { "No trusted issuer certificates" }
     require(signingCertificate.isValidAt(at)) { "Signing certificate is not valid at $at" }
@@ -84,10 +85,13 @@ suspend fun CertificateChain?.requireTrustedSigningCertificate(
     fun isListed(certificate: X509Certificate) = trusted.any {
         it.encodeToDer().contentEquals(certificate.encodeToDer())
     }
+    // A transported anchor confers no trust, as it is compared to the listed ones anyway, so tolerate it at the end
+    // of the chain, where signers transporting it put it
+    val chain = if (transported.size > 1 && isListed(transported.last())) transported.dropLast(1) else transported
     val isDirectlyTrusted = allowDirectTrust && chain.size == 1 && isListed(signingCertificate)
     if (!isDirectlyTrusted) {
         require(chain.none(::isListed)) {
-            "The certificate of the trust anchor must not be transported with the signed object"
+            "The certificate of the trust anchor must only be transported as the last one of the chain"
         }
         val isSelfSigned = signingCertificate.isIssuerOf(signingCertificate).isSuccess
         require(!isSelfSigned) { "The signing certificate must not be self-signed" }

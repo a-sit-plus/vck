@@ -45,7 +45,8 @@ class KeyAttestationValidator @JvmOverloads constructor(
      *  - `signature`: with the signing certificate in `x5c` (EUDI TS3, 2.2.2.2);
      *  - `trust`: the signing certificate is one of [walletProviderAnchors] (ETSI TS 119 472-3 V1.1.1,
      *    CRED-REQ-PROC-4.6.2.1-01), or it is not self-signed and leads to one of them through intermediate
-     *    certificates in `x5c`, which does not contain the anchor (EUDI TS3, 2.2.2.2; OpenID4VC HAIP 1.0, 4.5.1);
+     *    certificates in `x5c`, which contains the anchor only as its last certificate, if at all (EUDI TS3,
+     *    2.2.2.2; OpenID4VC HAIP 1.0, 4.5.1);
      *  - `timeliness`: `iat` is not in the future, `exp` and `key_storage_status.exp` are not in the past, the latter
      *    being how long the wallet provider maintains the status (EUDI TS3, 2.4.1);
      *  - `status`: `key_storage_status.status`, resolved only if the key attestation is valid otherwise

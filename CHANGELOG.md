@@ -107,9 +107,10 @@ check the entries marked BREAKING when migrating.
         - Credential issuers, status list tokens, key attestations, and client attestations are trusted through an
           anchor that issued their signing certificate, possibly through intermediate certificates transported with
           it, or one that is the signing certificate, as a LoTE may list it (ETSI TS 119 602 V1.1.1, 6.6.3, H.3; ETSI
-          TS 119 472-3 V1.1.1, AUTH-REQ-PROC-4.4.3-01). Otherwise, a transported anchor or a self-signed signer fails
-          (OpenID4VC HAIP 1.0, 4.5.1, 6.1, 6.1.1), and so does a transported certificate that did not issue the one
-          before it
+          TS 119 472-3 V1.1.1, AUTH-REQ-PROC-4.4.3-01). An anchor transported as the last certificate of the chain is
+          ignored, as is the case for `requireTrustedSigningCertificate`. Otherwise, a transported anchor or a
+          self-signed signer fails (OpenID4VC HAIP 1.0, 4.5.1, 6.1, 6.1.1), and so does a transported certificate that
+          did not issue the one before it
         - WRPRC errors are reported instead of being turned into `false`, and one clock is used for certificate
           chains; a WRPRC no longer needs `alg` ES256 or to lack `kid`, which ETSI TS 119 475 does not require
         - A signed authorization request whose signature can not be verified, as no key is established for its

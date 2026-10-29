@@ -31,7 +31,8 @@ internal enum class TrustRule {
      * CRED-REQ-PROC-4.6.2.2-01). This relaxes OpenID4VC HAIP 1.0, which forbids a transported anchor and a
      * self-signed signer for SD-JWT VCs (6.1.1), status list tokens (6.1), and key attestations (4.5.1): a directly
      * listed certificate may be self-signed. Intermediate certificates may be transported with the signing
-     * certificate, "except the trust anchor" (ETSI TS 119 472-1 V1.2.1, EAA-4.6.1-06; EUDI TS3, 2.2.1.2, 2.2.2.2).
+     * certificate, "except the trust anchor" (ETSI TS 119 472-1 V1.2.1, EAA-4.6.1-06; EUDI TS3, 2.2.1.2, 2.2.2.2), but
+     * an anchor transported nonetheless at the end of the chain is tolerated, as signers in the wild do so.
      */
     ISSUED_BY_ANCHOR_OR_LISTED,
 
@@ -72,8 +73,9 @@ internal suspend fun checkTrust(
 /**
  * Requires [chain] to consist of only one of [anchors], valid at [at], or to lead to one of them, see
  * [requireChainToAnchor]: every certificate certifies the previous one (RFC 7515, 4.1.6) and is valid at [at], and the
- * last one is issued by one of [anchors]. Then no anchor may be transported, as its certificate must be known
- * out-of-band, and the signing certificate must not be self-signed (OpenID4VC HAIP 1.0, 4.5.1, 6.1, 6.1.1).
+ * last one is issued by one of [anchors]. Then the signing certificate must not be self-signed (OpenID4VC HAIP 1.0,
+ * 4.5.1, 6.1, 6.1.1), and no anchor may be transported, as its certificate must be known out-of-band, except as the
+ * last certificate of [chain], which is then ignored.
  */
 private fun requireListedOrIssuedByAnchor(chain: CertificateChain, anchors: Set<X509Certificate>, at: Instant) {
     // Compare the full certificate, not just its key: a listed signer does not confer trust on other certificates
@@ -82,16 +84,19 @@ private fun requireListedOrIssuedByAnchor(chain: CertificateChain, anchors: Set<
         it.encodeToDer().contentEquals(certificate.encodeToDer())
     }
 
-    val signer = chain.leaf
-    if (chain.size == 1 && isListed(signer)) {
+    // A transported anchor confers no trust, as it is compared to the configured ones anyway, so tolerate it at the
+    // end of the chain, where signers transporting it put it
+    val path = if (chain.size > 1 && isListed(chain.last())) chain.dropLast(1) else chain
+    val signer = path.leaf
+    if (path.size == 1 && isListed(signer)) {
         require(signer.isValidAt(at)) { "Signing certificate is not valid at $at" }
         return
     }
-    require(chain.none(::isListed)) {
-        "The certificate of the trust anchor must not be transported with the signed object"
+    require(path.none(::isListed)) {
+        "The certificate of the trust anchor must only be transported as the last one of the chain"
     }
     require(signer.isIssuerOf(signer).isFailure) { "The signing certificate must not be self-signed" }
-    requireChainToAnchor(chain, anchors, at)
+    requireChainToAnchor(path, anchors, at)
 }
 
 /**

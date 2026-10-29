@@ -218,13 +218,33 @@ val CredentialTrustTest by matrixSuite {
                 .shouldBeInstanceOf<Failed>()
         }
 
-        "an anchor transported with the signer fails, unless the chain is checked to the anchor" {
+        listOf(TrustRule.ISSUED_BY_ANCHOR_OR_LISTED, TrustRule.CHAIN_TO_ANCHOR)
+            .asData(nameFn = { "$it passes for an anchor transported as the last certificate" }) test { rule ->
             val ca = TestCertificateAuthority()
             val chain = ca.signerChain() + ca.certificate
 
+            checkTrust(chain, setOf(ca.certificate), now(), rule) shouldBe Passed
+        }
+
+        "an anchor transported before another certificate fails" {
+            val ca = TestCertificateAuthority()
+            val unrelated = TestCertificateAuthority().certificate
+            val chain = ca.signerChain() + ca.certificate + unrelated
+
             checkTrust(chain, setOf(ca.certificate), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
                 .shouldBeInstanceOf<Failed>()
-            checkTrust(chain, setOf(ca.certificate), now(), TrustRule.CHAIN_TO_ANCHOR) shouldBe Passed
+                .throwable.message.shouldNotBeNull() shouldContain "last one of the chain"
+        }
+
+        "a signer issued through an intermediate certificate passes, also with the anchor transported" {
+            val root = TestCertificateAuthority()
+            val intermediate = root.issue(subjectName = "Intermediate CA", certificateAuthority = true)
+            val signer = EphemeralKeyWithoutCert().let {
+                TestCertificateAuthority.certificateFor(it.publicKey, "Signer", "Intermediate CA", intermediate)
+            }
+            val chain = listOf(signer, intermediate.getCertificate().shouldNotBeNull(), root.certificate)
+
+            checkTrust(chain, setOf(root.certificate), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED) shouldBe Passed
         }
 
         "a listed signer passes, also when self-signed, and fails after its validity" {
