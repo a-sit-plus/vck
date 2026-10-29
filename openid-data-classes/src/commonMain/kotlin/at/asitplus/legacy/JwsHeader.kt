@@ -358,15 +358,3 @@ data class JwsHeader(
         const val CLIENT_ID = "client_id"
     }
 }
-
-internal fun JsonObject?.strictUnion(other: JsonObject?): JsonObject {
-    if (this == null) return other ?: JsonObject(emptyMap())
-    if (other == null) return this
-
-    val duplicates = this.keys intersect other.keys
-    require(duplicates.isEmpty()) {
-        "Duplicate keys: ${duplicates.joinToString()}"
-    }
-
-    return JsonObject(this + other)
-}

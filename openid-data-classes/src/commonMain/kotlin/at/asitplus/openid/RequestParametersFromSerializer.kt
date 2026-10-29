@@ -13,6 +13,7 @@ import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JwsGeneral
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.legacy.JwsHeader
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer
@@ -101,7 +102,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
     fun toRequestParametersFrom(): RequestParametersFrom<T> = when {
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Multisigned ->
             RequestParametersFrom.OpenId4VpDcApiMultiSigned(
-                jwsTyped = requireJwsGeneral().typedWithPayload(requireAuthenticationRequestParameters()) as JwsGeneral<JwsHeader, AuthenticationRequestParameters>,
+                jwsTyped = requireJwsGeneral().typed<JwsHeader, AuthenticationRequestParameters>(),
                 credentialIds = requireCredentialIds(),
                 callingPackageName = requireCallingPackageName(),
                 callingOrigin = requireCallingOrigin(),
@@ -109,7 +110,7 @@ private data class RequestParametersFromSurrogate<T : RequestParameters>(
 
         protocol == ExchangeProtocolIdentifier.OpenId4VpV1Signed ->
             RequestParametersFrom.OpenId4VpDcApiSigned(
-                jwsTyped = requireJwsCompact().typedWithPayload(requireAuthenticationRequestParameters()) as JwsCompact<JwsHeader, AuthenticationRequestParameters>,
+                jwsTyped = requireJwsCompact().typed<JwsHeader, AuthenticationRequestParameters>(),
                 credentialIds = requireCredentialIds(),
                 callingPackageName = requireCallingPackageName(),
                 callingOrigin = requireCallingOrigin(),

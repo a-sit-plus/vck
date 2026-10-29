@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.josef.JwsRaw
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompactRawStringSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.legacy.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsTyped
@@ -74,7 +75,13 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @SerialName(SerialNames.DECRYPTED_FROM)
         override val decryptedFrom: JweHeader? = null,
     ) : RequestParametersSigned<T>() {
-        override val jwsTyped get() = jws.typedWithPayload(parameters)
+        @Suppress("UNCHECKED_CAST")
+        override val jwsTyped: JwsTyped<*, JwsHeader, T>
+            get() = when (jws) {
+                is JwsCompact.Raw -> jws.typed<JwsHeader, RequestParameters>()
+                is JwsFlattened.Raw -> jws.typed<JwsHeader, RequestParameters>()
+                is JwsGeneral.Raw -> jws.typed<JwsHeader, RequestParameters>()
+            } as JwsTyped<*, JwsHeader, T>
     }
 
     @Serializable
