@@ -430,6 +430,32 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
+    "the WRPRC status of a device request is pending without retrieving it, and resolved later" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        var retrievals = 0
+        val validator = fixture.validator(
+            statusValidator = StatusValidator(StatusListTokenResolver {
+                retrievals++
+                buildStatusListToken(it, revokedIndex = 1)
+            })
+        )
+        val request = fixture.proximityRequest(transcript)
+
+        val pending = validator.validateDeferringStatus(request, transcript, policy)
+
+        retrievals shouldBe 0
+        pending.isPending shouldBe true
+        pending.withoutStatus.report.decision shouldBe ACCEPTED
+        pending.withoutStatus.registrationChecks().status.claim.shouldBeInstanceOf<CheckOutcome.Blocked>()
+            .cause.shouldBeInstanceOf<StatusPendingException>()
+        pending.resolveStatus().apply {
+            report.decision shouldBe ACCEPTED
+            registrationChecks().status.mechanisms.shouldBeSingleton().first().outcome shouldBe CheckOutcome.Passed
+        }
+        retrievals shouldBe 1
+    }
+
     "a device request of a proximity presentation with a WRPRC is accepted, authenticated over its transcript" {
         val fixture = buildWrpFixture()
         val transcript = nfcTranscript()

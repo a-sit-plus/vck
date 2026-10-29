@@ -98,6 +98,17 @@ class RelyingPartyValidator @JvmOverloads constructor(
         validate(request.parameters.isoMdocRequest.deviceRequest, sessionTranscript, policy)
 
     /**
+     * Validates the relying party of the ISO mdoc [request] like [validate], but without waiting for the status of
+     * its WRPRCs, see [validateDeferringStatus].
+     */
+    suspend fun validateDeferringStatus(
+        request: RequestParametersFrom.IsoMdocDcApi,
+        sessionTranscript: SessionTranscript,
+        policy: ValidationPolicy,
+    ): RelyingPartyValidationPendingStatus =
+        validateDeferringStatus(request.parameters.isoMdocRequest.deviceRequest, sessionTranscript, policy)
+
+    /**
      * Validates the relying party of the ISO mdoc [deviceRequest] under [policy], e.g. of a proximity presentation
      * over BLE or NFC: every document request is authenticated by one WRPAC over [sessionTranscript] (ISO/IEC
      * 18013-5:2021, 9.1.4), see [ReaderAuthenticationVerifier.authenticate], and carries the WRPRC for it in

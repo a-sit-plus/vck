@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator
+import at.asitplus.wallet.lib.validation.RelyingPartyValidationPendingStatus
 import at.asitplus.wallet.lib.validation.RelyingPartyValidationResult
 import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import at.asitplus.wallet.lib.validation.ValidationPolicy
@@ -24,3 +25,13 @@ suspend fun RequestParametersFrom.IsoMdocDcApi.validateRelyingParty(
     policy: ValidationPolicy,
 ): RelyingPartyValidationResult =
     validator.validate(this, IsoMdocDcapiResponseBuilder.sessionTranscriptFor(this), policy)
+
+/**
+ * Validates the relying party of this request like [validateRelyingParty], but without waiting for the status of its
+ * WRPRCs, see [RelyingPartyValidator.validateDeferringStatus].
+ */
+suspend fun RequestParametersFrom.IsoMdocDcApi.validateRelyingPartyDeferringStatus(
+    validator: RelyingPartyValidator,
+    policy: ValidationPolicy,
+): RelyingPartyValidationPendingStatus =
+    validator.validateDeferringStatus(this, IsoMdocDcapiResponseBuilder.sessionTranscriptFor(this), policy)

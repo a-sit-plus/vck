@@ -30,6 +30,7 @@ import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.openid.DcApiHolder
 import at.asitplus.wallet.lib.openid.DcApiPreparationState
 import at.asitplus.wallet.lib.openid.DcApiRequestValidation
+import at.asitplus.wallet.lib.openid.DcApiRequestValidationPendingStatus
 import at.asitplus.wallet.lib.openid.Iso180137AnnexCHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient
@@ -347,6 +348,17 @@ class OpenId4VpKtorHolder(
         policy: ValidationPolicy,
     ): KmmResult<DcApiRequestValidation> =
         dcApiHolder.startAuthorizationResponsePreparation(request, policy)
+
+    /**
+     * Prepares a request received through the Digital Credentials API like [prepareDcApiRequest], but without waiting
+     * for the status of the registration certificates of its relying party, see
+     * [DcApiHolder.startAuthorizationResponsePreparationDeferringStatus].
+     */
+    suspend fun prepareDcApiRequestDeferringStatus(
+        request: RequestParametersFrom.DcApiRequest,
+        policy: ValidationPolicy,
+    ): KmmResult<DcApiRequestValidationPendingStatus> =
+        dcApiHolder.startAuthorizationResponsePreparationDeferringStatus(request, policy)
 
     /**
      * Calls [openId4VpHolder] to finalize the authentication response.
