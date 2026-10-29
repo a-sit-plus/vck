@@ -60,10 +60,18 @@ class HolderAgent @JvmOverloads constructor(
         VerifiablePresentationFactory(keyMaterial = keyMaterial),
     /**
      * Validates credentials before they are stored, see [storeCredentialWithReport], and orders stored credentials by
-     * their time and status, see [getValidCredentialsByPriority]. Configure it with the trust anchors per credential
-     * type and the status list token resolver; without trust anchors, [storeCredential] checks integrity only.
+     * their time and status, see [getValidCredentialsByPriority], unless [orderingValidator] is set. Configure it with
+     * the trust anchors per credential type and the status list token resolver; without trust anchors,
+     * [storeCredential] checks integrity only.
      */
     private val credentialValidator: CredentialValidator = CredentialValidator(),
+    /**
+     * Orders stored credentials by their time and status when matching them against a presentation request, see
+     * [getValidCredentialsByPriority]: e.g. with a status list token resolver that returns cached tokens only, so
+     * that matching, and creating a presentation, never waits for the network. A status that can not be resolved
+     * does not demote a credential. By default [credentialValidator].
+     */
+    private val orderingValidator: CredentialValidator = credentialValidator,
 ) : Holder {
 
     @Deprecated(
@@ -362,7 +370,7 @@ class HolderAgent @JvmOverloads constructor(
                 CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(issuerSigned))
         }
         val checks = catchingUnwrapped {
-            credentialValidator.validate(input, orderingPolicy).report.checks
+            orderingValidator.validate(input, orderingPolicy).report.checks
         }.getOrNull() as? CredentialChecks ?: return false
         return checks.timeliness.outcome is CheckOutcome.Failed ||
                 checks.status.mechanisms.any { it.outcome is CheckOutcome.Failed } ||
