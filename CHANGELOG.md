@@ -352,6 +352,8 @@ check the entries marked BREAKING when migrating.
       status list token resolver is configured, and an expired `client_status` fails with `use_fresh_attestation`
       instead of `invalid_client`. A client attestation no longer needs `iat`, a client attestation PoP needs `aud`
       also without `issuerIdentifier` (draft-ietf-oauth-attestation-based-client-auth-10, 5.1, 5.2)
+    - Fix: A pushed authorization request passing a request object in `request` is rejected, if the request object's
+      `client_id` differs from the `client_id` parameter (RFC 9101, 6.3)
 - OAuth 2.0 client:
     - Add `OAuth2ProtocolClient` in `vck-openid`, implementing the client side of OAuth 2.0 (PAR, JAR, token requests,
       token introspection, userinfo) including DPoP and attestation-based client authentication, without sending
@@ -478,6 +480,10 @@ check the entries marked BREAKING when migrating.
     - Fix (security): The `redirect_uri` in the verifier's answer to a posted authorization response must be an absolute
       `https` URI, else sending the response fails, although the verifier has already processed it. Before, any value,
       e.g. a `javascript:` or `intent:` URI, or a custom app scheme, was returned for the wallet to open
+    - Fix (security): A request object passed in `request` or `request_uri` must carry the same `client_id` as the
+      request it is passed in (RFC 9101, 6.3), else parsing fails with `invalid_request`. Before, the `client_id` the
+      wallet was launched with was not compared, so it could name another verifier than the one that signed the
+      request object and receives the response
     - The `redirect_uri` is only read from the JSON body of the verifier's answer (OpenID4VP 1.0, 8.2); a `Location`
       header is ignored
     - `OpenId4VpKtorHolder` fetches request objects and sends authorization responses with `OpenId4VpProtocolClient`,

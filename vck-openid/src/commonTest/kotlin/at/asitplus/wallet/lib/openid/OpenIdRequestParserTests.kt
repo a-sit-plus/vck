@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -196,6 +197,62 @@ val OpenIdRequestParserTests by matrixSuite {
                 .parseRequestParameters(byReference)
                 .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
                 .message.shouldNotBeNull() shouldContain "request_uri"
+        }
+
+        // RFC 9101, 6.3: "The client ID values in the client_id request parameter and in the Request Object
+        // client_id claim MUST be identical."
+        testSuite("when its client_id differs from the client_id parameter") {
+            val otherClientId = "x509_san_dns:other.example.com"
+            val launchedAsOther = authnRequest.copy(clientId = otherClientId)
+            val withoutClientId = authnRequest.copy(clientId = null)
+
+            fun launchedByValue(requestObject: String, clientId: String) =
+                URLBuilder("https://wallet.example.com").apply {
+                    parameters.append("client_id", clientId)
+                    parameters.append("request", requestObject)
+                }.buildString()
+
+            fun launchedByReference(clientId: String) = URLBuilder("https://wallet.example.com").apply {
+                parameters.append("client_id", clientId)
+                parameters.append("request_uri", requestUri)
+            }.buildString()
+
+            "by value in `request`" {
+                RequestParser().parseRequestParameters(launchedByValue(signRequestObject(authnRequest), otherClientId))
+                    .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+                    .message.shouldNotBeNull() shouldContain otherClientId
+            }
+
+            "by value in `request`, when parsing without fetching" {
+                val input = launchedByValue(signRequestObject(launchedAsOther), authnRequest.clientId!!)
+
+                shouldThrow<InvalidRequest> {
+                    RequestParser().parseWithoutFetching(input)
+                }.message.shouldNotBeNull() shouldContain otherClientId
+            }
+
+            "by reference in `request_uri`" {
+                parserServing(signRequestObject(authnRequest))
+                    .parseRequestParameters(launchedByReference(otherClientId))
+                    .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+                    .message.shouldNotBeNull() shouldContain otherClientId
+            }
+
+            "by reference in `request_uri`, when fetched by the wallet" {
+                val parser = RequestParser()
+                val reference = parser.parseWithoutFetching(launchedByReference(otherClientId))
+                    .shouldBeInstanceOf<RequestParser.ParsedRequest.ByReference>()
+
+                shouldThrow<InvalidRequest> {
+                    parser.resolveFetchedRequestObject(reference, signRequestObject(authnRequest))
+                }.message.shouldNotBeNull() shouldContain otherClientId
+            }
+
+            "missing in the request object" {
+                parserServing(signRequestObject(withoutClientId))
+                    .parseRequestParameters(byReference)
+                    .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
+            }
         }
 
         "when its payload is not a request, keeping the serialization error as cause" {

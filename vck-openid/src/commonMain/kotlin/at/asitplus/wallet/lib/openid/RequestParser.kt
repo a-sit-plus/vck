@@ -9,6 +9,7 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.RequestParametersSerializer
+import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
@@ -62,12 +63,15 @@ class RequestParser(
          *
          * [requestObjectParameters] are built once, as they carry the wallet nonce and the encryption key for exactly
          * this request.
+         *
+         * [clientId] is the `client_id` passed alongside `request_uri`, the request object needs to carry the same one.
          */
         class ByReference(
             val uri: String,
             val method: HttpMethod,
             val requestObjectParameters: RequestObjectParameters?,
             val parent: RequestParametersFrom<out RequestParameters>?,
+            val clientId: String,
         ) : ParsedRequest
     }
 
@@ -94,7 +98,7 @@ class RequestParser(
         val jar = parsed.parameters as? JarRequestParameters
             ?: return ParsedRequest.Resolved(parsed)
         jar.request?.let {
-            return ParsedRequest.Resolved(it.parseRequestObjectByValue(parsed).requireNotNested())
+            return ParsedRequest.Resolved(it.parseRequestObjectByValue(parsed, jar.clientId).requireNotNested())
         }
         val uri = jar.requestUri
             ?: throw InvalidRequest("request contains neither `request` nor `request_uri`")
@@ -161,7 +165,7 @@ class RequestParser(
     suspend fun extractRequest(
         parameters: JarRequestParameters,
         parent: RequestParametersFrom<out RequestParameters>?,
-    ): RequestParametersFrom<*>? = parameters.request?.parseRequestObjectByValue(parent)
+    ): RequestParametersFrom<*>? = parameters.request?.parseRequestObjectByValue(parent, parameters.clientId)
         ?: parameters.requestUri?.let { uri ->
             val reference = parameters.toReference(uri, parent)
             val content = remoteResourceRetriever(reference.toResourceRetrieverInput())
@@ -176,8 +180,10 @@ class RequestParser(
      */
     private suspend fun String.parseRequestObjectByValue(
         parent: RequestParametersFrom<out RequestParameters>?,
-    ): RequestParametersFrom<*> = parseAsJwsRequest(parent)
-        ?: throw InvalidRequest("request content not a valid request object")
+        clientId: String,
+    ): RequestParametersFrom<*> = (parseAsJwsRequest(parent)
+        ?: throw InvalidRequest("request content not a valid request object"))
+        .also { request -> request.requireClientId(clientId) }
 
     private suspend fun JarRequestParameters.toReference(
         uri: String,
@@ -187,7 +193,7 @@ class RequestParser(
         // only the POST request to the request URI endpoint has a channel for these, see OpenID4VP 1.0, 5.10, and it
         // is built once per request, since it carries the key the verifier shall encrypt this very request to
         val requestObjectParameters = if (method == HttpMethod.Post) buildRequestObjectParameters() else null
-        return ParsedRequest.ByReference(uri, method, requestObjectParameters, parent)
+        return ParsedRequest.ByReference(uri, method, requestObjectParameters, parent, clientId)
     }
 
     private suspend fun ParsedRequest.ByReference.resolve(content: String): RequestParametersFrom<*> {
@@ -203,7 +209,26 @@ class RequestParser(
                 invalidRequestDescription = "request_uri content not a valid request object: $uri",
             )
             ?: throw InvalidRequest("request_uri content not a valid request object: $uri"))
+            .also { request -> request.requireClientId(clientId) }
             .also { request -> request.requireWalletNonce(requestObjectParameters?.walletNonce) }
+    }
+
+    /**
+     * Per RFC 9101, 6.3:
+     * "The client ID values in the `client_id` request parameter and in the Request Object `client_id` claim MUST be
+     * identical."
+     *
+     * Otherwise the client the request was launched with could differ from the one that signed the request object.
+     */
+    private fun RequestParametersFrom<*>.requireClientId(expected: String) {
+        val received = when (val params = parameters) {
+            is AuthenticationRequestParameters -> params.clientId
+            is SignatureRequestParameters -> params.clientId
+            is JarRequestParameters -> params.clientId
+            else -> null
+        }
+        if (received != expected)
+            throw InvalidRequest("client_id of request object $received not matching client_id parameter $expected")
     }
 
     /** The `kid` of the encryption key we have advertised in `wallet_metadata` for this very request. */

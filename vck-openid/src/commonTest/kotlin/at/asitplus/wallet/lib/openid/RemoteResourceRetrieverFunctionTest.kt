@@ -60,7 +60,7 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
         val parser = RequestParser(remoteResourceRetriever = retriever::invoke)
         val input = URLBuilder("https://example.com").apply {
             parameters.append("request_uri", requestUri)
-            parameters.append("client_id", "somevalue")
+            parameters.append("client_id", authnRequest.clientId!!)
         }.buildString()
 
         parser.parseRequestParameters(input).getOrThrow().apply {
