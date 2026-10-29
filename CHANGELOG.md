@@ -226,6 +226,10 @@ check the entries marked BREAKING when migrating.
       `exp`, and its optional `nonce` must be a server-provided `c_nonce` (OpenID4VCI 1.0, F.1, D.1), a `jwt` proof
       at most one of `kid`, `jwk`, and `x5c`; a key attestation no longer needs `user_authentication`, and may
       contain `iss` (EUDI TS3, 2.3.2)
+    - Fix: `DefaultCredentialSchemeMapper` advertises the `cryptographic_binding_methods_supported` of OpenID4VCI 1.0,
+      12.2.4 only: `cose_key` for ISO mdoc, which no longer advertises `jwk`, and `jwk` for SD-JWT VC and VC-JWT,
+      which no longer advertise `urn:ietf:params:oauth:jwk-thumbprint`. Deprecate
+      `OpenIdConstants.URN_TYPE_JWK_THUMBPRINT`, which is no binding method
 - OpenID for Verifiable Credential Issuance client:
     - Add `WalletService.createCredential(metadata, credentialConfigurationId, ...)` to request exactly one credential
       by its `credential_configuration_id`
