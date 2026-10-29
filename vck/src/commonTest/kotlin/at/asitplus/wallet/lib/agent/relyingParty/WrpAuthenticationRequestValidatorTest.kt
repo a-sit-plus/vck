@@ -18,6 +18,7 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -37,6 +38,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.buildJsonObject
@@ -70,6 +72,37 @@ val WrpAuthenticationRequestValidatorTest by matrixSuite {
             .payload shouldBe wrprcPayload
         requests.single().shouldBeInstanceOf<WrpCredentialRequest.WrpDcqlCredentialQuery>()
             .query shouldBe dcql.credentials.single()
+    }
+
+    "signed request with a base64url-encoded WRPRC is parsed" {
+        val fixture = buildWrpFixture()
+        val wrprcPayload = buildWrpPayload(fixture.wrpIdentifier)
+        val encoded = signWrprc(fixture.wrprcSigningKeyMaterial, wrprcPayload).encodeToByteArray()
+            .encodeToString(Base64UrlStrict)
+        val parameters = AuthenticationRequestParameters(
+            clientId = fixture.clientId,
+            verifierInfo = nonEmptyListOf(VerifierInfo(REGISTRATION_CERT_FORMAT, encoded)),
+            dcqlQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery,
+        )
+
+        val data = WrpAuthenticationRequestValidator(fixture.signedRequest(parameters)).getOrThrow()
+
+        data.registrationCertificate.keys.single().payload shouldBe wrprcPayload
+    }
+
+    "signed request with a base64url-encoded value that is no JWS fails as invalid" {
+        val fixture = buildWrpFixture()
+        val parameters = AuthenticationRequestParameters(
+            clientId = fixture.clientId,
+            verifierInfo = nonEmptyListOf(
+                VerifierInfo(REGISTRATION_CERT_FORMAT, "no-jws".encodeToByteArray().encodeToString(Base64UrlStrict)),
+            ),
+            dcqlQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest).dcqlQuery,
+        )
+
+        val failure = WrpAuthenticationRequestValidator(fixture.signedRequest(parameters)).exceptionOrNull()
+
+        failure.shouldBeInstanceOf<InvalidRegistrationCertificateException>().cause.shouldNotBeNull()
     }
 
     "signed request with an unparseable WRPRC fails with the parsing error as cause" {

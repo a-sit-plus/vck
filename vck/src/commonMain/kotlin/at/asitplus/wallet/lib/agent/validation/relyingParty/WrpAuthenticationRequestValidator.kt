@@ -14,12 +14,12 @@ import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate.WrpCwtRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate.WrpJwtRegistrationCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
 import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest.WrpDcqlCredentialQuery
+import at.asitplus.wallet.lib.validation.parseRegistrationCertificateJwt
 import at.asitplus.wallet.lib.validation.parseSingleRegistrationCertificate
 import at.asitplus.wallet.lib.validation.parseWrprcCose
 import at.asitplus.wallet.lib.validation.stringData
@@ -114,7 +114,7 @@ object WrpAuthenticationRequestValidator {
 
     fun VerifierInfo.parseJws() = catchingUnwrapped {
         require(format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true))
-        JwsCompactTyped<WrpPayload>(stringData())
+        parseRegistrationCertificateJwt(stringData())
     }.onFailure { Napier.w("Failed to parse JWS data for $this (${REGISTRATION_CERT_FORMAT}).", it) }
         .getOrNull()
 

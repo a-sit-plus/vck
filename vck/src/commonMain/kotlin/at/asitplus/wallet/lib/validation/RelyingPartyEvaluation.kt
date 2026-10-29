@@ -31,6 +31,7 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.etsi.isExpired
 import at.asitplus.wallet.lib.etsi.isValidAt
 import at.asitplus.wallet.lib.validation.CheckOutcome.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.decodeFromByteArray
 import kotlin.time.Duration
@@ -341,12 +342,28 @@ internal fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsC
         ?: throw InvalidRegistrationCertificateException(
             "Request must contain exactly one WRPRC, but contains ${registrationCertificates.size}"
         )
-    return catchingUnwrapped { JwsCompactTyped<WrpPayload>(registrationCertificate.stringData()) }.getOrElse {
+    return catchingUnwrapped { parseRegistrationCertificateJwt(registrationCertificate.stringData()) }.getOrElse {
         throw InvalidRegistrationCertificateException("Could not parse WRPRC", it)
     }
 }
 
-/** ETSI TS 119 472-2 V1.3.1 OIDFVP-HAIP-COMMON-REQ-RO-16: the registration certificate is given as a string. */
+/**
+ * Parses the JWT of a `registration_cert` in `verifier_info` or `issuer_info`, given as the base64url encoding of its
+ * compact serialization (ETSI TS 119 472-2 V1.1.1 OIDFVP-HAIP_COMMON_RO_REQ-09, RO-16 in later versions), or as the
+ * compact serialization itself, as OpenID4VP 1.0 (5.1) allows and verifiers like the EUDI reference implementation send.
+ */
+internal fun parseRegistrationCertificateJwt(data: String): JwsCompactTyped<WrpPayload> =
+    if (data.contains('.')) {
+        JwsCompactTyped<WrpPayload>(data)
+    } else {
+        val decoded = catchingUnwrapped { data.decodeToByteArray(Base64UrlStrict).decodeToString() }.getOrElse {
+            throw IllegalArgumentException("The WRPRC is neither a compact JWS nor its base64url encoding", it)
+        }
+        require(decoded.contains('.')) { "The base64url-encoded WRPRC is no compact JWS" }
+        JwsCompactTyped<WrpPayload>(decoded)
+    }
+
+/** ETSI TS 119 472-2 V1.1.1 OIDFVP-HAIP_COMMON_RO_REQ-09: the registration certificate is given as a string. */
 internal fun VerifierInfo.stringData(): String = when (val data = data) {
     is VerifierInfo.Data.StringData -> data.value
     is VerifierInfo.Data.ObjectData -> throw IllegalArgumentException("$format data must be a string, but is an object")
