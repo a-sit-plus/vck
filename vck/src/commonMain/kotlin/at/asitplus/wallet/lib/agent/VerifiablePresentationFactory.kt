@@ -19,6 +19,11 @@ import at.asitplus.catching
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceResponse
+import at.asitplus.iso.DocRequestInfo
+import at.asitplus.iso.OtherDocument
+import at.asitplus.wallet.lib.DefaultZlibService
+import at.asitplus.wallet.lib.IsoSdJwtKeyBinding
+import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.DeviceSignedItem
 import at.asitplus.iso.DeviceSignedItemList
@@ -83,6 +88,8 @@ class VerifiablePresentationFactory(
     ),
     /** Clock to use for timestamps in the presentations generated. */
     private val clock: Clock = Clock.System,
+    /** Compresses SD-JWT VCs presented in a `DeviceResponse` (WG10 N2933 v2). */
+    private val zlibService: ZlibService = DefaultZlibService(),
 ) {
     /**
      * Creates one Device Response while preserving every selected document and its order. A collection is used rather
@@ -91,10 +98,25 @@ class VerifiablePresentationFactory(
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         isoPresentationParameters: Collection<IsoPresentationParameters>,
+    ): KmmResult<CreatePresentationResult.DeviceResponse> = createVerifiablePresentation(
+        request = request,
+        isoPresentationParameters = isoPresentationParameters,
+        sdJwtPresentationParameters = emptyList(),
+    )
+
+    /**
+     * Creates one Device Response with the selected mdocs in its `documents`, and the selected SD-JWT VCs in its
+     * `otherDocuments` (WG10 N2933 v2, "DeviceResponse changes"), see [createIsoSdJwtDocument].
+     */
+    suspend fun createVerifiablePresentation(
+        request: PresentationRequestParameters,
+        isoPresentationParameters: Collection<IsoPresentationParameters>,
+        sdJwtPresentationParameters: Collection<IsoSdJwtPresentationParameters>,
     ): KmmResult<CreatePresentationResult.DeviceResponse> = catching {
         createIsoPresentation(
             request = request,
             isoPresentationParameters = isoPresentationParameters,
+            sdJwtPresentationParameters = sdJwtPresentationParameters,
         )
     }
 
@@ -202,6 +224,7 @@ class VerifiablePresentationFactory(
     private suspend fun createIsoPresentation(
         request: PresentationRequestParameters,
         isoPresentationParameters: Collection<IsoPresentationParameters>,
+        sdJwtPresentationParameters: Collection<IsoSdJwtPresentationParameters> = emptyList(),
     ): CreatePresentationResult.DeviceResponse {
         suspend fun disclosePlainDocument(param: IsoPresentationParameters) = param.credential
             .discloseRequestedClaims(param.claims, request)
@@ -225,13 +248,44 @@ class VerifiablePresentationFactory(
             }
         }
 
+        val otherDocuments = sdJwtPresentationParameters.map { createIsoSdJwtDocument(request, it) }
+
         return CreatePresentationResult.DeviceResponse(
             deviceResponse = DeviceResponse(
                 parsedVersion = Version(1, 0),
                 documents = plainDocuments.toTypedArray(),
                 zkDocuments = zkDocuments.toTypedArray(),
-                status = 0u
+                status = 0u,
+                otherDocuments = otherDocuments.takeIf { it.isNotEmpty() }?.toTypedArray(),
             ),
+        )
+    }
+
+    /**
+     * Presents an SD-JWT VC in a `DeviceResponse` (WG10 N2933 v2, "About SD-JWT and SD-JWT+Key Binding", "DeviceResponse
+     * changes"): always with a key binding JWT, whose `nonce` is derived from the session transcript and whose `aud`
+     * from the reader authentication of the request, see [IsoSdJwtKeyBinding], compressed with ZLIB.
+     */
+    private suspend fun createIsoSdJwtDocument(
+        request: PresentationRequestParameters,
+        param: IsoSdJwtPresentationParameters,
+    ): OtherDocument {
+        val sessionTranscript = request.calcIsoSessionTranscript()
+            ?: throw PresentationException("calcIsoSessionTranscript not implemented")
+        val presentation = createSdJwtPresentation(
+            request = request.copy(
+                nonce = IsoSdJwtKeyBinding.nonce(sessionTranscript),
+                audience = param.audience,
+            ),
+            validSdJwtCredential = param.credential,
+            disclosures = param.credential.loadDisclosures(param.claims),
+        )
+        val data = zlibService.compress(presentation.serialized.encodeToByteArray())
+            ?: throw PresentationException("Could not compress the SD-JWT VC")
+        return OtherDocument(
+            docFormat = DocRequestInfo.DOC_FORMAT_SD_JWT,
+            data = data,
+            docRequestIds = listOf(param.docRequestIndex.toUInt()),
         )
     }
 

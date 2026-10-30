@@ -332,9 +332,9 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             f.dcApiVerifier.createAuthnRequest(reqOptions).isFailure shouldBe true
         }
 
-        test("DC API Annex C: createAuthnRequest rejects non-mdoc DCQL queries") { f ->
+        test("DC API Annex C: createAuthnRequest rejects DCQL queries without enumerated claims") { f ->
             val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest, // SD-JWT credential query
+                presentationRequest = dcqlRequest, // SD-JWT credential query requesting all claims
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )

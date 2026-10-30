@@ -1,5 +1,6 @@
 package at.asitplus.iso
 
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
@@ -32,7 +33,24 @@ data class DocRequestInfo(
     @SerialName("euWrprc")
     @ByteString
     val euWrprc: ByteArray? = null,
+    /**
+     * The format of the requested document: [DOC_FORMAT_MSO_MDOC] if absent, or [DOC_FORMAT_SD_JWT] for an SD-JWT VC
+     * whose `vct` is the requested `docType`, with its claims requested in the namespace [SD_JWT_NAMESPACE] (WG10
+     * N2933 v2, "DeviceRequest changes"). Other values use a collision-resistant name.
+     */
+    @SerialName("docFormat")
+    val docFormat: String? = null,
+    /**
+     * For [DOC_FORMAT_SD_JWT], the SD-JWT claim path each `DataElementIdentifier` of this request stands for, a
+     * non-empty array of text strings, unsigned integers, and `null` (WG10 N2933 v2, "DeviceRequest changes").
+     */
+    @SerialName("dataElementIdentifierMapping")
+    val dataElementIdentifierMapping: Map<String, @Serializable(with = SdJwtClaimPathSerializer::class) DCQLClaimsPathPointer>? = null,
 ) {
+    /** Whether this requests an SD-JWT VC, see [docFormat]. */
+    val isSdJwt: Boolean
+        get() = docFormat == DOC_FORMAT_SD_JWT
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -54,6 +72,8 @@ data class DocRequestInfo(
         if (euWrprc != null && other.euWrprc != null) {
             if (!euWrprc.contentEquals(other.euWrprc)) return false
         } else if (euWrprc != other.euWrprc) return false
+        if (docFormat != other.docFormat) return false
+        if (dataElementIdentifierMapping != other.dataElementIdentifierMapping) return false
 
         return true
     }
@@ -66,7 +86,20 @@ data class DocRequestInfo(
         result = 31 * result + (zkRequest?.hashCode() ?: 0)
         result = 31 * result + (docResponseEncryption?.hashCode() ?: 0)
         result = 31 * result + (euWrprc?.contentHashCode() ?: 0)
+        result = 31 * result + (docFormat?.hashCode() ?: 0)
+        result = 31 * result + (dataElementIdentifierMapping?.hashCode() ?: 0)
         return result
+    }
+
+    companion object {
+        /** The format of an ISO mdoc, assumed if [docFormat] is absent. */
+        const val DOC_FORMAT_MSO_MDOC = "mso_mdoc"
+
+        /** The format of an SD-JWT VC with key binding (WG10 N2933 v2). */
+        const val DOC_FORMAT_SD_JWT = "dc+sd-jwt"
+
+        /** The namespace the claims of an SD-JWT VC are requested in, which is not used otherwise (WG10 N2933 v2). */
+        const val SD_JWT_NAMESPACE = "_"
     }
 }
 

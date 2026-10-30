@@ -22,6 +22,9 @@ data class DeviceResponse(
     val documentErrors: Array<Map<String, Int>>? = null,
     @SerialName("status")
     val status: UInt,
+    /** Documents of other formats, e.g. SD-JWT VCs (WG10 N2933 v2, "DeviceResponse changes"). */
+    @SerialName("otherDocuments")
+    val otherDocuments: Array<OtherDocument>? = null,
 ) {
 
     override fun equals(other: Any?): Boolean {
@@ -39,6 +42,10 @@ data class DeviceResponse(
             if (other.zkDocuments == null) return false
             if (!zkDocuments.contentEquals(other.zkDocuments)) return false
         } else if (other.zkDocuments != null) return false
+        if (otherDocuments != null) {
+            if (other.otherDocuments == null) return false
+            if (!otherDocuments.contentEquals(other.otherDocuments)) return false
+        } else if (other.otherDocuments != null) return false
         if (encryptedDocuments != null) {
             if (other.encryptedDocuments == null) return false
             if (!encryptedDocuments.contentEquals(other.encryptedDocuments)) return false
@@ -54,6 +61,7 @@ data class DeviceResponse(
         var result = parsedVersion.hashCode()
         result = 31 * result + (documents?.contentHashCode() ?: 0)
         result = 31 * result + (zkDocuments?.contentHashCode() ?: 0)
+        result = 31 * result + (otherDocuments?.contentHashCode() ?: 0)
         result = 31 * result + (encryptedDocuments?.contentHashCode() ?: 0)
         result = 31 * result + (documentErrors?.contentHashCode() ?: 0)
         result = 31 * result + status.hashCode()

@@ -661,6 +661,31 @@ check the entries marked BREAKING when migrating.
       also decoded from an array of arrays (ETSI TS 119 475 V1.2.1, B.2.1, Annex C), in JSON and CWT, into the
       descriptions of all its arrays; arrays mixed with objects are rejected. Deprecate `srvDescription`, which returns
       `serviceDescription` as the only array
+- ISO/IEC 18013-5 with SD-JWT VCs (experimental, WG10 N2933 v2, which is no part of ISO/IEC 18013-5 yet):
+    - Add `DocRequestInfo.docFormat` and `DocRequestInfo.dataElementIdentifierMapping`, with which a `DocRequest`
+      requests an SD-JWT VC (`dc+sd-jwt`) by its `vct` as `docType`, with its claims in the namespace `_`, each data
+      element identifier mapped to a claim path of text strings, unsigned integers, and `null`. Add
+      `DeviceResponse.otherDocuments` with `OtherDocument`, the ZLIB-compressed compact SD-JWT with key binding and the
+      indices of the `DocRequest`s it answers. Without them, requests and responses are encoded as before
+    - `HolderAgent` answers such document requests with stored SD-JWT VCs of exactly that `vct`: a requested data
+      element is satisfied by the claims its path selects, or by one of its sets of `alternativeDataElements`, in
+      order of preference, and the response carries the SD-JWT VC in `otherDocuments`, next to the requested mdocs.
+      Its key binding JWT is always created, with the `nonce` and `aud` of `IsoSdJwtKeyBinding`: the hash of the
+      `SessionTranscriptBytes`, and the hash of `readerAuthAll`, of the `readerAuth` of the document request, or
+      `none`. These structures are hashed as VC-K encodes them, so a reader encoding them differently derives another
+      `aud`. Add `IsoSdJwtPresentationParameters`, `IsoDeviceRetrievalClaimMatch.path`, the overload of
+      `VerifiablePresentationFactory.createVerifiablePresentation` taking them, and make
+      `SessionTranscript.sessionTranscriptBytes()` public
+    - `DCQLQuery.toIso180137AnnexCDeviceRequest()`, and so `DcApiVerifier` with `DcApiCreationOptions.Iso180137AnnexC`,
+      request a `DCQLSdJwtCredentialQuery` with enumerated claims as such a document request of its single `vct`, each
+      claims query a data element identified by its `id`, or else by its path, e.g. `address.formatted` or
+      `nationalities.*`. Queries with `claim_sets` or
+      claim `values` are rejected, as before for every SD-JWT query
+    - `DcApiVerifier` validates the SD-JWT VCs in `otherDocuments` of an Annex C response with `CredentialValidator`,
+      each for the single SD-JWT document request it names, with the key binding JWT `nonce` and `aud` of
+      `IsoSdJwtKeyBinding`, and requires its `vct` to be the requested one. They are reported next to the mdocs in
+      `Iso180137AnnexCWrapper.presentationValidations`, and satisfy their document request in
+      `submissionRequirements`. One that can not be decompressed is rejected
 - ISO mdoc data classes:
     - Encode issuer-signed items with the bytes they were decoded from (`ByteStringWrapper.serialized`) instead of
       re-encoding their value, so items an issuer encoded differently, e.g. in another key order like the EUDI
