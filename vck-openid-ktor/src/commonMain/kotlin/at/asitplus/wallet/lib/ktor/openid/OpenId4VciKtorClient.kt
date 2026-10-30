@@ -243,7 +243,7 @@ class OpenId4VciKtorClient private constructor(
         credentialIdentifierInfos: NonEmptyList<CredentialIdentifierInfo>,
         reissuingStoreEntryId: Long? = null
     ): KmmResult<CredentialIssuanceResult.OpenUrlForAuthnRequest> = catching {
-        Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with $credentialIdentifierInfos")
+        Napier.i("startProvisioningWithAuthRequest: $credentialIssuerUrl with ${credentialIdentifierInfos.logSummary()}")
         val issuerMetadata = credentialIdentifierInfos.first().issuerMetadata
         val authorizationServer = vci.selectAuthorizationServer(issuerMetadata, credentialIssuerUrl)
         val oauthMetadata = oauth2Client.loadAuthorizationServerMetadata(authorizationServer)
@@ -285,7 +285,7 @@ class OpenId4VciKtorClient private constructor(
         context: ProvisioningContext,
     ): KmmResult<CredentialIssuanceResult.Success> = catching {
         Napier.i("resumeWithAuthCode")
-        Napier.d("resumeWithAuthCode: $url, $context")
+        Napier.d("resumeWithAuthCode: $url, ${context.logSummary()}")
 
         val credentialIdentifierInfos = context.credentials.toNonEmptyList()
         val tokenResponse = oauth2Client.requestTokenWithAuthCode(
@@ -534,6 +534,18 @@ class OpenId4VciKtorClient private constructor(
         }
     }
 }
+
+/**
+ * Identifies the credentials without logging their issuer metadata, which each of them carries, e.g. hundreds of
+ * kilobytes for an issuer offering many credential configurations.
+ */
+private fun Collection<CredentialIdentifierInfo>.logSummary() = joinToString(prefix = "[", postfix = "]") {
+    it.credentialIdentifier
+}
+
+private fun ProvisioningContext.logSummary() =
+    "state=$state, credential_issuer=${issuerMetadata.credentialIssuer}, credentials=${credentials.logSummary()}, " +
+        "reissuingStoreEntryId=$reissuingStoreEntryId"
 
 /**
  * Gets stored before jumping into the web browser (with the authorization request),
