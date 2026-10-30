@@ -236,8 +236,8 @@ sealed class LoteProfile(
     data object WRPRC : LoteProfile(
         fileName = "wrprc-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUWRPRCProvidersList",
-        statusDeterminationApproach = "http://uri.etsi.org/19602/WRPRCProvidersList/StatusDetn/EU",
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WRPRCProvidersList/schemerules/EU")),
+        statusDeterminationApproach = "http://uri.etsi.org/19602/WalletProvidersList/StatusDetn/EU",
+        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WalletProvidersList/schemerules/EU")),
         serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WRPRC/Issuance",
         serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WRPRC/Revocation"
     )
