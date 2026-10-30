@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.encodeToParameters
 import at.asitplus.openid.formUrlEncode
 import at.asitplus.rfc3986uri.Rfc3986UniformResourceIdentifier
@@ -91,23 +93,35 @@ class OpenId4VpProtocolClient(
     fun prepareAuthorizationResponse(
         input: String,
         policy: ValidationPolicy,
-    ): HttpExchange<AuthorizationRequestValidation> = LazyExchange {
+    ): HttpExchange<AuthorizationRequestValidation> = prepare(input) {
+        openId4VpHolder.startAuthorizationResponsePreparation(it, policy).getOrThrow()
+    }
+
+    /**
+     * Like [prepareAuthorizationResponse], but without waiting for the status of the registration certificates of the
+     * relying party, see [OpenId4VpHolder.startAuthorizationResponsePreparationDeferringStatus]. The exchange fetches
+     * the request object only; [AuthorizationRequestValidationPendingStatus.resolveStatus] retrieves the status lists.
+     */
+    fun prepareAuthorizationResponseDeferringStatus(
+        input: String,
+        policy: ValidationPolicy,
+    ): HttpExchange<AuthorizationRequestValidationPendingStatus> = prepare(input) {
+        openId4VpHolder.startAuthorizationResponsePreparationDeferringStatus(it, policy).getOrThrow()
+    }
+
+    /** Parses [input], fetches its request object if passed by reference, and validates the request with [validate]. */
+    private fun <T> prepare(
+        input: String,
+        validate: suspend (RequestParametersFrom<AuthenticationRequestParameters>) -> T,
+    ): HttpExchange<T> = LazyExchange {
         when (val parsed = openId4VpHolder.parseWithoutFetching(input)) {
             is RequestParser.ParsedRequest.Resolved -> ValueExchange(
-                openId4VpHolder.startAuthorizationResponsePreparation(
-                    parsed.request.requireAuthenticationRequest(),
-                    policy,
-                ).getOrThrow()
+                validate(parsed.request.requireAuthenticationRequest())
             )
 
             is RequestParser.ParsedRequest.ByReference -> PlainExchange(
                 candidates = listOf(ProtocolRequest.RequestObject(parsed.toHttpRequest())),
-                parse = {
-                    openId4VpHolder.startAuthorizationResponsePreparation(
-                        openId4VpHolder.resolveFetchedRequestObject(parsed, it.body),
-                        policy,
-                    ).getOrThrow()
-                },
+                parse = { validate(openId4VpHolder.resolveFetchedRequestObject(parsed, it.body)) },
             )
         }
     }

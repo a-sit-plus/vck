@@ -6,6 +6,12 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import kotlin.time.Instant
 
+/**
+ * The status of an artifact is not resolved yet, e.g. of a WRPRC whose status list is retrieved after showing the
+ * request, see [RelyingPartyValidator.validateDeferringStatus].
+ */
+class StatusPendingException : IllegalStateException("The status is not resolved yet")
+
 /** The [status] of an artifact was determined, but is not accepted by the [StatusPolicy]. */
 class TokenStatusException(
     val status: TokenStatus

@@ -105,8 +105,50 @@ class DcApiHolder @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Validates and prepares [request] like [startAuthorizationResponsePreparation] with a policy, but without waiting
+     * for the status of the registration certificates (WRPRCs) of its relying party, see
+     * [OpenId4VpHolder.startAuthorizationResponsePreparationDeferringStatus]: show
+     * [DcApiRequestValidationPendingStatus.validation] at once, and resolve the status with
+     * [DcApiRequestValidationPendingStatus.resolveStatus] while the user decides.
+     */
+    suspend fun startAuthorizationResponsePreparationDeferringStatus(
+        request: DcApiRequest,
+        policy: ValidationPolicy,
+    ): KmmResult<DcApiRequestValidationPendingStatus> = catching {
+        when (request) {
+            is OpenId4VpDcApiSigned -> openId4VpHolder
+                .startAuthorizationResponsePreparationDeferringStatus(request, policy).getOrThrow().toDcApi()
+
+            is OpenId4VpDcApiMultiSigned -> openId4VpHolder
+                .startAuthorizationResponsePreparationDeferringStatus(request, policy).getOrThrow().toDcApi()
+
+            is OpenId4VpDcApiUnsigned -> openId4VpHolder
+                .startAuthorizationResponsePreparationDeferringStatus(request, policy).getOrThrow().toDcApi()
+
+            is IsoMdocDcApi -> {
+                val pending = request.validateRelyingPartyDeferringStatus(relyingPartyValidator, policy)
+                val preparationState = DcApiPreparationState.Iso180137AnnexC(
+                    request = request,
+                    presentationRequest = iso180137AnnexCHolder.createPresentationRequest(request).getOrThrow(),
+                )
+                fun validation(relyingParty: RelyingPartyValidationResult) =
+                    DcApiRequestValidation(relyingParty.report, preparationState, relyingParty)
+                DcApiRequestValidationPendingStatus(
+                    validation = validation(pending.withoutStatus),
+                    resolve = if (pending.isPending) ({ validation(pending.resolveStatus()) }) else null,
+                )
+            }
+        }
+    }
+
     private fun AuthorizationRequestValidation.toDcApi() =
         DcApiRequestValidation(validationReport, DcApiPreparationState.OpenId4Vp(preparationState), relyingParty)
+
+    private fun AuthorizationRequestValidationPendingStatus.toDcApi() = DcApiRequestValidationPendingStatus(
+        validation = validation.toDcApi(),
+        resolve = if (isPending) ({ resolveStatus().toDcApi() }) else null,
+    )
 
     /** Matches wallet credentials using the protocol and platform-selected credential IDs recorded in [state]. */
     suspend fun getMatchingCredentials(
@@ -209,4 +251,31 @@ data class DcApiRequestValidation(
                     relyingParty.report in validationReport.children
         ) { "The report of the relying party is the report of the request, or a child of it" }
     }
+}
+
+/**
+ * The [validation] of a request through the Digital Credentials API whose relying party may have a registration
+ * certificate (WRPRC) whose status is not resolved yet, see
+ * [DcApiHolder.startAuthorizationResponsePreparationDeferringStatus]: show [validation] at once, and replace it with
+ * the result of [resolveStatus] once that returns. Its [DcApiRequestValidation.preparationState] does not depend on
+ * the status.
+ */
+class DcApiRequestValidationPendingStatus internal constructor(
+    /**
+     * The validation with the status of each such WRPRC not resolved yet: recorded as blocked by a
+     * [at.asitplus.wallet.lib.validation.StatusPendingException], it does not decide the report until resolved. The
+     * complete validation if not [isPending].
+     */
+    val validation: DcApiRequestValidation,
+    private val resolve: (suspend () -> DcApiRequestValidation)?,
+) {
+    /** Whether the status of a WRPRC remains to be resolved with [resolveStatus]. */
+    val isPending: Boolean
+        get() = resolve != null
+
+    /**
+     * Retrieves the status lists of the WRPRCs, and returns the complete validation, with the same
+     * [DcApiRequestValidation.preparationState], or [validation] if not [isPending]. Retrieves them again on each call.
+     */
+    suspend fun resolveStatus(): DcApiRequestValidation = resolve?.invoke() ?: validation
 }

@@ -156,6 +156,40 @@ val OpenId4VpRequestValidationReportTest by matrixSuite {
             .relyingParty.shouldBeNull()
     }
 
+    "deferring the status, a request without a registration certificate is validated at once" {
+        val relyingParty = relyingParty()
+        val holder = OpenId4VpHolder(relyingPartyValidator = relyingParty.validator)
+
+        val pending = holder.startAuthorizationResponsePreparationDeferringStatus(relyingParty.request(), strictPolicy)
+            .getOrThrow()
+
+        pending.isPending shouldBe false
+        pending.validation.validationReport.decision shouldBe ACCEPTED
+        pending.validation.relyingParty.shouldBeNull()
+        pending.resolveStatus() shouldBe pending.validation
+    }
+
+    "deferring the status, an untrusted registration certificate is not pending, as its status is not resolved" {
+        val relyingParty = relyingParty()
+        val holder = OpenId4VpHolder(relyingPartyValidator = relyingParty.validator)
+        val payload = registration()
+        val wrprc = SignJwt<WrpPayload>(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk())(
+            "rc-wrp+jwt", payload, WrpPayload.serializer(),
+        ).getOrThrow().toString()
+        val request = relyingParty.request(
+            claims = mapOf("verifier_info" to """[{"format":"registration_cert","data":"$wrprc"}]""")
+        )
+
+        val pending = holder.startAuthorizationResponsePreparationDeferringStatus(request, strictPolicy).getOrThrow()
+
+        pending.isPending shouldBe false
+        pending.validation.validationReport.decision shouldBe REJECTED
+        pending.validation.relyingParty.shouldNotBeNull().apply {
+            pending.validation.validationReport.children shouldContain report
+            untrustedRegistrations shouldBe listOf(payload)
+        }
+    }
+
     "a pre-registered client is trusted with the keys registered for it" {
         val relyingParty = relyingParty()
         val clients = PreRegisteredClients {

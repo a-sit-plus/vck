@@ -72,6 +72,12 @@ check the entries marked BREAKING when migrating.
       several `readerAuthAll` signatures, the report is about the first whose WRPAC is accepted and links to every
       WRPRC, and a request that authenticates only some of its document requests fails `requestData` with an
       `UnsupportedWrpRequestException`, while its `signature` passes
+    - Add `RelyingPartyValidator.validateDeferringStatus` for requests, ISO mdoc requests over the DC API, and device
+      requests of proximity presentations, which validates without waiting for the status of the WRPRCs, the only
+      check that may retrieve something from the network: its `RelyingPartyValidationPendingStatus` holds the
+      result without that status (`withoutStatus`, the status blocked by a `StatusPendingException` and not deciding
+      the result yet), and `resolveStatus` retrieves the status lists and returns the complete result. A WRPRC whose
+      status would not be retrieved, e.g. an invalid one, is decided at once
     - Add `ValidationPolicy.registration` (`RegistrationPolicy.Require` by default, or `ValidateIfPresent`): whether
       a relying party has to transport WRPRCs, so that a wallet can accept mdoc readers outside of the EUDI Wallet
       ecosystem, e.g. the wallet apps of other wallet providers, trusted through
@@ -482,6 +488,16 @@ check the entries marked BREAKING when migrating.
       `redirect_uri` (OpenID4VP 1.0, 8.2), with `Cache-Control: no-store`
 - OpenID for Verifiable Presentations client:
     - Renamed `OpenId4VpWallet` (in `vck-openid`) to `OpenId4VpKtorHolder`
+    - Add `startAuthorizationResponsePreparationDeferringStatus` to `OpenId4VpHolder` and `OpenId4VpKtorHolder`,
+      and `OpenId4VpProtocolClient.prepareAuthorizationResponseDeferringStatus`: they validate a request without
+      waiting for the status of the WRPRCs of its relying party, returning an
+      `AuthorizationRequestValidationPendingStatus` to show at once, whose `resolveStatus` retrieves the status lists
+      later, e.g. while the user decides, without validating the request again, so that its `wallet_nonce` is
+      consumed once. Likewise for requests through the Digital Credentials API, also ISO/IEC 18013-7 Annex C ones:
+      `DcApiHolder.startAuthorizationResponsePreparationDeferringStatus` and
+      `OpenId4VpKtorHolder.prepareDcApiRequestDeferringStatus` return a `DcApiRequestValidationPendingStatus`, and
+      `IsoMdocDcApi.validateRelyingPartyDeferringStatus(validator, policy)` validates the relying party of an Annex C
+      request so
     - Add `OpenId4VpProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the verifier:
       `prepareAuthorizationResponse` fetches the request object from `request_uri` when needed,
       `sendAuthorizationResponse` posts authorization responses and error responses for the response modes

@@ -25,10 +25,12 @@ import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.AuthorizationRequestValidation
+import at.asitplus.wallet.lib.openid.AuthorizationRequestValidationPendingStatus
 import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.openid.DcApiHolder
 import at.asitplus.wallet.lib.openid.DcApiPreparationState
 import at.asitplus.wallet.lib.openid.DcApiRequestValidation
+import at.asitplus.wallet.lib.openid.DcApiRequestValidationPendingStatus
 import at.asitplus.wallet.lib.openid.Iso180137AnnexCHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient
@@ -323,6 +325,20 @@ class OpenId4VpKtorHolder(
     }
 
     /**
+     * Parses [input], loads the request object, and validates the request under [policy] like
+     * [startAuthorizationResponsePreparation], but without waiting for the status of the registration certificates
+     * of its relying party, see [OpenId4VpHolder.startAuthorizationResponsePreparationDeferringStatus]: show the
+     * validation at once, and resolve the status with [AuthorizationRequestValidationPendingStatus.resolveStatus]
+     * before sending the response. The `wallet_nonce` is consumed, so validate a request once.
+     */
+    suspend fun startAuthorizationResponsePreparationDeferringStatus(
+        input: String,
+        policy: ValidationPolicy,
+    ): KmmResult<AuthorizationRequestValidationPendingStatus> = catching {
+        client.execute(protocolClient.prepareAuthorizationResponseDeferringStatus(input, policy))
+    }
+
+    /**
      * Prepares either an OpenID4VP or Annex C request received through the Digital Credentials API under [policy],
      * returning its report next to the state, see [DcApiHolder.startAuthorizationResponsePreparation]: `null` only for
      * an Annex C request without registration certificates. A rejected request is a successful result.
@@ -332,6 +348,17 @@ class OpenId4VpKtorHolder(
         policy: ValidationPolicy,
     ): KmmResult<DcApiRequestValidation> =
         dcApiHolder.startAuthorizationResponsePreparation(request, policy)
+
+    /**
+     * Prepares a request received through the Digital Credentials API like [prepareDcApiRequest], but without waiting
+     * for the status of the registration certificates of its relying party, see
+     * [DcApiHolder.startAuthorizationResponsePreparationDeferringStatus].
+     */
+    suspend fun prepareDcApiRequestDeferringStatus(
+        request: RequestParametersFrom.DcApiRequest,
+        policy: ValidationPolicy,
+    ): KmmResult<DcApiRequestValidationPendingStatus> =
+        dcApiHolder.startAuthorizationResponsePreparationDeferringStatus(request, policy)
 
     /**
      * Calls [openId4VpHolder] to finalize the authentication response.
