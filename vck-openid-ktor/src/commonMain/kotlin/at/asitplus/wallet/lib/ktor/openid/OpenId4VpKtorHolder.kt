@@ -266,7 +266,7 @@ class OpenId4VpKtorHolder(
         state: AuthorizationResponsePreparationState,
     ) {
         catchingUnwrapped {
-            Napier.i("sendAuthnErrorResponse $error, ${state.request}")
+            Napier.i("sendAuthnErrorResponse $error, ${state.request.logSummary()}")
             openId4VpHolder.createAuthnErrorResponse(error, state).getOrThrow().let {
                 when (it) {
                     is AuthenticationResponseResult.Post -> postResponse(it)
@@ -370,7 +370,7 @@ class OpenId4VpKtorHolder(
     suspend fun startPresentationReturningUrl(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationSuccess> = catching {
-        Napier.i("startPresentation: $request")
+        Napier.i("startPresentation: ${request.logSummary()}")
         openId4VpHolder.createAuthnResponse(request).getOrThrow().let {
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
@@ -395,7 +395,7 @@ class OpenId4VpKtorHolder(
         preparationState: AuthorizationResponsePreparationState,
         credentialPresentation: CredentialPresentation? = null,
     ): KmmResult<AuthenticationResult> = catching {
-        Napier.i("startPresentation: $preparationState")
+        Napier.i("startPresentation: ${preparationState.request.logSummary()}")
         openId4VpHolder.finalizeAuthorizationResponse(
             preparationState = preparationState,
             credentialPresentation = credentialPresentation
@@ -418,7 +418,7 @@ class OpenId4VpKtorHolder(
     }
 
     private suspend fun postResponse(it: AuthenticationResponseResult.Post) = run {
-        Napier.i("postResponse: $it")
+        Napier.i("postResponse: ${it.url}")
         AuthenticationSuccess(client.execute(protocolClient.sendAuthorizationResponse(it)))
     }
 
@@ -500,3 +500,8 @@ class OpenId4VpKtorHolder(
     ReplaceWith("OpenId4VpSuccess", "at.asitplus.wallet.lib.openid.OpenId4VpSuccess"),
 )
 typealias OpenId4VpSuccess = at.asitplus.wallet.lib.openid.OpenId4VpSuccess
+
+/** Identifies the request without logging all of it, e.g. its signed request object and the verifier's metadata. */
+private fun RequestParametersFrom<AuthenticationRequestParameters>.logSummary() =
+    "client_id=${parameters.clientId}, response_mode=${parameters.responseMode}, " +
+        "response_uri=${parameters.responseUrl}, redirect_uri=${parameters.redirectUrl}"

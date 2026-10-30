@@ -39,6 +39,7 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -79,6 +80,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.types.shouldNotBeInstanceOf
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
@@ -101,6 +103,20 @@ val RelyingPartyValidatorTest by matrixSuite {
             intermediated shouldBe false
         }
         result.untrustedRegistrations shouldBe listOf(payload)
+    }
+
+    "a request with its WRPRC base64url-encoded in verifier_info (ETSI TS 119 472-2, RO_REQ-09) is accepted" {
+        val fixture = buildWrpFixture()
+        val payload = buildWrpPayload(fixture.wrpIdentifier)
+        val encoded = signWrprc(fixture.wrprcSigningKeyMaterial, payload).encodeToByteArray()
+            .encodeToString(Base64UrlStrict)
+        val parameters = fixture.parameters(payload)
+            .copy(verifierInfo = nonEmptyListOf(VerifierInfo(REGISTRATION_CERT_FORMAT, encoded)))
+
+        val result = fixture.validate(fixture.signedByWrp(parameters))
+
+        result.report.decision shouldBe ACCEPTED
+        result.relyingParty.shouldNotBeNull().registrationCertificates.shouldBeSingleton().first() shouldBe payload
     }
 
     "a request of an intermediary, with the WRPRC of the relying party naming it, is accepted" {

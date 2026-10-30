@@ -191,7 +191,8 @@ class IssuerMetadataValidator @JvmOverloads constructor(
 
     /**
      * The only `registration_cert` of `issuer_info`, a JWT (ETSI TS 119 472-3 V1.1.1, ISS-MDATA-REG_CERT-4.2.3-01,
-     * -04 to -06), required by -04 as adapted by CIR (EU) 2026/1731, Annex XI.
+     * -04 to -06), required by -04 as adapted by CIR (EU) 2026/1731, Annex XI. As -03 gives `issuer_info` the
+     * structure of `verifier_info`, the JWT may also be base64url-encoded as in `verifier_info`.
      */
     private fun IssuerMetadata.registrationCertificate(): WrpJwtRegistrationCertificate {
         val issuerInfo = requireNotNull(issuerInfo) { "The signed metadata contains no issuer_info" }
@@ -201,7 +202,7 @@ class IssuerMetadataValidator @JvmOverloads constructor(
         }
         val data = certificates.single().data
         require(data is JsonPrimitive && data.isString) { "The registration_cert is no JWT" }
-        return WrpJwtRegistrationCertificate(JwsCompactTyped<WrpPayload>(data.content))
+        return WrpJwtRegistrationCertificate(parseRegistrationCertificateJwt(data.content))
     }
 
     private fun JwsCompactTyped<IssuerMetadata>.requireWellFormed() {

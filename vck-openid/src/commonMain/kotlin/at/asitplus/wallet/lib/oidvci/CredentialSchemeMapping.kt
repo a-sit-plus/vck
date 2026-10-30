@@ -5,7 +5,6 @@ import at.asitplus.openid.CredentialFormatEnum.DC_SD_JWT
 import at.asitplus.openid.CredentialFormatEnum.JWT_VC
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
-import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.VcJwtCredentialDefinition
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -59,29 +58,38 @@ interface CredentialSchemeMapper {
     fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, CredentialRepresentation>?
 }
 
+/**
+ * Bound to a COSE key only: the `deviceKey` of the MSO is a `COSE_Key` (ISO/IEC 18013-5:2021, 9.1.2.4), which
+ * OpenID4VCI 1.0, 12.2.4 identifies as `cose_key`.
+ */
 fun IsoMdocCredentialScheme.toIsoMdocSupportedCredentialFormat(identifier: String): Pair<String, SupportedCredentialFormat> =
     identifier to SupportedCredentialFormat.forIsoMdoc(
         scope = identifier,
         docType = isoDocType,
-        supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
+        supportedBindingMethods = setOf(BINDING_METHOD_COSE_KEY),
         isoClaims = isoQualifiedClaimDescriptions
     )
 
+/** Bound to a JWK, `jwk` in OpenID4VCI 1.0, 12.2.4. */
 fun VcJwtCredentialScheme.toPlainJwtSupportedCredentialFormat(identifier: String): Pair<String, SupportedCredentialFormat> =
     identifier to SupportedCredentialFormat.forVcJwt(
         scope = identifier,
         credentialDefinition = VcJwtCredentialDefinition(
             types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType),
         ),
-        supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
+        supportedBindingMethods = setOf(BINDING_METHOD_JWK),
         vcJwtClaims = claimDescriptions
     )
 
+/**
+ * Bound to a JWK only: the `cnf` claim carries a `jwk` (OpenID4VC HAIP 1.0, 6.1), which OpenID4VCI 1.0, 12.2.4
+ * identifies as `jwk`.
+ */
 fun SdJwtCredentialScheme.toSdJwtSupportedCredentialFormat(identifier: String): Pair<String, SupportedCredentialFormat> =
     identifier to SupportedCredentialFormat.forSdJwt(
         scope = identifier,
         sdJwtVcType = sdJwtType,
-        supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
+        supportedBindingMethods = setOf(BINDING_METHOD_JWK),
         sdJwtClaims = claimDescriptions
     )
 

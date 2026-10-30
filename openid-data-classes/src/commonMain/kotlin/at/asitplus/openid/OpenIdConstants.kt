@@ -50,6 +50,10 @@ object OpenIdConstants {
     const val TOKEN_TYPE_DPOP = "DPoP"
 
     /** `urn:ietf:params:oauth:jwk-thumbprint` */
+    @Deprecated(
+        "Not a cryptographic binding method, OpenID4VCI 1.0, 12.2.4 defines only `jwk`, `cose_key`, and DID methods",
+        ReplaceWith("BINDING_METHOD_JWK")
+    )
     const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
 
     /** `cose_key` */
@@ -408,7 +412,8 @@ object OpenIdConstants {
     object VerifierInfo {
         /**
          * ETSI TS 119 472-2 V1.3.1 OIDFVP-HAIP-COMMON-REQ-RO-15: `format` of the `verifier_info` element enclosing the
-         * registration certificate, whose `data` is the serialized registration certificate (RO-16).
+         * registration certificate, whose `data` is the base64url encoding of the serialized registration certificate
+         * (RO-16, OIDFVP-HAIP_COMMON_RO_REQ-09 in V1.1.1).
          */
         const val REGISTRATION_CERT_FORMAT = "registration_cert"
     }

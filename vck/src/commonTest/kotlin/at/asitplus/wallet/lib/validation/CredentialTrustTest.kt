@@ -258,6 +258,16 @@ val CredentialTrustTest by matrixSuite {
             }
         }
 
+        "a listed signer passes when transported with its unlisted issuer, and fails after its validity" {
+            val ca = TestCertificateAuthority()
+            val signer = ca.signerChain().single()
+            val chain = listOf(signer, ca.certificate)
+
+            checkTrust(chain, setOf(signer), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED) shouldBe Passed
+            checkTrust(chain, setOf(signer), now() + 1.days, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
+                .shouldBeInstanceOf<Failed>()
+        }
+
         "a self-signed signer that is not listed fails" {
             val chain = listOf(selfSignedKey().getCertificate().shouldNotBeNull())
             val anchors = setOf(TestCertificateAuthority().certificate)

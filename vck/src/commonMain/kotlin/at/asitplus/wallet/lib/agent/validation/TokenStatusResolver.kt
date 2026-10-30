@@ -113,16 +113,30 @@ internal fun extractTokenStatus(
     revocationList: RevocationList,
     revocationListInfo: RevocationListInfo,
     zlibService: ZlibService = DefaultZlibService(),
-): KmmResult<TokenStatus> = catching {
-    if (revocationList is StatusList && revocationListInfo is StatusListInfo) {
-        revocationList.toView(zlibService).getOrNull(revocationListInfo.index)
-            ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
-    } else if (revocationList is IdentifierList && revocationListInfo is IdentifierListInfo) {
-        if (revocationList.identifiers.keys.map { Base64.encode(it.value) }
-                .contains(Base64.encode(revocationListInfo.identifier))) {
-            TokenStatus.Invalid
-        } else TokenStatus.Valid
-    } else throw IllegalArgumentException("RevocationList / RevocationListInfo mismatch")
+): KmmResult<TokenStatus> = RevocationListLookup(revocationList, zlibService).status(revocationListInfo)
+
+/**
+ * The statuses in [revocationList], see [extractTokenStatus], for any number of references: a status list is
+ * decompressed, and the identifiers of an identifier list are indexed, once, when a status is first looked up.
+ */
+internal class RevocationListLookup(
+    private val revocationList: RevocationList,
+    private val zlibService: ZlibService = DefaultZlibService(),
+) {
+    private val view by lazy { (revocationList as StatusList).toView(zlibService) }
+    private val identifiers by lazy {
+        (revocationList as IdentifierList).identifiers.keys.mapTo(HashSet()) { Base64.encode(it.value) }
+    }
+
+    fun status(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus> = catching {
+        if (revocationList is StatusList && revocationListInfo is StatusListInfo) {
+            view.getOrNull(revocationListInfo.index)
+                ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
+        } else if (revocationList is IdentifierList && revocationListInfo is IdentifierListInfo) {
+            if (Base64.encode(revocationListInfo.identifier) in identifiers) TokenStatus.Invalid
+            else TokenStatus.Valid
+        } else throw IllegalArgumentException("RevocationList / RevocationListInfo mismatch")
+    }
 }
 
 suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) =

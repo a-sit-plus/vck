@@ -35,6 +35,10 @@ check the entries marked BREAKING when migrating.
       credentials in `getValidCredentialsByPriority()`, demoting only verified problems. Deprecate the constructor
       taking `validator`, `validatorVcJws`, `validatorSdJwt`, `validatorMdoc` (which no longer take effect), and
       `trustedIssuers` (adapted as anchors for every credential type)
+    - Add the parameter `orderingValidator` of `HolderAgent`, `credentialValidator` by default, which orders stored
+      credentials when matching them against a presentation request, e.g. with a status list token resolver that
+      returns cached tokens only, so that matching and creating a presentation never wait for status lists to be
+      retrieved, which they did for every stored credential, also those the request does not ask for
     - Add `OpenId4VciClient.decodeCredentialResponse(response, request, representation)`, decoding every credential
       of a (batch) response into a `ReceivedCredential`, also one that can not be decoded, and
       `ReceivedCredential.prepareCredentialStorage(holder, scheme, policy, renewalInfo)`, validating it for storage by
@@ -113,8 +117,9 @@ check the entries marked BREAKING when migrating.
         - Credential issuers, status list tokens, key attestations, and client attestations are trusted through an
           anchor that issued their signing certificate, possibly through intermediate certificates transported with
           it, or one that is the signing certificate, as a LoTE may list it (ETSI TS 119 602 V1.1.1, 6.6.3, H.3; ETSI
-          TS 119 472-3 V1.1.1, AUTH-REQ-PROC-4.4.3-01). An anchor transported as the last certificate of the chain is
-          ignored, as is the case for `requireTrustedSigningCertificate`. Otherwise, a transported anchor or a
+          TS 119 472-3 V1.1.1, AUTH-REQ-PROC-4.4.3-01), regardless of the certificates transported with it. An anchor
+          transported as the last certificate of the chain is ignored, as is the case for
+          `requireTrustedSigningCertificate`. Otherwise, a transported anchor or a
           self-signed signer fails (OpenID4VC HAIP 1.0, 4.5.1, 6.1, 6.1.1), and so does a transported certificate that
           did not issue the one before it
         - WRPRC errors are reported instead of being turned into `false`, and one clock is used for certificate
@@ -197,12 +202,18 @@ check the entries marked BREAKING when migrating.
     - `WrpAuthenticationRequestValidator` tells apart why it can not extract a WRPRC, with exceptions extending `IllegalArgumentException`: `MissingRegistrationCertificateException` if the request contains none, `InvalidRegistrationCertificateException` with the parsing error as cause if it can not be parsed, and `UnsupportedWrpRequestException` for requests it can not validate, e.g. unsigned ones
     - `WrpAuthenticationRequestValidator` rejects requests with more than one `registration_cert` entry in `verifier_info`, also if only one of them can be parsed, and ISO requests that carry an `euWrprc` in only some of their `DocRequest`s
     - `WrpAuthenticationRequestValidator` rejects a `registration_cert` entry in `verifier_info` whose data is a JSON object instead of a string
+    - `RelyingPartyValidator`, `IssuerMetadataValidator`, and `WrpAuthenticationRequestValidator` accept a `registration_cert` in `verifier_info` or `issuer_info` given as the base64url encoding of the compact JWS (ETSI TS 119 472-2 V1.1.1, OIDFVP-HAIP_COMMON_RO_REQ-09), which could not be parsed before, as well as the compact JWS itself
     - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
 - Trust List filtering:
     - BREAKING: `LoteProfile.fromSchemeIdentifier()` returns `null` for a credential identifier without a known list, instead of `LoteProfile.EAA`, so that `LoTETrustAnchorProvider` no longer authorizes every Pub-EAA provider for arbitrary credential types. Identifiers match case-sensitively, and the mDL `docType` `org.iso.18013.5.1.mDL` matches exactly instead of by prefix
     - BREAKING: Remove `additionalAnchors` of `LoTETrustAnchorProvider`, which was added to the anchors of every credential type and every list, and so merged trust sources across types. Trust further sources for a type with a `CredentialTrustScope` instead
 - Status lists:
     - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
+    - `StatusValidator` keeps what it verified of the last 32 status list tokens, by identity: their media type,
+      signature, and decompressed list, so that validating many credentials referencing one token parses it,
+      verifies its signature, and decompresses it once. Its signer, subject, and time are still checked on every
+      validation. `StatusListCwt.parsedPayload` is decoded once, and an identifier list is indexed once per token
+      instead of encoding every identifier for every lookup
 - DCQL:
     - Claim paths preserve numeric object keys as strings and reject invalid or overflowing indices
     - `DCQLClaimsPathPointer.query` processes claims path pointers as OpenID4VP 1.0, 7.1.1 specifies: if any selected element is not an object for a name component, or not an array for an index or `null` component, the result is empty, i.e. the claim does not match, instead of continuing with the other selected elements; other options of `claim_sets` that do not request the claim may still match
@@ -231,6 +242,10 @@ check the entries marked BREAKING when migrating.
       `exp`, and its optional `nonce` must be a server-provided `c_nonce` (OpenID4VCI 1.0, F.1, D.1), a `jwt` proof
       at most one of `kid`, `jwk`, and `x5c`; a key attestation no longer needs `user_authentication`, and may
       contain `iss` (EUDI TS3, 2.3.2)
+    - Fix: `DefaultCredentialSchemeMapper` advertises the `cryptographic_binding_methods_supported` of OpenID4VCI 1.0,
+      12.2.4 only: `cose_key` for ISO mdoc, which no longer advertises `jwk`, and `jwk` for SD-JWT VC and VC-JWT,
+      which no longer advertise `urn:ietf:params:oauth:jwk-thumbprint`. Deprecate
+      `OpenIdConstants.URN_TYPE_JWK_THUMBPRINT`, which is no binding method
 - OpenID for Verifiable Credential Issuance client:
     - Add `WalletService.createCredential(metadata, credentialConfigurationId, ...)` to request exactly one credential
       by its `credential_configuration_id`
@@ -520,6 +535,9 @@ check the entries marked BREAKING when migrating.
     - Fix: Error responses over the Digital Credentials API follow OpenID4VP 1.0, A.4: `data` is an object with the
       single property `error`, never encrypted, also for `dc_api.jwt`; before, the whole error including `state` and
       description was passed in `response`, encrypted for `dc_api.jwt`, which verifiers could not process
+    - `OpenId4VpKtorHolder` logs the `client_id`, response mode, and `response_uri` or `redirect_uri` of a request
+      instead of the whole request, including its request object and `client_metadata`, and the URL of a posted
+      response instead of the response
 - OpenID for Verifiable Presentations verifier:
     - Add `error`, `errorDescription` and `errorUri` to `AuthenticationResponseParameters`, so that authorization error
       responses keep their parameters when decoded from a form post (OpenID4VP 1.0, 8.2), the payload of an encrypted

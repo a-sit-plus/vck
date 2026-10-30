@@ -208,6 +208,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             introspectionEndpoint = "$publicContext$introspectionEndpointPath",
             challengeEndpoint = clientAuthenticationService.supportedAuthMethods.takeIf { it != null }
                 ?.let { "$publicContext$challengeEndpointPath" },
+            responseTypesSupported = setOf(OpenIdConstants.GRANT_TYPE_CODE),
             requirePushedAuthorizationRequests = requirePushedAuthorizationRequests,
             codeChallengeMethodsSupported = setOf(OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256),
             introspectionEndpointAuthMethodsSupported = clientAuthenticationService.supportedAuthMethods,

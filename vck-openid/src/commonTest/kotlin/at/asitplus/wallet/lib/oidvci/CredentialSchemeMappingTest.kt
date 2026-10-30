@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.ClaimDescription
 import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
+import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -45,6 +47,16 @@ val CredentialSchemeMappingTest by matrixSuite {
         mapper.toCredentialIdentifier(AtomicAttribute2023, ISO_MDOC) shouldBe expectedKey
         mapper.map(AtomicAttribute2023).shouldContainKey(expectedKey)
         mapper.decodeFromCredentialIdentifier(expectedKey) shouldBe Pair(AtomicAttribute2023, ISO_MDOC)
+    }
+
+    test("binding methods are the ones of OpenID4VCI 1.0, 12.2.4 for each format") {
+        val formats = mapper.map(AtomicAttribute2023)
+        formats[mapper.toCredentialIdentifier(AtomicAttribute2023, ISO_MDOC)].shouldNotBeNull()
+            .supportedBindingMethods shouldBe setOf(BINDING_METHOD_COSE_KEY)
+        formats[mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)].shouldNotBeNull()
+            .supportedBindingMethods shouldBe setOf(BINDING_METHOD_JWK)
+        formats[mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)].shouldNotBeNull()
+            .supportedBindingMethods shouldBe setOf(BINDING_METHOD_JWK)
     }
 
     test("AtomicAttribute ISO claims are namespace-qualified") {

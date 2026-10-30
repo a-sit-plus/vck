@@ -5,7 +5,6 @@ import at.asitplus.openid.CredentialFormatEnum.DC_SD_JWT
 import at.asitplus.openid.CredentialFormatEnum.JWT_VC
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
-import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.VcJwtCredentialDefinition
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -48,7 +47,7 @@ class SameScopeCredentialSchemeMapper(
                 this to SupportedCredentialFormat.forIsoMdoc(
                     scope = scope,
                     docType = isoDocType,
-                    supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
+                    supportedBindingMethods = setOf(BINDING_METHOD_COSE_KEY),
                     isoClaims = claimDescriptions
                 )
             }
@@ -60,7 +59,7 @@ class SameScopeCredentialSchemeMapper(
                     credentialDefinition = VcJwtCredentialDefinition(
                         types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType),
                     ),
-                    supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
+                    supportedBindingMethods = setOf(BINDING_METHOD_JWK),
                     vcJwtClaims = claimDescriptions
                 )
             }
@@ -70,7 +69,7 @@ class SameScopeCredentialSchemeMapper(
                 this to SupportedCredentialFormat.forSdJwt(
                     scope = scope,
                     sdJwtVcType = sdJwtType,
-                    supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
+                    supportedBindingMethods = setOf(BINDING_METHOD_JWK),
                     sdJwtClaims = claimDescriptions
                 )
             }

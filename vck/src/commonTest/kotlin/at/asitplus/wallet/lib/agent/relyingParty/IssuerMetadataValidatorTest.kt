@@ -10,6 +10,7 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OpenIdConstants.ISSUER_METADATA_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.IssuerInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.openid.truncateToSeconds
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -39,6 +40,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Clock
@@ -179,6 +181,16 @@ val IssuerMetadataValidatorTest by matrixSuite {
                 // the metadata are still authentic for the credential issuer
                 untrustedMetadata.shouldNotBeNull()
             }
+        }
+    }
+
+    "a registration_cert base64url-encoded as in verifier_info is accepted" {
+        val fixture = buildWrpFixture()
+        val encoded = fixture.issuerWrprc().encodeToByteArray().encodeToString(Base64UrlStrict)
+
+        fixture.validate(fixture.signedMetadata(fixture.metadata().copy(issuerInfo = issuerInfo(encoded)))).apply {
+            report.decision shouldBe ACCEPTED
+            issuer.shouldNotBeNull().registrationCertificate.providesAttestations shouldBe PROVIDED_ATTESTATIONS
         }
     }
 
