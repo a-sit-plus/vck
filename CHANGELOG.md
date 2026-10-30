@@ -362,6 +362,8 @@ check the entries marked BREAKING when migrating.
       source of the client ID), the `OpenId4VciClient` and a `ClientAttestation`, so that each value is passed once.
       Deprecate the constructor taking `engine`, `cookiesStorage`, `httpClientConfig` and an `OAuth2KtorClient`, whose
       HTTP configuration it silently preferred over its own
+    - `OpenId4VciKtorClient` logs the identifiers of the credentials to request and the state of a provisioning
+      context instead of all of them, including the issuer metadata each of them carries
 - OAuth 2.0 authorization server:
     - BREAKING: `AttestationBasedClientAuthenticationService` takes a `ClientAttestationValidator` (in `vck`) instead
       of `verifyJwsObject`: configure it with the anchors of the wallet providers, which have to issue the
