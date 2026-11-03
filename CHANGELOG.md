@@ -1,5 +1,9 @@
 # Changelog
 
+Release 10.0.0:
+
+tbd
+
 Release 9.0.0:
 
 The new validation API (`CredentialValidator`, `RelyingPartyValidator`, `IssuerMetadataValidator`) reports every check
