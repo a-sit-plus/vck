@@ -1,5 +1,6 @@
 HELP.md
 .gradle
+.kotlin/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 local.properties

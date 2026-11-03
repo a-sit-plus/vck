@@ -1,6 +1,3 @@
-import java.io.FileInputStream
-import java.util.*
-
 plugins {
     `kotlin-dsl`
     idea
@@ -8,17 +5,18 @@ plugins {
 group = "at.asitplus.gradle"
 
 dependencies {
-    api("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.21")
-    api("org.jetbrains.kotlin:kotlin-serialization:2.2.21")
-    api("at.asitplus.gradle:k2")
+    implementation("org.jetbrains.kotlin.multiplatform:org.jetbrains.kotlin.multiplatform.gradle.plugin:${libs.versions.kotlin.get()}")
+    implementation(libs.asp)
 }
 
 repositories {
-    maven("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev")
+    maven("https://raw.githubusercontent.com/a-sit-plus/gradle-conventions-plugin/mvn/repo")
     mavenCentral()
     gradlePluginPortal()
+}
 
-    maven("https://s01.oss.sonatype.org/content/repositories/snapshots") //KOTEST snapshot
+kotlin {
+    jvmToolchain(17)
 }
 
 gradlePlugin {

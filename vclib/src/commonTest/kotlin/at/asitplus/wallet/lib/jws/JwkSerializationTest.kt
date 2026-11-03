@@ -2,13 +2,13 @@
 
 package at.asitplus.wallet.lib.jws
 import at.asitplus.wallet.lib.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlin.uuid.ExperimentalUuidApi
 
-class JwkSerializationTest : FreeSpec({
+val JwkSerializationTest by matrixSuite {
 
     "Serialization contains P-256 as curve name" {
         val curve = EcCurve.SECP_256_R_1
@@ -48,4 +48,4 @@ class JwkSerializationTest : FreeSpec({
         parsed.keyId shouldBe kid
     }
 
-})
+}

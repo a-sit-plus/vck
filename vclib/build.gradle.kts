@@ -1,18 +1,17 @@
 import at.asitplus.gradle.*
-import org.gradle.api.tasks.testing.Test
+import at.asitplus.gradle.at.asitplus.gradle.addTestExtensions
 
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
-    id("com.google.devtools.ksp")
-    id("io.kotest")
+    id("de.infix.testBalloon")
     id("at.asitplus.gradle.vclib-conventions")
     id("org.jetbrains.dokka")
     id("signing")
 }
 
 /* required for maven publication */
-val artifactVersion: String by extra
+val artifactVersion = extra["artifactVersion"] as String
 group = "at.asitplus.wallet"
 version = artifactVersion
 
@@ -31,7 +30,7 @@ kotlin {
 
         commonTest {
             dependencies{
-                implementation(kotest("property"))
+                addTestExtensions()
             }
         }
         jvmMain {
@@ -41,16 +40,11 @@ kotlin {
         }
         jvmTest {
             dependencies {
-                implementation(kotest("runner-junit5", "jvm"))
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }
-}
-
-tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
 }
 
 exportXCFramework("VcLibKmm", transitiveExports = false, additionalExports = commonIosExports())
@@ -99,9 +93,9 @@ publishing {
 }
 
 signing {
-    val signingKeyId: String? by project
-    val signingKey: String? by project
-    val signingPassword: String? by project
+    val signingKeyId = project.findProperty("signingKeyId") as String?
+    val signingKey = project.findProperty("signingKey") as String?
+    val signingPassword = project.findProperty("signingPassword") as String?
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications)
 }

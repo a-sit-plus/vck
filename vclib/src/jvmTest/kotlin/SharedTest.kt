@@ -1,6 +1,5 @@
 package test
 
-import io.kotest.common.platform
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
 
-class `SharedAndoidJVMTest` : FreeSpec({ "should work on $platform" { } })
+val `SharedAndoidJVMTest` by matrixSuite { "should work on JVM" { } }

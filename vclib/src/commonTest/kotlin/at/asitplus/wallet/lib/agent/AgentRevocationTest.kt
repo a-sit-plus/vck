@@ -9,7 +9,9 @@ import at.asitplus.wallet.lib.jws.decodeBase64
 import at.asitplus.wallet.lib.toBitSet
 import at.asitplus.wallet.lib.uuid4
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.aroundEachTest
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -18,7 +20,7 @@ import kotlin.time.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
-class AgentRevocationTest : FreeSpec({
+val AgentRevocationTest by matrixSuite {
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var verifierCryptoService: CryptoService
@@ -26,7 +28,8 @@ class AgentRevocationTest : FreeSpec({
     lateinit var issuer: Issuer
     lateinit var expectedRevokedIndexes: List<Long>
 
-    beforeEach {
+
+    testSuite("tests", testConfig = TestConfig.aroundEachTest { action ->
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent.newDefaultInstance(
             cryptoService = DefaultCryptoService(),
@@ -38,77 +41,77 @@ class AgentRevocationTest : FreeSpec({
             keyId = verifierCryptoService.keyId,
         )
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
-    }
+        action()
+    }) {
+        "revocation list should contain indices of revoked credential" {
+            val revocationList = issuer.buildRevocationList(FixedTimePeriodProvider.timePeriod)
+            revocationList.shouldNotBeNull()
+            val bitSetRevocationList = decodeRevocationList(revocationList)
 
-    "revocation list should contain indices of revoked credential" {
-        val revocationList = issuer.buildRevocationList(FixedTimePeriodProvider.timePeriod)
-        revocationList.shouldNotBeNull()
-        val bitSetRevocationList = decodeRevocationList(revocationList)
+            verifyBitSet(bitSetRevocationList, expectedRevokedIndexes)
+        }
 
-        verifyBitSet(bitSetRevocationList, expectedRevokedIndexes)
-    }
+        "revocation credential should be valid" {
+            val revocationCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+            revocationCredential.shouldNotBeNull()
+            val vcJws = verifier.setRevocationList(revocationCredential)
+            vcJws shouldBe true
+        }
 
-    "revocation credential should be valid" {
-        val revocationCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
-        revocationCredential.shouldNotBeNull()
-        val vcJws = verifier.setRevocationList(revocationCredential)
-        vcJws shouldBe true
-    }
+        "credentials should contain status information" {
+            val result = issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
+            if (!result.failed.isEmpty()) fail("no issued credentials")
 
-    "credentials should contain status information" {
-        val result = issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
-        if (!result.failed.isEmpty()) fail("no issued credentials")
+            result.successful.map { it.vcJws }.forEach {
+                val vcJws = verifier.verifyVcJws(it)
+                vcJws.shouldBeInstanceOf<Success>()
+                val credentialStatus = vcJws.jws.vc.credentialStatus
+                credentialStatus.shouldNotBeNull()
+                credentialStatus.index.shouldNotBeNull()
+            }
+        }
 
-        result.successful.map { it.vcJws }.forEach {
-            val vcJws = verifier.verifyVcJws(it)
-            vcJws.shouldBeInstanceOf<Success>()
-            val credentialStatus = vcJws.jws.vc.credentialStatus
-            credentialStatus.shouldNotBeNull()
-            credentialStatus.index.shouldNotBeNull()
+        "encoding to a known value works" {
+            issuerCredentialStore = InMemoryIssuerCredentialStore()
+            issuer = IssuerAgent.newDefaultInstance(
+                cryptoService = DefaultCryptoService(),
+                issuerCredentialStore = issuerCredentialStore,
+            )
+            verifierCryptoService = DefaultCryptoService()
+            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
+            expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
+            issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
+
+            val revocationList = issuer.buildRevocationList(FixedTimePeriodProvider.timePeriod)
+            revocationList.shouldNotBeNull()
+            // This bitset 0110 1011 0110 1110 should result in "eJy7VgYAAiQBTQ=="
+            // when using ZLIB Deflate and Base64 encoding
+            revocationList shouldBe "eJy7VgYAAiQBTQ=="
+            val bitSetRevocationList = decodeRevocationList(revocationList)
+
+            verifyBitSet(bitSetRevocationList, expectedRevokedIndexes)
+        }
+
+        "decoding a known value works" {
+            issuerCredentialStore = InMemoryIssuerCredentialStore()
+            issuer = IssuerAgent.newDefaultInstance(
+                cryptoService = DefaultCryptoService(),
+                issuerCredentialStore = issuerCredentialStore,
+            )
+            verifierCryptoService = DefaultCryptoService()
+            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
+            expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
+            issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
+
+            val revocationList = "eJy7VgYAAiQBTQ=="
+            // Should result in this bitset: 0110 1011 0110 1110
+            // i.e. exactly the expectedRevocationList from above
+            val bitSetRevocationList = decodeRevocationList(revocationList)
+
+            verifyBitSet(bitSetRevocationList, expectedRevokedIndexes)
         }
     }
-
-    "encoding to a known value works" {
-        issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent.newDefaultInstance(
-            cryptoService = DefaultCryptoService(),
-            issuerCredentialStore = issuerCredentialStore,
-        )
-        verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
-        expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
-        issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
-
-        val revocationList = issuer.buildRevocationList(FixedTimePeriodProvider.timePeriod)
-        revocationList.shouldNotBeNull()
-        // This bitset 0110 1011 0110 1110 should result in "eJy7VgYAAiQBTQ=="
-        // when using ZLIB Deflate and Base64 encoding
-        revocationList shouldBe "eJy7VgYAAiQBTQ=="
-        val bitSetRevocationList = decodeRevocationList(revocationList)
-
-        verifyBitSet(bitSetRevocationList, expectedRevokedIndexes)
-    }
-
-    "decoding a known value works" {
-        issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent.newDefaultInstance(
-            cryptoService = DefaultCryptoService(),
-            issuerCredentialStore = issuerCredentialStore,
-        )
-        verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
-        expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
-        issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
-
-        val revocationList = "eJy7VgYAAiQBTQ=="
-        // Should result in this bitset: 0110 1011 0110 1110
-        // i.e. exactly the expectedRevocationList from above
-        val bitSetRevocationList = decodeRevocationList(revocationList)
-
-        verifyBitSet(bitSetRevocationList, expectedRevokedIndexes)
-    }
-
-})
+}
 
 private fun decodeRevocationList(revocationList: String): KmmBitSet {
     val decodedBase64 = revocationList.decodeBase64()

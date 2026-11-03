@@ -5,7 +5,9 @@ import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.aroundEachTest
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
@@ -14,39 +16,15 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
-class IssueCredentialMessengerConcurrentTest : FreeSpec() {
+val IssueCredentialMessengerConcurrentTest by matrixSuite {
 
     lateinit var issuerCryptoService: CryptoService
     lateinit var issuer: Issuer
     lateinit var issuerServiceEndpoint: String
     lateinit var issuerMessenger: IssueCredentialMessenger
 
-    init {
-        beforeEach {
-            issuerCryptoService = DefaultCryptoService()
-            issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
-            issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
-            issuerMessenger = initIssuerMessenger(ConstantIndex.Generic)
-        }
 
-        "issueCredentialGeneric" {
-            coroutineScope {
-                repeat(100) {
-                    launch {
-                        val holderMessenger = initHolderMessenger()
-                        val issuedCredential = runProtocolFlow(holderMessenger)
-                        assertAtomicVc(issuedCredential, SchemaIndex.ATTR_GENERIC_PREFIX)
-                        assertAttachment(
-                            issuedCredential,
-                            "${SchemaIndex.ATTR_GENERIC_PREFIX}/$ATTRIBUTE_WITH_ATTACHMENT"
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    private fun initHolderMessenger(): IssueCredentialMessenger {
+    fun initHolderMessenger(): IssueCredentialMessenger {
         val cryptoService = DefaultCryptoService()
         return IssueCredentialMessenger.newHolderInstance(
             holder = HolderAgent.newDefaultInstance(cryptoService),
@@ -55,7 +33,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
         )
     }
 
-    private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
+    fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
             issuer = issuer,
             keyId = issuerCryptoService.keyId,
@@ -64,7 +42,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
             credentialScheme = scheme,
         )
 
-    private suspend fun runProtocolFlow(holderMessenger: IssueCredentialMessenger): IssueCredentialProtocolResult {
+    suspend fun runProtocolFlow(holderMessenger: IssueCredentialMessenger): IssueCredentialProtocolResult {
         val oobInvitation = issuerMessenger.startCreatingInvitation()
         oobInvitation.shouldBeInstanceOf<NextMessage.Send>()
         val invitationMessage = oobInvitation.message
@@ -86,7 +64,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
         return issuedCredential
     }
 
-    private fun assertAtomicVc(issuedCredentials: IssueCredentialProtocolResult, schema: String) {
+    fun assertAtomicVc(issuedCredentials: IssueCredentialProtocolResult, schema: String) {
         issuedCredentials.accepted.shouldNotBeEmpty()
         issuedCredentials.accepted.map { it.vc.credentialSubject }.forEach {
             it.shouldBeInstanceOf<AtomicAttributeCredential>()
@@ -95,7 +73,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
         issuedCredentials.rejected.shouldBeEmpty()
     }
 
-    private fun assertAttachment(issuedCredentials: IssueCredentialProtocolResult, attributeName: String) {
+    fun assertAttachment(issuedCredentials: IssueCredentialProtocolResult, attributeName: String) {
         issuedCredentials.accepted.shouldNotBeEmpty()
         issuedCredentials.accepted.map { it.vc.credentialSubject }
             .filterIsInstance<AtomicAttributeCredential>()
@@ -104,4 +82,27 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
         issuedCredentials.attachments.shouldNotBeEmpty()
     }
 
+    testSuite("tests", testConfig = TestConfig.aroundEachTest { action ->
+        issuerCryptoService = DefaultCryptoService()
+        issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
+        issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
+        issuerMessenger = initIssuerMessenger(ConstantIndex.Generic)
+        action()
+    }) {
+        "issueCredentialGeneric" {
+            coroutineScope {
+                repeat(100) {
+                    launch {
+                        val holderMessenger = initHolderMessenger()
+                        val issuedCredential = runProtocolFlow(holderMessenger)
+                        assertAtomicVc(issuedCredential, SchemaIndex.ATTR_GENERIC_PREFIX)
+                        assertAttachment(
+                            issuedCredential,
+                            "${SchemaIndex.ATTR_GENERIC_PREFIX}/$ATTRIBUTE_WITH_ATTACHMENT"
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

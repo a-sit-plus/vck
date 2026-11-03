@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.wallet.lib.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 
-class JweSerializationTest : FreeSpec({
+val JweSerializationTest by matrixSuite {
 
     "Serialization is correct" {
         val kid = uuid4()
@@ -89,4 +89,4 @@ class JweSerializationTest : FreeSpec({
         parsed.type shouldBe null
     }
 
-})
+}

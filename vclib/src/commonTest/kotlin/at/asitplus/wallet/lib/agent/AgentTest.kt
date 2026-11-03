@@ -5,7 +5,9 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.uuid4
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.aroundEachTest
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -13,7 +15,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class AgentTest : FreeSpec({
+val AgentTest by matrixSuite {
 
     lateinit var issuerCryptoService: CryptoService
     lateinit var holderCryptoService: CryptoService
@@ -25,7 +27,8 @@ class AgentTest : FreeSpec({
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var challenge: String
 
-    beforeEach {
+
+    testSuite("tests", testConfig = TestConfig.aroundEachTest { action ->
         issuerCryptoService = DefaultCryptoService()
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
@@ -42,198 +45,202 @@ class AgentTest : FreeSpec({
         )
         verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
         challenge = uuid4()
-    }
+        action()
+    }) {
+        "simple walk-through success" {
+            val vcList =
+                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+            if (vcList.failed.isNotEmpty()) fail("no issued credentials")
+            holder.storeCredentials(vcList.toStoreCredentialInput())
 
-    "simple walk-through success" {
-        val vcList =
-            issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
-        if (vcList.failed.isNotEmpty()) fail("no issued credentials")
-        holder.storeCredentials(vcList.toStoreCredentialInput())
-
-        val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-        val verified = verifier.verifyPresentation(vp.jws, challenge)
-        verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-    }
-
-    "simple walk-through success with attachments" {
-        val vcList = issuer.issueCredentials(
-            holderCryptoService.keyId,
-            listOf("${SchemaIndex.ATTR_GENERIC_PREFIX}/$ATTRIBUTE_WITH_ATTACHMENT")
-        )
-        vcList.successful.shouldNotBeEmpty()
-        holder.storeCredentials(vcList.toStoreCredentialInput())
-        holderCredentialStore.getAttachment(ATTRIBUTE_WITH_ATTACHMENT).getOrThrow().shouldNotBeNull()
-
-        val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-        val verified = verifier.verifyPresentation(vp.jws, challenge)
-        verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-    }
-
-    "wrong keyId in presentation leads to InvalidStructure" {
-        val credentials =
-            issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
-        if (credentials.failed.isNotEmpty()) fail("no issued credentials")
-        holder.storeCredentials(credentials.toStoreCredentialInput())
-
-        val vp = holder.createPresentation(challenge, issuerCryptoService.keyId)
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
-    }
-
-    "revoked credentials must not be validated" {
-        val credentials =
-            issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
-        if (credentials.failed.isNotEmpty()) fail("no issued credentials")
-        issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
-
-        val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
-        revocationListCredential.shouldNotBeNull()
-        verifier.setRevocationList(revocationListCredential) shouldBe true
-
-        credentials.successful.map { it.vcJws }.forEach {
-            verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
+            val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
+            vp.shouldNotBeNull()
+            vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+            val verified = verifier.verifyPresentation(vp.jws, challenge)
+            verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
-    }
 
-    "building presentation with revoked credentials should not work" - {
+        "simple walk-through success with attachments" {
+            val vcList = issuer.issueCredentials(
+                holderCryptoService.keyId,
+                listOf("${SchemaIndex.ATTR_GENERIC_PREFIX}/$ATTRIBUTE_WITH_ATTACHMENT")
+            )
+            vcList.successful.shouldNotBeEmpty()
+            holder.storeCredentials(vcList.toStoreCredentialInput())
+            holderCredentialStore.getAttachment(ATTRIBUTE_WITH_ATTACHMENT).getOrThrow().shouldNotBeNull()
 
-        "when setting a revocation list before storing credentials" {
+            val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
+            vp.shouldNotBeNull()
+            vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+            val verified = verifier.verifyPresentation(vp.jws, challenge)
+            verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+        }
+
+        "wrong keyId in presentation leads to InvalidStructure" {
             val credentials =
                 issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+            if (credentials.failed.isNotEmpty()) fail("no issued credentials")
+            holder.storeCredentials(credentials.toStoreCredentialInput())
+
+            val vp = holder.createPresentation(challenge, issuerCryptoService.keyId)
+            vp.shouldNotBeNull()
+            vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+            val result = verifier.verifyPresentation(vp.jws, challenge)
+            result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+        }
+
+        "revoked credentials must not be validated" {
+            val credentials =
+                issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
+
             val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
-            holder.setRevocationList(revocationListCredential) shouldBe true
+            verifier.setRevocationList(revocationListCredential) shouldBe true
 
-            val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.accepted.shouldBeEmpty()
-            storedCredentials.rejected shouldHaveSize credentials.successful.size
-            storedCredentials.notVerified.shouldBeEmpty()
-
-            holder.createPresentation(challenge, verifierCryptoService.keyId) shouldBe null
+            credentials.successful.map { it.vcJws }.forEach {
+                verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
+            }
         }
 
-        "and when setting a revocation list after storing credentials" {
-            val credentials =
-                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
-            if (credentials.failed.isNotEmpty()) fail("no issued credentials")
-            val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.accepted shouldHaveSize credentials.successful.size
-            storedCredentials.rejected.shouldBeEmpty()
-            storedCredentials.notVerified.shouldBeEmpty()
+        "building presentation with revoked credentials should not work" - {
 
-            issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
-            val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
-            revocationListCredential.shouldNotBeNull()
-            holder.setRevocationList(revocationListCredential) shouldBe true
+            "when setting a revocation list before storing credentials" {
+                val credentials =
+                    issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                if (credentials.failed.isNotEmpty()) fail("no issued credentials")
+                issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
+                val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                revocationListCredential.shouldNotBeNull()
+                holder.setRevocationList(revocationListCredential) shouldBe true
 
-            holder.createPresentation(challenge, verifierCryptoService.keyId) shouldBe null
+                val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
+                storedCredentials.accepted.shouldBeEmpty()
+                storedCredentials.rejected shouldHaveSize credentials.successful.size
+                storedCredentials.notVerified.shouldBeEmpty()
+
+                holder.createPresentation(challenge, verifierCryptoService.keyId) shouldBe null
+            }
+
+            "and when setting a revocation list after storing credentials" {
+                val credentials =
+                    issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                if (credentials.failed.isNotEmpty()) fail("no issued credentials")
+                val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
+                storedCredentials.accepted shouldHaveSize credentials.successful.size
+                storedCredentials.rejected.shouldBeEmpty()
+                storedCredentials.notVerified.shouldBeEmpty()
+
+                issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
+                val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                revocationListCredential.shouldNotBeNull()
+                holder.setRevocationList(revocationListCredential) shouldBe true
+
+                holder.createPresentation(challenge, verifierCryptoService.keyId) shouldBe null
+            }
         }
-    }
 
-    "getting credentials that have been stored by the holder" - {
+        "getting credentials that have been stored by the holder" - {
 
-        "when there are no credentials stored" {
-            val holderCredentials = holder.getCredentials()
-            holderCredentials.shouldNotBeNull()
-            holderCredentials.shouldBeEmpty()
-        }
-
-        "when they are valid" - {
-            val credentials =
-                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
-            if (credentials.failed.isNotEmpty()) fail("no issued credentials")
-            val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.accepted shouldHaveSize credentials.successful.size
-            storedCredentials.rejected.shouldBeEmpty()
-            storedCredentials.notVerified.shouldBeEmpty()
-
-            "without a revocation list set" {
+            "when there are no credentials stored" {
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
-                holderCredentials.forEach {
-                    it.status.shouldBe(Validator.RevocationStatus.UNKNOWN)
+                holderCredentials.shouldBeEmpty()
+            }
+
+            "when they are valid" - {
+                suspend fun storeValidCredentials() {
+                    val credentials =
+                        issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                    if (credentials.failed.isNotEmpty()) fail("no issued credentials")
+                    val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
+                    storedCredentials.accepted shouldHaveSize credentials.successful.size
+                    storedCredentials.rejected.shouldBeEmpty()
+                    storedCredentials.notVerified.shouldBeEmpty()
+                }
+
+                "without a revocation list set" {
+                    storeValidCredentials()
+                    val holderCredentials = holder.getCredentials()
+                    holderCredentials.shouldNotBeNull()
+                    holderCredentials.forEach {
+                        it.status.shouldBe(Validator.RevocationStatus.UNKNOWN)
+                    }
+                }
+
+                "with a revocation list set" {
+                    storeValidCredentials()
+                    holder.setRevocationList(issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)!!) shouldBe true
+                    val holderCredentials = holder.getCredentials()
+                    holderCredentials.shouldNotBeNull()
+                    holderCredentials.forEach {
+                        it.status.shouldBe(Validator.RevocationStatus.VALID)
+                    }
                 }
             }
 
-            "with a revocation list set" {
-                holder.setRevocationList(issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)!!) shouldBe true
+            "when the issuer has revoked them" {
+                val credentials =
+                    issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                if (credentials.failed.isNotEmpty()) fail("no issued credentials")
+                val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
+                storedCredentials.accepted shouldHaveSize credentials.successful.size
+                storedCredentials.rejected.shouldBeEmpty()
+                storedCredentials.notVerified.shouldBeEmpty()
+
+                issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
+                val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                revocationListCredential.shouldNotBeNull()
+                holder.setRevocationList(revocationListCredential) shouldBe true
+
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
                 holderCredentials.forEach {
-                    it.status.shouldBe(Validator.RevocationStatus.VALID)
+                    it.status.shouldBe(Validator.RevocationStatus.REVOKED)
                 }
             }
         }
 
-        "when the issuer has revoked them" {
+        "building presentation without necessary credentials" {
+            holder.createPresentation(challenge, verifierCryptoService.keyId) shouldBe null
+        }
+
+        "valid presentation is valid" {
             val credentials =
                 issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
-            val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.accepted shouldHaveSize credentials.successful.size
-            storedCredentials.rejected.shouldBeEmpty()
-            storedCredentials.notVerified.shouldBeEmpty()
+            holder.storeCredentials(credentials.toStoreCredentialInput())
+            val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
+            vp.shouldNotBeNull()
+            vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
-            issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
-            val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
-            revocationListCredential.shouldNotBeNull()
-            holder.setRevocationList(revocationListCredential) shouldBe true
+            val result = verifier.verifyPresentation(vp.jws, challenge)
+            result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+            result.vp.revokedVerifiableCredentials.shouldBeEmpty()
+            credentials.successful shouldHaveSize result.vp.verifiableCredentials.size
+            verifier.verifyPresentationContainsAttributes(result.vp, AttributeIndex.genericAttributes) shouldBe true
+        }
 
-            val holderCredentials = holder.getCredentials()
-            holderCredentials.shouldNotBeNull()
-            holderCredentials.forEach {
-                it.status.shouldBe(Validator.RevocationStatus.REVOKED)
-            }
+        "valid presentation is valid -- some other attributes revoked" {
+            val credentials =
+                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+            if (credentials.failed.isNotEmpty()) fail("no issued credentials")
+            holder.storeCredentials(credentials.toStoreCredentialInput())
+            val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
+            vp.shouldNotBeNull()
+            vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+
+            val credentialsToRevoke =
+                issuer.issueCredentials(issuerCryptoService.keyId, AttributeIndex.genericAttributes)
+            if (credentialsToRevoke.failed.isNotEmpty()) fail("no issued credentials")
+            issuer.revokeCredentials(credentialsToRevoke.successful.map { it.vcJws }) shouldBe true
+            val revocationList = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+            revocationList.shouldNotBeNull()
+            verifier.setRevocationList(revocationList) shouldBe true
+
+            val result = verifier.verifyPresentation(vp.jws, challenge)
+            result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         }
     }
-
-    "building presentation without necessary credentials" {
-        holder.createPresentation(challenge, verifierCryptoService.keyId) shouldBe null
-    }
-
-    "valid presentation is valid" {
-        val credentials =
-            issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
-        if (credentials.failed.isNotEmpty()) fail("no issued credentials")
-        holder.storeCredentials(credentials.toStoreCredentialInput())
-        val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-        result.vp.revokedVerifiableCredentials.shouldBeEmpty()
-        credentials.successful shouldHaveSize result.vp.verifiableCredentials.size
-        verifier.verifyPresentationContainsAttributes(result.vp, AttributeIndex.genericAttributes) shouldBe true
-    }
-
-    "valid presentation is valid -- some other attributes revoked" {
-        val credentials =
-            issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
-        if (credentials.failed.isNotEmpty()) fail("no issued credentials")
-        holder.storeCredentials(credentials.toStoreCredentialInput())
-        val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-
-        val credentialsToRevoke =
-            issuer.issueCredentials(issuerCryptoService.keyId, AttributeIndex.genericAttributes)
-        if (credentialsToRevoke.failed.isNotEmpty()) fail("no issued credentials")
-        issuer.revokeCredentials(credentialsToRevoke.successful.map { it.vcJws }) shouldBe true
-        val revocationList = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
-        revocationList.shouldNotBeNull()
-        verifier.setRevocationList(revocationList) shouldBe true
-
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-    }
-
-})
+}

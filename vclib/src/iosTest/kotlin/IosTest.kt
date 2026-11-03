@@ -1,8 +1,9 @@
 package test
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
 import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.Platform
 
 
 @OptIn(ExperimentalNativeApi::class)
-class `iOSOnlyTest` : FreeSpec({ "should run on on ${Platform}"{} })
+val `iOSOnlyTest` by matrixSuite { "should run on ${Platform}"{} }

@@ -10,11 +10,13 @@ import at.asitplus.wallet.lib.msg.PresentationBody
 import at.asitplus.wallet.lib.msg.RequestCredential
 import at.asitplus.wallet.lib.msg.RequestCredentialBody
 import at.asitplus.wallet.lib.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.aroundEachTest
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class IssueCredentialProtocolTest : FreeSpec({
+val IssueCredentialProtocolTest by matrixSuite {
 
     lateinit var issuerCryptoService: CryptoService
     lateinit var holderCryptoService: CryptoService
@@ -23,7 +25,8 @@ class IssueCredentialProtocolTest : FreeSpec({
     lateinit var issuerProtocol: IssueCredentialProtocol
     lateinit var holderProtocol: IssueCredentialProtocol
 
-    beforeEach {
+
+    testSuite("tests", testConfig = TestConfig.aroundEachTest { action ->
         issuerCryptoService = DefaultCryptoService()
         holderCryptoService = DefaultCryptoService()
         issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
@@ -39,88 +42,89 @@ class IssueCredentialProtocolTest : FreeSpec({
             keyId = holderCryptoService.keyId,
             credentialScheme = ConstantIndex.Generic,
         )
-    }
+        action()
+    }) {
+        "issueCredentialGenericWithInvitation" {
+            val oobInvitation = issuerProtocol.startCreatingInvitation()
+            oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
+            val invitationMessage = oobInvitation.message
 
-    "issueCredentialGenericWithInvitation" {
-        val oobInvitation = issuerProtocol.startCreatingInvitation()
-        oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
-        val invitationMessage = oobInvitation.message
+            val parsedInvitation =
+                holderProtocol.parseMessage(invitationMessage, issuerCryptoService.keyId)
+            parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
+            val requestCredential = parsedInvitation.message
 
-        val parsedInvitation =
-            holderProtocol.parseMessage(invitationMessage, issuerCryptoService.keyId)
-        parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
-        val requestCredential = parsedInvitation.message
+            val parsedRequestCredential =
+                issuerProtocol.parseMessage(requestCredential, holderCryptoService.keyId)
+            parsedRequestCredential.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
+            val issueCredential = parsedRequestCredential.message
 
-        val parsedRequestCredential =
-            issuerProtocol.parseMessage(requestCredential, holderCryptoService.keyId)
-        parsedRequestCredential.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
-        val issueCredential = parsedRequestCredential.message
+            val parsedIssueCredential =
+                holderProtocol.parseMessage(issueCredential, issuerCryptoService.keyId)
+            parsedIssueCredential.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
-        val parsedIssueCredential =
-            holderProtocol.parseMessage(issueCredential, issuerCryptoService.keyId)
-        parsedIssueCredential.shouldBeInstanceOf<InternalNextMessage.Finished>()
+            val issuedCredential = parsedIssueCredential.lastMessage
+            issuedCredential.shouldBeInstanceOf<IssueCredential>()
+        }
 
-        val issuedCredential = parsedIssueCredential.lastMessage
-        issuedCredential.shouldBeInstanceOf<IssueCredential>()
-    }
+        "issueCredentialGenericDirect" {
+            val requestCredential = holderProtocol.startDirect()
+            requestCredential.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
 
-    "issueCredentialGenericDirect" {
-        val requestCredential = holderProtocol.startDirect()
-        requestCredential.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
+            val parsedRequestCredential =
+                issuerProtocol.parseMessage(requestCredential.message, holderCryptoService.keyId)
+            parsedRequestCredential.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
+            val issueCredential = parsedRequestCredential.message
 
-        val parsedRequestCredential =
-            issuerProtocol.parseMessage(requestCredential.message, holderCryptoService.keyId)
-        parsedRequestCredential.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
-        val issueCredential = parsedRequestCredential.message
+            val parsedIssueCredential =
+                holderProtocol.parseMessage(issueCredential, issuerCryptoService.keyId)
+            parsedIssueCredential.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
-        val parsedIssueCredential =
-            holderProtocol.parseMessage(issueCredential, issuerCryptoService.keyId)
-        parsedIssueCredential.shouldBeInstanceOf<InternalNextMessage.Finished>()
+            val issuedCredential = parsedIssueCredential.lastMessage
+            issuedCredential.shouldBeInstanceOf<IssueCredential>()
+        }
 
-        val issuedCredential = parsedIssueCredential.lastMessage
-        issuedCredential.shouldBeInstanceOf<IssueCredential>()
-    }
-
-    "wrongStartMessage" {
-        val parsed = holderProtocol.parseMessage(
-            Presentation(
-                body = PresentationBody("foo", arrayOf(AttachmentFormatReference("id1", "jws"))),
-                threadId = uuid4(),
-                attachment = JwmAttachment(id = uuid4(), "mimeType", JwmAttachmentData())
-            ),
-            issuerCryptoService.keyId
-        )
-        parsed.shouldBeInstanceOf<InternalNextMessage.IncorrectState>()
-    }
-
-    "wrongRequestCredentialMessage" {
-        val oobInvitation = issuerProtocol.startCreatingInvitation()
-        oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
-        val invitationMessage = oobInvitation.message
-
-        val parsedInvitation =
-            holderProtocol.parseMessage(invitationMessage, issuerCryptoService.keyId)
-        parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
-        val requestCredential = parsedInvitation.message
-
-        val wrongRequestCredential = RequestCredential(
-            body = RequestCredentialBody(
-                comment = "something",
-                goalCode = ConstantIndex.Generic.goalCodeIssue,
-                formats = arrayOf()
-            ),
-            parentThreadId = requestCredential.parentThreadId!!,
-            attachment = JwmAttachment(
-                id = uuid4(),
-                mediaType = "unknown",
-                data = JwmAttachmentData()
+        "wrongStartMessage" {
+            val parsed = holderProtocol.parseMessage(
+                Presentation(
+                    body = PresentationBody("foo", arrayOf(AttachmentFormatReference("id1", "jws"))),
+                    threadId = uuid4(),
+                    attachment = JwmAttachment(id = uuid4(), "mimeType", JwmAttachmentData())
+                ),
+                issuerCryptoService.keyId
             )
-        )
-        val parsedRequestCredential =
-            issuerProtocol.parseMessage(wrongRequestCredential, holderCryptoService.keyId)
-        parsedRequestCredential.shouldBeInstanceOf<InternalNextMessage.SendProblemReport>()
-        val problemReport = parsedRequestCredential.message
+            parsed.shouldBeInstanceOf<InternalNextMessage.IncorrectState>()
+        }
 
-        problemReport.parentThreadId shouldNotBe null
+        "wrongRequestCredentialMessage" {
+            val oobInvitation = issuerProtocol.startCreatingInvitation()
+            oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
+            val invitationMessage = oobInvitation.message
+
+            val parsedInvitation =
+                holderProtocol.parseMessage(invitationMessage, issuerCryptoService.keyId)
+            parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
+            val requestCredential = parsedInvitation.message
+
+            val wrongRequestCredential = RequestCredential(
+                body = RequestCredentialBody(
+                    comment = "something",
+                    goalCode = ConstantIndex.Generic.goalCodeIssue,
+                    formats = arrayOf()
+                ),
+                parentThreadId = requestCredential.parentThreadId!!,
+                attachment = JwmAttachment(
+                    id = uuid4(),
+                    mediaType = "unknown",
+                    data = JwmAttachmentData()
+                )
+            )
+            val parsedRequestCredential =
+                issuerProtocol.parseMessage(wrongRequestCredential, holderCryptoService.keyId)
+            parsedRequestCredential.shouldBeInstanceOf<InternalNextMessage.SendProblemReport>()
+            val problemReport = parsedRequestCredential.message
+
+            problemReport.parentThreadId shouldNotBe null
+        }
     }
-})
+}

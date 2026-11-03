@@ -3,7 +3,9 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.uuid4
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
+import de.infix.testBalloon.framework.core.TestConfig
+import de.infix.testBalloon.framework.core.aroundEachTest
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
@@ -15,35 +17,61 @@ import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
-class PresentProofMessengerTest : FreeSpec() {
+val PresentProofMessengerTest by matrixSuite {
 
-    private lateinit var holderCryptoService: CryptoService
-    private lateinit var verifierCryptoService: CryptoService
-    private lateinit var issuerCryptoService: CryptoService
-    private lateinit var holder: Holder
-    private lateinit var verifier: Verifier
-    private lateinit var issuer: Issuer
-    private lateinit var verifierChallenge: String
-    private lateinit var holderServiceEndpoint: String
-    private var attributeLifetime: Duration = 5.toDuration(DurationUnit.SECONDS)
+    lateinit var holderCryptoService: CryptoService
+    lateinit var verifierCryptoService: CryptoService
+    lateinit var issuerCryptoService: CryptoService
+    lateinit var holder: Holder
+    lateinit var verifier: Verifier
+    lateinit var issuer: Issuer
+    lateinit var verifierChallenge: String
+    lateinit var holderServiceEndpoint: String
+    var attributeLifetime: Duration = 5.toDuration(DurationUnit.SECONDS)
 
-    init {
 
-        beforeEach {
-            holderCryptoService = DefaultCryptoService()
-            verifierCryptoService = DefaultCryptoService()
-            issuerCryptoService = DefaultCryptoService()
-            holder = HolderAgent.newDefaultInstance(holderCryptoService)
-            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
-            issuer = IssuerAgent.newDefaultInstance(issuerCryptoService)
-            verifierChallenge = uuid4()
-            holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
-            val credentialSubject = randomCredential(holderCryptoService.keyId)
-            runBlocking {
-                holder.storeCredentials(issuer.issueCredential(credentialSubject).toStoreCredentialInput())
-            }
+    fun assertPresentation(
+        vpResult: PresentProofProtocolResult,
+        attributeName: String,
+        attributeValue: String
+    ) {
+        vpResult.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+        val vp = vpResult.vp
+        vp.verifiableCredentials shouldHaveSize 1
+        vp.verifiableCredentials.forEach {
+            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttributeCredential>()
+            (it.vc.credentialSubject as AtomicAttributeCredential).name shouldBe attributeName
+            (it.vc.credentialSubject as AtomicAttributeCredential).value shouldBe attributeValue
         }
+    }
 
+    fun randomCredential(subjectId: String) =
+        IssuerCredentialDataProvider.CredentialToBeIssued(
+            AtomicAttributeCredential(
+                subjectId,
+                uuid4(),
+                uuid4(),
+                "application/text"
+            ),
+            Clock.System.now() + attributeLifetime,
+            ConstantIndex.Generic.vcType
+        )
+
+    testSuite("tests", testConfig = TestConfig.aroundEachTest { action ->
+        holderCryptoService = DefaultCryptoService()
+        verifierCryptoService = DefaultCryptoService()
+        issuerCryptoService = DefaultCryptoService()
+        holder = HolderAgent.newDefaultInstance(holderCryptoService)
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
+        issuer = IssuerAgent.newDefaultInstance(issuerCryptoService)
+        verifierChallenge = uuid4()
+        holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
+        val credentialSubject = randomCredential(holderCryptoService.keyId)
+        runBlocking {
+            holder.storeCredentials(issuer.issueCredential(credentialSubject).toStoreCredentialInput())
+        }
+        action()
+    }) {
         "presentProof" {
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
@@ -183,32 +211,4 @@ class PresentProofMessengerTest : FreeSpec() {
             assertPresentation(receivedPresentation, attributeName, attributeValue)
         }
     }
-
-    private fun assertPresentation(
-        vpResult: PresentProofProtocolResult,
-        attributeName: String,
-        attributeValue: String
-    ) {
-        vpResult.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-        val vp = vpResult.vp
-        vp.verifiableCredentials shouldHaveSize 1
-        vp.verifiableCredentials.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttributeCredential>()
-            (it.vc.credentialSubject as AtomicAttributeCredential).name shouldBe attributeName
-            (it.vc.credentialSubject as AtomicAttributeCredential).value shouldBe attributeValue
-        }
-    }
-
-    private fun randomCredential(subjectId: String) =
-        IssuerCredentialDataProvider.CredentialToBeIssued(
-            AtomicAttributeCredential(
-                subjectId,
-                uuid4(),
-                uuid4(),
-                "application/text"
-            ),
-            Clock.System.now() + attributeLifetime,
-            ConstantIndex.Generic.vcType
-        )
-
 }

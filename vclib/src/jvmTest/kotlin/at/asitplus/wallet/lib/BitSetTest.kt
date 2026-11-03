@@ -1,17 +1,15 @@
 package at.asitplus.wallet.lib
 
 import io.kotest.assertions.withClue
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.boolean
 import io.kotest.property.arbitrary.booleanArray
 import io.kotest.property.arbitrary.int
-import io.kotest.property.checkAll
 import java.util.BitSet
 
-class BitSetTest : FreeSpec({
+val BitSetTest by matrixSuite {
 
 
     "Custom BitSet Implementation" - {
@@ -65,14 +63,14 @@ class BitSetTest : FreeSpec({
         }
 
 
-        checkAll(
-            iterations = 32,
-            Arb.booleanArray(
+        property(
+            gen = Arb.booleanArray(
                 Arb.int(1..128),
                 Arb.boolean()
-            )
-        ) { input ->
-            withData(
+            ),
+            iterations = 32
+        ) - { input ->
+            data(listOf(
                 input.size,
                 input.size / 2,
                 input.size / 3,
@@ -83,7 +81,7 @@ class BitSetTest : FreeSpec({
                 0,
                 input.size * 2,
                 input.size * 4
-            ) { size:Int ->
+            )) test { size:Int ->
                 val jvm = BitSet(size).also {
                     input.indices.shuffled().forEach { i -> it.set(i, input[i]) }
                 }
@@ -143,14 +141,14 @@ class BitSetTest : FreeSpec({
         }
 
         "toString() Tests" - {
-            checkAll(
-                iterations = 32,
-                Arb.booleanArray(
+            property(
+                gen = Arb.booleanArray(
                     Arb.int(1..128),
                     Arb.boolean()
-                )
-            ) { input ->
-                withData(
+                ),
+                iterations = 32
+            ) - { input ->
+                data(listOf(
                     input.size,
                     input.size / 2,
                     input.size / 3,
@@ -161,7 +159,7 @@ class BitSetTest : FreeSpec({
                     0,
                     input.size * 2,
                     input.size * 4
-                ) { size ->
+                )) test { size ->
                     val jvm = BitSet(size).also {
                         input.indices.shuffled().forEach { i -> it.set(i, input[i]) }
                     }
@@ -189,5 +187,5 @@ class BitSetTest : FreeSpec({
             }
         }
     }
-})
+}
 fun BitSet.toBitString()=toByteArray().toBitString()

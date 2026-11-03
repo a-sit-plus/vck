@@ -1,18 +1,16 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.msg.*
-import at.asitplus.wallet.lib.nameHack
 import at.asitplus.wallet.lib.uuid4
-import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.shouldBe
 
-class ProblemReporterTest : FreeSpec({
+val ProblemReporterTest by matrixSuite {
 
     val problemReporter = ProblemReporter()
 
     "sorter" - {
-        withData(nameFn = ::nameHack, ProblemReportSorter.values().asList()) {
+        data(ProblemReportSorter.values().asList()) test {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = it,
@@ -33,7 +31,7 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "scope" - {
-        withData(nameFn = ::nameHack, ProblemReportScope.values().asList()) {
+        data(ProblemReportScope.values().asList()) test {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = ProblemReportSorter.WARNING,
@@ -54,7 +52,7 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "descriptor" - {
-        withData(nameFn = ::nameHack, ProblemReportDescriptor.values().asList()) {
+        data(ProblemReportDescriptor.values().asList()) test {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = ProblemReportSorter.WARNING,
@@ -116,4 +114,4 @@ class ProblemReporterTest : FreeSpec({
         problemReporter.buildExplanation(problemReport) shouldBe expectedComment
     }
 
-})
+}

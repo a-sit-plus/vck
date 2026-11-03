@@ -2,7 +2,7 @@
 
 package at.asitplus.wallet.lib.jws
 
-import io.kotest.core.spec.style.FreeSpec
+import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -11,7 +11,7 @@ import kotlin.random.Random
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-class JwsHeaderSerializationTest : FreeSpec({
+val JwsHeaderSerializationTest by matrixSuite {
 
     "Serialization contains x5c as strings" {
         val first = Random.nextBytes(32)
@@ -54,4 +54,4 @@ class JwsHeaderSerializationTest : FreeSpec({
         parsed.certificateChain?.shouldContain(second)
     }
 
-})
+}
