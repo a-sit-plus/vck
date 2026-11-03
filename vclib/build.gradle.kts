@@ -1,9 +1,11 @@
 import at.asitplus.gradle.*
 import at.asitplus.gradle.at.asitplus.gradle.addTestExtensions
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("com.android.kotlin.multiplatform.library")
     id("de.infix.testBalloon")
     id("at.asitplus.gradle.vclib-conventions")
     id("org.jetbrains.dokka")
@@ -17,6 +19,18 @@ version = artifactVersion
 
 kotlin {
     jvm()
+    targets.withType<KotlinMultiplatformAndroidLibraryTarget>().configureEach {
+        namespace = "at.asitplus.wallet.vclib"
+        withDeviceTestBuilder {
+            sourceSetTreeName = "test"
+        }
+        packaging.resources.excludes += listOf(
+            "/META-INF/{AL2.0,LGPL2.1}",
+            "META-INF/licenses/*",
+            "META-INF/LICENSE.*",
+            "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+        )
+    }
     iosArm64()
     iosSimulatorArm64()
     iosX64()
@@ -33,7 +47,7 @@ kotlin {
                 addTestExtensions()
             }
         }
-        jvmMain {
+        androidJvmMain {
             dependencies {
                 implementation(bouncycastle("bcpkix"))
             }

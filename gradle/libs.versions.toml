@@ -3,9 +3,11 @@ ktor = "3.2.2"
 kotlin ="2.4.10"
 testballoon = "1.1.0"
 asp = "20260918"
+agp = "9.1.1"
 
 [libraries]
 asp = { module = "at.asitplus.gradle:k2", version.ref = "asp" }
+agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 
 [plugins]
 asp = { id = "at.asitplus.gradle.conventions", version.ref = "asp" }
