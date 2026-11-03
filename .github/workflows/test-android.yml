@@ -1,0 +1,49 @@
+name: Test Android
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: >-
+            platform-tools emulator platforms;android-34 build-tools;36.0.0
+            system-images;android-35;aosp_atd;x86_64
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+
+      - name: Run Android tests
+        run: >-
+          ./gradlew :vclib:pixelAVDAndroidDeviceTest
+          --no-daemon --stacktrace --console=plain
+          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
+
+      - name: Upload Android test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-test-results
+          path: |
+            vclib/build/reports/androidTests/
+            vclib/build/outputs/androidTest-results/
+            vclib/build/outputs/managed_device_android_test_additional_output/

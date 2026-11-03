@@ -1,22 +1,30 @@
 name: Publish
 on: workflow_dispatch
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - uses: actions/setup-java@v3
+        uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Publish to Sonatype
-        run: ./gradlew clean publishToSonatype closeSonatypeStagingRepository
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-34 build-tools;36.0.0
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Publish to GitHub Packages
+        run: >-
+          ./gradlew :vclib:publishAllPublicationsToGitHubPackagesRepository
+          --no-daemon --stacktrace --console=plain
         env:
-          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.PUBLISH_SIGNING_KEYID }}
-          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PUBLISH_SIGNING_KEY }}
-          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.PUBLISH_SIGNING_PASSWORD }}
-          ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.PUBLISH_SONATYPE_USER }}
-          ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.PUBLISH_SONATYPE_PASSWORD }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

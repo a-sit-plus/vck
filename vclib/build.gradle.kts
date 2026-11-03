@@ -122,6 +122,17 @@ publishing {
         mavenLocal {
             signing.isRequired = false
         }
+        maven {
+            name = "GitHubPackages"
+            url = uri(
+                "https://maven.pkg.github.com/" +
+                    providers.environmentVariable("GITHUB_REPOSITORY").orElse("a-sit-plus/vck").get().lowercase()
+            )
+            credentials {
+                username = providers.environmentVariable("GITHUB_ACTOR").orNull
+                password = providers.environmentVariable("GITHUB_TOKEN").orNull
+            }
+        }
     }
 }
 
