@@ -28,9 +28,9 @@ class ProblemReporter {
             var result = comment
             problemReport.body.args?.let { args ->
                 args.forEachIndexed { index, s -> result = result.replace("{${index + 1}}", s) }
-                return """\{\d}""".toRegex().replace(result, "?")
+                return """\{\d\}""".toRegex().replace(result, "?")
             }
-            return """\{\d}""".toRegex().replace(result, "?")
+            return """\{\d\}""".toRegex().replace(result, "?")
         }
         return null
     }
