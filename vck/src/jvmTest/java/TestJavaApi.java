@@ -1,7 +1,21 @@
 import at.asitplus.KmmResult;
 import at.asitplus.iso.MobileSecurityObject;
+import at.asitplus.csc.api.CredentialInfo;
+import at.asitplus.csc.api.collection_entries.KeyParameters;
 import at.asitplus.openid.ClaimDescription;
+import at.asitplus.openid.CredentialResponseParameters;
 import at.asitplus.openid.IssuerMetadata;
+import at.asitplus.openid.KeyAttestationRequired;
+import at.asitplus.openid.PushedAuthenticationResponseParameters;
+import at.asitplus.openid.TokenResponseParameters;
+import at.asitplus.wallet.eupid.EuPidCredential;
+import at.asitplus.wallet.lib.agent.validation.TimeScope;
+import at.asitplus.wallet.lib.data.LocalDateOrInstant;
+import at.asitplus.wallet.lib.validation.StatusPolicy;
+import at.asitplus.wallet.lib.validation.TrustPolicy;
+import at.asitplus.wallet.lib.validation.ValidationPolicy;
+import at.asitplus.wallet.mdl.DrivingPrivilege;
+import at.asitplus.wallet.mdl.MobileDrivingLicence;
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued;
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued;
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert;
@@ -29,6 +43,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus;
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk;
 import at.asitplus.wallet.lib.jws.SignJwt;
 import at.asitplus.wallet.lib.jws.SignJwtExt;
+import kotlin.time.Duration;
 import kotlinx.serialization.json.JsonObject;
 import kotlin.coroutines.Continuation;
 import kotlin.Pair;
@@ -37,11 +52,36 @@ import kotlin.time.Instant;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class TestJavaApi {
+
+    public static void createKeyAttestationRequiredFromJavaApi() {
+        KeyAttestationRequired attestation = new KeyAttestationRequired(
+                Collections.singleton("keyStore"),
+                Collections.singleton("userAuthentication"),
+                100L
+        );
+        if (attestation.getPreferredTtlSeconds() != 100L) {
+            throw new AssertionError("TTL in seconds missing");
+        }
+        if (!attestation.getKeyStorage().contains("keyStore")) {
+            throw new AssertionError("key storage missing");
+        }
+
+        KeyAttestationRequired withDefaults = new KeyAttestationRequired(null);
+        if (withDefaults.getPreferredTtlSeconds() != 31L * 24 * 60 * 60) {
+            throw new AssertionError("TTL must default to 31 days");
+        }
+
+        KeyAttestationRequired withoutTtl = new KeyAttestationRequired(null, null, null);
+        if (withoutTtl.getPreferredTtlSeconds() != null) {
+            throw new AssertionError("explicit null TTL must stay null");
+        }
+    }
 
     public static void createsStatusListInfoFromJavaApi() throws MalformedURLException {
         URL uri = new URL("https://example.com");
@@ -124,7 +164,7 @@ public class TestJavaApi {
             throw new AssertionError("credential issuer missing");
         }
 
-        new IssuerMetadata(
+        IssuerMetadata signedMetadata = new IssuerMetadata(
                 issuer.toString(),
                 credentialEndpoint.toString(),
                 issuer.toString(),
@@ -142,6 +182,99 @@ public class TestJavaApi {
                 1L,
                 2L
         );
+        if (signedMetadata.getPreferredClientStatusPeriodSeconds() != 60L) {
+            throw new AssertionError("preferred client status period in seconds missing");
+        }
+    }
+
+    public static void createsOAuthResponsesFromJavaApi() {
+        TokenResponseParameters token = new TokenResponseParameters("access", "DPoP", null, 60L);
+        if (token.getExpiresSeconds() != 60L || token.getIntervalSeconds() != null) {
+            throw new AssertionError("token expiry in seconds missing");
+        }
+        if (!token.getTokenType().equals("DPoP") || token.getRefreshToken() != null) {
+            throw new AssertionError("token parameters misplaced");
+        }
+
+        PushedAuthenticationResponseParameters par =
+                new PushedAuthenticationResponseParameters("urn:example:request", 90L);
+        if (par.getExpiresSeconds() != 90L) {
+            throw new AssertionError("PAR expiry in seconds missing");
+        }
+
+        CredentialResponseParameters deferred = new CredentialResponseParameters(null, "transaction", 5L);
+        if (deferred.getIntervalSeconds() != 5L || !deferred.getTransactionId().equals("transaction")) {
+            throw new AssertionError("deferred interval in seconds missing");
+        }
+    }
+
+    public static void createsValidationPolicyFromJavaApi() {
+        ValidationPolicy policy = new ValidationPolicy(
+                TrustPolicy.IntegrityOnly.INSTANCE,
+                StatusPolicy.Skip.INSTANCE,
+                true,
+                5_000L
+        );
+        if (policy.getTimeLeewayMilliseconds() != 5_000L || !policy.getRequireTimeliness()) {
+            throw new AssertionError("time leeway in milliseconds missing");
+        }
+        try {
+            new ValidationPolicy(TrustPolicy.IntegrityOnly.INSTANCE, StatusPolicy.Skip.INSTANCE, true, -1L);
+            throw new AssertionError("negative time leeway must be rejected");
+        } catch (IllegalArgumentException expected) {
+            // rejected by the primary constructor
+        }
+
+        TimeScope scope = new TimeScope(5_000L, Clock.System.INSTANCE.now());
+        if (scope.getTimeLeewayMilliseconds() != 5_000L) {
+            throw new AssertionError("time scope leeway in milliseconds missing");
+        }
+    }
+
+    public static void createsCscParametersFromJavaApi() {
+        KeyParameters key = new KeyParameters(KeyParameters.KeyStatusOptions.ENABLED, Set.of(), 2048L);
+        if (key.getLenAsLong() != 2048L) {
+            throw new AssertionError("key length missing");
+        }
+        CredentialInfo info = new CredentialInfo(key, 1L, "credential");
+        if (info.getMultisignAsLong() != 1L || !info.getCredentialID().equals("credential")) {
+            throw new AssertionError("credential info parameters misplaced");
+        }
+        try {
+            new KeyParameters(KeyParameters.KeyStatusOptions.ENABLED, Set.of(), -1L);
+            throw new AssertionError("negative key length must be rejected");
+        } catch (IllegalArgumentException expected) {
+            // not representable as UInt
+        }
+    }
+
+    public static void createsCredentialsFromJavaApi() {
+        kotlinx.datetime.LocalDate birthDate = new kotlinx.datetime.LocalDate(1990, 1, 1);
+        kotlinx.datetime.LocalDate expiryDate = new kotlinx.datetime.LocalDate(2040, 1, 1);
+        EuPidCredential pid = new EuPidCredential(
+                "id", "Musterfrau", "Erika", birthDate,
+                null, null, null, null, null, null, null, null, null, null,
+                2L,
+                null,
+                new LocalDateOrInstant.LocalDate(birthDate),
+                new LocalDateOrInstant.LocalDate(expiryDate),
+                "authority",
+                null,
+                "AT"
+        );
+        if (pid.getSexAsLong() != 2L || !pid.getIssuingCountry().equals("AT")) {
+            throw new AssertionError("PID parameters misplaced");
+        }
+
+        MobileDrivingLicence mdl = new MobileDrivingLicence(
+                "Musterfrau", "Erika", birthDate, birthDate, expiryDate, "AT", "authority", "licence",
+                new byte[]{1}, new DrivingPrivilege[0],
+                null, null, null,
+                170L, 60L
+        );
+        if (mdl.getHeightAsLong() != 170L || mdl.getWeightAsLong() != 60L || mdl.getAgeInYearsAsLong() != null) {
+            throw new AssertionError("mDL parameters misplaced");
+        }
     }
 
     public static void implementsReferencedTokenStoreFromJavaApi() {

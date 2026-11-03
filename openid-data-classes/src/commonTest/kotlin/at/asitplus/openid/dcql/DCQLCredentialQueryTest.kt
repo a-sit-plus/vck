@@ -1,5 +1,6 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -52,6 +53,53 @@ val DCQLCredentialQueryTest by matrixSuite {
             val result = query.copy(
                 claims = DCQLClaimsQueryList(
                     DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer("family_name"))
+                )
+            ).matchClaimsQueriesAgainstClaimStructure(
+                credentialStructure = claimStructure,
+                satisfiesSelectiveDisclosure = true,
+            ).getOrThrow()
+
+            result.shouldBeInstanceOf<DCQLCredentialQueryMatchingResult.ClaimsQueryResults>()
+                .claimsQueryResults.single()
+                .shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>()
+                .nodeList.single().value shouldBe JsonPrimitive("Musterfrau")
+        }
+    }
+    "claim sets (OpenID4VP 1.0, 7.1.1 and 6.4.1)" - {
+        val query = DCQLSdJwtCredentialQuery(
+            id = DCQLCredentialQueryIdentifier("query"),
+            format = CredentialFormatEnum.DC_SD_JWT,
+            meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(vctValues = listOf("vct")),
+            claims = DCQLClaimsQueryList(
+                DCQLJsonClaimsQuery(
+                    id = DCQLClaimsQueryIdentifier("wrong_type"),
+                    path = DCQLClaimsPathPointer("mixed") + null + "x",
+                ),
+                DCQLJsonClaimsQuery(
+                    id = DCQLClaimsQueryIdentifier("present"),
+                    path = DCQLClaimsPathPointer("family_name"),
+                ),
+            ),
+        )
+        val claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(buildJsonObject {
+            put("family_name", JsonPrimitive("Musterfrau"))
+            put("mixed", buildJsonArray {
+                add(buildJsonObject { put("x", JsonPrimitive("yes")) })
+                add(JsonPrimitive("text"))
+            })
+        })
+
+        "a claim whose path selects an element of the wrong type does not match" {
+            query.matchClaimsQueriesAgainstClaimStructure(
+                credentialStructure = claimStructure,
+                satisfiesSelectiveDisclosure = true,
+            ).isFailure shouldBe true
+        }
+        "another option of claim_sets without that claim still matches" {
+            val result = query.copy(
+                claimSets = nonEmptyListOf(
+                    nonEmptyListOf(DCQLClaimsQueryIdentifier("wrong_type")),
+                    nonEmptyListOf(DCQLClaimsQueryIdentifier("present")),
                 )
             ).matchClaimsQueriesAgainstClaimStructure(
                 credentialStructure = claimStructure,

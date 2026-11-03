@@ -24,5 +24,8 @@ data object MediaTypes {
 
         /** `application/jwt` */
         const val JWT = "application/jwt"
+
+        /** `application/token-introspection+jwt` ([RFC 9701](https://www.rfc-editor.org/rfc/rfc9701#section-10.3)) */
+        const val TOKEN_INTROSPECTION_JWT = "application/token-introspection+jwt"
     }
 }

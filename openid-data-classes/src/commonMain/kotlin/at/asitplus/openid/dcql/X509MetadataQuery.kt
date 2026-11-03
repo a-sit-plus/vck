@@ -1,0 +1,33 @@
+package at.asitplus.openid.dcql
+
+import at.asitplus.csc.bindings.X509KeyInfo
+import at.asitplus.csc.datamodel.basic.Hash
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+
+/**
+ * CSC Data Model Bindings 1.0.0 section 8.1 / ETSI TS 119 432 Annex A.6.3:
+ * metadata constraints for an X.509 signing credential in a DCQL query.
+ */
+@Serializable
+data class X509MetadataQuery(
+    /**
+     * CSC Data Model Bindings 1.0.0 section 8.1: OPTIONAL
+     * Certificate fingerprints used to select an X.509 credential.
+     */
+    @SerialName("certificateFingerprints")
+    val certificateFingerprints: List<Hash>? = null,
+    /**
+     * CSC Data Model Bindings 1.0.0 section 8.1: OPTIONAL
+     * Certificate policy OIDs required of the credential.
+     */
+    @SerialName("certificatePolicies")
+    val certificatePolicies: List<String> = emptyList(),
+    /**
+     * CSC Data Model Bindings 1.0.0 section 8.1: OPTIONAL
+     * Public-key characteristics required of the credential.
+     */
+    @SerialName("keys")
+    val keys: List<X509KeyInfo>? = null,
+) : DCQLCredentialMetadataAndValidityConstraints

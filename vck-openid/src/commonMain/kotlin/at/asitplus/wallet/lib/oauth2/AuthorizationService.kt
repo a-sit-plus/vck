@@ -16,7 +16,7 @@ import kotlinx.serialization.json.JsonObject
 /**
  * Provides interface for implementing an OAuth 2.0 Authorization Server, which may be used with an
  * [at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter] for a
- * [at.asitplus.wallet.lib.oidvci.CredentialIssuer].
+ * [at.asitplus.wallet.lib.oidvci.OpenId4VciServer].
  */
 interface AuthorizationService {
 
@@ -24,7 +24,8 @@ interface AuthorizationService {
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
-     * Responses have to be sent with HTTP status code `201`.
+     * Responses have to be sent with HTTP status code `201`, as `toHttpResponse()` of the result of
+     * [SimpleAuthorizationService.parWithDpopNonce] does.
      *
      * @param input as sent from the client as `POST` body
      * @param httpRequest information about the HTTP request from the client to validate authentication
@@ -40,7 +41,8 @@ interface AuthorizationService {
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
-     * Responses have to be sent with HTTP status code `201`.
+     * Responses have to be sent with HTTP status code `201`, as `toHttpResponse()` of the result of
+     * [SimpleAuthorizationService.parWithDpopNonce] does.
      *
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client to validate authentication
@@ -53,7 +55,7 @@ interface AuthorizationService {
 
     /**
      * Builds the authentication response for this specific user from [loadUserFun].
-     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * Send this result converted with [AuthenticationResponseResult.Redirect.toHttpResponse].
      * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun authorize(
@@ -63,7 +65,8 @@ interface AuthorizationService {
 
     /**
      * Verifies the authorization code sent by the client and issues an access token.
-     * Send this value JSON-serialized back to the client.
+     * Send the result of [SimpleAuthorizationService.tokenWithDpopNonce] converted with `toHttpResponse()`, which
+     * sets the headers the token response needs.
 
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client, to validate authentication
@@ -84,10 +87,13 @@ interface AuthorizationService {
     ): KmmResult<JsonObject>
 
     /**
-     * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection
+     * [RFC7662](https://datatracker.ietf.org/doc/html/rfc7662): OAuth 2.0 Token Introspection, with
+     * [RFC 9701](https://www.rfc-editor.org/rfc/rfc9701) JWT responses for an `Accept` header asking for
+     * `application/token-introspection+jwt`. Send the result with its `toHttpResponse()`.
      *
      * @param request as sent from the client as form POST
-     * @param httpRequest information about the HTTP request from the client, to validate authentication
+     * @param httpRequest information about the HTTP request from the client (including the `Accept` header), to
+     * validate authentication
      */
     suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,

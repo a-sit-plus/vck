@@ -2,8 +2,12 @@ package at.asitplus.openid
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmOverloads
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
+
+private val defaultPreferredTtl = 31.days
 
 @Serializable
 data class KeyAttestationRequired(
@@ -27,5 +31,23 @@ data class KeyAttestationRequired(
      */
     @SerialName("preferred_key_storage_status_period")
     @Serializable(with = DurationSecondsIntSerializer::class)
-    val preferredTtl: Duration? = 31.days
-)
+    val preferredTtl: Duration? = defaultPreferredTtl,
+) {
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [Duration].
+     */
+    @JvmOverloads
+    internal constructor(
+        keyStorage: Collection<String>?,
+        userAuthentication: Collection<String>? = null,
+        preferredTtlSeconds: Long? = defaultPreferredTtl.inWholeSeconds,
+    ) : this(
+        keyStorage = keyStorage,
+        userAuthentication = userAuthentication,
+        preferredTtl = preferredTtlSeconds?.seconds,
+    )
+
+    /** Java-safe accessor for [preferredTtl], in seconds. */
+    val preferredTtlSeconds: Long?
+        get() = preferredTtl?.inWholeSeconds
+}

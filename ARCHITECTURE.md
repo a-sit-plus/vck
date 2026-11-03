@@ -22,13 +22,11 @@ vck-longfellow
     -> vck
 
 vck
-    -> dif-data-classes
     -> openid-data-classes
     -> etsi-data-classes
     -> sd-jwt-type-metadata
 
 openid-data-classes
-    -> dif-data-classes
     -> csc-data-classes
     -> rfc3986-uri-syntax (implementation dependency)
 
@@ -56,10 +54,13 @@ Important areas:
 
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent`
   Core application-facing abstractions and implementations: `Holder`, `HolderAgent`, `Issuer`, `IssuerAgent`,
-  `VerifierAgent`, `Validator`, `KeyMaterial`, credential stores, nonce/status helpers, and credential issuance
-  inputs/results.
+  `KeyMaterial`, credential stores, nonce/status helpers, and credential issuance inputs/results. `VerifierAgent` and
+  `Validator` are deprecated, see *Validation*.
+- `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/validation`
+  Validation of credentials, presentations, and the other artifacts with reports, see *Validation*.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent/validation`
-  Format-specific validation for VC-JWS, SD-JWT, ISO mDoc, and common timeliness/status checks.
+  The format-specific timeliness validators and VC-JWS content semantics that `CredentialValidator` uses, and the
+  deprecated legacy validators.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`
   DCQL matching and submission logic over stored credentials.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/iso`
@@ -88,19 +89,25 @@ Important areas:
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/openid`
   OpenID4VP and Digital Credentials API behavior: `OpenId4VpHolder`, `OpenId4VpVerifier`, `DcApiHolder`,
   `DcApiVerifier`, request parsing/factories, response creation/validation, verifier attestation, DCQL, and ISO/IEC
-  18013-7 Annex C integration.
+  18013-7 Annex C integration. `OpenId4VpProtocolClient` covers the wallet's requests to the verifier, i.e. fetching
+  the request object and posting the authorization response (see
+  [Client-Side HTTP Exchanges](#client-side-http-exchanges)).
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oidvci`
-  OpenID4VCI wallet and issuer behavior: `WalletService`, `CredentialIssuer`, `ProofValidator`, credential scheme
-  mapping, credential request creation, proof validation, encryption handling.
+  OpenID4VCI wallet and issuer behavior: `OpenId4VciClient`, `OpenId4VciServer`, `ProofValidator`, credential scheme
+  mapping, credential request creation, proof validation, encryption handling, and `OpenId4VciProtocolClient` for the
+  wallet's requests to the credential issuer (see [Client-Side HTTP Exchanges](#client-side-http-exchanges)).
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oauth2`
   OAuth2 authorization server/client helpers, token generation/verification, DPoP, client authentication, PAR, and
-  authorization service strategy interfaces.
+  authorization service strategy interfaces. `OAuth2ProtocolClient` implements the client side, including DPoP proofs
+  and nonces and attestation-based client authentication (see [Client-Side HTTP Exchanges](#client-side-http-exchanges)).
 - `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/rqes`
   RQES and CSC authorization/signature request integration built on top of OAuth2/OpenID4VP.
 
 Refactor here when changing protocol state, request/response construction, validation policy, proof handling, or
 client/server OAuth2 behavior. Keep raw HTTP client/server mechanics out of this module; use callback abstractions
-for remote resource retrieval and transport-specific integration.
+for remote resource retrieval and transport-specific integration. The wallet-side OAuth2, OpenID4VCI and OpenID4VP
+clients do not send requests at all, but return `HttpExchange`s; the server-side results convert to
+`PreparedHttpResponse`s (see [Server-Side HTTP Responses](#server-side-http-responses)).
 
 ### `vck-openid-ktor`
 
@@ -111,12 +118,18 @@ Important areas:
 
 - `vck-openid-ktor/src/commonMain/kotlin/at/asitplus/wallet/lib/ktor/openid`
   Ktor-backed OpenID4VCI and OpenID4VP clients, shared HTTP-client configuration and error mapping, plus remote
-  credential-metadata retrieval.
+  credential-metadata retrieval. `OAuth2KtorClient`, `OpenId4VciKtorClient`, `OpenId4VpKtorHolder` and
+  `RemoteOAuth2AuthorizationServerAdapter` only send the requests of the exchanges of `OAuth2ProtocolClient`,
+  `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient` (`execute` in `HttpClient.kt`), and run the exchanges of
+  each flow in order; they contain no protocol logic and no DPoP handling. Received credentials are only decoded
+  (`OpenId4VciClient.decodeCredentialResponse`), and are validated and stored by the wallet's `HolderAgent`, not by
+  the Ktor client: `CredentialIssuanceResult.Success.prepareCredentialStorage` hands each `ReceivedCredential` to
+  `HolderAgent.prepareCredentialStorage`, see *Validation*.
 
 Put Ktor engine selection, request execution, response body handling, cache policy, and Ktor-specific test doubles
-here. Reuse the shared client setup so non-success responses remain `HttpErrorResponseException` instances carrying
-OAuth errors, RFC 9457 problem details, and the raw body. If a rule must also apply without Ktor, move that rule down
-into `vck-openid`.
+here. Non-success responses are `HttpErrorResponseException` instances (defined in `vck-openid`, so that exchanges
+can fail with them too) carrying OAuth errors, RFC 9457 problem details, and the raw body; reuse the shared client
+setup for that. If a rule must also apply without Ktor, move that rule down into `vck-openid`.
 
 ### `vck-longfellow`
 `vck-longfellow` provides an ISO mDoc Zero-Knowledge Proof (ZKP) backend for VC-K using the 
@@ -135,8 +148,6 @@ Important areas:
 
 Use data-class modules for published wire models and serializers:
 
-- `dif-data-classes`
-  DIF Presentation Exchange models.
 - `openid-data-classes`
   OpenID/OAuth2/OIDC, DCQL, DCAPI, token status list, and related wire models. Also owns the complete ISO mDoc
   CBOR/COSE model in `at.asitplus.iso`: device request/response, `MobileSecurityObject`, session transcript and
@@ -189,7 +200,9 @@ through `LibraryInitializer.registerExtensionLibrary()`. Metadata-derived scheme
 `SdJwtTypeMetadata.toCredentialScheme()`, which picks the representation from the document's `vck` extension
 (`SdJwtTypeMetadataVckExtensions`: `format` plus `vcType`/`isoDocType`/`isoNamespace`, defaulting to SD-JWT) and
 produces an `ExtractedVcJwt`/`ExtractedSdJwt`/`ExtractedIsoMdocCredentialScheme`. Both paths coexist by design; do not
-replace one with the other.
+replace one with the other. ISO metadata claim paths must already include their namespace; the derived scheme
+sets `isoClaimPathsAreQualified` so both required-claims validation and issuer configurations preserve them unchanged.
+Code-defined ISO schemes can opt in too; otherwise relative paths are qualified with `isoNamespace`.
 
 `AttributeIndex` coordinates scheme lookup, resolving from its registered `schemeSet` first, then through the
 registries, then through a fallback scheme. `CredentialMetadataRegistry` is its extension boundary:
@@ -218,8 +231,9 @@ Some platform-sensitive building blocks live in separate repositories. [KmmResul
 is used instead of Kotlin's inline `Result` for Swift-friendly public APIs, and
 [Signum](https://github.com/a-sit-plus/signum) provides crypto, ASN.1, JOSE, and COSE types.
 
-The primary application entry points are `HolderAgent`, `IssuerAgent`, and `VerifierAgent`, following the
-[W3C VC Data Model](https://w3c.github.io/vc-data-model/) nomenclature.
+The primary application entry points are `HolderAgent` and `IssuerAgent`, following the
+[W3C VC Data Model](https://w3c.github.io/vc-data-model/) nomenclature. Verifiers validate with `CredentialValidator`;
+the deprecated `VerifierAgent` only remains for migration.
 
 ### Credential Formats
 
@@ -255,11 +269,6 @@ Wire/query models live in `openid-data-classes`; matching, submission validation
 `vck`; OpenID protocol projection and validation live in `vck-openid`. Keep the request and its typed matching result
 together through user selection so repeated ISO document requests and DCQL submission rules are not lost.
 
-OpenID4VP 1.0 uses DCQL. Presentation Exchange support has been removed from the OpenID4VP path, and SIOPv2/id-token
-presentation support has also been removed. Deprecated Presentation Exchange types and `dif-data-classes` remain as
-compatibility surface for non-OpenID callers and migrations; do not use their presence as evidence of current
-OpenID4VP support. New presentation work should use `CredentialPresentationRequest.DCQLRequest` or
-`CredentialPresentationRequest.IsoDeviceRetrieval`, not deprecated format-specific `Holder` methods.
 
 ### ISO mDoc Zero-Knowledge Proofs
 
@@ -303,14 +312,133 @@ checks live in `vck`. Holder store entries retain the credential issuer certific
 trust policy out of the serializers and extract certificates per credential format rather than treating a response as
 having one issuer.
 
-Protocol-owned presentation challenges flow through `NonceService` and `NonceChallengeVerifier`; OpenID request state
-is stored and validated against the response before successful nonces are consumed. Reuse these boundaries rather
-than adding protocol-specific nonce maps or validating only values echoed by the caller.
+Protocol-owned presentation challenges flow through `NonceService` and `NonceChallengeVerifier`; OpenID4VP verifiers
+consume the nonce together with the request a response answers, see *OpenID4VP Verifier Responses*. Reuse these
+boundaries rather than adding protocol-specific nonce maps or validating only values echoed by the caller.
 
 Credential issuance and status-list publication are also separate responsibilities. `IssuerAgent` asks an optional
 `StatusListAgent` for a status reference, while `IssuerCredentialStore` records issued credentials and
 `ReferencedTokenStore` owns status-list indices, identifiers, and revocation state. Keep custom persistence adapters at
 those interfaces instead of coupling status-list generation back to credential signing.
+
+### Validation
+
+Every artifact a party receives is validated in `vck/.../lib/validation` into a `ValidationReport`: a tree of named
+checks, each a `CheckOutcome` (passed, failed with its cause, blocked by a failed prerequisite, or not applicable),
+whose `decision` is derived from the checks, the children, and a `ValidationPolicy` by the pure rules in
+`ValidationRules.kt`. A result holds the report next to the validated value, which is present only if the report is
+accepted, so an unverified value is never exposed as validated. Where a user may continue after seeing the report, the
+result also carries the value as untrusted or unaccepted, e.g. `CredentialValidationResult.unacceptedCredential` for
+a credential that only fails checks the policy may relax (`isIntactCredential`), which
+`HolderAgent.storeAfterUserConsent` stores after `prepareCredentialStorage`. Rules to keep:
+
+- One validator per artifact kind: `CredentialValidator` for credentials and presentations, `StatusValidator` for
+  status list tokens, `RelyingPartyValidator` for WRPACs, WRPRCs and client identifier prefixes,
+  `KeyAttestationValidator`, `ClientAttestationValidator`, and `IssuerMetadataValidator`. They live in `vck`, also for
+  artifacts of `vck-openid` protocols, as the trust checks are internal to `vck`; the protocol checks its own parts,
+  e.g. nonces and proofs of possession, and passes their outcomes in.
+- Trust is configured as anchors per artifact kind, and for credentials per credential type
+  (`CredentialTrustAnchors`), never as an injected verification function that hides its anchors. A missing source
+  of trust blocks the check, and `TrustPolicy.RequireAuthorizedSigner` then rejects (fail closed).
+- The policy relaxes only trust, status, and timeliness of the artifact, and whether a standalone credential has to
+  contain the claims its type requires; parsing, signatures, holder binding and the time of holder proofs, nonces, and
+  audiences are never relaxed. A status is resolved only for an artifact that is valid otherwise
+  (draft-ietf-oauth-status-list-21, 8.3); missing claims do not make a credential invalid as a token.
+- The claims a credential type requires come from its metadata, selected by the type signed into the credential
+  through a `RequiredClaimsResolver`, by default the `CredentialMetadataRegistry`s and the schemes of
+  `AttributeIndex`. A type without metadata blocks `requiredClaims`, it never passes as a type without required claims.
+  A registered scheme supplies metadata even with empty or entirely optional claim descriptions; it then declares
+  no mandatory claims and the check passes. Presentations disclose selectively, so the check does not apply to
+  presented credentials.
+- A received credential is validated once, by the `HolderAgent` that stores it, with its key and validator: protocol
+  clients only decrypt and decode it into a `ReceivedCredential`, and one that can not be decoded is prepared as
+  rejected (`HolderAgent.rejectUndecodable`) instead of failing its batch. The stored credential is the validated one,
+  e.g. the `IssuerSigned` decoded from the issuer's bytes, which keeps every signed byte.
+- Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
+  `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy
+  results of the OpenID4VP verifiers) delegate to the new validation under a compatibility policy or the configured
+  policy, and project their old results from the report, so there is one implementation of every rule.
+- Every enforced rule cites its source inline in the KDoc next to it (spec, version, section). Reports carry causes,
+  so exception messages must not contain claim values, disclosures, or keys.
+- Known limitations: trust is evaluated by walking the transported chain, without RFC 5280 path building,
+  `pathLenConstraint`, `keyUsage`, or certificate revocation; ZK mdoc presentations are validated like plain mdocs.
+
+### OpenID4VP Verifier Responses
+
+`OpenId4VpVerifier` and `DcApiVerifier` let `AuthnResponseProcessor.consume()` process every authorization response,
+then continue with their transport checks and the validation of the `vp_token`. Rules to keep:
+
+- A response correlated with its request (by `state`, or by `externalId` over the DC API) ends that request before
+  anything that can fail: the request is removed from the store, its nonce consumed, and its ephemeral encryption key
+  removed. Authorization responses are not retryable, so a second response to the request finds none. This relies on
+  `MapStore.remove` being atomic, also in custom stores.
+- An authorization error response of the wallet is a processed outcome (`AuthnResponseResult.Error`) and ends the
+  request like a presentation (`AuthnResponseResult.Success`); both are answered with `directPostHttpResponse()`.
+  `validateAuthnResponse` fails only for responses that have not been processed: malformed, not correlated, or
+  violating the protection or transport the request requires.
+- Transport checks (no DC API response to `OpenId4VpVerifier`, the calling origin in the `expected_origins` of a
+  signed DC API request) apply to errors as well, so they stay outside of the `vp_token` validation.
+- `direct_post.jwt` and `dc_api.jwt` accept a plaintext response only for an error, where OpenID4VP 1.0 allows it
+  (8.3.1, A.4), never for a `vp_token`.
+
+### Client-Side HTTP Exchanges
+
+The wallet-side OAuth2, OpenID4VCI and OpenID4VP clients in `vck-openid` never send HTTP requests themselves, so they
+work with any HTTP stack. Code is placed by where its output goes:
+
+- Everything inside a request or response body stays in the parameter builders `OAuth2Client` and `OpenId4VciClient`,
+  and in `OpenId4VpHolder` and `RequestParser` for OpenID4VP: PKCE, JAR, scope and authorization details, credential
+  request proofs, key attestations, encryption, request object parsing and decryption, presentations.
+- Everything that ends up in an HTTP header or depends on HTTP responses lives in `OAuth2ProtocolClient`,
+  `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient`: `Authorization`, DPoP proofs and nonces, client
+  attestation and its PoP, attestation challenges, retries, and response parsing, e.g. the `redirect_uri` in the
+  verifier's answer to an authorization response.
+
+Each call of the protocol clients returns an `HttpExchange` (`vck-openid/.../lib/HttpExchange.kt`). The caller calls
+`next()`, sends each request it gets (`HttpStep.Send`), and passes the response back, until the exchange is done. The
+caller also runs the exchanges of a flow in order (metadata, authorization, token, nonce, credential; or request
+object, then the authorization response after the user's consent); the Ktor clients are such callers. Every request
+is one of the kinds of `ProtocolRequest`, and the KDoc of each method lists the kinds, order and retry limit of its
+exchange, e.g. `([AttestationChallenge] Token){1,3}`.
+
+Rules to keep when changing these clients:
+
+- A new kind of HTTP request needs a new `ProtocolRequest` subclass and a sequence test; the exhaustive `kinds()` in
+  `ExchangeTestUtils.kt` fails to compile until the tests handle it.
+- Build a request body once per exchange, and only rebuild headers for retries: the PKCE verifier and the signed JAR
+  must not be consumed or created twice.
+- DPoP nonces are kept per origin and per role: nonces from the authorization server for requests with client
+  authentication, nonces from resource servers (credential issuer, userinfo, the nonce endpoint) for requests with an
+  access token. RFC 9449 9. says they "are different and should not be confused with one another", even on one
+  origin. Attestation challenges are single-use.
+- Load the client attestation, and check its key, before any request of an attempt, so that a request that cannot
+  authenticate is never sent.
+- Check what a server's answer asks the wallet to do in the protocol client, so the check applies with every HTTP
+  stack: the verifier's `redirect_uri` must be an absolute `https` URI.
+- Send form bodies as `application/x-www-form-urlencoded` without a `charset` parameter, which the media type does not
+  define and some strict servers reject.
+
+### Server-Side HTTP Responses
+
+The server side (authorization server, credential issuer, OpenID4VP verifier) is the counterpart: its methods return
+protocol results, and `toHttpResponse()` converts each result into a `PreparedHttpResponse` (status, headers, encoded
+body, `vck-openid/.../lib/PreparedHttpResponse.kt`) that integrators write out unchanged with any HTTP server stack.
+The same placement rule applies: whatever decides the status or ends up in a header belongs to `vck-openid`, not to
+the integrator's controllers, e.g. `Cache-Control: no-store`, `DPoP-Nonce`, `OAuth-Client-Attestation-Challenge`,
+`WWW-Authenticate`, content types and the content negotiation of signed issuer metadata.
+
+- Success converters live next to the results: `oauth2/AuthorizationServerResponses.kt`,
+  `oidvci/OpenId4VciServerResponses.kt` (and `OpenId4VciServer.metadataHttpResponse`, which signs), and
+  `openid/OpenId4VpVerifierResponses.kt`.
+- Errors convert in `oauth2/OAuth2ErrorResponses.kt`, with two converters, because the same error code needs another
+  status at a resource endpoint: `OAuth2Exception.toHttpResponse()` for authorization server endpoints (400), and
+  `toResourceServerHttpResponse(authorizationHeader)` for endpoints accessed with an access token (credential,
+  userinfo), which answers token and DPoP errors with 401 and `WWW-Authenticate`. Throwables that are not
+  `OAuth2Exception`s are the integrator's.
+- `WWW-Authenticate` carries only the error code, never the description, which may contain the access token.
+- Server methods keep their results; a new response header or status is a change of the converter, with a test of
+  its status, headers and body. The test fixtures (`AuthorizationServerFixture`, the mock verifiers) answer through
+  the converters, so the protocol clients are tested against them end to end.
 
 ### Key Material and Crypto
 
@@ -352,8 +480,8 @@ Common starting points:
 
 - Credential issue/present/verify behavior:
   `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent`
-- Credential validation:
-  `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent/validation`
+- Credential, presentation, and artifact validation:
+  `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/validation`
 - DCQL matching:
   `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`
 - ISO Device Retrieval matching and response creation:
@@ -369,6 +497,8 @@ Common starting points:
   `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oidvci`
 - OAuth2/DPoP/PAR/client authentication:
   `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oauth2`
+- Wallet-side OAuth2/OpenID4VCI requests without Ktor:
+  `vck-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/{HttpExchange.kt,oauth2/OAuth2ProtocolClient.kt,oidvci/OpenId4VciProtocolClient.kt}`
 - Ktor clients/wallet transport:
   `vck-openid-ktor/src/commonMain/kotlin/at/asitplus/wallet/lib/ktor/openid`
 
@@ -428,6 +558,8 @@ Useful focused tests:
   `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/openid/OpenId4Vp*Test.kt`
 - OpenID4VCI:
   `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/oidvci`
+- Wallet-side OAuth2/OpenID4VCI exchanges without Ktor, against `AuthorizationServerFixture` through `FakeHttpStack`:
+  `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/{oauth2/OAuth2ProtocolClientTest,oidvci/OpenId4VciProtocolClientTest}.kt`
 - Ktor OpenID clients and wallet flows:
   `vck-openid-ktor/src/commonTest/kotlin/at/asitplus/wallet/lib/ktor/openid`
 - Credential metadata:

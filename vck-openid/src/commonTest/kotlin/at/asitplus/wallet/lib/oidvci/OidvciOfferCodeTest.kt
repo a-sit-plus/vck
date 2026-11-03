@@ -7,6 +7,7 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -34,20 +35,20 @@ val OidvciOfferCodeTest by matrixSuite {
             val authorizationService = SimpleAuthorizationService(
                 requirePushedAuthorizationRequests = false,
                 strategy = CredentialAuthorizationServiceStrategy(
-                    credentialSchemes =  AttributeIndex.schemeSet,
+                    credentialSchemes = AttributeIndex.schemeSet,
                     mapper = mapper,
                 ),
             )
-            val issuer = CredentialIssuer(
+            val issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
                     randomSource = RandomSource.Default
                 ),
-                credentialSchemes =  AttributeIndex.schemeSet,
+                credentialSchemes = AttributeIndex.schemeSet,
                 credentialSchemeMapper = mapper,
             )
-            val client = WalletService()
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 
@@ -126,7 +127,7 @@ val OidvciOfferCodeTest by matrixSuite {
             }
 
             // the offer is still usable
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
             it.getToken(credentialOffer, credentialFormat.scope.shouldNotBeNull())
                 .accessToken.shouldNotBeNull()
@@ -152,7 +153,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 credentialIssuer = it.issuer.publicContext,
                 schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
             val token = it.getToken(credentialOffer, credentialFormat.scope.shouldNotBeNull())
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
@@ -169,7 +170,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -181,7 +182,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 schemes = emptySet(),
             )
             val credentialIdToRequest = credentialOffer.configurationIds.first()
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
             val token = it.getToken(credentialOffer, credentialFormat.scope.shouldNotBeNull())
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
@@ -198,7 +199,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -210,8 +211,8 @@ val OidvciOfferCodeTest by matrixSuite {
                 schemes = emptySet(),
             )
             val credentialIdToRequest = credentialOffer.configurationIds.first()
-            val credentialFormat =
-                it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest].shouldNotBeNull()
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
+                .shouldNotBeNull()
             val authnRequest = it.oauth2Client.createAuthRequestJar(
                 state = it.state,
                 scope = credentialFormat.scope.shouldNotBeNull(),
@@ -231,8 +232,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 schemes = emptySet(),
             )
             val credentialIdToRequest = credentialOffer.configurationIds.first()
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                ?.get(credentialIdToRequest)
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
             val authnRequest = it.oauth2Client.createAuthRequest(
                 state = it.state,
@@ -261,8 +261,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 credentialConfigurationId = credentialIdToRequest,
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                .shouldNotBeNull()[credentialIdToRequest]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
             val token = it.getToken(credentialOffer, authorizationDetails)
 
@@ -280,7 +279,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -292,7 +291,7 @@ val OidvciOfferCodeTest by matrixSuite {
                 credentialIssuer = it.issuer.publicContext,
                 schemes = setOf(AtomicAttribute2023 to PLAIN_JWT)
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialIdToRequest]
                 .shouldNotBeNull()
             // important step: mess with the issuer state, so the wallet sends an incorrect one
             val malignAuthCode = credentialOffer.grants.shouldNotBeNull().authorizationCode.shouldNotBeNull()
@@ -312,7 +311,7 @@ val OidvciOfferCodeTest by matrixSuite {
             )
             val otherCredentialIdToRequest = it.mapper.toCredentialIdentifier(AtomicAttribute2023, ISO_MDOC)
             // important step: mess with the scope value
-            val malignScope = it.issuer.metadata.supportedCredentialConfigurations!![otherCredentialIdToRequest]
+            val malignScope = it.issuer.metadata.supportedCredentialConfigurations[otherCredentialIdToRequest]
                 .shouldNotBeNull().scope.shouldNotBeNull().reversed()
             shouldThrow<OAuth2Exception.InvalidScope> {
                 it.getToken(credentialOffer, malignScope)

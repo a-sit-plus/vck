@@ -1,0 +1,912 @@
+package at.asitplus.wallet.lib.ktor.openid
+
+import at.asitplus.KmmResult
+import at.asitplus.catching
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.JarRequestParameters
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.OpenIdConstants.ResponseMode
+import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
+import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
+import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.truncateToSeconds
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.testballoon.matrix.fixture
+import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
+import at.asitplus.wallet.eupid.EuPidDataElements
+import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
+import at.asitplus.wallet.lib.HttpErrorResponseException
+import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.agent.ClaimToBeIssued
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.DCQLMatchingResult
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
+import at.asitplus.wallet.lib.data.CredentialRepresentation
+import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
+import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.data.toJsonElement
+import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
+import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.CreationOptions
+import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
+import at.asitplus.wallet.lib.openid.DcApiPreparationState
+import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
+import at.asitplus.wallet.lib.openid.directPostHttpResponse
+import at.asitplus.wallet.lib.openid.loadRequestObjectHttpResponse
+import at.asitplus.wallet.lib.validation.RelyingPartyTrustAnchors
+import at.asitplus.wallet.lib.validation.RelyingPartyValidator
+import at.asitplus.wallet.lib.validation.RequestObjectChecks
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidationDecision
+import at.asitplus.wallet.lib.validation.ValidationPolicy
+import at.asitplus.wallet.mdl.MDL_DOCTYPE
+import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.Napier
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.client.*
+import io.ktor.client.engine.*
+import io.ktor.client.engine.mock.*
+import io.ktor.client.plugins.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.util.*
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.jsonPrimitive
+import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+
+
+val OpenId4VpKtorHolderTest by matrixSuite {
+
+    fixture {
+        object {
+            val countdownLatch = Mutex(true)
+            val keyMaterial = EphemeralKeyWithoutCert()
+            val holderAgent = HolderAgent(keyMaterial)
+            lateinit var wallet: OpenId4VpKtorHolder
+            lateinit var url: String
+            lateinit var mockEngine: HttpClientEngine
+            /** Content types of the authorization responses posted to the mock RP. */
+            val postedContentTypes = mutableListOf<ContentType?>()
+            /** Status codes the mock RP answered posted authorization responses with. */
+            val answeredStatuses = mutableListOf<HttpStatusCode>()
+
+            suspend fun setup(
+                scheme: CredentialScheme,
+                representation: CredentialRepresentation,
+                attributes: Map<DCQLClaimsPathPointer, String>,
+                responseMode: ResponseMode,
+                clientId: String,
+                storeCredentials: Boolean = true,
+                requestUriMethod: JarRequestParameters.RequestUriMethod =
+                    JarRequestParameters.RequestUriMethod.GET,
+                ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+                redirectUriAfterPost: String? = null,
+            ) {
+                val requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        credentials = setOf(
+                            RequestOptionsCredential(
+                                credentialScheme = scheme,
+                                representation = representation,
+                                attributePaths = attributes.keys
+                            )
+                        ),
+                    ).toDCQLRequest(),
+                    responseMode = responseMode,
+                )
+                if (storeCredentials) {
+                    storeMockCredentials(scheme, representation, attributes)
+                }
+                setupRelyingPartyService(clientId, requestOptions, requestUriMethod, redirectUriAfterPost) {
+                    verifyReceivedAttributes(it, attributes)
+                }
+                setupWallet(HttpClient(this.mockEngine), ephemeralEncryptionKeyService)
+            }
+
+            fun setupWallet(
+                httpClient: HttpClient,
+                ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+                relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
+                lookupJsonWebKeysForClient: (OpenId4VpHolder.JsonWebKeyLookupInput) -> JsonWebKeySet? = { null },
+            ) = OpenId4VpKtorHolder(
+                httpClient = httpClient,
+                keyMaterial = keyMaterial,
+                holder = holderAgent,
+                ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+                lookupJsonWebKeysForClient = lookupJsonWebKeysForClient,
+                relyingPartyValidator = relyingPartyValidator,
+            ).also { this.wallet = it }
+
+            fun verifyReceivedAttributes(
+                authnResponseResult: KmmResult<AuthnResponseResult>,
+                expectedAttributes: Map<DCQLClaimsPathPointer, String>
+            ) {
+                if (authnResponseResult.getOrNull()?.containsAllAttributes(expectedAttributes) ?: false) {
+                    countdownLatch.unlock()
+                }
+            }
+
+            suspend fun storeMockCredentials(
+                scheme: CredentialScheme,
+                representation: CredentialRepresentation,
+                attributes: Map<DCQLClaimsPathPointer, Any>,
+            ) = holderAgent.storeCredential(
+                IssuerAgent(
+                    keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                ).issueCredential(
+                    representation.toCredentialToBeIssued(scheme, attributes)
+                ).getOrThrow().toStoreCredentialInput()
+            ).getOrThrow()
+
+            fun CredentialRepresentation.toCredentialToBeIssued(
+                scheme: CredentialScheme,
+                attributes: Map<DCQLClaimsPathPointer, Any>,
+            ): CredentialToBeIssued = when (this) {
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+                    subject = AtomicAttribute2023("sub", "name", "value", "text").toJsonElement(),
+                    expiration = Clock.System.now().plus(1.minutes),
+                    scheme = scheme as VcJwtCredentialScheme,
+                    subjectPublicKey = keyMaterial.publicKey,
+                    userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                )
+
+                SD_JWT -> CredentialToBeIssued.VcSd(
+                    claims = attributes.map { it.toClaimToBeIssued() },
+                    expiration = Clock.System.now().plus(1.minutes),
+                    scheme = scheme as SdJwtCredentialScheme,
+                    subjectPublicKey = keyMaterial.publicKey,
+                    userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                    sdAlgorithm = supportedSdAlgorithms.random()
+                )
+
+                ISO_MDOC -> CredentialToBeIssued.Iso(
+                    // Digest IDs are unique per namespace, as the MSO signs one digest per ID
+                    issuerSignedItems = attributes.entries
+                        .mapIndexed { index, it -> it.toIssuerSignedItem(index.toUInt()) },
+                    expiration = Clock.System.now().plus(1.minutes).truncateToSeconds(),
+                    scheme = scheme as IsoMdocCredentialScheme,
+                    subjectPublicKey = keyMaterial.publicKey,
+                    userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+                )
+            }
+
+            /**
+             * Lets the wallet decline the request with an error response in [responseMode], as in a-sit-plus/vck#474,
+             * returning what the mock RP made of the responses posted to it.
+             */
+            suspend fun sendErrorResponse(responseMode: ResponseMode): List<KmmResult<AuthnResponseResult>> {
+                // PreRegistered conveys no client metadata, so the wallet learns the verifier's key out-of-band
+                val decryptionKeyMaterial = EphemeralKeyWithoutCert()
+                val results = mutableListOf<KmmResult<AuthnResponseResult>>()
+                val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+                setupRelyingPartyService(
+                    clientId = uuid4().toString(),
+                    requestOptions = OpenId4VpRequestOptions(
+                        presentationRequest = CredentialPresentationRequestBuilder(
+                            RequestOptionsCredential(scheme, SD_JWT)
+                        ).toDCQLRequest(),
+                        responseMode = responseMode,
+                    ),
+                    redirectUriAfterPost = "https://rp.example.com/declined",
+                    decryptionKeyMaterial = decryptionKeyMaterial,
+                ) { results += it }
+                setupWallet(HttpClient(mockEngine)) {
+                    JsonWebKeySet(listOf(decryptionKeyMaterial.toEncryptionJsonWebKey()))
+                }
+                val state = wallet.startAuthorizationResponsePreparation(url).getOrThrow()
+                wallet.sendAuthnErrorResponse(OAuth2Exception.AccessDenied("user declined"), state)
+                return results
+            }
+
+            /**
+             * Setup the mock relying party service, for getting requests (referenced by `request_uri`) and to decode
+             * posted authentication responses. Answers posted ones that have been processed, i.e. presentations and
+             * errors, with [directPostHttpResponse] carrying [redirectUriAfterPost], if set (OpenID4VP 1.0, 8.2), all
+             * others with 400.
+             * [decryptionKeyMaterial] is the verifier's key distributed out-of-band, for `direct_post.jwt`.
+             * [verifierKeyMaterial] signs the request object.
+             */
+            suspend fun setupRelyingPartyService(
+                clientId: String,
+                requestOptions: OpenId4VpRequestOptions,
+                requestUriMethod: JarRequestParameters.RequestUriMethod =
+                    JarRequestParameters.RequestUriMethod.GET,
+                redirectUriAfterPost: String? = null,
+                decryptionKeyMaterial: KeyMaterial? = null,
+                verifierKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+                validate: (KmmResult<AuthnResponseResult>) -> Unit,
+            ) {
+                val requestEndpointPath = "/request/${uuid4()}"
+                val redirectUri = "http://rp.example.com/cb"
+                val verifier = OpenId4VpVerifier(
+                    keyMaterial = verifierKeyMaterial,
+                    clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUri),
+                    decryptionKeyMaterial = decryptionKeyMaterial,
+                    // the test issuers are on no trust list, and no status list token resolver is configured
+                    presentationPolicy = ValidationPolicy(
+                        trust = TrustPolicy.IntegrityOnly,
+                        status = StatusPolicy.Skip,
+                        timeLeeway = 5.minutes,
+                        requireTimeliness = true,
+                    ),
+                )
+                val responseEndpointPath = "/response"
+                val createdRequest = verifier.createAuthnRequest(
+                    requestOptions.copy(responseUrl = responseEndpointPath),
+                    CreationOptions.SignedRequestByReference(
+                        "http://wallet.example.com/",
+                        "http://rp.example.com$requestEndpointPath",
+                        requestUriMethod,
+                    )
+                ).getOrThrow()
+                createdRequest.loadRequestObject.shouldNotBeNull()
+
+                this.mockEngine = MockEngine { request ->
+                    when {
+                        request.url.fullPath.startsWith(requestEndpointPath) -> {
+                            val requestBody = request.body.toByteArray().decodeToString()
+                            val queryParameters: Map<String, String> =
+                                request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
+                            val requestObjectParameters = if (requestBody.isNotEmpty())
+                                requestBody.decodeFromFormUrlEncoded<RequestObjectParameters>()
+                            else RequestObjectParameters(
+                                walletMetadataString = queryParameters["wallet_metadata"],
+                                walletNonce = queryParameters["wallet_nonce"]
+                            )
+                            respond(createdRequest.loadRequestObjectHttpResponse(requestObjectParameters).getOrThrow())
+                        }
+
+                        request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString()
+                            .startsWith(redirectUri) -> {
+                            val requestBody = request.body.toByteArray().decodeToString()
+                            if (requestBody.isNotEmpty()) {
+                                postedContentTypes += request.body.contentType
+                                verifier.validateAuthnResponse(requestBody).also(validate).fold(
+                                    onSuccess = { respond(directPostHttpResponse(redirectUriAfterPost)) },
+                                    onFailure = { respondError(HttpStatusCode.BadRequest) },
+                                ).also { answeredStatuses += it.statusCode }
+                            } else {
+                                validate(verifier.validateAuthnResponse(request.url.toString()))
+                                respondOk()
+                            }
+                        }
+
+                        else -> respondError(HttpStatusCode.NotFound)
+                            .also { Napier.w("NOT MATCHED ${request.url.fullPath}") }
+                    }
+                }
+                this.url = createdRequest.url
+            }
+
+        }
+    } - {
+        test("presentEuPidCredentialSdJwtDirectPost") {
+            val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            it.setup(
+                scheme = euPidSdJwtScheme,
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString()
+            )
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+                .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
+
+            assertPresentation(it.countdownLatch)
+        }
+
+        test("a request_uri of a trusted relying party returns an accepted report") {
+            val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            val attributes = mapOf(DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString())
+            val clientId = uuid4().toString()
+            val verifierKeyMaterial = EphemeralKeyWithoutCert()
+            it.storeMockCredentials(scheme, SD_JWT, attributes)
+            it.setupRelyingPartyService(
+                clientId = clientId,
+                requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestOptionsCredential(scheme, SD_JWT, attributePaths = attributes.keys)
+                    ).toDCQLRequest(),
+                    responseMode = ResponseMode.DirectPost,
+                ),
+                requestUriMethod = JarRequestParameters.RequestUriMethod.POST,
+                verifierKeyMaterial = verifierKeyMaterial,
+            ) { result -> it.verifyReceivedAttributes(result, attributes) }
+            val trust = RelyingPartyTrustAnchors(
+                preRegisteredClients = { id -> if (id == clientId) setOf(verifierKeyMaterial.publicKey) else null }
+            )
+            it.setupWallet(HttpClient(it.mockEngine), relyingPartyValidator = RelyingPartyValidator(trust = trust))
+
+            val validation = it.wallet.startAuthorizationResponsePreparation(it.url, strictPolicy).getOrThrow()
+
+            validation.validationReport.decision shouldBe ValidationDecision.ACCEPTED
+            it.wallet.finalizeAuthorizationResponse(validation.preparationState).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+            assertPresentation(it.countdownLatch)
+        }
+
+        test("a request_uri of an untrusted relying party returns a rejected report, and can still be finalized") {
+            val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            val attributes = mapOf(DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString())
+            it.setup(
+                scheme = scheme,
+                representation = SD_JWT,
+                attributes = attributes,
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+            )
+
+            val validation = it.wallet.startAuthorizationResponsePreparation(it.url, strictPolicy).getOrThrow()
+
+            validation.validationReport.apply {
+                decision shouldBe ValidationDecision.REJECTED
+                checks.shouldBeInstanceOf<RequestObjectChecks>()
+                namedChecks.filterNot { check -> check.satisfied }.map { check -> check.name } shouldBe listOf("trust")
+            }
+            // the wallet may continue after the user decided to
+            it.wallet.finalizeAuthorizationResponse(validation.preparationState).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+            assertPresentation(it.countdownLatch)
+        }
+
+        test("direct_post answer with an https redirect_uri returns it") {
+            val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            val redirectUri = "https://rp.example.com/cb#response_code=${uuid4()}"
+            it.setup(
+                scheme = euPidSdJwtScheme,
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+                redirectUriAfterPost = redirectUri,
+            )
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+                .redirectUri shouldBe redirectUri
+
+            assertPresentation(it.countdownLatch)
+            it.postedContentTypes.map { it.toString() } shouldBe listOf("application/x-www-form-urlencoded")
+        }
+
+        test("direct_post answer with a javascript: redirect_uri fails") {
+            val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            it.setup(
+                scheme = euPidSdJwtScheme,
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+                redirectUriAfterPost = "javascript:alert(document.cookie)",
+            )
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            shouldThrow<IllegalArgumentException> {
+                it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+            }
+
+            // the RP has processed the response anyway, and gets no error response after it
+            assertPresentation(it.countdownLatch)
+            it.postedContentTypes.size shouldBe 1
+        }
+
+        test("requests are sent with the app's client and its plugins") {
+            it.setup(
+                scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+            )
+            it.setupWallet(HttpClient(it.mockEngine) { defaultRequest { header("X-Wallet-App", "test") } })
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+
+            assertPresentation(it.countdownLatch)
+            (it.mockEngine as MockEngine).requestHistory.apply {
+                map { request -> request.method } shouldBe listOf(HttpMethod.Get, HttpMethod.Post)
+                forEach { request -> request.headers["X-Wallet-App"] shouldBe "test" }
+            }
+        }
+
+        test("request object is not fetched through a redirect, even if the app's client follows redirects") {
+            val requestUrl = "http://rp.example.com/request/${uuid4()}"
+            val (url, jar) = OpenId4VpVerifier(
+                clientIdScheme = ClientIdScheme.PreRegistered(uuid4().toString(), "http://rp.example.com/cb"),
+            ).createAuthnRequest(
+                OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                    ).toDCQLRequest(),
+                ),
+                CreationOptions.SignedRequestByReference("http://wallet.example.com/", requestUrl),
+            ).getOrThrow()
+            jar.shouldNotBeNull()
+            // the redirect target serves the request object, so following the redirect would succeed
+            val engine = MockEngine { request ->
+                if (request.url.encodedPath == "/moved") respond(jar.invoke(null).getOrThrow())
+                else respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "http://rp.example.com/moved"))
+            }
+            it.setupWallet(HttpClient(engine) { followRedirects = true })
+
+            it.wallet.startAuthorizationResponsePreparation(url)
+                .exceptionOrNull().shouldBeInstanceOf<HttpErrorResponseException>()
+                .status shouldBe HttpStatusCode.Found
+            engine.requestHistory.map { request -> request.url.toString() } shouldBe listOf(requestUrl)
+        }
+
+        test("deprecated constructor taking an engine sends the requests too") {
+            it.setup(
+                scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+            )
+            @Suppress("DEPRECATION")
+            val wallet = OpenId4VpKtorHolder(
+                engine = it.mockEngine,
+                keyMaterial = it.keyMaterial,
+                holderAgent = it.holderAgent,
+            )
+
+            val state = wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+
+            assertPresentation(it.countdownLatch)
+        }
+
+        test("deprecated OpenId4VpHolder methods fetch request objects with the app's client") {
+            it.setup(
+                scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+                requestUriMethod = JarRequestParameters.RequestUriMethod.POST,
+            )
+            val unknownRequestUri = URLBuilder(it.url)
+                .apply { parameters["request_uri"] = "http://rp.example.com/unknown" }.buildString()
+
+            @Suppress("DEPRECATION")
+            val prepared = it.wallet.openId4VpHolder.startAuthorizationResponsePreparation(it.url)
+            @Suppress("DEPRECATION")
+            val notFound = it.wallet.openId4VpHolder.startAuthorizationResponsePreparation(unknownRequestUri)
+
+            prepared.getOrThrow()
+            notFound.exceptionOrNull().shouldBeInstanceOf<HttpErrorResponseException>()
+                .status shouldBe HttpStatusCode.NotFound
+            (it.mockEngine as MockEngine).requestHistory.first().apply {
+                method shouldBe HttpMethod.Post
+                body.contentType.toString() shouldBe "application/x-www-form-urlencoded"
+            }
+        }
+
+        test("presentEuPidCredentialSdJwtEncryptedRequestByPost") {
+            val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            it.setup(
+                scheme = euPidSdJwtScheme,
+                representation = SD_JWT,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.DirectPost,
+                clientId = uuid4().toString(),
+                requestUriMethod = JarRequestParameters.RequestUriMethod.POST,
+                ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
+            )
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+                .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
+
+            assertPresentation(it.countdownLatch)
+        }
+
+        test("presentEuPidCredentialIsoQuery") {
+            val euPidScheme = AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
+            it.setup(
+                scheme = euPidScheme,
+                representation = ISO_MDOC,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidDataElements.GIVEN_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.Query,
+                clientId = uuid4().toString()
+            )
+
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+            // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
+            it.wallet.finalizeAuthorizationResponse(state).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
+                .redirectUri?.let { uri -> HttpClient(it.mockEngine).get(uri) }
+
+            assertPresentation(it.countdownLatch)
+        }
+
+        test("DC API") {
+            val mdlScheme = AttributeIndex.resolveIdentifier(MDL_DOCTYPE, ISO_MDOC)
+            it.setupWallet(HttpClient())
+
+            val attributes = mapOf(
+                DCQLClaimsPathPointer("family_name") to "XXXMûstérfřău",
+                DCQLClaimsPathPointer("given_name") to "XXXĤáčęk Elfriede Hàčêk",
+                DCQLClaimsPathPointer("age_over_21") to true
+            )
+
+            val credential = it.storeMockCredentials(mdlScheme, ISO_MDOC, attributes)
+
+            val dcqlQuery = DCQLQuery(
+                credentials = DCQLCredentialQueryList(
+                    list = nonEmptyListOf(
+                        DCQLIsoMdocCredentialQuery(
+                            id = DCQLCredentialQueryIdentifier("cred1"),
+                            format = CredentialFormatEnum.MSO_MDOC,
+                            meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                                doctypeValue = mdlScheme.isoDocType!!
+                            ),
+                            claims = DCQLClaimsQueryList(
+                                list = nonEmptyListOf(
+                                    DCQLIsoMdocClaimsQuery(
+                                        path = DCQLClaimsPathPointer(
+                                            nonEmptyListOf(
+                                                NameSegment("org.iso.18013.5.1"),
+                                                NameSegment("family_name")
+                                            )
+                                        ),
+                                    ),
+                                    DCQLIsoMdocClaimsQuery(
+                                        path = DCQLClaimsPathPointer(
+                                            nonEmptyListOf(
+                                                NameSegment("org.iso.18013.5.1"),
+                                                NameSegment("given_name")
+                                            )
+                                        ),
+                                    ),
+                                    DCQLIsoMdocClaimsQuery(
+                                        id = null,
+                                        values = null,
+                                        path = DCQLClaimsPathPointer(
+                                            nonEmptyListOf(
+                                                NameSegment("org.iso.18013.5.1"),
+                                                NameSegment("age_over_21")
+                                            )
+                                        ),
+                                    )
+                                )
+                            ),
+                        )
+                    )
+                ),
+            )
+
+            val matchingResult = ClaimsQueryResults(
+                claimsQueryResults = listOf(
+                    IsoMdocResult(
+                        namespace = "org.iso.18013.5.1",
+                        claimName = "family_name",
+                        claimValue = "XXXMûstérfřău"
+                    ),
+                    IsoMdocResult(
+                        namespace = "org.iso.18013.5.1",
+                        claimName = "given_name",
+                        claimValue = "XXXĤáčęk Elfriede Hàčêk"
+                    ),
+                    IsoMdocResult(
+                        namespace = "org.iso.18013.5.1",
+                        claimName = "age_over_21",
+                        claimValue = true
+                    )
+                )
+            )
+
+            val credentialQuerySubmissions = mapOf(
+                DCQLCredentialQueryIdentifier("cred1") to listOf(
+                    DCQLCredentialSubmissionOption(
+                        credential = credential,
+                        matchingResult = matchingResult
+                    )
+                )
+            )
+
+            // TODO test with signed request
+            val request = """
+                    {
+                       "client_metadata" : {
+                          "vp_formats_supported" : {
+                             "mso_mdoc" : {
+                                "deviceauth_alg_values" : [
+                                   -7
+                                ],
+                                "issuerauth_alg_values" : [
+                                   -7
+                                ]
+                             }
+                          }
+                       },
+                       "dcql_query" : {
+                          "credentials" : [
+                             {
+                                "claims" : [
+                                   {
+                                      "path" : [
+                                         "org.iso.18013.5.1",
+                                         "family_name"
+                                      ]
+                                   },
+                                   {
+                                      "path" : [
+                                         "org.iso.18013.5.1",
+                                         "given_name"
+                                      ]
+                                   },
+                                   {
+                                      "path" : [
+                                         "org.iso.18013.5.1",
+                                         "age_over_21"
+                                      ]
+                                   }
+                                ],
+                                "format" : "mso_mdoc",
+                                "id" : "cred1",
+                                "meta" : {
+                                   "doctype_value" : "org.iso.18013.5.1.mDL"
+                                }
+                             }
+                          ]
+                       },
+                       "nonce" : "4mqexiA_rQQyzHOYkuW6-BrHKaza02b8JHFVoyB5Iw8",
+                       "response_mode" : "dc_api",
+                       "response_type" : "vp_token"
+                    }
+                    """.trimIndent()
+            val dcApiRequest = RequestParametersFrom.OpenId4VpDcApiUnsigned(
+                parameters = joseCompliantSerializer.decodeFromString(request),
+                jsonString = request,
+                credentialIds = listOf("c72a2a8a6e94564cd8dea6ef0c7eb47b31a31947620ebcc0f07177bb71078def"),
+                callingPackageName = "com.android.chrome",
+                callingOrigin = "https://apps.egiz.gv.at/customverifier"
+            )
+
+            // an unsigned request has no wallet_nonce, so it can be validated twice, and the platform's calling origin
+            // authenticates its relying party (OpenID4VP 1.0, A.3.1)
+            it.wallet.prepareDcApiRequest(dcApiRequest, strictPolicy).getOrThrow().apply {
+                validationReport.shouldNotBeNull().decision shouldBe ValidationDecision.ACCEPTED
+                preparationState.shouldBeInstanceOf<DcApiPreparationState.OpenId4Vp>()
+            }
+            val preparationState = it.wallet.startAuthorizationResponsePreparation(dcApiRequest).getOrThrow()
+            val presentation = DCQLPresentation(DCQLRequest(dcqlQuery), credentialQuerySubmissions)
+            it.wallet.finalizeAuthorizationResponse(preparationState, presentation)
+                .getOrThrow()
+                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationForward>()
+                .authenticationResponseResult.shouldBeInstanceOf<AuthenticationResponseResult.DcApi>().apply {
+                    val responseJson = joseCompliantSerializer.encodeToString(
+                        AuthenticationResponseParameters.serializer(),
+                        params.data
+                    )
+                    responseJson shouldContain "\"vp_token\""
+                    responseJson shouldContain "\"cred1\""
+                }
+        }
+
+        test("an error response for direct_post is answered with directPostHttpResponse") {
+            it.sendErrorResponse(ResponseMode.DirectPost).shouldBeProcessedAccessDenied()
+            it.answeredStatuses shouldBe listOf(HttpStatusCode.OK)
+        }
+
+        test("an error response for direct_post.jwt is answered with directPostHttpResponse") {
+            it.sendErrorResponse(ResponseMode.DirectPostJwt).shouldBeProcessedAccessDenied()
+            it.answeredStatuses shouldBe listOf(HttpStatusCode.OK)
+        }
+
+        test("a presentation that can't be encrypted for direct_post.jwt fails, and its error is sent unencrypted") {
+            val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+            val attributes = mapOf(DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString())
+            it.storeMockCredentials(scheme, SD_JWT, attributes)
+            val results = mutableListOf<KmmResult<AuthnResponseResult>>()
+            // a pre-registered client conveys no key in the request, and the wallet knows none out-of-band
+            it.setupRelyingPartyService(
+                clientId = uuid4().toString(),
+                requestOptions = OpenId4VpRequestOptions(
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestOptionsCredential(scheme, SD_JWT, attributePaths = attributes.keys)
+                    ).toDCQLRequest(),
+                    responseMode = ResponseMode.DirectPostJwt,
+                ),
+            ) { result -> results += result }
+            it.setupWallet(HttpClient(it.mockEngine))
+            val state = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+
+            it.wallet.finalizeAuthorizationResponse(state).isFailure shouldBe true
+
+            // OpenID4VP 1.0, 8.3.1: the wallet may send an error without encryption, which the verifier processes
+            results.single().getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Error>()
+                .error.error shouldBe "invalid_request"
+            it.answeredStatuses shouldBe listOf(HttpStatusCode.OK)
+        }
+
+        test("No matching credential test") {
+            val euPidScheme = AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
+            it.setup(
+                scheme = euPidScheme,
+                representation = ISO_MDOC,
+                attributes = mapOf(
+                    DCQLClaimsPathPointer(EuPidDataElements.GIVEN_NAME) to randomString()
+                ),
+                responseMode = ResponseMode.Query,
+                clientId = uuid4().toString(),
+                storeCredentials = false
+            )
+
+            val preparationState = it.wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
+
+            // Matching returns query-specific candidates, not a Boolean. The automatic submission can not be built, as
+            // no option of the required credential set is satisfied by a stored credential.
+            it.wallet.getMatchingCredentials(preparationState).getOrThrow()
+                .shouldBeInstanceOf<DCQLMatchingResult<*>>().apply {
+                    matchingResult.toDefaultSubmission(presentationRequest.dcqlQuery).isFailure shouldBe true
+                }
+        }
+    }
+}
+
+/** The test relying parties are pre-registered, and their requests carry no registration certificates. */
+private val strictPolicy = ValidationPolicy(
+    trust = TrustPolicy.RequireAuthorizedSigner,
+    status = StatusPolicy.Skip,
+    timeLeeway = 5.minutes,
+    requireTimeliness = true,
+)
+
+/** The verifier has processed the single error response posted, see a-sit-plus/vck#474. */
+private fun List<KmmResult<AuthnResponseResult>>.shouldBeProcessedAccessDenied() {
+    single().getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Error>().error.apply {
+        error shouldBe "access_denied"
+        errorDescription shouldBe "user declined"
+    }
+}
+
+// TODO: ClaimToBeIssued with DCQLClaimsPathPointer!
+private fun Map.Entry<DCQLClaimsPathPointer, Any>.toClaimToBeIssued(): ClaimToBeIssued =
+    ClaimToBeIssued(key.getFirstName(), value)
+
+private fun Map.Entry<DCQLClaimsPathPointer, Any>.toIssuerSignedItem(digestId: UInt): IssuerSignedItem =
+    IssuerSignedItem(digestId, Random.nextBytes(16), key.getFirstName(), value)
+
+
+private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean =
+    catching {
+        val vpTokenValidationResult = shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.getOrThrow()
+        when (vpTokenValidationResult) {
+            is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
+                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
+                .containsAllAttributes(expectedAttributes)
+
+        }
+    }.getOrElse {
+        false
+    }
+
+private fun Verifier.VerifyPresentationResult.containsAllAttributes(
+    attributes: Map<DCQLClaimsPathPointer, String>
+): Boolean = when (this) {
+    is Verifier.VerifyPresentationResult.SuccessIso -> containsAllAttributes(attributes)
+    is Verifier.VerifyPresentationResult.SuccessSdJwt -> containsAllAttributes(attributes)
+    is Verifier.VerifyPresentationResult.Success -> false
+    is Verifier.VerifyPresentationResult.SuccessUnsigned -> false
+}
+
+private fun Verifier.VerifyPresentationResult.SuccessSdJwt.containsAllAttributes(attributes: Map<DCQLClaimsPathPointer, String>): Boolean =
+    attributes.all { containsAttribute(it) }
+
+private fun Verifier.VerifyPresentationResult.SuccessSdJwt.containsAttribute(attribute: Map.Entry<DCQLClaimsPathPointer, String>): Boolean =
+    disclosures.toList().any { it.matchesAttribute(attribute) }
+
+private fun Verifier.VerifyPresentationResult.SuccessIso.containsAllAttributes(attributes: Map<DCQLClaimsPathPointer, String>): Boolean =
+    attributes.all { containsAttribute(it) }
+
+private fun Verifier.VerifyPresentationResult.SuccessIso.containsAttribute(attribute: Map.Entry<DCQLClaimsPathPointer, String>): Boolean =
+    documents.any { doc -> doc.validItems.any { it.matchesAttribute(attribute) } }
+
+private fun SelectiveDisclosureItem.matchesAttribute(attribute: Map.Entry<DCQLClaimsPathPointer, String>): Boolean =
+    claimName == attribute.key.getFirstName() && claimValue.jsonPrimitive.content == attribute.value
+
+private fun IssuerSignedItem.matchesAttribute(attribute: Map.Entry<DCQLClaimsPathPointer, String>): Boolean =
+    elementIdentifier == attribute.key.getFirstName() && elementValue.toString() == attribute.value
+
+private fun DCQLClaimsPathPointer.getFirstName(): String =
+    (segments.first() as NameSegment).name
+
+// If the countdownLatch has been unlocked, the correct credential has been posted to the RP, and we're done!
+private suspend fun assertPresentation(countdownLatch: Mutex) {
+    withContext(Dispatchers.Default.limitedParallelism(1)) {
+        withTimeout(5000.milliseconds) {
+            countdownLatch.lock()
+        }
+    }
+}
+
+
+private fun randomString(): String = Random.nextBytes(32).encodeToString(Base16)

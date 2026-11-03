@@ -33,7 +33,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
@@ -64,11 +63,14 @@ val VerifierAttestationTest by matrixSuite {
             val verifierOid4vp = OpenId4VpVerifier(
                 keyMaterial = it.verifierKeyMaterial,
                 clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, it.redirectUrl),
+                presentationPolicy = testPresentationPolicy,
             )
             val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
                 requestOptionsAtomicAttribute(), CreationOptions.SignedRequestByValue(it.walletUrl)
             ).getOrThrow().url
 
+            // Trust in verifier attesters is only configurable with the deprecated relyingPartyTrust
+            @Suppress("DEPRECATION")
             val holderOid4vp = OpenId4VpHolder(
                 holder = it.holderAgent,
                 relyingPartyTrust = setOf(
@@ -76,11 +78,11 @@ val VerifierAttestationTest by matrixSuite {
                 ),
                 randomSource = RandomSource.Default,
             )
-            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+            val authnResponse = holderOid4vp.createAuthorizationResponse(authnRequestWithRequestObject).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
                 .shouldBeSingleton().first()

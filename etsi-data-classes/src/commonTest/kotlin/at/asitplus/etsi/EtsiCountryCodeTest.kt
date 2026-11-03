@@ -1,16 +1,11 @@
 package at.asitplus.etsi
 
 import at.asitplus.testballoon.matrix.matrixSuite
-import io.kotest.assertions.throwables.shouldThrow
 
 val EtsiCountryCodeTest by matrixSuite {
-    testSuite("must all be uppercase") {
-        listOf("a", "aA").asData() test {
-            shouldThrow<IllegalArgumentException> {
-                EtsiCountryCode(it)
-            }
-        }
-        listOf("A", "AA", "EU", "UK", "EL").asData() test {
+    testSuite("accepts country codes, special values and codes found in published lists") {
+        // C2 is used in https://development.trust.tech.ec.europa.eu/lists/eudiw/wallet-providers.json
+        listOf("A", "AA", "EU", "UK", "EL", "C2").asData() test {
             EtsiCountryCode(it)
         }
     }

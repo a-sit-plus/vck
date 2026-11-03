@@ -8,6 +8,8 @@ sealed interface DCQLCredentialMetadataAndValidityConstraints {
     fun validateCredentialConformance(
         credential: DCQLCredential,
     ): KmmResult<Unit> = when (this) {
+        is X509MetadataQuery -> TODO("Implement X.509 signing-credential metadata matching")
+
         DCQLEmptyCredentialMetadataAndValidityConstraints -> when (credential) {
             is DCQLIsoMdocCredential,
             is DCQLSdJwtCredential,

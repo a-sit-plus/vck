@@ -10,8 +10,7 @@ import kotlinx.serialization.json.jsonObject
 
 /**
  * Selects the request model from its protocol-defined JSON shape because these wire objects have no shared class
- * discriminator: DCQLQuery has `credentials` (see CredentialPresentationRequestSerializerTest), ISO Device Retrieval has `deviceRequest`, and the legacy fallback is a
- * Presentation Exchange presentation definition.
+ * discriminator: DCQLQuery has `credentials` (see CredentialPresentationRequestSerializerTest), ISO Device Retrieval has `deviceRequest`,
  */
 @Suppress("DEPRECATION")
 object CredentialPresentationRequestSerializer :
@@ -20,9 +19,9 @@ object CredentialPresentationRequestSerializer :
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<CredentialPresentationRequest> {
         val parameters = element.jsonObject
         return when {
-            DCQLQuery.SerialNames.CREDENTIALS in parameters -> DCQLRequest.serializer()
             IsoDeviceRetrieval.SerialNames.DEVICE_REQUEST in parameters -> IsoDeviceRetrieval.serializer()
-            else -> CredentialPresentationRequest.PresentationExchangeRequest.serializer()
+            DCQLQuery.SerialNames.CREDENTIALS in parameters -> DCQLRequest.serializer()
+            else -> throw IllegalArgumentException("Unknown CredentialPresentationRequest type")
         }
     }
 }

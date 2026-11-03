@@ -38,17 +38,6 @@ val OpenId4VpRequestOptionsTest by matrixSuite {
     }
 
     test("dc api requires dcql and expected origins") {
-        @Suppress("DEPRECATION")
-        shouldThrowAny {
-            OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                ).toPresentationExchangeRequest(),
-                responseMode = OpenIdConstants.ResponseMode.DcApi,
-                expectedOrigins = listOf("https://wallet.example")
-            )
-        }
-
         shouldThrowAny {
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(

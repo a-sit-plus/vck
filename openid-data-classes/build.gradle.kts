@@ -30,7 +30,6 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(project(":dif-data-classes"))
                 api(project(":csc-data-classes"))
                 api(project(":etsi-data-classes"))
                 api(ktor("http"))
@@ -47,7 +46,6 @@ if ("true" != disableAppleTargets) exportXCFramework(
     "OpenIdDataClasses",
     transitiveExports = true,
     static = false,
-    project(":dif-data-classes"),
     project(":csc-data-classes"),
     "io.github.z4kn4fein:semver:${VcLibVersions.semver}",
     ktor("http")
@@ -91,11 +89,6 @@ publishing {
     }
     repositories {
         mavenLocal {
-            signing.isRequired = false
-        }
-        maven {
-            url = uri(layout.projectDirectory.dir("..").dir("repo"))
-            name = "local"
             signing.isRequired = false
         }
     }

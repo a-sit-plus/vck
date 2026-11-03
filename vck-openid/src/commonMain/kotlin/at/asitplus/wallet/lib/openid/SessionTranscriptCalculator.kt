@@ -36,7 +36,7 @@ internal class UrlSessionTranscriptCalculator : SessionTranscriptCalculator {
         require(clientIdRequired) { "clientId for OpenID4VP is always required" }
         require(clientId != null) { "Missing required parameter: clientId" }
         require(responseUrl != null) { "Missing required parameter: responseUrl" }
-        return SessionTranscript.forOpenId(
+        return SessionTranscript.OpenId4Vp(
             OpenId4VpHandover(
                 type = OpenId4VpHandover.TYPE_OPENID4VP,
                 hash = coseCompliantSerializer.encodeToByteArray<OpenId4VpHandoverInfo>(
@@ -67,7 +67,7 @@ internal class DcApiSessionTranscriptCalculator : SessionTranscriptCalculator {
         val serializedOrigin = requireNotNull(origin.serializeOrigin()) {
             "ISO mdoc presentations require an authority-based origin: $origin"
         }
-        return SessionTranscript.forDcApi(
+        return SessionTranscript.DcApi(
             DCAPIHandover(
                 type = DCAPIHandover.TYPE_OPENID4VP,
                 hash = coseCompliantSerializer.encodeToByteArray<OpenID4VPDCAPIHandoverInfo>(

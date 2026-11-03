@@ -4,9 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class DCQLJsonClaimsQuery(
@@ -15,14 +13,15 @@ data class DCQLJsonClaimsQuery(
     @SerialName(DCQLClaimsQuery.SerialNames.VALUES)
     override val values: List<DCQLExpectedClaimValue>? = null,
     /**
-     * OID4VP draft 23: path: REQUIRED if the Credential Format uses a JSON-based claims structure
-     * (e.g., IETF SD-JWT VC and W3C Verifiable Credentials); MUST NOT be present otherwise. The
-     * value MUST be a non-empty array representing a claims path pointer that specifies the path
-     * to a claim within the Verifiable Credential, as defined in Section 6.4.
+     * OID4VP 1.0, 6.3: path: REQUIRED The value MUST be a non-empty array representing a claims path pointer that
+     * specifies the path to a claim within the Credential, as defined in Section 7.
      */
     @SerialName(DCQLClaimsQuery.SerialNames.PATH)
     override val path: DCQLClaimsPathPointer
 ) : DCQLClaimsQuery {
+    init {
+        requireNonEmptyValues()
+    }
 
     fun executeClaimsQueryAgainstCredential(
         credentialStructure: DCQLCredentialClaimStructure.JsonBasedStructure,
@@ -30,16 +29,8 @@ data class DCQLJsonClaimsQuery(
         val queryResults = path.query(credentialStructure.jsonElement)
         val result = values?.let { values ->
             queryResults.filter { result ->
-                catching {
-                    val primitive = result.value.jsonPrimitive
-                    values.any { value ->
-                        when (value) {
-                            is DCQLExpectedClaimValue.StringValue -> primitive.isString && primitive.content == value.string
-                            is DCQLExpectedClaimValue.BooleanValue -> !primitive.isString && primitive.booleanOrNull == value.boolean
-                            is DCQLExpectedClaimValue.IntegerValue -> !primitive.isString && primitive.longOrNull == value.long
-                        }
-                    }
-                }.getOrNull() ?: false
+                val primitive = result.value as? JsonPrimitive
+                primitive != null && values.any { it.matches(primitive) }
             }
         } ?: queryResults
         require(result.isNotEmpty()) {

@@ -4,14 +4,12 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.IdToken
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_REQUEST
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
@@ -27,12 +25,11 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
-import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
+import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredentialMatchingResult
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -42,26 +39,20 @@ import at.asitplus.wallet.lib.agent.PresentationResponseParameters.*
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
-import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.SignCoseDetached
-import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.EncryptJweFun
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.validation.RelyingPartyValidator
+import at.asitplus.wallet.lib.validation.RequestObjectChecks
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import kotlin.jvm.JvmOverloads
-import kotlin.time.Clock
-import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredentialMatchingResult
 
 /**
  * Combines Verifiable Presentations with OAuth 2.0.
@@ -71,43 +62,28 @@ import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredential
  * we can parse and validate it in [startAuthorizationResponsePreparation],
  * show the information to the user,
  * and create the response in [finalizeAuthorizationResponse], and send it back to the verifier.
+ *
+ * This class sends no HTTP requests: wallets fetch a request object passed by reference, and post responses to the
+ * verifier, with [OpenId4VpProtocolClient], which returns [at.asitplus.wallet.lib.HttpExchange]s for any HTTP stack.
  */
 class OpenId4VpHolder @JvmOverloads constructor(
-    /** Key material used to encrypt responses and sign ID tokens. */
-    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Holds the credentials and creates the verifiable presentation. */
-    private val holder: Holder = HolderAgent(keyMaterial),
-    @Deprecated("Support for SIOPv2 has been removed")
-    private val signIdToken: SignJwtFun<IdToken> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+    private val holder: Holder = HolderAgent(keyMaterial = EphemeralKeyWithoutCert()),
     /** Encrypts the authn response to the verifier, if this has been requested. */
     private val encryptJarm: EncryptJweFun = EncryptJwe(),
     /** Advertised in [metadata] and compared against holder's requirements. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
-    /** Signs the session transcript for mDoc responses. */
-    @Deprecated(
-        "signDeviceAuthDetached no longer has any effect because ISO Device signature" +
-                "creation has been moved into Holder's credential presentation. " +
-                "Signing function can be overridden in HolderAgent instead."
-    )
-    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> =
-        SignCoseDetached(keyMaterial, CoseHeaderNone(), CoseHeaderNone()),
-    @Deprecated("Support for SIOPv2 has been removed")
-    private val clock: Clock = Clock.System,
     /** Advertised as `issuer` in [metadata]. */
     private val clientId: String = "https://wallet.a-sit.at/",
     /** Advertised as `authorization_endpoint` in [metadata]. */
     private val authorizationEndpoint: String = "openid4vp:",
     /**
-     * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
-     * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
+     * Fetches a request object passed by reference in `request_uri`, for the deprecated methods taking the
+     * request as `String`; [OpenId4VpProtocolClient.prepareAuthorizationResponse] does not use it.
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    @Deprecated("No longer invoked. Replace with `relyingPartyTrust` for use in `AuthorizationRequestValidator`")
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-    /** How to establish trust in the relying party sending an authorization request, or `null` for trusting all. */
-    private val relyingPartyTrust: Set<RelyingPartyTrust>? = null,
     /** Stores our nonce used when fetching authn requests using POST. */
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     /** Source for random bytes, i.e., nonces for encrypted responses. */
@@ -126,7 +102,58 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private val supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
     /** Set to reject a plain request object we have fetched with POST (when RP supports that) */
     private val requireEncryptedRequests: Boolean = false,
+    /**
+     * Validates the relying party behind requests: its access certificate (WRPAC), which signs requests using
+     * the client identifier prefixes `x509_hash` and `x509_san_dns`, and the registration certificates (WRPRC)
+     * a request carries, see [RelyingPartyValidator]. Configure it with the anchors of the WRPAC and WRPRC
+     * providers; without them, trust in relying parties is blocked.
+     */
+    private val relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
 ) {
+
+    /**
+     * Maps the certificates of [RelyingPartyTrust.Certificates] in [relyingPartyTrust] to the anchors of the access
+     * certificate providers of a [RelyingPartyValidator]; the other sources no longer take effect, so requests with
+     * their client identifier prefixes are rejected if trust is configured.
+     */
+    @Deprecated(
+        "keyMaterial is not used, and trust in relying parties is established by relyingPartyValidator: use the " +
+                "constructor without keyMaterial and relyingPartyTrust"
+    )
+    @Suppress("DEPRECATION")
+    constructor(
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+        holder: Holder = HolderAgent(keyMaterial),
+        encryptJarm: EncryptJweFun = EncryptJwe(),
+        supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+        clientId: String = "https://wallet.a-sit.at/",
+        authorizationEndpoint: String = "openid4vp:",
+        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+        /** How to establish trust in the relying party sending an authorization request, or `null` for trusting all. */
+        relyingPartyTrust: Set<RelyingPartyTrust>? = null,
+        walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
+        randomSource: RandomSource = RandomSource.Secure,
+        lookupJsonWebKeysForClient: (JsonWebKeyLookupInput) -> JsonWebKeySet? = { null },
+        allowedDcApiOriginSchemes: suspend () -> Set<String> = { DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES },
+        ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+        supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
+        requireEncryptedRequests: Boolean = false,
+    ) : this(
+        holder = holder,
+        encryptJarm = encryptJarm,
+        supportedAlgorithms = supportedAlgorithms,
+        clientId = clientId,
+        authorizationEndpoint = authorizationEndpoint,
+        remoteResourceRetriever = remoteResourceRetriever,
+        walletNonceMapStore = walletNonceMapStore,
+        randomSource = randomSource,
+        lookupJsonWebKeysForClient = lookupJsonWebKeysForClient,
+        allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
+        requireEncryptedRequests = requireEncryptedRequests,
+        relyingPartyValidator = relyingPartyTrust.toRelyingPartyValidator(),
+    )
 
     init {
         require(!requireEncryptedRequests || ephemeralEncryptionKeyService != null) {
@@ -154,7 +181,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private val authorizationRequestValidator = AuthorizationRequestValidator(
         walletNonceMapStore = walletNonceMapStore,
         allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
-        relyingPartyTrust = relyingPartyTrust,
+        relyingPartyValidator = relyingPartyValidator,
     )
     private val authenticationResponseFactory = AuthenticationResponseFactory(
         encryptResponse = encryptJarm,
@@ -224,6 +251,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
      * Exceptions thrown during request parsing are caught by [KmmResult],
      * exceptions during request handling result in the [AuthenticationResponseResult] containing the [OAuth2Error].
      */
+    @Deprecated(
+        "Fetches the request object with remoteResourceRetriever; use " +
+                "OpenId4VpProtocolClient.prepareAuthorizationResponse, then finalizeAuthorizationResponse"
+    )
     suspend fun createAuthnResponse(
         input: String,
     ): KmmResult<AuthenticationResponseResult> = catching {
@@ -235,18 +266,20 @@ class OpenId4VpHolder @JvmOverloads constructor(
     ) = requestParser.parseRequestParameters(input)
         .getOrThrow().requireAuthenticationRequest()
 
-    @Deprecated("Use createAuthnErrorResponse with AuthorizationResponsePreparationState parameter")
-    suspend fun createAuthnErrorResponse(
-        error: Throwable,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<AuthenticationResponseResult> = catching {
-        authenticationResponseFactory.createAuthenticationResponse(
-            state = startAuthorizationResponsePreparation(request).getOrThrow(),
-            response = AuthenticationResponse.Error(
-                error = error.toOAuth2Error(request),
-            )
-        )
-    }
+    /**
+     * Parses [input] like [startAuthorizationResponsePreparation], but returns where to fetch a request object passed
+     * by reference instead of fetching it, see [OpenId4VpProtocolClient.prepareAuthorizationResponse].
+     */
+    internal suspend fun parseWithoutFetching(
+        input: String,
+    ): RequestParser.ParsedRequest = requestParser.parseWithoutFetching(input)
+
+    /** Resolves the request object fetched for [reference] from its [content], see [parseWithoutFetching]. */
+    internal suspend fun resolveFetchedRequestObject(
+        reference: RequestParser.ParsedRequest.ByReference,
+        content: String,
+    ): RequestParametersFrom<AuthenticationRequestParameters> =
+        requestParser.resolveFetchedRequestObject(reference, content).requireAuthenticationRequest()
 
     /** Creates an error response for the [error], which can be sent to the verifier / relying party. */
     suspend fun createAuthnErrorResponse(
@@ -296,11 +329,16 @@ class OpenId4VpHolder @JvmOverloads constructor(
     }
 
     /**
-     * Parses the [AuthenticationRequestParameters] from [input] and loads remote objects (client metadata, keys).
+     * Parses the [AuthenticationRequestParameters] from [input], fetching the request object passed by reference
+     * in `request_uri`, and validates it, see the overload taking parsed parameters.
      * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
      *
      * Exceptions thrown during request parsing are caught by [KmmResult],
      */
+    @Deprecated(
+        "Fetches the request object with remoteResourceRetriever; use " +
+                "OpenId4VpProtocolClient.prepareAuthorizationResponse"
+    )
     suspend fun startAuthorizationResponsePreparation(
         input: String,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
@@ -308,7 +346,10 @@ class OpenId4VpHolder @JvmOverloads constructor(
     }
 
     /**
-     * Validates the [AuthenticationRequestParameters] from [params] and loads remote objects (client metadata, keys).
+     * Validates the [AuthenticationRequestParameters] from [params]. The verifier's keys are the `jwks` of its
+     * `client_metadata`, else those from [lookupJsonWebKeysForClient]; a `jwks_uri` is ignored, as
+     * [OpenID4VP 1.0, 5.1](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-new-parameters)
+     * defines only `jwks`, and requires other metadata parameters to be ignored.
      * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
      *
      * Exceptions thrown during request parsing are caught by [KmmResult],
@@ -317,10 +358,36 @@ class OpenId4VpHolder @JvmOverloads constructor(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         authorizationRequestValidator.validateAuthorizationRequest(params)
-        val loadedKeys = (params.parameters.clientMetadata?.loadJsonWebKeySet()?.keys
+        prepare(params)
+    }
+
+    /**
+     * Validates [params] under [policy], see [RequestObjectChecks], and prepares the response like the overload
+     * without a policy. The preparation state is returned also for a rejected request, e.g. to show the user why,
+     * or to answer the verifier with an error from [finalizeAuthorizationResponse]: check the decision of
+     * [AuthorizationRequestValidation.validationReport] before presenting anything.
+     *
+     * Fails only if the request can not be prepared at all, e.g. if its presentation request can not be loaded.
+     */
+    suspend fun startAuthorizationResponsePreparation(
+        params: RequestParametersFrom<AuthenticationRequestParameters>,
+        policy: ValidationPolicy,
+    ): KmmResult<AuthorizationRequestValidation> = catching {
+        val validation = authorizationRequestValidator.validate(params, policy)
+        AuthorizationRequestValidation(
+            validationReport = validation.report,
+            preparationState = prepare(params),
+            relyingParty = validation.relyingParty,
+        )
+    }
+
+    private suspend fun prepare(
+        params: RequestParametersFrom<AuthenticationRequestParameters>,
+    ): AuthorizationResponsePreparationState {
+        val loadedKeys = (params.parameters.clientMetadata?.jsonWebKeySet?.keys
             ?: lookupJsonWebKeysForClient(JsonWebKeyLookupInput(params.parameters.clientId))?.keys)
         val jsonWebKeys = loadedKeys?.combine(params.extractLeafCertKey())
-        AuthorizationResponsePreparationState(
+        return AuthorizationResponsePreparationState(
             request = params,
             credentialPresentationRequest = params.parameters.loadCredentialRequest(),
             clientMetadata = params.parameters.clientMetadata,
@@ -376,7 +443,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
                 vpToken = when (resultContainer) {
                     null -> null
                     is DCQLParameters -> resultContainer.vpToken
-                    is PresentationExchangeParameters -> resultContainer.vpToken
                     is DeviceRetrievalParameters ->
                         throw InvalidRequest("ISO Device Retrieval responses are not OpenID4VP presentations")
                 },
@@ -436,11 +502,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialIds() =
         (this as? RequestParametersFrom.DcApiRequest)?.credentialIds
 
-    private suspend fun RelyingPartyMetadata.loadJsonWebKeySet(): JsonWebKeySet? =
-        jsonWebKeySet ?: jsonWebKeySetUrl
-            ?.let { remoteResourceRetriever(RemoteResourceRetrieverInput(it)) }
-            ?.let { joseCompliantSerializer.decodeFromString(it) }
-
     private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
             dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
@@ -455,7 +516,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
  * error instead of failing with a [ClassCastException] somewhere inside request validation.
  */
 @Suppress("UNCHECKED_CAST")
-private fun RequestParametersFrom<*>.requireAuthenticationRequest(): RequestParametersFrom<AuthenticationRequestParameters> =
+internal fun RequestParametersFrom<*>.requireAuthenticationRequest(): RequestParametersFrom<AuthenticationRequestParameters> =
     if (parameters is AuthenticationRequestParameters)
         this as RequestParametersFrom<AuthenticationRequestParameters>
     else throw InvalidRequest("not an authorization request: ${parameters::class.simpleName}")

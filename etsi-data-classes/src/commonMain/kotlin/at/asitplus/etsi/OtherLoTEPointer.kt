@@ -29,34 +29,29 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class OtherLoTEPointer(
+    /** URI of the machine-processable list being referenced (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.LOTE_LOCATION)
     val loteLocation: Rfc3986UniformResourceIdentifier,
+    /** Digital identities of the referenced list issuer, used to authenticate that list (TS 119 602, 6.3.13). */
     @SerialName(SerialNames.SERVICE_DIGITAL_IDENTITY)
     val serviceDigitalIdentity: List<ServiceDigitalIdentity>,
-    @SerialName(SerialNames.LOTE_TYPE)
-    val loteType: Rfc3986UniformResourceIdentifier,
-    @SerialName(SerialNames.SCHEME_OPERATOR_NAME)
-    val schemeOperatorName: SchemeOperatorName,
-    @SerialName(SerialNames.SCHEME_TYPE_COMMUNITY_RULES)
-    val schemeTypeCommunityRules: SchemeTypeCommunityRules? = null,
-    @SerialName(SerialNames.SCHEME_TERRITORY)
-    val schemeTerritory: EtsiCountryCode? = null,
-    @SerialName(SerialNames.MIME_TYPE)
-    val mimeType: Rfc6838MimeType? = null,
+    /** Qualifiers describing the referenced list and its scheme (TS 119 602, Annex A.1). */
+    @SerialName(SerialNames.LOTE_QUALIFIERS)
+    val loTEQualifiers: List<LoTEQualifier>,
 ) {
     init {
+        require(loTEQualifiers.isNotEmpty()) { "Expected at least one LoTE qualifier." }
         require(serviceDigitalIdentity.isNotEmpty()) {
             "Expected at least 1 ServiceDigitalIdentity."
         }
     }
 
     object SerialNames {
+        /** Wire member name `LoTELocation`. */
         const val LOTE_LOCATION = "LoTELocation"
-        const val SERVICE_DIGITAL_IDENTITY = "ServiceDigitalIdentity"
-        const val LOTE_TYPE = "LoTEType"
-        const val SCHEME_OPERATOR_NAME = "SchemeOperatorName"
-        const val SCHEME_TYPE_COMMUNITY_RULES = "SchemeTypeCommunityRules"
-        const val SCHEME_TERRITORY = "SchemeTerritory"
-        const val MIME_TYPE = "MimeType"
+        /** Wire member name `ServiceDigitalIdentities`. */
+        const val SERVICE_DIGITAL_IDENTITY = "ServiceDigitalIdentities"
+        /** Wire member name `LoTEQualifiers`. */
+        const val LOTE_QUALIFIERS = "LoTEQualifiers"
     }
 }

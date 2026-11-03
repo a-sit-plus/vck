@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -19,8 +18,6 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -78,22 +75,12 @@ val JarmTest by matrixSuite {
     } - {
 
         /**
-         * Incorrect behaviour arises when the [RelyingPartyMetadata.jsonWebKeySet] cannot be retrieved.
+         * Incorrect behaviour arises when the [RelyingPartyMetadata.jsonWebKeySet] cannot be retrieved: a presentation
+         * is never sent without encryption, unlike an error (OpenID4VP 1.0, 8.3.1).
          */
         "DirectPostJwt must either be signed or encrypted" {
-            val authnRequest = it.requestFactory.createPlainAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = SD_JWT,
-                            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
-                        )
-                    ).toDCQLRequest(),
-                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
-                    responseUrl = "https://example.com/${uuid4()}"
-                )
-            ).shouldNotBeNull()
+            // asks for the credential the holder holds, so that it does attempt to present
+            val authnRequest = it.requestFactory.createPlainAuthnRequest(directPostJwtOptions()).shouldNotBeNull()
 
             val invalidReq = authnRequest.copy(
                 clientMetadata = authnRequest.clientMetadata?.copy(
@@ -103,7 +90,8 @@ val JarmTest by matrixSuite {
             )
 
             shouldThrow<OAuth2Exception.InvalidRequest> {
-                it.holderOid4vp.createAuthnResponse(joseCompliantSerializer.encodeToString(invalidReq)).getOrThrow()
+                it.holderOid4vp.createAuthorizationResponse(joseCompliantSerializer.encodeToString(invalidReq))
+                    .getOrThrow()
             }
         }
 
@@ -142,11 +130,11 @@ val JarmTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             newInstance().validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
         }
     }
 }

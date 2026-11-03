@@ -16,10 +16,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *  6.1. Credential Query
+ * OpenID4VP 1.0, 6.1. Credential Query
  *
- * A Credential Query is an object representing a request for a presentation of one Credential.
- * Note that multiple Credential Queries in a request MAY request a presentation of the same Credential.
+ * A Credential Query is an object representing a request for a presentation of one or more matching Credentials.
+ *
+ * Multiple Credential Queries in a request MAY request a presentation of the same Credential.
  */
 @Serializable
 data class DCQLJwtVcCredentialQuery(

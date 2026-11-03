@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 
-class MobileSecurityObjectTimelinessValidator {
+object MobileSecurityObjectTimelinessValidator {
     operator fun invoke(
         mobileSecurityObject: MobileSecurityObject,
         timeScope: TimeScope,

@@ -13,31 +13,72 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 
-/** Authenticates the complete mdoc request with one WRPAC leaf certificate. Chain trust is checked separately. */
+/** Authenticates an mdoc request with the reader certificates of its signatures. Chain trust is checked separately. */
 class ReaderAuthenticationVerifier(
     private val verifySignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
 ) {
+    /**
+     * Authenticates the complete mdoc request with one reader certificate, failing if a document request is not
+     * covered by reader authentication.
+     */
+    @Deprecated(
+        "Use authenticate, which returns every chain whose readerAuthAll signature verifies, to check the trust of " +
+                "each, and the document requests without reader authentication."
+    )
     suspend operator fun invoke(
         request: DeviceRequest,
         transcript: SessionTranscript
-    ): KmmResult<CertificateChain> = catching {
+    ): KmmResult<CertificateChain> = authenticate(request, transcript).mapCatching {
+        require(it.unauthenticatedDocRequests.isEmpty()) { "DocRequest is missing readerAuth" }
+        it.chains.first()
+    }
+
+    /**
+     * Authenticates the mdoc [request] over [transcript] (ISO/IEC DIS 18013-5:2025, 12.5.4), which "can be used for
+     * each element individually or all at the same time":
+     *  - with `readerAuthAll`, which covers every document request, every signature that verifies yields a chain,
+     *    e.g. one per trust framework of the reader, and the `readerAuth` of document requests is ignored; if none
+     *    verifies, the request is not authenticated;
+     *  - otherwise, every `readerAuth` of a document request has to verify, all with one reader certificate, and
+     *    document requests without one are [AuthenticatedReader.unauthenticatedDocRequests].
+     *
+     * Fails for a request without any reader authentication.
+     */
+    suspend fun authenticate(
+        request: DeviceRequest,
+        transcript: SessionTranscript,
+    ): KmmResult<AuthenticatedReader> = catching {
         require(request.docRequests.isNotEmpty()) { "DeviceRequest contains no document requests" }
 
-        request.readerAuthAll.orEmpty().forEach { signature ->
-            verify(signature, ReaderAuthenticationAll.detachedPayload(request, transcript)).getOrNull()
-                ?.let { return@catching it }
+        val readerAuthAll = request.readerAuthAll.orEmpty()
+        if (readerAuthAll.isNotEmpty()) {
+            val payload = ReaderAuthenticationAll.detachedPayload(request, transcript)
+            val results = readerAuthAll.map { verify(it, payload) }
+            val chains = results.mapNotNull { it.getOrNull() }
+            if (chains.isEmpty()) {
+                throw IllegalArgumentException(
+                    "No readerAuthAll signature verifies",
+                    results.last().exceptionOrNull(),
+                )
+            }
+            return@catching AuthenticatedReader(chains, emptyList())
         }
 
-        val chains = request.docRequests.map { docRequest ->
-            val signature = requireNotNull(docRequest.readerAuth) { "DocRequest is missing readerAuth" }
-            verify(signature, ReaderAuthentication.detachedPayload(docRequest, transcript)).getOrThrow()
+        val chains = request.docRequests.mapNotNull { docRequest ->
+            docRequest.readerAuth?.let {
+                verify(it, ReaderAuthentication.detachedPayload(docRequest, transcript)).getOrThrow()
+            }
         }
+        require(chains.isNotEmpty()) { "The request has no reader authentication" }
         val first = chains.first()
         val leafDer = first.first().encodeToDer()
         require(chains.all { it.first().encodeToDer().contentEquals(leafDer) }) {
-            "DocRequests are not signed by one WRPAC"
+            "DocRequests are not signed by one reader certificate"
         }
-        first
+        AuthenticatedReader(
+            chains = listOf(first),
+            unauthenticatedDocRequests = request.docRequests.indices.filter { request.docRequests[it].readerAuth == null },
+        )
     }
 
     private suspend fun verify(
@@ -59,3 +100,14 @@ class ReaderAuthenticationVerifier(
         chain
     }
 }
+
+/** The result of [ReaderAuthenticationVerifier.authenticate]. */
+data class AuthenticatedReader(
+    /**
+     * The certificate chains whose signatures over the request verify, in the order of the request, not empty: one
+     * per `readerAuthAll` signature that verifies, or the one of the `readerAuth` of document requests.
+     */
+    val chains: List<CertificateChain>,
+    /** The indices of the document requests no signature covers, which are not bound to the reader. */
+    val unauthenticatedDocRequests: List<Int>,
+)

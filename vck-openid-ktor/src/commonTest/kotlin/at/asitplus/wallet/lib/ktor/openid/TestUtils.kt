@@ -1,51 +1,43 @@
 package at.asitplus.wallet.lib.ktor.openid
 
 import at.asitplus.catching
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
-import at.asitplus.openid.AttestationChallengeResponse
-import at.asitplus.openid.IssuerMetadata
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.openid.PushedAuthenticationResponseParameters
-import at.asitplus.openid.TokenIntrospectionJwtResponse
-import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.openid.TokenIntrospectionResult
-import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
-import at.asitplus.wallet.lib.oauth2.DPoPNonce
-import at.asitplus.wallet.lib.oauth2.OAuthClientAttestationChallenge
-import at.asitplus.wallet.lib.oauth2.ResponseWithDpopNonce
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.oauth2.toHttpResponse
+import at.asitplus.wallet.lib.oauth2.toResourceServerHttpResponse
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.openid.toOAuth2Error
+import at.asitplus.wallet.lib.oidvci.ReceivedCredential
+import at.asitplus.wallet.lib.validation.CredentialValidationInput
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import at.asitplus.wallet.lib.PreparedHttpResponse
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Clock
@@ -53,24 +45,40 @@ import kotlin.time.Duration.Companion.minutes
 
 object TestUtils {
 
-    /**
-     * @param dpopNonce supply a fresh DPoP nonce alongside an unrelated error, i.e. for an AS that mandates a nonce
-     * (RFC 9449 8.) on an endpoint that may reject the request for another reason first
-     */
-    fun MockRequestHandleScope.respondOAuth2Error(
-        throwable: Throwable,
-        dpopNonce: String? = null,
-    ): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(throwable.toOAuth2Error(null)),
-        headers = headers {
-            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            ((throwable as? OAuth2Exception.UseDpopNonce)?.dpopNonce ?: dpopNonce)
-                ?.let { append(HttpHeaders.DPoPNonce, it) }
-            (throwable as? OAuth2Exception.UseAttestationChallenge)?.attestationChallenge
-                ?.let { append(HttpHeaders.OAuthClientAttestationChallenge, it) }
+    /** Writes out [response], as converted by a server, e.g. with `toHttpResponse()` or `directPostHttpResponse()`. */
+    fun MockRequestHandleScope.respond(response: PreparedHttpResponse): HttpResponseData = respond(
+        content = response.body?.text.orEmpty(),
+        status = response.status,
+        headers = Headers.build {
+            appendAll(response.headers)
+            response.body?.let { append(HttpHeaders.ContentType, it.contentType.toString()) }
         },
-        status = HttpStatusCode.BadRequest
-    ).also { Napier.w("Server error: ${throwable.message}", throwable) }
+    )
+
+    /**
+     * Error response of an authorization server endpoint, see [OAuth2Exception.toHttpResponse], or 500 for anything
+     * that is not an [OAuth2Exception].
+     */
+    fun MockRequestHandleScope.respondOAuth2Error(throwable: Throwable): HttpResponseData =
+        respondConverted(throwable) { toHttpResponse() }
+
+    /**
+     * Error response of a resource endpoint accessed with [authorizationHeader] (credential, userinfo), see
+     * [OAuth2Exception.toResourceServerHttpResponse], or 500 for anything that is not an [OAuth2Exception].
+     */
+    fun MockRequestHandleScope.respondResourceServerError(
+        throwable: Throwable,
+        authorizationHeader: String?,
+    ): HttpResponseData = respondConverted(throwable) { toResourceServerHttpResponse(authorizationHeader) }
+
+    private fun MockRequestHandleScope.respondConverted(
+        throwable: Throwable,
+        convert: OAuth2Exception.() -> PreparedHttpResponse,
+    ): HttpResponseData {
+        Napier.w("Server error: ${throwable.message}", throwable)
+        return (throwable as? OAuth2Exception)?.let { respond(it.convert()) }
+            ?: respondError(HttpStatusCode.InternalServerError)
+    }
 
     fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
 
@@ -115,106 +123,34 @@ object TestUtils {
         expectedClaimValue: String,
         credentialKey: CryptoPublicKey,
     ) {
-        val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
-        credentials.shouldBeSingleton().also {
-            it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.SdJwt>().also {
-                it.scheme shouldBe euPidSdJwtScheme
-                ValidatorSdJwt().verifySdJwt(it.signedSdJwtVc, credentialKey).getOrThrow()
-                    .disclosures.values.any {
-                        it.claimName == claimName &&
-                                it.claimValue.jsonPrimitive.content == expectedClaimValue
-                    }
-                    .shouldBeTrue()
+        val group = issued.shouldBeSingleton().first()
+        group.scheme shouldBe AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+        val input = group.receivedCredentials.shouldBeSingleton().first()
+            .shouldBeInstanceOf<ReceivedCredential.Decoded>().input
+            .shouldBeInstanceOf<CredentialValidationInput.SdJwtVc>()
+        ValidatorSdJwt().verifySdJwt(SdJwtSigned.parseCatching(input.compact).getOrThrow(), credentialKey).getOrThrow()
+            .disclosures.values.any {
+                it.claimName == claimName &&
+                        it.claimValue.jsonPrimitive.content == expectedClaimValue
             }
-        }
+            .shouldBeTrue()
     }
 
+    /** Verifies the only credential, an mdoc of the EU PID, carries [claimName], and returns it. */
     suspend fun CredentialIssuanceResult.Success.verifyIsoMdocCredential(
         claimName: String,
         expectedClaimValue: String,
-    ) {
-        val euPidScheme = AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
-        credentials.shouldBeSingleton().also {
-            it.first().shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>().also {
-                it.scheme shouldBe euPidScheme
-                it.issuerSigned.namespaces?.values?.flatMap { it.entries }?.map { it.value }
-                    ?.any { it.elementIdentifier == claimName && it.elementValue == expectedClaimValue }
-                    ?.shouldNotBeNull()?.shouldBeTrue()
-            }
+    ): IssuerSigned {
+        val group = issued.shouldBeSingleton().first()
+        group.scheme shouldBe AttributeIndex.resolveIdentifier(EU_PID_DOCTYPE, ISO_MDOC)
+        val input = group.receivedCredentials.shouldBeSingleton().first()
+            .shouldBeInstanceOf<ReceivedCredential.Decoded>().input
+            .shouldBeInstanceOf<CredentialValidationInput.IsoMdoc>()
+        return coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(input.issuerSignedCbor).also {
+            it.namespaces?.values?.flatMap { it.entries }?.map { it.value }
+                ?.any { it.elementIdentifier == claimName && it.elementValue == expectedClaimValue }
+                ?.shouldNotBeNull()?.shouldBeTrue()
         }
     }
-
-    fun MockRequestHandleScope.respond(
-        result: PushedAuthenticationResponseParameters
-    ): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
-
-    fun MockRequestHandleScope.respond(
-        result: AttestationChallengeResponse?
-    ): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
-
-    fun MockRequestHandleScope.respond(result: CredentialIssuer.CredentialResponse): HttpResponseData =
-        when (result) {
-            is CredentialIssuer.CredentialResponse.Encrypted -> respond(
-                result.response.serialize(),
-                headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JWT)
-            )
-
-            is CredentialIssuer.CredentialResponse.Plain -> respond(
-                joseCompliantSerializer.encodeToString(result.response),
-                headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.JSON)
-            )
-        }
-
-    fun MockRequestHandleScope.respond(result: CredentialIssuer.Nonce): HttpResponseData =
-        respondIncludingDpopNonce(ResponseWithDpopNonce(result.response, result.dpopNonce))
-
-    inline fun <reified T> MockRequestHandleScope.respondIncludingDpopNonce(
-        result: ResponseWithDpopNonce<T>
-    ): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(result.response),
-        headers = headers {
-            append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            result.dpopNonce?.let { set(HttpHeaders.DPoPNonce, it) }
-        }
-    )
-
-    fun MockRequestHandleScope.respond(result: TokenResponseParameters): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString<TokenResponseParameters>(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
-
-    fun MockRequestHandleScope.respond(result: TokenIntrospectionResult): HttpResponseData = when (result) {
-        is TokenIntrospectionResponse -> respond(result)
-        is TokenIntrospectionJwtResponse -> respond(
-            joseCompliantSerializer.encodeToString<TokenIntrospectionJwtResponse>(result),
-            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-        )
-    }
-
-    fun MockRequestHandleScope.respond(result: TokenIntrospectionResponse): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
-
-    fun MockRequestHandleScope.respond(result: JsonObject): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
-
-    fun MockRequestHandleScope.respond(result: IssuerMetadata): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
-
-    fun MockRequestHandleScope.respond(result: OAuth2AuthorizationServerMetadata): HttpResponseData = respond(
-        joseCompliantSerializer.encodeToString(result),
-        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-    )
 
 }

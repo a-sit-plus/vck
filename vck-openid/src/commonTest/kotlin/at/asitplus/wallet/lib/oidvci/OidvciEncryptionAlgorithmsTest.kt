@@ -19,7 +19,7 @@ import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -31,6 +31,10 @@ import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidatedCredential
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -38,6 +42,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonElement
+import kotlin.time.Duration.Companion.minutes
 
 val OidvciEncryptionAlgorithmsTest by matrixSuite {
 
@@ -49,7 +54,7 @@ val OidvciEncryptionAlgorithmsTest by matrixSuite {
                 requirePushedAuthorizationRequests = false,
                 strategy = CredentialAuthorizationServiceStrategy(setOf(ConstantIndex.AtomicAttribute2023)),
             )
-            var issuer = CredentialIssuer(
+            var issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -63,14 +68,25 @@ val OidvciEncryptionAlgorithmsTest by matrixSuite {
                 ),
             )
             val state = uuid4().toString()
-            val client = WalletService(
+            // The client proves possession of the holder's key, so the holder accepts the credentials bound to it
+            val holderKey = EphemeralKeyWithoutCert()
+            val holder = HolderAgent(holderKey)
+            val client = OpenId4VciClient(
                 encryptionService = WalletEncryptionService(
                     requestResponseEncryption = true, // this is important
                     requireRequestEncryption = true, // this is important
                     fallbackJweEncryptionAlgorithm = walletEnc
-                )
+                ),
+                proofCreators = listOf(JwtProofCreator(holderKey))
             )
             val oauth2Client = OAuth2Client()
+            val integrityOnly = ValidationPolicy(
+                trust = TrustPolicy.IntegrityOnly,
+                status = StatusPolicy.Skip,
+                timeLeeway = 5.minutes,
+                requireTimeliness = true,
+            )
+
             suspend fun getToken(scope: String): TokenResponseParameters {
                 val authnRequest = oauth2Client.createAuthRequestJar(
                     state = state,
@@ -95,7 +111,7 @@ val OidvciEncryptionAlgorithmsTest by matrixSuite {
         }
     } - {
         test("wallet encrypts credential request and decrypts credential response") {
-            val requestOptions = WalletService.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+            val requestOptions = OpenId4VciClient.RequestOptions(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
             val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
                 .shouldNotBeNull()
             val scope = credentialFormat.scope.shouldNotBeNull()
@@ -107,7 +123,7 @@ val OidvciEncryptionAlgorithmsTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
             ).getOrThrow().shouldBeSingleton().first()
-                .shouldBeInstanceOf<WalletService.CredentialRequest.Encrypted>().apply {
+                .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Encrypted>().apply {
                     request.header.encryption shouldBe it.issuerEnc
                 }
             it.issuer.credential(
@@ -115,17 +131,18 @@ val OidvciEncryptionAlgorithmsTest by matrixSuite {
                 params = request,
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow().apply {
-                shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Encrypted>().apply {
+                shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Encrypted>().apply {
                     response.header.encryption shouldBe it.issuerEnc
                 }
-                it.client.parseCredentialResponse(this, request, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
-                    .getOrThrow().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Vc>().apply {
-                        signedVcJws.payload.vc.credentialSubject.shouldBeInstanceOf<JsonElement>()
-                            .also { credentialSubject ->
-                                shouldNotThrowAny {
-                                    AtomicAttribute2023.fromJsonElement(credentialSubject)
-                                }
+                it.client.decodeCredentialResponse(this, request, PLAIN_JWT).getOrThrow().shouldBeSingleton().first()
+                    .prepareCredentialStorage(it.holder, ConstantIndex.AtomicAttribute2023, it.integrityOnly)
+                    .getOrThrow().validation.credential
+                    .shouldBeInstanceOf<ValidatedCredential.VcJwt>().apply {
+                        credential.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
+                            shouldNotThrowAny {
+                                AtomicAttribute2023.fromJsonElement(credentialSubject)
                             }
+                        }
                     }
             }
         }

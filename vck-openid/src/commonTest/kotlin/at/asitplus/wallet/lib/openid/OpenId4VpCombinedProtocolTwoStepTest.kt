@@ -1,13 +1,12 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.agent.DCQLMatchingResult
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -38,7 +37,6 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
             val clientId: String = "https://example.com/rp/${uuid4()}"
             val holderAgent: Holder = HolderAgent(holderKeyMaterial)
             val holderOid4vp: OpenId4VpHolder = OpenId4VpHolder(
-                keyMaterial = holderKeyMaterial,
                 holder = holderAgent,
                 randomSource = RandomSource.Default,
             )
@@ -64,15 +62,14 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
-            val dcqlQuery = preparationState.credentialPresentationRequest
+            val dcqlRequest = preparationState.credentialPresentationRequest
                 .shouldBeInstanceOf<DCQLRequest>()
-                .dcqlQuery
-            val credentialQueryId = dcqlQuery.credentials.first().id
+            val credentialQueryId = dcqlRequest.dcqlQuery.credentials.first().id
 
-            it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(dcqlQuery)
-                .getOrThrow().also {
+            it.holderAgent.matchDCQLRequest(dcqlRequest)
+                .also {
                     it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
                         it.value.shouldHaveSize(3)
                     }
@@ -100,14 +97,14 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
             val dcqlRequest = preparationState.credentialPresentationRequest
                 .shouldBeInstanceOf<DCQLRequest>()
             val credentialQueryId = dcqlRequest.dcqlQuery.credentials.first().id
 
-            val matches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(dcqlRequest.dcqlQuery)
-                .getOrThrow().also {
+            val matches = it.holderAgent.matchDCQLRequest(dcqlRequest)
+                .also {
                     it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
                         it.value.shouldHaveSize(3) // 2x iso, 1x sdJwt
                     }
@@ -149,14 +146,14 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
             val dcqlRequest = preparationState.credentialPresentationRequest
                 .shouldBeInstanceOf<DCQLRequest>()
             val credentialQueryId = dcqlRequest.dcqlQuery.credentials.first().id
 
-            val matches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(dcqlRequest.dcqlQuery)
-                .getOrThrow().also {
+            val matches = it.holderAgent.matchDCQLRequest(dcqlRequest)
+                .also {
                     it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
                         it.value.shouldHaveSize(1)
                     }
@@ -201,8 +198,8 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
             ).toDCQLRequest().shouldNotBeNull()
 
-            val sdJwtMatches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(sdJwtRequest.dcqlQuery)
-                .getOrThrow().also {
+            val sdJwtMatches = it.holderAgent.matchDCQLRequest(sdJwtRequest)
+                .also {
                     it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
                         it.value.shouldHaveSize(3)
                     }
@@ -221,14 +218,14 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
                 creationOptions = CreationOptions.Query("https://example.com")
             ).getOrThrow().url
 
-            val preparationState = it.holderOid4vp.startAuthorizationResponsePreparation(authnRequest)
+            val preparationState = it.holderOid4vp.prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
             val dcqlRequest = preparationState.credentialPresentationRequest
                 .shouldBeInstanceOf<DCQLRequest>()
             val credentialQueryId = dcqlRequest.dcqlQuery.credentials.first().id
 
-            val matches = it.holderAgent.matchDCQLQueryAgainstCredentialStoreV2(dcqlRequest.dcqlQuery)
-                .getOrThrow().also {
+            val matches = it.holderAgent.matchDCQLRequest(dcqlRequest)
+                .also {
                     it.dcqlQueryMatchingResult.credentialMatchingResults.forEach {
                         it.value.shouldHaveSize(3)
                     }
@@ -249,4 +246,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
     }
 }
 
-private fun AuthenticationRequestParameters.serialize(): String = joseCompliantSerializer.encodeToString(this)
+private suspend fun Holder.matchDCQLRequest(request: DCQLRequest) =
+    matchPresentationRequestAgainstCredentialStore(request).getOrThrow()
+        .shouldBeInstanceOf<DCQLMatchingResult<SubjectCredentialStore.StoreEntry>>()
+        .matchingResult

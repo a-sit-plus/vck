@@ -129,7 +129,6 @@ val IosDcApiMdocPreRequestSummaryTest by matrixSuite {
 
         summary.toDeviceRequest().apply {
             parsedVersion shouldBe Version(1, 0)
-            version shouldBe "1.0"
             docRequests.shouldBeSingleton().single()
                 .itemsRequest.value.apply {
                     docType shouldBe "org.iso.18013.5.1.mDL"

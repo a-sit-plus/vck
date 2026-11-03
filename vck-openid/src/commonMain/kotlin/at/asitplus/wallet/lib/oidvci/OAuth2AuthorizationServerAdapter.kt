@@ -3,15 +3,14 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Used in OID4VCI by [CredentialIssuer] to obtain user data when issuing credentials using OID4VCI.
+ * Used in OID4VCI by [OpenId4VciServer] to obtain user data when issuing credentials using OID4VCI.
  *
  * Could also be a remote service, then implementers need to make calls to the remote service.
  */
@@ -42,7 +41,7 @@ interface OAuth2AuthorizationServerAdapter {
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject>
 
-    /** Validates the access token sent to [CredentialIssuer.credential]. */
+    /** Validates the access token sent to [OpenId4VciServer.credential]. */
     suspend fun validateAccessToken(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
@@ -62,4 +61,11 @@ data class TokenInfo(
     val token: String,
     val authorizationDetails: Set<AuthorizationDetails>? = null,
     val scope: String? = null,
+    /**
+     * Confirmation of the key a DPoP-bound token is bound to, i.e. its JWK SHA-256 thumbprint in `jkt`
+     * ([RFC 9449 6.](https://datatracker.ietf.org/doc/html/rfc9449#section-6)). Before granting access with this
+     * token, check that the DPoP proof of the request is signed with that key
+     * ([RFC 9449 7.1](https://datatracker.ietf.org/doc/html/rfc9449#section-7.1)).
+     */
+    val confirmationClaim: ConfirmationClaim? = null,
 )

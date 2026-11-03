@@ -1,13 +1,14 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry
-import at.asitplus.csc.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
-import at.asitplus.csc.enums.SignatureQualifier
+import at.asitplus.csc.api.collection_entries.RqesDocumentDigestEntry
+import at.asitplus.csc.api.collection_entries.RqesDocumentDigestEntry.DocumentLocationMethod
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.decodeFromQuery
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -19,9 +20,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
-import at.asitplus.wallet.lib.data.toTransactionData
-import io.ktor.http.Url
-import at.asitplus.openid.decodeFromQuery
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
@@ -32,6 +30,7 @@ import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.ktor.http.*
 
 val RqesRequestOptionsTest by matrixSuite {
 
@@ -49,7 +48,7 @@ val RqesRequestOptionsTest by matrixSuite {
             it.verifierOid4Vp.createAuthnRequest(requestOptions, CreationOptions.Query("https://example.com"))
                 .getOrThrow().url.let { Url(it) }.decodeFromQuery<AuthenticationRequestParameters>().apply {
                     val dcqlId = dcqlQuery.shouldNotBeNull().credentials.first().id
-                    transactionData.shouldNotBeNull().first().toTransactionData().apply {
+                    transactionDataDecoded.shouldNotBeNull().first().apply {
                         transactionDataHashAlgorithms shouldNotBe null
                         credentialIds.first() shouldBe dcqlId.string
                     }

@@ -11,7 +11,8 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.JwtProofCreator
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
@@ -59,7 +60,7 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
         val parser = RequestParser(remoteResourceRetriever = retriever::invoke)
         val input = URLBuilder("https://example.com").apply {
             parameters.append("request_uri", requestUri)
-            parameters.append("client_id", "somevalue")
+            parameters.append("client_id", authnRequest.clientId!!)
         }.buildString()
 
         parser.parseRequestParameters(input).getOrThrow().apply {
@@ -87,11 +88,15 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
                 )
             )
         )
-        val walletService = WalletService(remoteResourceRetriever = retriever::invoke)
+        val client = OpenId4VciClient(
+            remoteResourceRetriever = retriever::invoke,
+            proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert()))
+        )
         val input = URLBuilder("https://wallet.example.org").apply {
             parameters.append("credential_offer_uri", offerUri)
         }.buildString()
 
-        walletService.parseCredentialOffer(input).getOrThrow() shouldBe offer
+        @Suppress("DEPRECATION") // the only user of this retriever contract for credential offers
+        client.parseCredentialOffer(input).getOrThrow() shouldBe offer
     }
 }

@@ -11,6 +11,9 @@ import at.asitplus.signum.indispensable.asn1.encoding.decodeToInt
 import at.asitplus.signum.indispensable.asn1.encoding.parse
 import at.asitplus.signum.indispensable.pki.X509Certificate
 
+// The KnownOIDs getter constructs a new OID; reuse it and its lazily encoded bytes across comparisons.
+private val basicConstraintsOid = KnownOIDs.basicConstraints_2_5_29_19
+
 /**
  * The `BasicConstraints` extension of a certificate, see
  * [RFC 5280, Section 4.2.1.9](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.9):
@@ -50,7 +53,7 @@ data class BasicConstraints(
 val X509Certificate.basicConstraints: BasicConstraints?
     get() {
         val matches = tbsCertificate.extensions.orEmpty()
-            .filter { it.oid == KnownOIDs.basicConstraints_2_5_29_19 }
+            .filter { it.oid == basicConstraintsOid }
         if (matches.isEmpty()) return null
         if (matches.size > 1) {
             throw Asn1StructuralException("More than one BasicConstraints extension in certificate")

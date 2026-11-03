@@ -8,7 +8,6 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import io.github.z4kn4fein.semver.Version
-import io.github.z4kn4fein.semver.toVersion
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -31,28 +30,12 @@ data class DeviceRequest(
     val docRequests: Array<DocRequest>,
     /** Can be used with version 1.1 to transport additional infos on how to satisfy the request (DCQL like?) */
     @SerialName("deviceRequestInfo")
+    @Serializable(with = ReserializableByteStringSerializer::class)
     @ValueTags(24U)
     val deviceRequestInfo: ByteStringWrapper<DeviceRequestInfo>? = null,
     @SerialName("readerAuthAll")
     val readerAuthAll: Array<CoseSigned<ByteArray>>? = null,
 ) {
-    @Deprecated("Use constructor with parsedVersion")
-    constructor(
-        version: String,
-        docRequests: Array<DocRequest>,
-        deviceRequestInfo: ByteStringWrapper<DeviceRequestInfo>? = null,
-        readerAuthAll: Array<CoseSigned<ByteArray>>? = null
-    ) : this(
-        parsedVersion = version.toVersion(strict = false),
-        docRequests = docRequests,
-        deviceRequestInfo = deviceRequestInfo,
-        readerAuthAll = readerAuthAll
-    )
-
-    @Deprecated("Use parsedVersion instead", ReplaceWith("parsedVersion.toIsoString()"))
-    val version: String
-        get() = parsedVersion.toIsoString()
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

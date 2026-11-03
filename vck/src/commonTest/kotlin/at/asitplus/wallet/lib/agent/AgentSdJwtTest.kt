@@ -73,11 +73,7 @@ val AgentSdJwtTest by matrixSuite {
             val validator = ValidatorSdJwt(
                 validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
             )
-            val holder = HolderAgent(
-                holderKeyMaterial,
-                holderCredentialStore,
-                validatorSdJwt = validator,
-            ).also {
+            val holder = HolderAgent(holderKeyMaterial, holderCredentialStore).also {
                 it.storeCredential(
                     issuer.issueCredential(
                         DummyCredentialDataProvider.getCredential(
@@ -384,8 +380,9 @@ private suspend fun presentAndVerifySdJwt(
             ),
         ),
     )
+    val request = verifier.createPresentationRequest()
     val presentationParameters = holder.createDefaultPresentation(
-        request = verifier.createPresentationRequest(),
+        request = request,
         credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
             buildDCQLQuery(
                 DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
@@ -395,7 +392,7 @@ private suspend fun presentAndVerifySdJwt(
     val vp = presentationParameters.verifiablePresentations.values.first().first()
         .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-    return verifier.verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
+    return verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
         .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         .freshnessSummary.tokenStatusValidationResult
 }

@@ -10,6 +10,7 @@ import kotlinx.serialization.encoding.Encoder
 
 @Serializable(with = Rfc6838MimeType.InlineSerializer::class)
 data class Rfc6838MimeType(
+    /** RFC 6838 media type of a referenced list, compared case-insensitively (TS 119 602, 6.3.13). */
     val string: String,
 ) {
     override fun equals(other: Any?): Boolean {
@@ -27,6 +28,7 @@ data class Rfc6838MimeType(
     override fun hashCode() = string.uppercase().lowercase().hashCode()
 
     class InlineSerializer : KSerializer<Rfc6838MimeType> {
+        /** Serialization descriptor for the MIME type encoded as a string. */
         override val descriptor: SerialDescriptor
             get() = PrimitiveSerialDescriptor(
                 serialName = InlineSerializer::class.qualifiedName!!,

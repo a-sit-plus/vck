@@ -11,6 +11,8 @@ import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.ZkMetadata
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * Central engine for routing and coordinating ISO mDoc Zero-Knowledge (ZK) proof operations.
@@ -38,6 +40,7 @@ class IsoMdocZkEngine @JvmOverloads constructor(
      * @param request The parameters of the presentation request.
      * @param isoParameters The ISO-specific presentation parameters, containing the credential and ZK metadata.
      * @param keyMaterial The key material used for holder binding purposes.
+     * @param timestamp The timestamp to use for the proof generation. Defaults to the current system time.
      * @return A [KmmResult] containing the generated [IsoMdocZkProof], or an error if no suitable backend is found
      * or generation fails.
      */
@@ -45,6 +48,7 @@ class IsoMdocZkEngine @JvmOverloads constructor(
         request: PresentationRequestParameters,
         isoParameters: IsoPresentationParameters,
         keyMaterial: KeyMaterial,
+        timestamp: Instant = Clock.System.now(),
     ): KmmResult<IsoMdocZkProof> = catching {
         val zkMetadata = isoParameters.zkMetadata as? ZkMetadata.IsoMdocZk
             ?: throw IllegalArgumentException("ZK metadata incompatible with Iso mDoc")
@@ -59,6 +63,7 @@ class IsoMdocZkEngine @JvmOverloads constructor(
             requestedClaims = isoParameters.claims,
             requestedZkSystemSpecs = supportedSystems,
             keyMaterial = keyMaterial,
+            timestamp = timestamp,
         ).getOrThrow()
     }
 

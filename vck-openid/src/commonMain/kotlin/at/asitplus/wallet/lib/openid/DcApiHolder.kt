@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
-import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.RequestParametersFrom.*
 import at.asitplus.wallet.lib.agent.CredentialMatchingResult
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -15,6 +14,10 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.validation.RelyingPartyValidationResult
+import at.asitplus.wallet.lib.validation.RelyingPartyValidator
+import at.asitplus.wallet.lib.validation.ValidationPolicy
+import at.asitplus.wallet.lib.validation.ValidationReport
 import kotlin.jvm.JvmOverloads
 
 /**
@@ -27,14 +30,16 @@ import kotlin.jvm.JvmOverloads
 class DcApiHolder @JvmOverloads constructor(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val holder: Holder = HolderAgent(keyMaterial),
-    private val openId4VpHolder: OpenId4VpHolder = OpenId4VpHolder(
-        keyMaterial = keyMaterial,
-        holder = holder,
-    ),
+    private val openId4VpHolder: OpenId4VpHolder = OpenId4VpHolder(holder = holder),
     private val iso180137AnnexCHolder: Iso180137AnnexCHolder = Iso180137AnnexCHolder(
         keyMaterial = keyMaterial,
         holder = holder,
     ),
+    /**
+     * Validates the relying party behind ISO/IEC 18013-7 Annex C requests, see [RelyingPartyValidator]; configure
+     * the one for OpenID4VP requests on [openId4VpHolder].
+     */
+    private val relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
 ) {
 
     /**
@@ -63,6 +68,45 @@ class DcApiHolder @JvmOverloads constructor(
             )
         }
     }
+
+    /**
+     * Validates [request] under [policy] and prepares credential selection like the overload without a policy, also
+     * for a rejected request: check the decision of [DcApiRequestValidation.validationReport] before presenting.
+     * For an ISO/IEC 18013-7 Annex C request, which has no request object, the report is the one of its relying
+     * party, reported like a proximity request, see [RelyingPartyValidator.validate]: a request without reader
+     * authentication is rejected as unsigned, and one without registration certificates as
+     * [ValidationPolicy.registration] says.
+     */
+    suspend fun startAuthorizationResponsePreparation(
+        request: DcApiRequest,
+        policy: ValidationPolicy,
+    ): KmmResult<DcApiRequestValidation> = catching {
+        when (request) {
+            is OpenId4VpDcApiSigned -> openId4VpHolder.startAuthorizationResponsePreparation(request, policy)
+                .getOrThrow().toDcApi()
+
+            is OpenId4VpDcApiMultiSigned -> openId4VpHolder.startAuthorizationResponsePreparation(request, policy)
+                .getOrThrow().toDcApi()
+
+            is OpenId4VpDcApiUnsigned -> openId4VpHolder.startAuthorizationResponsePreparation(request, policy)
+                .getOrThrow().toDcApi()
+
+            is IsoMdocDcApi -> {
+                val relyingParty = request.validateRelyingParty(relyingPartyValidator, policy)
+                DcApiRequestValidation(
+                    validationReport = relyingParty.report,
+                    preparationState = DcApiPreparationState.Iso180137AnnexC(
+                        request = request,
+                        presentationRequest = iso180137AnnexCHolder.createPresentationRequest(request).getOrThrow(),
+                    ),
+                    relyingParty = relyingParty,
+                )
+            }
+        }
+    }
+
+    private fun AuthorizationRequestValidation.toDcApi() =
+        DcApiRequestValidation(validationReport, DcApiPreparationState.OpenId4Vp(preparationState), relyingParty)
 
     /** Matches wallet credentials using the protocol and platform-selected credential IDs recorded in [state]. */
     suspend fun getMatchingCredentials(
@@ -124,14 +168,14 @@ class DcApiHolder @JvmOverloads constructor(
  * [DcApiHolder.getMatchingCredentials] and [DcApiHolder.finalizeAuthorizationResponse].
  */
 sealed class DcApiPreparationState {
-    abstract val request: RequestParametersFrom.DcApiRequest
+    abstract val request: DcApiRequest
     abstract val presentationRequest: CredentialPresentationRequest?
 
     data class OpenId4Vp(
         val state: AuthorizationResponsePreparationState,
     ) : DcApiPreparationState() {
-        override val request: RequestParametersFrom.DcApiRequest
-            get() = state.request as RequestParametersFrom.DcApiRequest
+        override val request: DcApiRequest
+            get() = state.request as DcApiRequest
         override val presentationRequest: CredentialPresentationRequest?
             get() = state.credentialPresentationRequest
     }
@@ -140,4 +184,29 @@ sealed class DcApiPreparationState {
         override val request: IsoMdocDcApi,
         override val presentationRequest: CredentialPresentationRequest.IsoDeviceRetrieval,
     ) : DcApiPreparationState()
+}
+
+/**
+ * The [validationReport] of a request through the Digital Credentials API, and the [preparationState] to answer it
+ * with, also if the request is rejected, see [DcApiHolder.startAuthorizationResponsePreparation].
+ */
+data class DcApiRequestValidation(
+    val validationReport: ValidationReport,
+    val preparationState: DcApiPreparationState,
+    /**
+     * The result of validating the relying party of an OpenID4VP request carrying registration certificates
+     * (WRPRCs), or of any Annex C request, with the relying party if accepted, and what its WRPRCs say in any case,
+     * see
+     * [RelyingPartyValidationResult.untrustedRegistrations]. Its report is the
+     * [at.asitplus.wallet.lib.validation.RelyingPartyChecks] child of [validationReport] for an OpenID4VP request,
+     * and [validationReport] itself for an Annex C request. `null` for an OpenID4VP request without WRPRCs.
+     */
+    val relyingParty: RelyingPartyValidationResult? = null,
+) {
+    init {
+        require(
+            relyingParty == null || relyingParty.report == validationReport ||
+                    relyingParty.report in validationReport.children
+        ) { "The report of the relying party is the report of the request, or a child of it" }
+    }
 }

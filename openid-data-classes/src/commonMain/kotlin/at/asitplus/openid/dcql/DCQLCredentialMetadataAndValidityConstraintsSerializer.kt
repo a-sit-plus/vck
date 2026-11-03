@@ -27,6 +27,8 @@ object DCQLCredentialMetadataAndValidityConstraintsSerializer :
         val parameters = element.jsonObject
         return when {
             parameters.isEmpty() -> DCQLEmptyCredentialMetadataAndValidityConstraints.serializer()
+            "certificateFingerprints" in parameters || "certificatePolicies" in parameters || "keys" in parameters ->
+                X509MetadataQuery.serializer()
             DCQLSdJwtCredentialMetadataAndValidityConstraints.SerialNames.VCT_VALUES in parameters -> DCQLSdJwtCredentialMetadataAndValidityConstraints.serializer()
             DCQLIsoMdocCredentialMetadataAndValidityConstraints.SerialNames.DOCTYPE_VALUE in parameters -> DCQLIsoMdocCredentialMetadataAndValidityConstraints.serializer()
             DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES in parameters -> DCQLJwtVcCredentialMetadataAndValidityConstraints.serializer()

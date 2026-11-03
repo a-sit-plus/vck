@@ -25,7 +25,9 @@ interface MapStore<T, U> {
     suspend fun get(key: T): U?
 
     /**
-     * Implementers: Return and remove the value associated with [key]
+     * Implementers: Return and remove the value associated with [key], atomically: of several concurrent calls for the
+     * same [key], at most one returns the value. Callers rely on this to use a value only once, e.g. verifiers to
+     * process at most one response to an authentication request.
      */
     suspend fun remove(key: T): U?
 

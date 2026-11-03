@@ -1,10 +1,14 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.csc.contentEquals
+import at.asitplus.csc.api.contentEquals
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.openid.TransactionDataBase64Url
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.digest
+import at.asitplus.openid.formUrlEncode
+import at.asitplus.openid.toBase64UrlJsonString
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
@@ -21,10 +25,6 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
-import at.asitplus.wallet.lib.data.digest
-import at.asitplus.wallet.lib.data.toBase64UrlJsonString
-import at.asitplus.openid.decodeFromQuery
-import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
@@ -32,6 +32,9 @@ import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSd
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
+import at.asitplus.wallet.lib.openid.createAuthorizationResponse
+import at.asitplus.wallet.lib.openid.testPresentationPolicy
+import at.asitplus.wallet.lib.openid.vpTokenOrThrow
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
@@ -44,9 +47,9 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
 
-private fun malignTransactionData(): List<TransactionDataBase64Url> = listOf(
+private fun malignTransactionData(queryId: String): List<TransactionDataBase64Url> = listOf(
     QCertCreationAcceptance(
-        credentialIds = setOf(),
+        credentialIds = setOf(queryId),
         qcTermsConditionsUri = uuid4().toString(),
         qcHash = uuid4().bytes,
         qcHashAlgorithmOid = Digest.SHA256.oid,
@@ -80,7 +83,8 @@ val KeyBindingTests by matrixSuite {
             val verifierOid4Vp = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
-                stateToAuthnRequestStore = it.externalMapStore
+                stateToAuthnRequestStore = it.externalMapStore,
+                presentationPolicy = testPresentationPolicy,
             )
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = null)
 
@@ -91,11 +95,11 @@ val KeyBindingTests by matrixSuite {
                 this shouldContain "transaction_data"
             }
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
                 .shouldBeSingleton().first()
@@ -113,7 +117,8 @@ val KeyBindingTests by matrixSuite {
             val verifierOid4Vp = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
-                stateToAuthnRequestStore = it.externalMapStore
+                stateToAuthnRequestStore = it.externalMapStore,
+                presentationPolicy = testPresentationPolicy,
             )
             val requestOptions = buildRequestOptions(transactionDataHashAlgorithms = setOf(SdJwtConstants.SHA_384))
 
@@ -124,11 +129,11 @@ val KeyBindingTests by matrixSuite {
                 this.shouldContain("transaction_data")
             }
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequestUrl).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
                 .shouldBeSingleton().first()
@@ -145,7 +150,8 @@ val KeyBindingTests by matrixSuite {
             val verifierOid4Vp = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = ClientIdScheme.RedirectUri(it.clientId),
-                stateToAuthnRequestStore = it.externalMapStore
+                stateToAuthnRequestStore = it.externalMapStore,
+                presentationPolicy = testPresentationPolicy,
             )
 
             val requestOptions =
@@ -158,21 +164,24 @@ val KeyBindingTests by matrixSuite {
                 Url(this).decodeFromQuery<AuthenticationRequestParameters>()
             }
 
-            val malignResponse = it.holderOid4vp.createAuthnResponse(
+            val malignResponse = it.holderOid4vp.createAuthorizationResponse(
                 joseCompliantSerializer.encodeToString(
-                    authnRequest.copy(transactionData = malignTransactionData())
+                    authnRequest.copy(
+                        transactionData = malignTransactionData(authnRequest.dcqlQuery!!.credentials.first().id.string)
+                    )
                 )
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             verifierOid4Vp.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.shouldBeSingleton().first().first().isFailure shouldBe true
         }
 
-        "Transaction Data validation can be turned off" {
+        "Transaction data can not be turned off by the verifier passed in, which no longer takes effect" {
             val clientIdScheme = ClientIdScheme.RedirectUri(it.clientId)
+            @Suppress("DEPRECATION")
             val lenientVerifier = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = clientIdScheme,
@@ -180,7 +189,8 @@ val KeyBindingTests by matrixSuite {
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
                     validatorSdJwt = ValidatorSdJwt(verifyTransactionData = false)
-                )
+                ),
+                presentationPolicy = testPresentationPolicy,
             )
 
             val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, null)
@@ -190,19 +200,21 @@ val KeyBindingTests by matrixSuite {
             ).getOrThrow().url.run {
                 Url(this).decodeFromQuery<AuthenticationRequestParameters>()
             }
-            val malignResponse = it.holderOid4vp.createAuthnResponse(
+            val malignResponse = it.holderOid4vp.createAuthorizationResponse(
                 joseCompliantSerializer.encodeToString(
-                    authnRequest.copy(transactionData = malignTransactionData())
+                    authnRequest.copy(
+                        transactionData = malignTransactionData(authnRequest.dcqlQuery!!.credentials.first().id.string)
+                    )
                 )
             ).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             lenientVerifier.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .credentialQueryResponseValidations.values.flatten()
                 .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "transaction data"
         }
     }
 }

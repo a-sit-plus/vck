@@ -1,5 +1,690 @@
 # Changelog
 
+Release 9.0.0:
+
+The new validation API (`CredentialValidator`, `RelyingPartyValidator`, `IssuerMetadataValidator`) reports every check
+of a credential, presentation, relying party, or credential issuer in a `ValidationReport`, decided by a configurable
+`ValidationPolicy` covering trust anchors (e.g. from LoTEs), status lists, timeliness, and WRPAC/WRPRC registration, and
+replaces the legacy validators. The OAuth 2.0, OpenID4VCI, and OpenID4VP clients are split into protocol clients
+returning `HttpExchange`s for any HTTP stack, with the Ktor clients built on them, and servers return
+`PreparedHttpResponse`s to write out unchanged. Presentation Exchange and other APIs deprecated in 8.0.0 are removed,
+and many fixes align VC-K with OpenID4VP 1.0, OpenID4VCI 1.0, ETSI TS 119 475 and TS 119 602, and ISO/IEC 18013-5, so
+check the entries marked BREAKING when migrating.
+
+- Removals:
+    - Remove code elements deprecated in 8.0.0: Presentation Exchange types, the module `dif-data-classes` with its
+      compatibility surface, and others
+- Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
+    - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations
+      (`PresentationValidationInput` in a `PresentationContext`) under a `ValidationPolicy` (`TrustPolicy`,
+      `StatusPolicy`, time leeway, `requireTimeliness`), returning a `ValidationReport`: a tree of checks
+      (`CheckOutcome`: passed, failed with its cause, blocked, or not applicable) whose `decision` follows from the
+      policy, next to the validated value, which is present only if the report is accepted. Trust anchors are
+      configured per credential type (`CredentialTrustAnchors`, `CredentialTrustScopes`, adapters for LoTEs and
+      `TrustAnchorProvider`), status with a `StatusValidator` and a `StatusListTokenResolver`, signatures with a
+      `SignatureCheck`
+    - Verify mdoc documents authenticated with a `deviceMac` (ISO/IEC 18013-5:2021, 9.1.3.5) with the reader's
+      ephemeral private key, the new `PresentationContext.eReaderKey`, which was rejected as not supported before.
+      Without that key, the device authentication of such a document is blocked. A document with both a device
+      signature and a device MAC fails
+    - Add `PresentationContext.forMdoc(sessionTranscript, eReaderKey)`, the context of mdoc device authentication,
+      e.g. of an ISO/IEC 18013-5 proximity reader, without challenge and audience. A blank challenge or audience of a
+      context is never answered, so presentations of other formats are rejected with it
+    - Add `HolderAgent.storeCredentialWithReport(credential, policy, renewalInfo)`, and the parameter
+      `credentialValidator` of `HolderAgent`, which validates every credential before storing it, and orders stored
+      credentials in `getValidCredentialsByPriority()`, demoting only verified problems. Deprecate the constructor
+      taking `validator`, `validatorVcJws`, `validatorSdJwt`, `validatorMdoc` (which no longer take effect), and
+      `trustedIssuers` (adapted as anchors for every credential type)
+    - Add the parameter `orderingValidator` of `HolderAgent`, `credentialValidator` by default, which orders stored
+      credentials when matching them against a presentation request, e.g. with a status list token resolver that
+      returns cached tokens only, so that matching and creating a presentation never wait for status lists to be
+      retrieved, which they did for every stored credential, also those the request does not ask for
+    - Add `OpenId4VciClient.decodeCredentialResponse(response, request, representation)`, decoding every credential
+      of a (batch) response into a `ReceivedCredential`, also one that can not be decoded, and
+      `ReceivedCredential.prepareCredentialStorage(holder, scheme, policy, renewalInfo)`, validating it for storage by
+      the `HolderAgent`, which reports a credential that can not be decoded as rejected
+    - Add `ValidationPolicy.requiredClaims` (`RequiredClaimsPolicy.Skip` by default, or `RequireMandatory`) and the
+      check `CredentialChecks.requiredClaims` (`RequiredClaimsValidation`, failing with `MissingRequiredClaimException`): whether a
+      credential received on its own contains every claim the metadata of its signed type describe as `mandatory`
+      (draft-ietf-oauth-sd-jwt-vc-19, 5.6.3), resolved by the new `requiredClaimsResolver` of `CredentialValidator`
+      (`RequiredClaimsResolver.Default` uses the credential metadata registries and schemes of `AttributeIndex`, and
+      blocks the check for a type without metadata). Not applicable to presented credentials
+    - Add `CredentialValidationResult.unacceptedCredential` and `ValidationReport.isIntactCredential()`: the
+      credential whatever the decision, if only checks a policy may relax are not satisfied (issuer trust, timeliness,
+      required claims, status), so that a wallet can store it after the user accepts the report
+    - Add `HolderAgent.prepareCredentialStorage(credential, policy, renewalInfo)`, validating a received credential
+      without storing it, e.g. as the last step of issuance, returning a `PreparedCredentialStorage` to keep while the
+      user looks at the report, then `HolderAgent.storeAccepted(prepared)`, storing only an accepted credential, as
+      `storeCredentialWithReport` does, or `HolderAgent.storeAfterUserConsent(prepared)`, storing also a rejected but
+      intact credential. `CredentialStorageResult.storedEntry` may thus be present for a rejected report
+    - Add `HolderAgent.prepareCredentialStorage(input, scheme, policy, renewalInfo)`, validating an encoded credential
+      (`CredentialValidationInput`), e.g. as received from a credential issuer, and decoding it only once: the
+      credential to store is the validated one, e.g. an mdoc with exactly the bytes the issuer signed. Add
+      `HolderAgent.rejectUndecodable(cause, policy, renewalInfo)` for a credential that can not be decoded from its
+      transfer encoding, so that it is reported, but never stored. `PreparedCredentialStorage.credential` is `null`
+      for a credential prepared from its encoding that is not intact
+    - Add `RelyingPartyValidator` with `RelyingPartyTrustAnchors` (WRPAC and WRPRC anchors, status list signers of
+      WRPRCs, `PreRegisteredClients`, `VerifierAttesters`, and `ClientIdentifierTrust` for client identifier
+      prefixes this library does not evaluate), validating the WRPAC, WRPRCs, and the client identifier prefix of a
+      request in one report; `IsoMdocDcApi.validateRelyingParty(validator, policy)` in `vck-openid`. An unregistered
+      request fails with an `UnregisteredRequestException`. `RelyingPartyValidator.validate(deviceRequest, sessionTranscript, policy)`
+      validates the reader of a proximity presentation, e.g. over BLE or NFC (ISO/IEC 18013-5:2021, 9.1.4): of
+      several `readerAuthAll` signatures, the report is about the first whose WRPAC is accepted and links to every
+      WRPRC, and a request that authenticates only some of its document requests fails `requestData` with an
+      `UnsupportedWrpRequestException`, while its `signature` passes
+    - Add `ValidationPolicy.registration` (`RegistrationPolicy.Require` by default, or `ValidateIfPresent`): whether
+      a relying party has to transport WRPRCs, so that a wallet can accept mdoc readers outside of the EUDI Wallet
+      ecosystem, e.g. the wallet apps of other wallet providers, trusted through
+      `RelyingPartyTrustAnchors.accessCertificates`. Without WRPRCs, `registration` is not applicable, the reader
+      certificate need not carry the identifier of a WRPAC, and `ValidatedRelyingParty.identifier` is `null`
+    - Add `ReaderAuthenticationVerifier.authenticate(request, transcript)`, returning an `AuthenticatedReader` with the
+      chain of every `readerAuthAll` signature that verifies, and the document requests without reader
+      authentication (ISO/IEC DIS 18013-5:2025, 12.5.4). Deprecate its `invoke`, which returns only the first chain.
+      A `readerAuthAll` that does not verify fails as such, instead of falling back to the `readerAuth` of document
+      requests
+    - Add `AuthorizationRequestValidator.validate(request, policy)`, and
+      `OpenId4VpHolder.startAuthorizationResponsePreparation(input, policy)` and its `DcApiHolder` overload,
+      returning the report of the request next to the preparation state, also for a rejected request; also
+      `OpenId4VpProtocolClient.prepareAuthorizationResponse(input, policy)`, loading a request object by reference,
+      and in `OpenId4VpKtorHolder` `startAuthorizationResponsePreparation(input, policy)`, its overload for parsed
+      requests, and `prepareDcApiRequest(request, policy)`.
+      `AuthorizationRequestValidation.relyingParty` and `DcApiRequestValidation.relyingParty` carry the
+      `RelyingPartyValidationResult` of a request with a WRPRC, or of every Annex C request, validated like a
+      proximity request, whose report is `DcApiRequestValidation.validationReport`, and `RelyingPartyValidationResult.untrustedRegistrations`
+      the payloads of its WRPRCs whose parsing passed, whatever the decision, to show them next to a warning instead of
+      parsing them with the deprecated `WrpAuthenticationRequestValidator`.
+      `OpenId4VpHolder`, `OpenId4VpKtorHolder`, and `DcApiHolder` take a `relyingPartyValidator`; deprecate
+      `RelyingPartyTrust` and the constructors taking `relyingPartyTrust` (mapped by `toRelyingPartyValidator()`;
+      `RelyingPartyTrust.Custom` no longer takes effect) or the unused `keyMaterial`
+    - Behavior changes, also through the legacy entry points, which delegate to the new validation:
+        - With `requireTimeliness` and a status policy other than `Skip`, an expired, not yet valid, revoked, or
+          status-unresolvable credential rejects its presentation and can't be stored
+        - With `TrustPolicy.RequireAuthorizedSigner`, missing anchors reject; with a status policy other than
+          `Skip`, a missing status list token resolver rejects a credential that has a status claim
+        - A `jwk` next to an `x5c` with a different key fails the signature
+        - SD-JWT: `typ` `dc+sd-jwt` and `kb+jwt` are enforced, `vc+sd-jwt` is rejected; unreferenced, duplicate, or
+          malformed disclosures and claim collisions fail (RFC 9901, 7.1); the KB-JWT `iat` has to be within the
+          leeway
+        - mdoc: storage checks item digests, the `docType` against the scheme, and the device key against the
+          holder key; a missing MSO fails
+        - VP-JWT: `exp` and `nbf` are checked; a VP with one rejected VC is rejected
+        - Credential issuers, status list tokens, key attestations, and client attestations are trusted through an
+          anchor that issued their signing certificate, possibly through intermediate certificates transported with
+          it, or one that is the signing certificate, as a LoTE may list it (ETSI TS 119 602 V1.1.1, 6.6.3, H.3; ETSI
+          TS 119 472-3 V1.1.1, AUTH-REQ-PROC-4.4.3-01), regardless of the certificates transported with it. An anchor
+          transported as the last certificate of the chain is ignored, as is the case for
+          `requireTrustedSigningCertificate`. Otherwise, a transported anchor or a
+          self-signed signer fails (OpenID4VC HAIP 1.0, 4.5.1, 6.1, 6.1.1), and so does a transported certificate that
+          did not issue the one before it
+        - WRPRC errors are reported instead of being turned into `false`, and one clock is used for certificate
+          chains; a WRPRC no longer needs `alg` ES256 or to lack `kid`, which ETSI TS 119 475 does not require
+        - A signed authorization request whose signature can not be verified, as no key is established for its
+          client identifier prefix and it asserts none, is rejected (OpenID4VP 1.0, 5.9.3)
+        - An ISO mdoc request without any reader authentication, and an unsigned request, are reported as unsigned:
+          the `signature` and `parsing` of the WRPAC are not applicable, `requestData` fails with an
+          `UnsupportedWrpRequestException`, and their WRPRCs are not evaluated, while a reader authentication that does
+          not verify fails the `signature`, so that a wallet can tell an unauthenticated reader from a forged one
+        - A relying party reports its WRPRCs in the new named check `registration` of `RelyingPartyChecks`, required
+          unless `ValidationPolicy.registration` is `ValidateIfPresent`: a missing WRPRC (`MissingRegistrationCertificateException`) or one that can not be parsed
+          (`InvalidRegistrationCertificateException`) fails `registration` instead of `requestData`, which keeps the
+          extraction of the request, e.g. its `client_id` and DCQL query, and fails for unsigned requests, whose
+          `registration` is blocked
+    - Deprecate the superseded validation API, to be removed in the next major release: `Validator`,
+      `ValidatorVcJws`, `ValidatorSdJwt`, `ValidatorMdoc`, `VerifierAgent`, and the presentation methods of `Verifier`
+      (use `CredentialValidator`); `VcJwsInputValidator`, `SdJwtInputValidator`, `MdocInputValidator` and their
+      results, `CredentialTimelinessValidator`, `CredentialFreshnessSummary`, `CredentialWrapper`, and
+      `ValidatiorVcJwsValidationException` (see the `timeliness` and `status` checks of the report);
+      `TokenStatusResolver`, `TokenStatusResolverImpl`, `TokenStatusResolverNoop`, `toTokenStatusResolver()`,
+      `TokenStatusResolver.resolve()`, `TokenStatusValidator` with its functions, and `TokenStatusValidationResult`
+      (use `StatusValidator` with a `StatusListTokenResolver`, which stays); `issuerJwsVerifier`,
+      `issuerCoseVerifier`, and `VerifyStatusListTokenHAIP` (use trust anchors of `CredentialValidator`);
+      `WrpacValidator`, `WrprcValidator`, `WrpAuthenticationRequestValidator`, `WrpChainValidator`, their results,
+      and `IsoMdocDcApi.validateWrpAuthenticationRequest()` (use `RelyingPartyValidator`)
+    - BREAKING: `VcJwsTimelinessValidator`, `SdJwtTimelinessValidator`, `MdocTimelinessValidator`, and
+      `MobileSecurityObjectTimelinessValidator` are objects, as they hold no state and take the time per call
+      (`TimeScope`): call `VcJwsTimelinessValidator(vcJws, timeScope)` instead of
+      `VcJwsTimelinessValidator()(vcJws, timeScope)`; `MdocTimelinessValidator` no longer takes a
+      `MobileSecurityObjectTimelinessValidator`
+    - Add `ValidationReport.namedChecks`, the checks of a report by name with the `Requirement` its policy put on each
+      (`NamedCheck.satisfied` tells whether it rejects the report), recorded when the report is created, so that a
+      report can be displayed as it has been decided, including the checks a relaxed policy tolerates; the decision
+      rules are derived from the same lists. Check names are field names, so renaming one is a breaking change noted
+      here; every check of trust carries its `TrustValidation`, `timeliness` is always the validity of the artifact
+      (the time of a holder proof is `proofTime` or `popTime`), and status parts start with `status.`
+    - Make `CheckOutcome.cause()` and `ValidationReport.firstRejection()` public, to display why a check did not pass
+      and why a report has been rejected
+    - Move the holder binding of standalone credentials into `ValidationPolicy.holderBinding` (default
+      `HolderBindingPolicy.None`): `CredentialValidator.validate(input, policy, context)`,
+      `CredentialValidator.rejectUndecodable(cause, policy)`, and `ValidationReport.credential(checks, policy,
+      evaluatedAt)` no longer take a `HolderBindingPolicy`. In a presentation, the presentation decides the holder
+      binding of its credentials; `HolderAgent.storeCredentialWithReport` and `HolderAgent.prepareCredentialStorage`
+      always require the holder's key
+    - `PresentationValidationResult.rejection()` takes the requirements from the report instead of a policy. Rejection
+      messages name the check, e.g. "The issuerSignature check did not pass", and disclosed items by index
+    - Add `CredentialToJsonConverter.toJsonElement(ValidatedCredential)`, `ValidatedCredential.credentialIdentifier`,
+      and `ValidatedPresentation.credentials`, e.g. to display the claims of accepted presentations
+    - `ValidatedPresentation.SdJwt.keyBinding` is the signed key binding JWT (`JwsCompactTyped<KeyBindingJws>`)
+      instead of its payload, and `ValidatedPresentation.SdJwt.sdJwtSigned` is the SD-JWT as presented, with that key
+      binding JWT. `VerifyPresentationResult.SuccessSdJwt.sdJwtSigned` is the latter, so it contains no key binding JWT
+      the request did not require, as such a key binding JWT is not checked
+    - `StatusValidation` requires mechanisms for a passed `agreement`
+    - Reduce certificate trust-check allocations by reusing the BasicConstraints OID and encoding the top certificate once when comparing it with trust anchors.
+    - Known limitations:
+        - Certificate paths: trust is evaluated by walking the transported chain, without RFC 5280 path building,
+          `pathLenConstraint` or `keyUsage`, and without certificate revocation (CRL, OCSP). So a chain missing an
+          intermediate certificate is rejected, a directly listed self-signed signer certificate is accepted, and a
+          revoked WRPAC or signer certificate is not detected
+        - ZK mdoc presentations are validated like plain mdocs, their proofs are not verified
+- Subject credential store:
+    - BREAKING: Implementations of `SubjectCredentialStore` implement the single `storeCredential(entry: StoreEntry)`,
+      persisting a ready `StoreEntry`. `HolderAgent` stores every credential through it, with its renewal info.
+    - Deprecate the per-format `storeCredential(vc, ...)`, `storeCredential(vc, ..., disclosures, ...)`, and
+      `storeCredential(issuerSigned, ...)` of `SubjectCredentialStore`, which now build the `StoreEntry` and call
+      `storeCredential(entry)`: implementations no longer need to override them
+    - Add `StoreEntry.fromPreparedCredential(prepared)`, the entry of a `PreparedCredentialStorage` built from what
+      its validation verified, also for a rejected but intact credential, and `StoreEntry.Vc.fromString(...)`,
+      `StoreEntry.SdJwt.fromString(...)`, and `StoreEntry.Iso.fromString(...)` (base64url as in OpenID4VCI, or
+      base64), parsing a serialized credential without validating it
+- Trusted relying parties:
+    - Fix JSON serialization of `JsonClaimReference` as `SingleClaimReference`, e.g. in `RequestDataValidity`, which produced invalid JSON since `NormalizedJsonPath` became a list in JsonPath4K 4.0.0. It is now serialized as an object holding `normalizedJsonPath`
+    - BREAKING: `JsonClaimReference` now wraps `path: DCQLClaimsPathPointer`, preserving wildcards during WRPRC authorization. The concrete-path
+      constructor is retained; deprecate `normalizedJsonPath`, which cannot represent wildcards. Its JSON member name
+      remains `normalizedJsonPath`
+    - WRPRC authorization exempts only the root `vct` claim; nested claims named `vct` must be registered
+    - `WrprcValidator` no longer drops the cause when a registration certificate can not be validated, e.g. for a missing or unparseable certificate chain: `WrprcValidationResult.certificateValidationResults` holds a `KmmResult` for each certificate. Deprecate `WrprcValidationResult.certificateValidation`, which maps such certificates to `null`
+    - `WrprcValidator` validates each credential request on its own, so a request that can not be validated (e.g. a DCQL claims path with a `null` segment) no longer fails the whole validation: `WrprcValidationResult.requestDataValidationResults` holds a `KmmResult` for each request. Deprecate `WrprcValidationResult.requestDataValidation`, which maps such requests to an invalid credential type without attributes, `WrprcValidator.validateRequest()` in favor of `validateCredentialRequests()`, and the `WrprcValidationResult` constructor taking the old types
+    - `WrpAuthenticationRequestValidator` tells apart why it can not extract a WRPRC, with exceptions extending `IllegalArgumentException`: `MissingRegistrationCertificateException` if the request contains none, `InvalidRegistrationCertificateException` with the parsing error as cause if it can not be parsed, and `UnsupportedWrpRequestException` for requests it can not validate, e.g. unsigned ones
+    - `WrpAuthenticationRequestValidator` rejects requests with more than one `registration_cert` entry in `verifier_info`, also if only one of them can be parsed, and ISO requests that carry an `euWrprc` in only some of their `DocRequest`s
+    - `WrpAuthenticationRequestValidator` rejects a `registration_cert` entry in `verifier_info` whose data is a JSON object instead of a string
+    - `RelyingPartyValidator`, `IssuerMetadataValidator`, and `WrpAuthenticationRequestValidator` accept a `registration_cert` in `verifier_info` or `issuer_info` given as the base64url encoding of the compact JWS (ETSI TS 119 472-2 V1.1.1, OIDFVP-HAIP_COMMON_RO_REQ-09), which could not be parsed before, as well as the compact JWS itself
+    - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
+- Trust List filtering:
+    - BREAKING: `LoteProfile.fromSchemeIdentifier()` returns `null` for a credential identifier without a known list, instead of `LoteProfile.EAA`, so that `LoTETrustAnchorProvider` no longer authorizes every Pub-EAA provider for arbitrary credential types. Identifiers match case-sensitively, and the mDL `docType` `org.iso.18013.5.1.mDL` matches exactly instead of by prefix
+    - BREAKING: Remove `additionalAnchors` of `LoTETrustAnchorProvider`, which was added to the anchors of every credential type and every list, and so merged trust sources across types. Trust further sources for a type with a `CredentialTrustScope` instead
+- Status lists:
+    - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
+    - `StatusValidator` keeps what it verified of the last 32 status list tokens, by identity: their media type,
+      signature, and decompressed list, so that validating many credentials referencing one token parses it,
+      verifies its signature, and decompresses it once. Its signer, subject, and time are still checked on every
+      validation. `StatusListCwt.parsedPayload` is decoded once, and an identifier list is indexed once per token
+      instead of encoding every identifier for every lookup
+- DCQL:
+    - Claim paths preserve numeric object keys as strings and reject invalid or overflowing indices
+    - `DCQLClaimsPathPointer.query` processes claims path pointers as OpenID4VP 1.0, 7.1.1 specifies: if any selected element is not an object for a name component, or not an array for an index or `null` component, the result is empty, i.e. the claim does not match, instead of continuing with the other selected elements; other options of `claim_sets` that do not request the claim may still match
+    - Reject queries that OpenID4VP 1.0 does not allow: empty `values` of a claims query, empty `vct_values`, empty arrays in `type_values` or in the `options` of `credential_sets`, `options` that reference an unknown Credential Query and `claim_sets` that reference an unknown claims query; a claims query that points to the same claim again is ignored when matching
+    - Match the `values` of a claims query against the JSON value of an ISO mdoc data element as OpenID4VP 1.0, 6.3 requires, converted with `CredentialToJsonConverter`, so that a full-date or date-time matches its string, e.g. `"1990-01-01"` for `birth_date`, a byte string its base64url encoding, and a value of a scheme-specific type the JSON encoding of the serializer registered for its data element with `CborCredentialSerializer`, e.g. the integer code of `IsoSexEnum`, or else of its registered `JsonValueEncoder`; such elements matched no value before. Add `CredentialToJsonConverter.toJsonElementOrNull`, which returns null instead of the `toString()` of a value of a type without a known encoding. `DCQLCredentialClaimStructure.IsoMdocStructure` holds the JSON values of the data elements (`Map<String, Map<String, JsonElement>>` instead of `Any`), with `JsonNull` for an element without a JSON value, and `DCQLClaimsQueryResult.IsoMdocResult.claimValue` is that JSON value
+    - `HolderDCQLQueryMatchingResult.toDefaultSubmission` selects the first option of a required credential set whose queries all match a credential, instead of always the first option, which produced an empty submission when no credential matched it; it fails if no option of a required credential set is satisfiable
+    - Add request-side X.509 DCQL support for ETSI TS 119 432 Annex A.6: `CredentialFormatEnum.X509`,
+      `DCQLX509CredentialQuery`, and `X509MetadataQuery` implementing `DCQLCredentialMetadataAndValidityConstraints`.
+- QES approvals:
+    - Bind each approval transaction to one selected DCQL credential submission, allowing separate approvals for distinct queries without adding approvals to unrelated identity presentations
+    - Treat multiple `credential_ids` as alternatives and reject missing, empty, or unknown query references in OpenID4VP transaction data with `invalid_transaction_data`
+    - Add optional `PresentationRequestParameters.qesApprovalTransactionData` for selecting approval data independently of the general SD-JWT transaction-data integrity hashes
+- Credential schemes:
+    - Add `IsoMdocCredentialScheme.isoQualifiedClaimDescriptions` in `vck`, the claim descriptions of a scheme with their
+      paths qualified by its ISO namespace, as the ISO mdoc credential configurations of `DefaultCredentialSchemeMapper` use
+    - Add `IsoMdocCredentialScheme.isoClaimPathsAreQualified` (default `false`); when `true`, preserve all claim paths
+      without adding the scheme namespace. ISO schemes derived from type metadata set it to `true`: their paths must
+      include their namespace, including when `vck.isoNamespace` is absent or another namespace is used
+- OpenID for Verifiable Credential Issuance issuer:
+    - BREAKING: `ProofValidator` takes a `KeyAttestationValidator` (in `vck`) instead of `verifyKeyAttestationSignature`
+      and `statusListTokenResolver`: configure it with the anchors of the wallet providers, whose certificate in
+      `x5c` has to sign key attestations (EUDI TS3, 2.2.2.2), and a status list token resolver for
+      `key_storage_status`. Without anchors, key attestations are rejected, as before
+    - Add `ProofValidator.validateProofs(params, policy)`, reporting every proof with its key attestation;
+      `validateProofExtractSubjectPublicKeys` delegates to it. A key attestation embedded in a `jwt` proof needs an
+      `exp`, and its optional `nonce` must be a server-provided `c_nonce` (OpenID4VCI 1.0, F.1, D.1), a `jwt` proof
+      at most one of `kid`, `jwk`, and `x5c`; a key attestation no longer needs `user_authentication`, and may
+      contain `iss` (EUDI TS3, 2.3.2)
+    - Fix: `DefaultCredentialSchemeMapper` advertises the `cryptographic_binding_methods_supported` of OpenID4VCI 1.0,
+      12.2.4 only: `cose_key` for ISO mdoc, which no longer advertises `jwk`, and `jwk` for SD-JWT VC and VC-JWT,
+      which no longer advertise `urn:ietf:params:oauth:jwk-thumbprint`. Deprecate
+      `OpenIdConstants.URN_TYPE_JWK_THUMBPRINT`, which is no binding method
+- OpenID for Verifiable Credential Issuance client:
+    - Add `WalletService.createCredential(metadata, credentialConfigurationId, ...)` to request exactly one credential
+      by its `credential_configuration_id`
+    - Add `CredentialIssuanceResult.Success.reissuingStoreEntryId`, the stored credential the new ones replace, as
+      passed to `startProvisioningWithAuthRequestReturningResult` and kept in the `ProvisioningContext`
+    - Add `CredentialIssuanceResult.Success.prepareCredentialStorage(holder, policy)`, validating the received
+      credentials with their renewal info by `HolderAgent.prepareCredentialStorage`, for the wallet to show the reports
+      and store them with `HolderAgent.storeAccepted`, or `HolderAgent.storeAfterUserConsent` after the user accepts a
+      rejected report, e.g. of a credential missing claims its type requires (`ValidationPolicy.requiredClaims`). A
+      credential that can not be decoded is reported as rejected instead of failing the issuance
+    - BREAKING: `CredentialIssuanceResult.Success` holds the credentials `issued` for each requested credential
+      configuration as `IssuedCredentials`: the `receivedCredentials` (`ReceivedCredential`), not validated yet, the
+      `scheme` they have been requested as, and their renewal info `refreshToken`, instead of `credentials` and
+      `refreshToken`. Deprecate `credentials`, which decodes the credentials of all configurations without validating
+      them, and fails for a credential that can not be decoded, and `refreshToken`, which is the one of the first
+      configuration
+    - Add `OpenId4VciProtocolClient.loadIssuerMetadata(credentialIssuer, policy)` and
+      `OpenId4VciKtorClient.loadIssuerMetadata(credentialIssuer, policy)`, asking for signed metadata
+      (`application/jwt`) over unsigned ones (OpenID4VCI 1.0, 12.2.2), and returning `LoadedIssuerMetadata`: `Signed`
+      with the `IssuerMetadataValidation` of the new constructor parameter `issuerMetadataValidator`, also if
+      rejected, or `Unsigned`, which the wallet may reject, e.g. as the EUDI Wallet ecosystem requires signed metadata
+    - Add `CredentialIdentifierInfo.issuer`, the `ValidatedCredentialIssuer` of signed metadata, which is now
+      serializable, so that it is kept in `ProvisioningContext` during the authorization in the browser; add
+      `parseCredentialMetadata(loaded: LoadedIssuerMetadata)`, setting it, and failing for rejected signed metadata
+    - `loadIssuerMetadata(credentialIssuer)` and `loadCredentialMetadata(host)` ask for `application/json`, and fail
+      for metadata whose `credential_issuer` is not the requested identifier, whose data "MUST NOT be used"
+      (OpenID4VCI 1.0, 12.2.4)
+    - Add `IssuerMetadataValidator` in `vck`, validating signed credential issuer metadata (OpenID4VCI 1.0, 12.2.3)
+      for the identifier it was requested for, signed with the access certificate (WRPAC) of the provider in `x5c`
+      (ETSI TS 119 472-3 V1.1.1, 4.2), whose chain leads to an anchor of the WRPAC providers. It returns a report, and
+      the metadata with the signing WRPAC if accepted; a policy not requiring trust lets a wallet warn about an
+      untrusted provider instead of rejecting it
+    - The metadata have to carry `issuer_info` holding its registration certificate (`registration_cert`),
+      which is validated as for relying parties, has to be issued to the identifier of the WRPAC, and has to register
+      the provider with an entitlement of attestation providers (ETSI TS 119 472-3 V1.1.1, 4.2.3;
+      ETSI TS 119 475 V1.2.1, A.2). Accepted metadata come with a `ValidatedCredentialIssuer`
+    - Add `IssuerMetadataValidation.untrustedMetadata` and `LoadedIssuerMetadata.Signed.untrustedMetadata`, the
+      metadata whatever the decision if their signature and subject passed, and
+      `parseCredentialMetadataIgnoringTrust(loaded)` in `OpenId4VciProtocolClient` and `OpenId4VciKtorClient`, which
+      parses them without a validated credential issuer, so that a wallet can continue after warning the user, e.g.
+      about an untrusted WRPAC or a rejected WRPRC
+    - `IssuerMetadataValidator` keeps the requirements of the EUDI Wallet ecosystem out of `parsing` and `signature`:
+      the signature is verified with the key the metadata assert, the `x5c` leaf or a `jwk`; metadata without a WRPAC
+      in `x5c`, or with one carrying no identifier, fail `trust`; `issuer_info` is checked by the new named check
+      `registration` of `IssuerMetadataChecks`, required by every policy, which fails without exactly one
+      `registration_cert`. `IssuerMetadataValidation.untrustedRegistration`, also on `LoadedIssuerMetadata.Signed`,
+      carries its payload whatever the decision. As the WRPRC has to be linked to the identifier of a WRPAC, metadata
+      without a WRPAC are rejected under every policy, and accepted metadata always come with an `issuer`
+    - Add `IssuerMetadata.issuerInfo` with `IssuerInfo`, whose `data` is a JSON element, and
+      `OpenIdConstants.IssuerInfo`
+    - Add `OpenId4VciServer.issuerInfo`, served in the signed metadata
+    - Renamed `WalletService` (in `vck-openid`) to `OpenId4VciClient`
+    - Renamed `OpenId4VciClient` (in `vck-openid-ktor`) to `OpenId4VciKtorClient`
+    - Renamed `CredentialIssuer` (in `vck-openid`) to `OpenId4VciServer`
+    - Add `OpenId4VciProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the credential issuer
+      (metadata, nonce, credential), built on `OAuth2ProtocolClient`, which handles DPoP for the credential issuer with
+      the credential issuer's own nonces. `credentialRequest` decodes the response into `ReceivedCredential`s, see
+      `OpenId4VciClient.decodeCredentialResponse`
+    - Move `CredentialIdentifierInfo` to `vck-openid` (`at.asitplus.wallet.lib.oidvci`), deprecate the typealias left
+      in `vck-openid-ktor`; the serialized form is unchanged
+    - `OpenId4VciKtorClient` sends the requests of `OpenId4VciProtocolClient` and `OAuth2ProtocolClient` in the order of each
+      flow, keeping its API
+    - Fix: Credential requests use only DPoP nonces of the credential issuer, never the one of the authorization server
+      from the token response, as nonces are only accepted by the server that issued them (RFC 9449 9.)
+    - Add `OpenId4VciProtocolClient.loadCredentialOffer` and `OpenId4VciClient.loadCredentialOffer` to load a credential
+      offer passed by value or by reference; the resource at `credential_offer_uri` must be the JSON-encoded offer, so
+      another offer URL or a redirect in its place is rejected
+    - Deprecate `WalletService.parseCredentialOffer`, which retrieved offers passed by reference with the
+      `remoteResourceRetriever` of `OpenId4VciClient`; that constructor parameter is only used by the deprecated method
+    - Deprecate `OpenId4VciClient.parseCredentialResponse`, which decodes credentials without validating them: use
+      `decodeCredentialResponse` and `ReceivedCredential.prepareCredentialStorage`. The overloads without the
+      originating `CredentialRequest` also accept a plain response even if the request asked for an encrypted one
+    - Add `OpenId4VciProtocolClient.createCredential`, whose proof JWTs name the `client_id` of its `OAuth2Client` as the
+      issuer (OID4VCI 1.0 Appendix F.1); `OpenId4VciClient.createCredential` takes it as the new parameter `clientId`
+    - Deprecate `OpenId4VciClient.clientId`, which only remains the default for `OpenId4VciClient.createCredential`;
+      the `client_id` belongs to `OAuth2Client`
+    - Add `ProofCreator`, creating the `proofs` of a credential request of one proof type (OpenID4VCI 1.0, Appendix F),
+      with `JwtProofCreator` (`jwt`, F.1, signed with its `keyMaterial`, with a key attestation if the issuer requires
+      one) and `AttestationProofCreator` (`attestation`, F.3). `OpenId4VciClient` takes `proofCreators` and uses the
+      first proof created, in their order, for each credential request: if one fails, e.g. as it can not load a key
+      attestation the issuer requires, the next one is asked. The request fails if none creates a proof although the
+      issuer lists `proof_types_supported`, as `proofs` are required then (8.2)
+    - Deprecate the constructor of `OpenId4VciClient` taking `keyMaterial`, `loadKeyAttestation`,
+      `selectProofJwtKeyBinding`, and `clock`, which creates a `JwtProofCreator` of them, followed by an
+      `AttestationProofCreator` if `loadKeyAttestation` is set, as before
+    - Extend `KeyAttestationInput` to contain the requirements of the issuer as `KeyAttestationRequired`
+      from issuer metadata, and deprecate `KeyAttestationInput.preferredKeyStorageStatusPeriod`, use
+      `requirements?.preferredTtl` instead
+    - Add `OpenId4VciClient.prepareCredentialRequests(tokenResponse, metadata, credentialFormats, ...)`, preparing one
+      `PreparedCredentialRequest` per credential the access token grants, each with the configuration of its
+      `credential_configuration_id` (OpenID4VCI 1.0, 5.1.1), or of its `scope`, which its proof and the decoding of its
+      response depend on. Overloads prepare every credential the token grants, or the given
+      `credentialConfigurationIds`. Create each request with `createCredential(request, metadata, clientNonce, ...)`
+      right before sending it, with a proof for its own configuration and its own `c_nonce`, so that credentials of
+      different formats can be requested with one access token, also from a credential issuer that accepts each
+      `c_nonce` only once
+    - Fix: `OpenId4VciClient.createCredential(tokenResponse, metadata, credentialFormat, ...)` creates requests only for
+      the credentials of `credentialFormat` the token grants, instead of for every credential it grants with a proof
+      for `credentialFormat`, and fails if it grants none of them. Authorization details of the token response without
+      a `credential_configuration_id`, which is REQUIRED (5.1.1), are rejected
+    - Add overloads of `OpenId4VciKtorClient.startProvisioningWithAuthRequestReturningResult` and
+      `OpenId4VciKtorClient.loadCredentialWithOfferReturningResult` taking several `CredentialIdentifierInfo`s of one
+      credential issuer, requesting all of them with one authorization and one token, e.g. as a pre-authorized code can
+      usually be used only once. They are requested with `scope` if every one of them has one, else with
+      `authorization_details` (OpenID4VCI 1.0, 12.2.4). `ProvisioningContext.credentials` keeps them during the
+      authorization in the browser; a context stored by an earlier version requests its `credential`
+    - Fix: `OpenId4VciKtorClient` requests a fresh `c_nonce` for each credential request, as the credential issuer may
+      accept each one only once (13.8), and sends a request once more with a new one if the credential issuer rejects it
+      with `invalid_nonce` (8.3.1.2), see `OpenId4VciProtocolClient.isInvalidNonce`. Each credential is requested and
+      decoded with its own configuration, so that credentials of different formats can be issued in one flow
+    - Fix: Proof JWTs of `OpenId4VciKtorClient` name the `client_id` of the OAuth 2.0 client that requested the token,
+      instead of the one of `OpenId4VciClient`, which differed when the OAuth 2.0 client was passed separately
+    - Add a constructor to `OpenId4VciKtorClient` taking the app's ktor `HttpClient`, the `OAuth2Client` (the only
+      source of the client ID), the `OpenId4VciClient` and a `ClientAttestation`, so that each value is passed once.
+      Deprecate the constructor taking `engine`, `cookiesStorage`, `httpClientConfig` and an `OAuth2KtorClient`, whose
+      HTTP configuration it silently preferred over its own
+- OAuth 2.0 authorization server:
+    - BREAKING: `AttestationBasedClientAuthenticationService` takes a `ClientAttestationValidator` (in `vck`) instead
+      of `verifyJwsObject`: configure it with the anchors of the wallet providers, which have to issue the
+      certificate in `x5c` signing client attestations (EUDI TS3, 2.2.1.2), and a status list token resolver for
+      `client_status`. Without anchors, client attestations are rejected; before, the default accepted any client
+      attestation verifying with the key it carried
+    - Add `AttestationBasedClientAuthenticationService.validate(httpRequest, clientId, validatedClientKey, policy)`,
+      reporting the client attestation with its proof of possession; `authenticateClient` delegates to it. The
+      challenge is consumed only if the client attestation is accepted, `client_status.status` is resolved if a
+      status list token resolver is configured, and an expired `client_status` fails with `use_fresh_attestation`
+      instead of `invalid_client`. A client attestation no longer needs `iat`, a client attestation PoP needs `aud`
+      also without `issuerIdentifier` (draft-ietf-oauth-attestation-based-client-auth-10, 5.1, 5.2)
+    - Fix: A pushed authorization request passing a request object in `request` is rejected, if the request object's
+      `client_id` differs from the `client_id` parameter (RFC 9101, 6.3)
+- OAuth 2.0 client:
+    - Add `OAuth2ProtocolClient` in `vck-openid`, implementing the client side of OAuth 2.0 (PAR, JAR, token requests,
+      token introspection, userinfo) including DPoP and attestation-based client authentication, without sending
+      requests itself: each call returns an `HttpExchange`, whose requests (`ProtocolRequest`) callers send with any
+      HTTP stack. `ProtocolRequest.Retryable` marks the requests that are sent again when the server asks for a DPoP
+      nonce or an attestation challenge, with their `attempt`. The `PreparedHttpRequest` of each request carries its
+      `body` as `HttpBody`, with the `contentType` to send as `Content-Type`; its `headers` never contain `Content-Type`
+    - `OAuth2KtorClient` sends the requests of `OAuth2ProtocolClient`, keeping its API
+    - Move `TokenResponseWithDpopNonce`, `LoadInstanceAttestationInput` and `OpenUrlForAuthnRequest` to `vck-openid`
+      (`at.asitplus.wallet.lib.oauth2`, the latter two nested in `OAuth2ProtocolClient`), deprecate the typealiases
+      left in `vck-openid-ktor`
+    - Deprecate `OAuth2KtorClient.callTokenIntrospection` with the parameters `token` (never used) and `retryCount`
+      (now ignored), replace with the overload without them
+    - Fix: A retried token introspection request passes `issuerMetadata` to `loadInstanceAttestation`
+    - `RemoteOAuth2AuthorizationServerAdapter` loads the authorization server metadata and the user info through
+      `OAuth2ProtocolClient`; the DPoP proof for the userinfo endpoint uses the nonce the userinfo endpoint provided,
+      instead of the nonce of the token response
+    - `OAuth2ProtocolClient` keeps DPoP nonces from responses of the authorization server (for requests with client
+      authentication) apart from those of resource servers (for requests with an access token), even on the same
+      origin, as RFC 9449 9. requires; `OAuth2KtorClient.applyToken` falls back to the latest nonce of the resource
+      server at that origin
+    - Add `ClientAttestation` in `vck-openid` (`at.asitplus.wallet.lib.oauth2`), holding the instance attestation loader
+      together with the key it attests; `OAuth2ProtocolClient` takes it as one parameter, and signs DPoP proofs with
+      its key by default (EUDI TS3 binds the DPoP key to the Wallet Instance Attestation), else with an ephemeral key
+    - Add constructors to `OAuth2KtorClient` and `RemoteOAuth2AuthorizationServerAdapter` taking the app's ktor
+      `HttpClient`, whose copy without following redirects sends the requests, and a `ClientAttestation`; the DPoP key
+      defaults to the attested key, so that refresh tokens remain usable after the app restarts. Deprecate the
+      constructors taking `engine`, `cookiesStorage` and `httpClientConfig`
+    - Add `OAuth2KtorClient.clientAttestation`, deprecate `OAuth2KtorClient.loadInstanceAttestation`
+    - Form-encoded requests (PAR, token, token introspection) are sent as `application/x-www-form-urlencoded` without
+      `charset` in the `Content-Type`, as the media type defines no such parameter
+    - Change: `BuildDPoPHeader`/`BuildClientAttestationJwt`/`BuildClientAttestationPoPJwt` get a parameter `issuedAt` that is set without applying the clock skew, so callers need to set it on their own
+- Token introspection with JWT responses (RFC 9701):
+    - BREAKING: Remove `TokenIntrospectionRequest.responseFormat` and `TokenIntrospectionRequest.ResponseFormat`, as
+      no specification defines the form parameter `response_format`: a JWT response is requested with the header
+      `Accept: application/token-introspection+jwt` (RFC 9701, 4)
+    - BREAKING: `TokenIntrospectionJwtResponse` holds the signed JWT (`JwsCompactTyped<TokenIntrospectionJwtPayload>`)
+      and is no longer serialized as `{"jwt": …}`; `toHttpResponse()` sends the JWT itself as body with
+      `Content-Type: application/token-introspection+jwt` (RFC 9701, 5)
+    - Add `TokenIntrospectionJwtPayload`, with the claims `iss`, `aud`, `iat` and `token_introspection` that RFC 9701, 5
+      requires, instead of the members of the introspection response at the top level of the JWT
+    - BREAKING: The constructor parameter `signIntrospectionJwt` of `SimpleAuthorizationService` signs a
+      `TokenIntrospectionJwtPayload`
+    - `SimpleAuthorizationService.tokenIntrospection` answers with a JWT when the `Accept` header of the request asks for
+      `application/token-introspection+jwt`, with the authorization server as `iss` and the authenticated client, i.e.
+      the resource server, as `aud`; without client authentication it refuses such requests with `invalid_client`
+      (status 400, RFC 9701, 5)
+    - BREAKING: `verifyTokenIntrospectionJwt` of `OAuth2ProtocolClient`, `OAuth2KtorClient` and
+      `RemoteOAuth2AuthorizationServerAdapter` is a `VerifyJwsObjectFun?`, `null` by default. When set, token
+      introspection requests JWT responses, and accepts only those with `typ` `token-introspection+jwt`, a verified
+      signature, the authorization server as `iss` and the `client_id` of the client as `aud`; when `null`, it requests
+      JSON responses. Before, a JWT was accepted even when not requested, and by default without verifying it
+    - Add `MediaTypes.Application.TOKEN_INTROSPECTION_JWT`
+    - BREAKING: `TokenIntrospectionResponse.audience` is a `Set<String>?`, as `aud` may be a single string or an array
+      (RFC 7662, 2.2; RFC 7519, 4.1.3): responses with an array failed to parse. `TokenIntrospectionJwtPayload.audience`
+      is a `Set<String>`, and the client accepts JWT responses that list its `client_id` in `aud`. Add
+      `JwtAudienceSerializer`, which decodes both forms and encodes a single audience as string
+    - Fix: `RemoteOAuth2AuthorizationServerAdapter.getTokenInfo` sends `token_type_hint` `access_token`, instead of the
+      scheme of the `Authorization` header (`DPoP`, `Bearer`), or the token itself for a header without scheme, which
+      are no token type hints (RFC 7009, 4.1.2). Add `OpenIdConstants.TOKEN_TYPE_HINT_ACCESS_TOKEN` and
+      `TOKEN_TYPE_HINT_REFRESH_TOKEN`
+    - Add `TokenIntrospectionResponse.confirmationClaim` (`cnf`) and `TokenInfo.confirmationClaim`:
+      `SimpleAuthorizationService.tokenIntrospection` conveys the binding of a DPoP-bound access token as `cnf` with the
+      JWK SHA-256 thumbprint in `jkt`, and `token_type` `DPoP` (RFC 9449, 6.2), and
+      `RemoteOAuth2AuthorizationServerAdapter.getTokenInfo` passes it on, so that a resource server can check that the
+      DPoP proof of a request is signed with that key (RFC 9449, 7.1)
+- HTTP error handling:
+    - Add `HttpErrorResponseException` and `ProblemDetails` in `vck-openid` (package `at.asitplus.wallet.lib`), so
+      OAuth 2.0 errors and RFC 9457 problem details of non-success responses are available without a ktor client.
+      The exception carries `status` and `headers` instead of a ktor `HttpResponse`
+    - Add `OAuth2Error?.dpopNonce(Headers)` and `OAuth2Error?.attestationChallenge(Headers)` in `vck-openid`
+    - BREAKING: `HttpErrorResponseException` in `vck-openid-ktor` is a deprecated typealias of the new class, and no
+      longer a ktor `ResponseException`, so catching either name catches every error response, also of exchanges sent
+      without ktor. Its `response` and the constructors taking an `HttpResponse` are removed, use `status`, `headers`
+      and `responseBody`; it is still an `IllegalStateException`
+    - Deprecate the typealiases `HttpErrorResponseException` and `ProblemDetails` in `vck-openid-ktor`, replace with
+      the classes from `vck-openid`
+    - Deprecate `HttpErrorResponseException.dpopNonce()` and `HttpErrorResponseException.attestationChallenge()` in
+      `vck-openid-ktor`, replace with `oauth2Error.dpopNonce(headers)` and `oauth2Error.attestationChallenge(headers)`
+- Server-side HTTP responses:
+    - Add `PreparedHttpResponse` in `vck-openid` (package `at.asitplus.wallet.lib`), a response with status, headers and
+      encoded body, to be written out unchanged with any HTTP server stack. The `body` is an `HttpBody`, with the
+      `contentType` to write out as `Content-Type`; the `headers` never contain `Content-Type`
+    - Add `OAuth2Exception.toHttpResponse()` for errors of authorization server endpoints: status 400, with `DPoP-Nonce`
+      for `use_dpop_nonce` and `OAuth-Client-Attestation-Challenge` for `use_attestation_challenge`
+    - Add `OAuth2Exception.toResourceServerHttpResponse(authorizationHeader)` for errors of endpoints accessed with an
+      access token (credential, userinfo): status 401 with `WWW-Authenticate` for `invalid_token`, `invalid_dpop_proof`
+      and `use_dpop_nonce` (the latter with `DPoP-Nonce`), as RFC 6750 3. and RFC 9449 7.1 and 9. require, else 400;
+      `use_attestation_challenge` comes with `OAuth-Client-Attestation-Challenge` here, too
+    - Add `toHttpResponse()` for the results of the authorization server: `OAuth2AuthorizationServerMetadata`,
+      `AttestationChallengeResponse` (with `Cache-Control: no-store`), `ResponseWithDpopNonce` of PAR (status 201),
+      token (with `Cache-Control: no-store` and `Pragma: no-cache`) and userinfo (each with `DPoP-Nonce`),
+      `AuthenticationResponseResult.Redirect` (302 with `Location`) and `TokenIntrospectionResult`
+    - Add `ResponseWithDpopNonce.attestationChallenge`: `SimpleAuthorizationService.parWithDpopNonce` and
+      `tokenWithDpopNonce` provide a fresh attestation challenge with attestation-based client authentication, which
+      `toHttpResponse()` sends as `OAuth-Client-Attestation-Challenge` (attestation-based client authentication,
+      draft 10, 6.2); `OAuth2ProtocolClient` uses it for the next request, instead of fetching one from the challenge
+      endpoint
+    - Add `OpenId4VciServer.metadataHttpResponse(acceptHeader)`, serving `signedMetadata()` as `application/jwt` when
+      the `Accept` header lists `application/jwt` with a quality not below the one of `application/json`, else
+      `metadata` as `application/json` (OID4VCI 1.0, 12.2.2), with `Vary: Accept`
+    - Add `toHttpResponse()` for `OpenId4VciServer.Nonce` (with `Cache-Control: no-store` and `DPoP-Nonce`) and
+      `OpenId4VciServer.CredentialResponse` (`application/json`, or `application/jwt` when encrypted, each with
+      `Cache-Control: no-store`); errors of the credential endpoint convert with
+      `toResourceServerHttpResponse(authorizationHeader)`
+    - Add `CreatedRequest.loadRequestObjectHttpResponse(params)` in `vck-openid`, serving the request object at the
+      verifier's `request_uri` as `application/oauth-authz-req+jwt` (OpenID4VP 1.0, 5.10.1)
+    - Add `directPostHttpResponse(redirectUri)` in `vck-openid` (`at.asitplus.wallet.lib.openid`), the answer of the
+      verifier's response endpoint for `direct_post` and `direct_post.jwt`: a JSON object with the optional
+      `redirect_uri` (OpenID4VP 1.0, 8.2), with `Cache-Control: no-store`
+- OpenID for Verifiable Presentations client:
+    - Renamed `OpenId4VpWallet` (in `vck-openid`) to `OpenId4VpKtorHolder`
+    - Add `OpenId4VpProtocolClient` in `vck-openid`, returning `HttpExchange`s for the requests to the verifier:
+      `prepareAuthorizationResponse` fetches the request object from `request_uri` when needed,
+      `sendAuthorizationResponse` posts authorization responses and error responses for the response modes
+      `direct_post` and `direct_post.jwt`
+    - Deprecate `OpenId4VpHolder.startAuthorizationResponsePreparation` and `OpenId4VpHolder.createAuthnResponse`
+      taking the request as `String`, which fetch the request object with the `remoteResourceRetriever`, replace with
+      `OpenId4VpProtocolClient.prepareAuthorizationResponse`, followed by `OpenId4VpHolder.finalizeAuthorizationResponse`
+      for the latter
+    - BREAKING: `OpenId4VpHolder` no longer fetches the verifier's JWK Set from a `jwks_uri` in `client_metadata`, which
+      OpenID4VP 1.0 does not define (5.1 defines `jwks` only, and requires other metadata parameters to be ignored);
+      the keys come from `jwks`, or else from `lookupJsonWebKeysForClient`
+    - Fix (security): The `redirect_uri` in the verifier's answer to a posted authorization response must be an absolute
+      `https` URI, else sending the response fails, although the verifier has already processed it. Before, any value,
+      e.g. a `javascript:` or `intent:` URI, or a custom app scheme, was returned for the wallet to open
+    - Fix (security): A request object passed in `request` or `request_uri` must carry the same `client_id` as the
+      request it is passed in (RFC 9101, 6.3), else parsing fails with `invalid_request`. Before, the `client_id` the
+      wallet was launched with was not compared, so it could name another verifier than the one that signed the
+      request object and receives the response
+    - The `redirect_uri` is only read from the JSON body of the verifier's answer (OpenID4VP 1.0, 8.2); a `Location`
+      header is ignored
+    - `OpenId4VpKtorHolder` fetches request objects and sends authorization responses with `OpenId4VpProtocolClient`,
+      keeping its API; for `request_uri_method=post`, the form is now sent without `charset` in the `Content-Type`, as
+      the authorization response
+    - Move `OpenId4VpSuccess` to `vck-openid` (`at.asitplus.wallet.lib.openid`), deprecate the typealias left in
+      `vck-openid-ktor`
+    - Deprecate `OpenId4VpKtorHolder.FormDataContentPlain`, which is no longer used
+    - Add a constructor to `OpenId4VpKtorHolder` taking the app's ktor `HttpClient`, whose copy without following
+      redirects sends the requests, and every parameter of `OpenId4VpHolder`, with the holder as `holder: Holder`
+      instead of `holderAgent: HolderAgent`. Deprecate the constructor taking `engine` and `httpClientConfig`
+    - The deprecated `OpenId4VpHolder` methods of `OpenId4VpKtorHolder.openId4VpHolder` fetch request objects as
+      `OpenId4VpProtocolClient` does, i.e. the form posted to `request_uri` has no `charset` either
+    - For `direct_post.jwt`, an error response that can't be encrypted, e.g. as the verifier passed no suitable key,
+      is sent without encryption, as OpenID4VP 1.0, 8.3.1 allows; before, creating it failed, so that
+      `OpenId4VpKtorHolder` sent nothing at all. A presentation is never sent without encryption
+    - Fix: Error responses over the Digital Credentials API follow OpenID4VP 1.0, A.4: `data` is an object with the
+      single property `error`, never encrypted, also for `dc_api.jwt`; before, the whole error including `state` and
+      description was passed in `response`, encrypted for `dc_api.jwt`, which verifiers could not process
+    - `OpenId4VpKtorHolder` logs the `client_id`, response mode, and `response_uri` or `redirect_uri` of a request
+      instead of the whole request, including its request object and `client_metadata`, and the URL of a posted
+      response instead of the response
+- OpenID for Verifiable Presentations verifier:
+    - Add `error`, `errorDescription` and `errorUri` to `AuthenticationResponseParameters`, so that authorization error
+      responses keep their parameters when decoded from a form post (OpenID4VP 1.0, 8.2), the payload of an encrypted
+      response (8.3.1), or the `data` of a Digital Credentials API response (A.4)
+    - BREAKING (binary): The constructor and `copy` of `AuthenticationResponseParameters` gain these trailing
+      parameters; calls with named or leading positional arguments still compile
+    - Fix: A response violating the encryption its request requires (`direct_post.jwt`, `dc_api.jwt`) consumes the
+      request's nonce and ephemeral encryption key along with the request; before, the nonce stayed valid and the key
+      stayed stored until evicted
+    - `OpenId4VpVerifier` and `DcApiVerifier` share one lifecycle for responses: request, nonce and ephemeral
+      encryption key are consumed before any validation that can fail, and the key is removed also for responses that
+      were not encrypted
+    - A Digital Credentials API response to `OpenId4VpVerifier`, or a response to a signed DC API request from an
+      origin not in its `expected_origins`, now fails `validateAuthnResponse` instead of only its
+      `vpTokenValidationResult`; the request is consumed either way
+    - BREAKING: `AuthnResponseResult` is a sealed interface with the subtypes `Success` (with the non-null
+      `vpTokenResult`, formerly `vpTokenValidationResult`, and `request`) and `Error` (with the wallet's `error` as
+      `OAuth2Error`, and `request`); `request` is non-null. Migrate
+      `result.vpTokenValidationResult?.getOrThrow()` to a `when` over both subtypes, e.g.
+      `is AuthnResponseResult.Success -> result.vpTokenResult.getOrThrow()` and
+      `is AuthnResponseResult.Error -> showError(result.error)`
+    - Fix: `OpenId4VpVerifier` and `DcApiVerifier` process authorization error responses of the wallet (OpenID4VP 1.0,
+      8.2, A.4) as `AuthnResponseResult.Error`, ending the request like a presentation, instead of reporting them as
+      invalid presentations (`direct_post`, DC API) or failing (`direct_post.jwt`). Answer them with
+      `directPostHttpResponse()` like presentations
+    - Accept plaintext authorization error responses for `direct_post.jwt` (OpenID4VP 1.0, 8.3.1) and `dc_api.jwt`
+      (A.4), as OpenID4VP allows them although OpenID4VC HAIP requires encrypted responses; an error carries no
+      credential, and a plaintext `vp_token` is still rejected
+    - Reject authorization error responses violating RFC 6749, 4.1.2.1 (`error` blank or with illegal characters,
+      illegal characters in `error_description` or `error_uri`, either of them without `error`), combining `error`
+      with `vp_token` or `code`, and responses passing parameters next to an encoded `response`
+    - Fix: `DcApiVerifier` returns the new `Iso180137AnnexCError` with the status of an ISO/IEC 18013-7 Annex C device
+      response with an error status (ISO/IEC 18013-5, 10.3.6), which is the only error Annex C can convey, instead of
+      failing as for a malformed response; a device response with an error status and documents still fails.
+      BREAKING: `Iso180137AnnexCWrapper` and `Iso180137AnnexCError` implement the new sealed `Iso180137AnnexCResult`,
+      a further subtype of `DcApiResponseResult`
+    - Add `EphemeralEncryptionKeyService.discardKey(identifier)`, removing a key without decoding it
+    - `OpenId4VpVerifier` and `DcApiVerifier` validate every presentation with a `CredentialValidator` and report the
+      whole response as a `ValidationReport`, configured with the new constructor parameters `credentialValidator`
+      and `presentationPolicy`; the default policy requires authorized issuers, so without trust anchors every
+      presentation is rejected in the report. `VpTokenValidationResultDCQL.presentationValidations` holds the
+      validated presentations by credential query
+    - BREAKING: `AuthnResponseResult.Success` and `Iso180137AnnexCWrapper` have the non-null `validationReport`, and
+      `Iso180137AnnexCWrapper` the validated `presentationValidations`, both without defaults in their constructors
+    - BREAKING (behavior): `OpenId4VpVerifier` and `DcApiVerifier` validate every presentation once, with
+      `credentialValidator` under `presentationPolicy`, and project the legacy results from that validation:
+      an accepted presentation becomes its `VerifyPresentationResult`, with the `CredentialFreshnessSummary` of its
+      report, a rejected one fails with the cause of its first rejecting check
+      (`PresentationValidationResult.rejection(policy)`), and `submissionRequirementsValidationResult` is the
+      `submissionRequirements` check of the report. So what the legacy verifier accepted with a summary that is not
+      fresh, e.g. expired, revoked, or with a status that can not be resolved, fails whenever `presentationPolicy`
+      requires it, and by default every presentation fails without trust anchors. A status that the policy does not
+      resolve is reported as `TokenStatusValidationResult.Rejected` instead of `Valid`. Transaction data can no longer
+      be skipped through `ValidatorSdJwt(verifyTransactionData = false)`. Annex C `documents` hold the accepted
+      documents only: a rejected document no longer fails `validateAuthnResponse`, while a document of a type that
+      has not been requested still does
+    - Add `AuthnResponseResult.Success.presentationValidations`; deprecate `AuthnResponseResult.Success.vpTokenResult`,
+      `VpTokenValidationResultDCQL.credentialQueryResponseValidations`, `submissionRequirementsValidationResult`, and
+      `presentationResults`, and `Iso180137AnnexCWrapper.documents`, in favor of `validationReport` and
+      `presentationValidations`
+    - Deprecate the constructors of `OpenId4VpVerifier` and `DcApiVerifier` taking `verifier` and
+      `verifyCoseSignature`, which no longer take effect, and their property `verifier`; the new primary
+      constructors omit both. Deprecate `NonceChallengeVerifier.verifier`, its constructor taking it, and the
+      presentation methods of `ChallengeSession`, in favor of `CredentialValidator` with `ChallengeSession.context()`
+    - `MapStore.remove` is documented to be atomic: of concurrent calls for one key, at most one returns the value, as
+      `DefaultMapStore` does; custom stores passed to the verifiers need to guarantee this, so that a request is
+      answered at most once
+- OpenID data classes:
+    - BREAKING: `VerifierInfo.data` is a `VerifierInfo.Data` of `StringData` or `ObjectData` instead of `String`, as OpenID4VP 1.0 allows a string or a JSON object. `VerifierInfo` can still be created with a `String`, or with a `JsonObject`
+    - Moved `Base64URLTransactionDataSerializer` to openid-data-classes
+    - BREAKING: Make `IssuerMetadata.supportedCredentialConfigurations` non-null without a default, as
+      `credential_configurations_supported` is REQUIRED in OID4VCI; issuer metadata without it now fails to deserialize
+- ETSI data classes:
+    - BREAKING: Align LoTE digital-identity JSON member names and representations with TS 119 602 Annex A.1:
+      `PublicKeyValue` is a `JsonWebKey`, while `SubjectKeyIdentifier` and `OtherId` are strings; absent
+      `x509Certificates` is now `null`. Other-list pointers carry `LoTEQualifiers` containing `LoTEQualifier` objects, including a required MIME type
+    - BREAKING: Policy and legal-notice arrays must use one alternative consistently. Open service, trusted-entity and
+      associated-body extensions preserve their JSON `content`
+    - Accept a plain string as `LoTELegalNotice`, as the Annex A.1 JSON schema declares and published lists use it,
+      in the new `PolicyOrLegalNoticeItem.legalNoticeText`
+    - Allow an explicitly null `NextUpdate` for closed lists while keeping that member required; accept optional
+      certificate `encoding` and `specRef` metadata without discarding the certificate
+    - Reject empty required arrays, empty digital identities, null certificate wire entries, missing scheme-operator
+      and associated-body website contacts, and timestamps without a four-digit year. Trusted-entity contacts need not
+      contain both an email address and a website, as published lists contain only one of them. Other
+      `ListAndSchemeInformation` requirements remain unchanged
+    - BREAKING: `WrpClaim.path` is a claims path pointer of `WrpClaimPathSegment`s (a name, `null` for all elements
+      of an array, or an index), and `WrpClaim.values` a list of `WrpClaimValue`s (a string, integer, or boolean), as
+      ETSI TS 119 475 V1.2.1, B.2.10 refers to OpenID4VP for them; `WrpClaim.named(...)` creates a path of names. A
+      WRPRC with `null` or an index in a path could not be parsed before. Registered paths authorize requested claims
+      by coverage: a registered ancestor covers descendants, and `null` covers an index or `null`. JSON and CWT
+      decode typed segments and values; empty paths and
+      indices above `UInt.MAX_VALUE` are rejected. kotlinx-serialization CBOR also reads an empty map as `null`
+    - BREAKING: Align `WrpPayload` with the multiplicities of ETSI TS 119 475 V1.2.1, Annex B and Tables 7 to 10:
+      `policyId` has no default, so it is always encoded and a WRPRC without `policy_id` no longer passes as
+      carrying the WRPRC policy (6.1.3); `supportUri` and `supervisoryAuthority` are required, `infoUri` is
+      optional; `purpose`, `credentials` and `providesAttestations` are `null` when absent, as only service
+      providers or attestation providers carry them; `WrpCredential.claim` is `null` when absent;
+      `WrpIntermediary.sub` is required. Empty `srv_description`, `entitlements`, `purpose`, `credentials`,
+      `claim` and claim `values` are rejected. Add `WrpConstants.ENTITLEMENTS` (A.2)
+    - BREAKING: Model the WRPRC fields for which the register allows several values (ETSI TS 119 475 V1.2.1,
+      Annex B) as lists: `WrpPayload.subjectLegalNames`, `infoUris`, `supportUris`, and
+      `WrpSupervisoryAuthority.emails`, `phones`, `uris`. They are always encoded as arrays, and also decoded from a
+      single string, as in Annex C, in JSON and CWT; empty arrays are rejected. Deprecate `subjectLegalName`,
+      `infoUri`, `supportUri`, `email`, `phone`, and `uri`, which return the first entry. `privacy_policy` stays a
+      single string, since Table 7 maps it from the single `policyURI` of a Policy (B.2.8)
+    - WRPRC validation no longer requires `name` (B.2.1), but requires an entitlement of A.2 (GEN-5.2.4-03),
+      `provides_attestations` only for attestation providers (B.2.1), and `purpose` for presentation (GEN-5.2.4-06)
+    - WRPRC linkage also accepts the WRPAC of the intermediary named in `intermediary.sub`, who presents the WRPRC of
+      the relying party it acts for (ETSI TS 119 475 V1.2.1, 4.5, Table 10), for requests and issuer metadata;
+      `act.sub` of GEN-5.2.4-09 contradicts Table 10 and is not supported. Add `ValidatedRelyingParty.intermediated`
+      and `ValidatedCredentialIssuer.intermediated`, telling whether the WRPAC is the one of that intermediary
+    - An ISO mdoc request whose WRPRCs identify different relying parties fails `registration`, as the WRPAC of an
+      intermediary is associated to one relying party (CIR (EU) 2025/848, Annex I, point 16, as amended by CIR (EU)
+      2026/1730)
+    - BREAKING: Remove `DocRequestInfo.euWrpRegistrarInfo` and the classes `WrpRegistrarInfo` and `WrpIdentifier`:
+      CIR (EU) 2026/1731, Annex XII voids the registrar information of ETSI TS 119 472-2 V1.2.1 (ISO/IEC
+      18013-REQ-08 to -11), so an ISO mdoc request carries only `euWrprc`
+    - BREAKING: Model `srv_description` as `WrpPayload.serviceDescription`, the localized versions of the description
+      of the one service a WRPRC is issued for (ARF Annex 2, RPRC_09), encoded as an array of `WrpLangString`s; it is
+      also decoded from an array of arrays (ETSI TS 119 475 V1.2.1, B.2.1, Annex C), in JSON and CWT, into the
+      descriptions of all its arrays; arrays mixed with objects are rejected. Deprecate `srvDescription`, which returns
+      `serviceDescription` as the only array
+- ISO mdoc data classes:
+    - Encode issuer-signed items with the bytes they were decoded from (`ByteStringWrapper.serialized`) instead of
+      re-encoding their value, so items an issuer encoded differently, e.g. in another key order like the EUDI
+      reference issuer, keep matching their digests (ISO/IEC 18013-5:2021, 9.1.2.5). `serialized` of items from
+      `IssuerSignedList.fromIssuerSignedItems` holds the encoded `IssuerSignedItem` like a decoded item, no longer the
+      tag-24-wrapped `IssuerSignedItemBytes`
+    - Add `IssuerSigned.fromIssuerSignedLists(...)` and `StoreEntry.Iso.discloseIssuedItem(...)`; mdoc presentations
+      disclose items with the bytes they were issued with
+    - Serialize `DocRequest.itemsRequest` and `DeviceRequest.deviceRequestInfo` again with the bytes they were decoded
+      from (`ByteStringWrapper.serialized`) instead of encoding their value anew, using the new
+      `ReserializableByteStringSerializer`, as `readerAuth` and `readerAuthAll` sign exactly these bytes
+      (ISO/IEC 18013-5:2021, 9.1.4). A request serialized again, e.g. to pass it on within a wallet, no longer verified
+      if its verifier encoded it in another key order, e.g. `systemSpecs` before `zkRequired` in a `zkRequest`
+    - BREAKING: `SessionTranscript` is a sealed interface with one subtype per handover: `SessionTranscript.Qr` and
+      `SessionTranscript.Nfc` (both `SessionTranscript.Proximity`, with `deviceEngagementBytes` and
+      `eReaderKeyBytes`), `SessionTranscript.DcApi`, and `SessionTranscript.OpenId4Vp`, each with its `handover`. Its
+      new `SessionTranscriptSerializer` decodes every kind of handover by its shape, also an NFC transcript, which could
+      not be decoded before, and re-encodes the canonical encoding to the same bytes. The properties
+      `deviceEngagementBytesOid`, `eReaderKeyBytesOid`, `nfcHandover`, `dcapiHandover`, and `openId4VpHandover` are
+      removed; deprecate `SessionTranscript.forQr`, `forNfc`, `forDcApi`, and `forOpenId` in favor of the constructors
+      of the subtypes. The encoding is unchanged
+- CSC data classes:
+    - BREAKING: Split CSC API into a new `api` subfolder and add the `datamodel` package
+    - Implement CSC Data Model 1.0.0
+- Java interop:
+    - Java could not instantiate data classes whose constructor takes a `kotlin.time.Duration` or an
+      unsigned integer, because the Kotlin compiler hides such constructors from Java. Add Java-safe constructors, and
+      accessors for the hidden properties, taking durations in seconds (`…Seconds`) or milliseconds (`…Milliseconds`), and
+      unsigned integers as `Long` (`…AsLong`, values outside of `UInt` are rejected):
+        - `KeyAttestationRequired` (`preferredTtlSeconds`), `TokenResponseParameters` (`expiresSeconds`,
+          `intervalSeconds`), `CredentialResponseParameters` (`intervalSeconds`), `PushedAuthenticationResponseParameters`
+          (`expiresSeconds`), and the accessor `IssuerMetadata.preferredClientStatusPeriodSeconds`
+        - `ValidationPolicy` and `TimeScope` (`timeLeewayMilliseconds`), whose Java constructors take the leeway at a
+          different position to keep their JVM signatures distinct
+        - CSC `KeyParameters` (`lenAsLong`) and `CredentialInfo` (`multisignAsLong`)
+        - `EuPidCredential` (`sexAsLong`) and `MobileDrivingLicence` (`heightAsLong`, `weightAsLong`, `ageInYearsAsLong`,
+          `ageBirthYearAsLong`)
+- ISO mDoc Zero-Knowledge Proofs:
+    - In `IsoMdocZkBackend.generate()` add a `timestamp` to pass as the creation timestamp of the proof
+
 Release 8.0.0:
 
 New features:

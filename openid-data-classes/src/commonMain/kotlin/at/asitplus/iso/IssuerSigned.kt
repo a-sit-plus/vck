@@ -56,5 +56,18 @@ data class IssuerSigned private constructor(
             }.toMap(),
             issuerAuth = issuerAuth,
         )
+
+        /**
+         * Like [fromIssuerSignedItems], but keeps the encoding of every item in [namespacedItems], e.g. to disclose
+         * items of an issued credential, whose digests in the MSO are over exactly these bytes
+         * (ISO/IEC 18013-5:2021, 9.1.2.5).
+         */
+        fun fromIssuerSignedLists(
+            namespacedItems: Map<String, IssuerSignedList>,
+            issuerAuth: CoseSigned<MobileSecurityObject>,
+        ): IssuerSigned = IssuerSigned(
+            namespaces = namespacedItems,
+            issuerAuth = issuerAuth,
+        )
     }
 }

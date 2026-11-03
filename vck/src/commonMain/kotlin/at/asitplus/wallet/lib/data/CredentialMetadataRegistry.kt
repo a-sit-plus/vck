@@ -44,6 +44,11 @@ private fun SdJwtTypeMetadata.extractRepresentation() = when (vckExtensions?.for
     else -> null
 } ?: SD_JWT
 
+/**
+ * Derives a scheme from type metadata. ISO mdoc claim paths must include their namespace; they are preserved even
+ * when [SdJwtTypeMetadataVckExtensions.isoNamespace][at.asitplus.wallet.sdjwt.SdJwtTypeMetadataVckExtensions.isoNamespace]
+ * is absent or names a different namespace.
+ */
 fun SdJwtTypeMetadata.toCredentialScheme() = when (extractRepresentation()) {
     PLAIN_JWT -> ExtractedVcJwtCredentialScheme(
         vcType = vckExtensions?.vcType ?: vct.string,
@@ -58,7 +63,8 @@ fun SdJwtTypeMetadata.toCredentialScheme() = when (extractRepresentation()) {
     ISO_MDOC -> ExtractedIsoMdocCredentialScheme(
         isoDocType = vckExtensions?.isoDocType ?: vct.string,
         isoNamespace = vckExtensions?.isoNamespace ?: vct.string,
-        claimDescriptions = claims?.map { it.toClaimDescription() }?.toSet() ?: setOf()
+        claimDescriptions = claims?.map { it.toClaimDescription() }?.toSet() ?: setOf(),
+        isoClaimPathsAreQualified = true,
     )
 }
 
@@ -103,8 +109,9 @@ data class ExtractedSdJwtCredentialScheme(
     override val claimDescriptions: Set<ClaimDescription>
 ) : SdJwtCredentialScheme
 
-data class ExtractedIsoMdocCredentialScheme(
+data class ExtractedIsoMdocCredentialScheme @JvmOverloads constructor(
     override val isoDocType: String,
     override val isoNamespace: String,
-    override val claimDescriptions: Set<ClaimDescription>
+    override val claimDescriptions: Set<ClaimDescription>,
+    override val isoClaimPathsAreQualified: Boolean = false,
 ) : IsoMdocCredentialScheme

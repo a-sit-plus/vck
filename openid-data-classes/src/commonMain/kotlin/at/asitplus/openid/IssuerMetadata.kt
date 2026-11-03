@@ -112,7 +112,7 @@ data class IssuerMetadata(
      * Section 4.1.1 to communicate to the Wallet which Credential is being offered, see [CredentialOffer].
      */
     @SerialName("credential_configurations_supported")
-    val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
+    val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>,
 
     /**
      * OPTIONAL. Duration specifying a PID or Attestation Provider's preference for the remaining status maintenance
@@ -145,6 +145,15 @@ data class IssuerMetadata(
     @SerialName("exp")
     @Serializable(with = InstantLongSerializer::class)
     val expiration: Instant? = null,
+
+    /**
+     * ETSI TS 119 472-3 V1.1.1, 4.2.3: REQUIRED in the signed metadata of PID and attestation providers of the EUDI
+     * Wallet ecosystem (ISS-MDATA-REG_CERT-4.2.3-01, -02). Attestations about the provider, structured as
+     * `verifier_info` of OpenID4VP, one of them its registration certificate (`registration_cert`, -04 as adapted
+     * by CIR (EU) 2026/1731, Annex XI).
+     */
+    @SerialName("issuer_info")
+    val issuerInfo: List<IssuerInfo>? = null,
 ) {
     @JvmOverloads
     internal constructor(
@@ -159,7 +168,7 @@ data class IssuerMetadata(
         credentialRequestEncryption: SupportedAlgorithmsContainer? = null,
         batchCredentialIssuance: BatchCredentialIssuanceMetadata? = null,
         displayProperties: Set<DisplayProperties>? = null,
-        supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
+        supportedCredentialConfigurations: Map<String, SupportedCredentialFormat> = mapOf(),
         preferredClientStatusPeriodSeconds: Long? = null,
         subject: String? = null,
         issuedAtEpochSeconds: Long? = null,
@@ -182,4 +191,8 @@ data class IssuerMetadata(
         issuedAt = issuedAtEpochSeconds?.let(Instant::fromEpochSeconds),
         expiration = expirationEpochSeconds?.let(Instant::fromEpochSeconds),
     )
+
+    /** Java-safe accessor for [preferredClientStatusPeriod], in seconds. */
+    val preferredClientStatusPeriodSeconds: Long?
+        get() = preferredClientStatusPeriod?.inWholeSeconds
 }

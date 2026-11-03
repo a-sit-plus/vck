@@ -1,8 +1,10 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.csc.bindings.QesApprovalBinding
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.contentEqualsIfArray
 import at.asitplus.signum.indispensable.contentHashCodeIfArray
+import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
@@ -51,9 +53,12 @@ data class KeyBindingJws(
     val sdHash: ByteArray,
 
     /**
-     * OID4VP: Array of hashes, where each hash is calculated using a hash function over the strings received in the
-     * `transaction_data` request parameter (see `SignatureRequestParameters`). Each hash value ensures the integrity
-     * of, and maps to, the respective transaction data object.
+     * OID4VP: A non-empty array of strings where each element is a base64url-encoded hash.
+     * Each of these hashes is calculated using a hash function over the string received in the transaction_data
+     * request parameter (base64url decoding is not performed before hashing). Each hash value ensures the integrity of,
+     * and maps to, the respective transaction data object. If transaction_data_hashes_alg was specified in the request,
+     * the hash function MUST be one of its values. If transaction_data_hashes_alg was not specified in the request,
+     * the hash function MUST be sha-256.
      */
     @SerialName("transaction_data_hashes")
     val transactionDataHashes: List<@Serializable(ByteArrayBase64UrlSerializer::class) ByteArray>? = null,
@@ -67,6 +72,15 @@ data class KeyBindingJws(
      */
     @SerialName("transaction_data_hashes_alg")
     val transactionDataHashesAlgorithmString: String? = null,
+
+    /**
+
+     * CSC Data Model Bindings 1.0.0 section 7.2.1.2: CONDITIONAL
+     * Base64 digest bound to the original QES approval request.
+     */
+    @SerialName(QesApprovalBinding.SD_JWT_CLAIM)
+    @Serializable(with = ByteArrayBase64Serializer::class)
+    val qesApproval: ByteArray? = null,
 ) {
 
     @Transient
@@ -77,7 +91,6 @@ data class KeyBindingJws(
         else -> throw IllegalArgumentException("Unsupported digest name $transactionDataHashesAlgorithmString")
     }
 
-    @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -88,24 +101,25 @@ data class KeyBindingJws(
         if (audience != other.audience) return false
         if (challenge != other.challenge) return false
         if (!sdHash.contentEquals(other.sdHash)) return false
-        if (transactionDataHashes != null) {
-            if (other.transactionDataHashes == null) return false
-            if (!transactionDataHashes.contentEqualsIfArray(other.transactionDataHashes)) return false
-        } else if (other.transactionDataHashes != null) return false
+        if (transactionDataHashes == null || other.transactionDataHashes == null) {
+            if (transactionDataHashes != other.transactionDataHashes) return false
+        } else if (!transactionDataHashes.contentEqualsIfArray(other.transactionDataHashes)) return false
         if (transactionDataHashesAlgorithmString != other.transactionDataHashesAlgorithmString) return false
+        if (!qesApproval.contentEquals(other.qesApproval)) return false
+        if (transactionDataHashesAlgorithm != other.transactionDataHashesAlgorithm) return false
 
         return true
     }
 
-    @Suppress("DEPRECATION")
     override fun hashCode(): Int {
-        var result = issuedAt?.hashCode() ?: 0
+        var result = issuedAt.hashCode()
         result = 31 * result + audience.hashCode()
         result = 31 * result + challenge.hashCode()
         result = 31 * result + sdHash.contentHashCode()
         result = 31 * result + (transactionDataHashes?.contentHashCodeIfArray() ?: 0)
-        result = 31 * result + (transactionDataHashesAlgorithmString?.hashCode() ?: 0)
+        result = 31 * result + transactionDataHashesAlgorithmString.hashCode()
+        result = 31 * result + (qesApproval?.contentHashCode() ?: 0)
+        result = 31 * result + transactionDataHashesAlgorithm.hashCode()
         return result
     }
-
 }

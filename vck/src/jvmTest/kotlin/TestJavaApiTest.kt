@@ -14,6 +14,21 @@ val TestJavaApiTest by matrixSuite {
     "creates OpenID metadata from Java API" {
         TestJavaApi.createsOpenIdMetadataFromJavaApi()
     }
+    "creates KeyAttestationRequired from Java API" {
+        TestJavaApi.createKeyAttestationRequiredFromJavaApi()
+    }
+    "creates OAuth responses from Java API" {
+        TestJavaApi.createsOAuthResponsesFromJavaApi()
+    }
+    "creates ValidationPolicy from Java API" {
+        TestJavaApi.createsValidationPolicyFromJavaApi()
+    }
+    "creates CSC parameters from Java API" {
+        TestJavaApi.createsCscParametersFromJavaApi()
+    }
+    "creates PID and mDL from Java API" {
+        TestJavaApi.createsCredentialsFromJavaApi()
+    }
     "implements ReferencedTokenStore from Java API" {
         TestJavaApi.implementsReferencedTokenStoreFromJavaApi()
     }

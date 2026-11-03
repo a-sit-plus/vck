@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dif.ClaimFormat
+import at.asitplus.iso.DeviceResponse
 import at.asitplus.openid.SupportedAlgorithmsContainerIso
 import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -11,9 +11,18 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.CreatePresentationResult
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.jws.SignJwt
+import io.github.z4kn4fein.semver.Version
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToHexString
+import kotlinx.serialization.json.JsonObject
 
 val PresentationFactoryTest by matrixSuite {
 
@@ -22,6 +31,17 @@ val PresentationFactoryTest by matrixSuite {
             val presentationFactory = PresentationFactory(
                 supportedAlgorithms = setOf(SignatureAlgorithm.ECDSAwithSHA256)
             )
+
+            // supportsAlgorithm only looks at the kind of presentation, so these need not carry any credential
+            val mdocPresentation = CreatePresentationResult.DeviceResponse(
+                DeviceResponse(parsedVersion = Version(1, 0), status = 0u)
+            )
+            val sdJwtPresentation = runBlocking {
+                SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
+                    JwsContentTypeConstants.SD_JWT, JsonObject(emptyMap()), JsonObject.serializer()
+                ).getOrThrow()
+            }.let { SdJwtSigned.issued(it.jws, emptyList()) }
+                .let { CreatePresentationResult.SdJwt(it.serialize(), it) }
         }
     } - {
 
@@ -44,13 +64,13 @@ val PresentationFactoryTest by matrixSuite {
             }
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.MSO_MDOC,
+                presentation = it.mdocPresentation,
                 supportedJwsAlgorithms = listOf(JwsAlgorithm.Signature.ES256),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe true
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.SD_JWT,
+                presentation = it.sdJwtPresentation,
                 supportedJwsAlgorithms = listOf(JwsAlgorithm.Signature.ES256),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe true
@@ -65,8 +85,8 @@ val PresentationFactoryTest by matrixSuite {
                       "kb-jwt_alg_values": [ "ES384" ]
                     },
                     "mso_mdoc": {
-                      "issuerauth_alg_values": [ -1 ],
-                      "deviceauth_alg_values": [ -1 ]
+                      "issuerauth_alg_values": [ -35 ],
+                      "deviceauth_alg_values": [ -35 ]
                     }
                   }
             """.trimIndent().let {
@@ -74,25 +94,25 @@ val PresentationFactoryTest by matrixSuite {
             }
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.MSO_MDOC,
+                presentation = it.mdocPresentation,
                 supportedJwsAlgorithms = listOf(JwsAlgorithm.Signature.ES256),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe false
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.MSO_MDOC,
+                presentation = it.mdocPresentation,
                 supportedJwsAlgorithms = listOf(),
                 supportedCoseAlgorithms = listOf(),
             ) shouldBe false
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.SD_JWT,
+                presentation = it.sdJwtPresentation,
                 supportedJwsAlgorithms = listOf(JwsAlgorithm.Signature.ES256),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe false
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.SD_JWT,
+                presentation = it.sdJwtPresentation,
                 supportedJwsAlgorithms = listOf(),
                 supportedCoseAlgorithms = listOf(),
             ) shouldBe false
@@ -105,7 +125,7 @@ val PresentationFactoryTest by matrixSuite {
                     deviceAuthAlgorithmInts = setOf(CoseAlgorithm.Signature.ESP256.coseValue),
                 )
             ).supportsAlgorithm(
-                claimFormat = ClaimFormat.MSO_MDOC,
+                presentation = it.mdocPresentation,
                 supportedJwsAlgorithms = emptyList(),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe true
@@ -119,25 +139,25 @@ val PresentationFactoryTest by matrixSuite {
             }
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.MSO_MDOC,
+                presentation = it.mdocPresentation,
                 supportedJwsAlgorithms = listOf(JwsAlgorithm.Signature.ES256),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe false
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.MSO_MDOC,
+                presentation = it.mdocPresentation,
                 supportedJwsAlgorithms = listOf(),
                 supportedCoseAlgorithms = listOf(),
             ) shouldBe false
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.SD_JWT,
+                presentation = it.sdJwtPresentation,
                 supportedJwsAlgorithms = listOf(JwsAlgorithm.Signature.ES256),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe false
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.SD_JWT,
+                presentation = it.sdJwtPresentation,
                 supportedJwsAlgorithms = listOf(),
                 supportedCoseAlgorithms = listOf(),
             ) shouldBe false
@@ -154,25 +174,25 @@ val PresentationFactoryTest by matrixSuite {
             }
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.MSO_MDOC,
+                presentation = it.mdocPresentation,
                 supportedJwsAlgorithms = listOf(JwsAlgorithm.Signature.ES256),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe true
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.SD_JWT,
+                presentation = it.sdJwtPresentation,
                 supportedJwsAlgorithms = listOf(JwsAlgorithm.Signature.ES256),
                 supportedCoseAlgorithms = listOf(CoseAlgorithm.Signature.ES256),
             ) shouldBe true
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.MSO_MDOC,
+                presentation = it.mdocPresentation,
                 supportedJwsAlgorithms = listOf(),
                 supportedCoseAlgorithms = listOf(),
             ) shouldBe true
 
             vpFormatsSupported.supportsAlgorithm(
-                claimFormat = ClaimFormat.SD_JWT,
+                presentation = it.sdJwtPresentation,
                 supportedJwsAlgorithms = listOf(),
                 supportedCoseAlgorithms = listOf(),
             ) shouldBe true

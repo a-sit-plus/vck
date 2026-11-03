@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.openid.ClaimDescription
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
+import at.asitplus.openid.OpenId4VciClaimsPathPointerSegmentString
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 
 object ConstantIndex {
@@ -133,8 +134,33 @@ interface IsoMdocCredentialScheme : CredentialScheme {
      */
     override val isoNamespace: String
 
+    /**
+     * Whether every claim path already includes its ISO namespace. Qualified paths are preserved even when their
+     * namespace differs from [isoNamespace]. Defaults to false for schemes sharing relative paths across formats.
+     */
+    val isoClaimPathsAreQualified: Boolean
+        get() = false
+
     override val supportedRepresentations: Collection<CredentialRepresentation>
         get() = listOf(ISO_MDOC)
+}
+
+/**
+ * The [claimDescriptions][CredentialScheme.claimDescriptions] with paths qualified by the
+ * [isoNamespace][IsoMdocCredentialScheme.isoNamespace], as the claims of an ISO mdoc are: multi-format schemes (e.g.
+ * [ConstantIndex.AtomicAttribute2023]) share JSON-style claim descriptions across representations, so the namespace is
+ * prefixed unless the path already starts with it. When [IsoMdocCredentialScheme.isoClaimPathsAreQualified] is true,
+ * every path is preserved, independently of the scheme namespace. Metadata-derived schemes use qualified paths.
+ */
+val IsoMdocCredentialScheme.isoQualifiedClaimDescriptions: Set<ClaimDescription>
+    get() = if (isoClaimPathsAreQualified) claimDescriptions
+    else claimDescriptions.map { it.qualifiedWithIsoNamespace(isoNamespace) }.toSet()
+
+private fun ClaimDescription.qualifiedWithIsoNamespace(isoNamespace: String): ClaimDescription {
+    val firstSegment = path.firstOrNull()
+    val alreadyQualified = firstSegment is OpenId4VciClaimsPathPointerSegmentString && firstSegment.string == isoNamespace
+    return if (alreadyQualified) this
+    else copy(path = OpenId4VciClaimsPathPointer(isoNamespace) + path)
 }
 
 interface VcJwtCredentialScheme : CredentialScheme {

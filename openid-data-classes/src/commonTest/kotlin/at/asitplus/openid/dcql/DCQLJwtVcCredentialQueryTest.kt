@@ -38,7 +38,7 @@ val DCQLJwtVcCredentialQueryTest by matrixSuite {
             ),
             meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
                 typeValues = nonEmptyListOf(
-                    listOf()
+                    listOf("VerifiableCredential")
                 )
             )
         )
@@ -52,7 +52,7 @@ val DCQLJwtVcCredentialQueryTest by matrixSuite {
             put(DCQLCredentialQuery.SerialNames.META,
                 buildJsonObject {
                     put(DCQLJwtVcCredentialMetadataAndValidityConstraints.SerialNames.TYPE_VALUES, buildJsonArray {
-                        add(buildJsonArray {  })
+                        add(buildJsonArray { add(JsonPrimitive("VerifiableCredential")) })
                     })
                 })
             put(DCQLCredentialQuery.SerialNames.CLAIMS, buildJsonArray {

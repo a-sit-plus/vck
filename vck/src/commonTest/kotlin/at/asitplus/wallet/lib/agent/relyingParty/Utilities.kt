@@ -6,6 +6,7 @@ import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.etsi.relyingParty.WrpClaim
+import at.asitplus.etsi.relyingParty.WrpConstants
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpLangString
@@ -18,6 +19,8 @@ import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.sha256
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
@@ -53,6 +56,7 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator
@@ -138,6 +142,8 @@ data class WrpFixture(
     val wrpacChain: List<X509Certificate>,
     val clientId: String,
     val wrprcSigningKeyMaterial: KeyMaterial,
+    /** The key of the WRPAC leaf, to sign requests with. */
+    val wrpKey: KeyMaterial,
 )
 
 suspend fun buildWrpFixture(
@@ -182,7 +188,7 @@ suspend fun buildWrpFixture(
         key = wrprcProviderKey,
     )
 
-    return WrpFixture(trustAnchors, wrpIdentifier, wrpacChain, clientId, wrprcSigningKeyMaterial)
+    return WrpFixture(trustAnchors, wrpIdentifier, wrpacChain, clientId, wrprcSigningKeyMaterial, wrpKey)
 }
 
 suspend fun WrpFixture.validateWrpac() = WrpacValidator(
@@ -200,30 +206,31 @@ fun defaultMdocCredential(
 ): WrpCredential = WrpCredential(
     format = "mso_mdoc",
     meta = WrpCredentialMeta(doctypeValue = doctypeValue),
-    claim = claimNames.map { WrpClaim(path = listOf(doctypeValue, it)) },
+    claim = claimNames.map { WrpClaim.named(doctypeValue, it) },
 )
 
 fun buildWrpPayload(
     wrpIdentifier: String,
     name: String? = WRP_NAME,
     intendedUseId: String? = "urn:uuid:${Uuid.generateV4()}",
-    credentials: List<WrpCredential> = listOf(defaultMdocCredential()),
+    credentials: List<WrpCredential>? = listOf(defaultMdocCredential()),
     iat: Instant = Instant.fromEpochSeconds(System.now().epochSeconds),
     exp: Instant? = Instant.fromEpochSeconds((System.now() + 30.days).epochSeconds),
     statusListIdx: Int = 0,
     statusListUri: String = "https://localhost/statuslists/1",
 ): WrpPayload = WrpPayload(
     name = name,
-    subjectLegalName = "Demo Service",
+    subjectLegalNames = listOf("Demo Service"),
     subjectIdentifier = wrpIdentifier,
     country = "AT",
     registryUri = "https://localhost/wrp",
-    srvDescription = listOf(listOf(WrpLangString(lang = "en", value = "Service description"))),
-    entitlements = listOf("access-service"),
+    serviceDescription = listOf(WrpLangString(lang = "en", value = "Service description")),
+    entitlements = listOf(WrpConstants.ENTITLEMENT_SERVICE_PROVIDER),
     privacyPolicy = "https://localhost/privacy",
-    infoUri = "",
-    supportUri = "https://localhost/support",
+    infoUris = listOf("https://localhost/info"),
+    supportUris = listOf("https://localhost/support"),
     supervisoryAuthority = WrpSupervisoryAuthority(),
+    policyId = listOf(WrpConstants.POLICY_IDENTIFIER),
     certificatePolicy = "https://localhost/certificate-policy",
     iat = iat,
     exp = exp,
@@ -231,7 +238,6 @@ fun buildWrpPayload(
     purpose = listOf(WrpLangString(lang = "en", value = "Purpose description.")),
     credentials = credentials,
     intendedUseId = intendedUseId,
-    providesAttestations = emptyList(),
     publicBody = false,
 )
 
@@ -317,6 +323,7 @@ suspend fun WrpFixture.validateWrprc(
     jwsType: String = WRPRC_JWS_TYPE,
     revokedStatusIndex: Int = 1,
     accessCertValidation: WrpacValidationResult? = null,
+    tokenStatusResolver: TokenStatusResolver? = null,
 ) = catching {
     val wrprcJws = signWrprc(signingKeyMaterial, payload, type = jwsType)
     val registrationCertificate: WrpRegistrationCertificate =
@@ -332,12 +339,11 @@ suspend fun WrpFixture.validateWrprc(
     val statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
         buildStatusListToken(statusListUrl, revokedIndex = revokedStatusIndex)
     }
-    val tokenStatusResolver = TokenStatusResolverImpl(statusListTokenResolver)
 
     WrprcValidator()(
         identifierResult = resolvedAccessCertValidation.identifierResult,
         validationData = validationData,
-        tokenStatusResolver = tokenStatusResolver,
+        tokenStatusResolver = tokenStatusResolver ?: TokenStatusResolverImpl(statusListTokenResolver),
         certificateTrustAnchors = trustAnchors,
     ).getOrThrow()
 }
@@ -423,3 +429,11 @@ suspend fun buildStatusListToken(
     ).getOrThrow(),
     resolvedAt = System.now(),
 )
+
+/** [parameters] as a JAR, signed with the WRPAC leaf key, transporting the WRPAC chain in `x5c`. */
+suspend fun WrpFixture.signedByWrp(parameters: AuthenticationRequestParameters) =
+    SignJwt<AuthenticationRequestParameters>(wrpKey, { header, _ -> header.copy(certificateChain = wrpacChain) })(
+        type = "oauth-authz-req+jwt",
+        payload = parameters,
+        serializer = AuthenticationRequestParameters.serializer(),
+    ).getOrThrow().let { RequestParametersFrom.Jws(jws = it.jws, parameters = parameters) }

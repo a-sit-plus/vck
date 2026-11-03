@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator.Constants.OID_ORGANIZATION_IDENTIFIER
@@ -25,19 +25,19 @@ sealed interface WrpacIdentifier {
  * Extension function to extract access certificate identifier
  * See: ETSI TS 119 475 V1.2.1 - 5.1.2 and 5.1.4
  */
-fun X509Certificate.getWrpIdentifier() = catching {
+fun X509Certificate.getWrpIdentifier() = catchingUnwrapped {
     this.tbsCertificate.subjectName.firstOrNull { it.attrsAndValues.any { it.oid == OID_ORGANIZATION_IDENTIFIER } }
         ?.attrsAndValues?.first { it.oid == OID_ORGANIZATION_IDENTIFIER }?.value.let {
             (it as? Asn1Primitive)?.content?.decodeToString()
         }?.let {
-            return@catching WrpacIdentifier.WrpacLegalIdentifier(it)
+            return@catchingUnwrapped WrpacIdentifier.WrpacLegalIdentifier(it)
         }
 
     this.tbsCertificate.subjectName.firstOrNull { it.attrsAndValues.any { it.oid == OID_SERIAL_NUMBER } }
         ?.attrsAndValues?.first { it.oid == OID_SERIAL_NUMBER }?.value.let {
             (it as? Asn1Primitive)?.content?.decodeToString()
         }?.let {
-            return@catching WrpacIdentifier.WrpacNaturalIdentifier(it)
+            return@catchingUnwrapped WrpacIdentifier.WrpacNaturalIdentifier(it)
         }
 
     throw Throwable("Unable to extract access certificate identifier")

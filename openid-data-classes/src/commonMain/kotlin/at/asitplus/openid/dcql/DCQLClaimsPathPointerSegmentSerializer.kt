@@ -2,10 +2,9 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.long
-import kotlinx.serialization.json.longOrNull
 
 object DCQLClaimsPathPointerSegmentSerializer : KSerializer<DCQLClaimsPathPointerSegment> by TransformingSerializerTemplate<DCQLClaimsPathPointerSegment, JsonPrimitive>(
     parent = JsonPrimitive.serializer(),
@@ -21,9 +20,10 @@ object DCQLClaimsPathPointerSegmentSerializer : KSerializer<DCQLClaimsPathPointe
         when {
             it is JsonNull -> DCQLClaimsPathPointerSegment.NullSegment
 
-            it.longOrNull != null -> DCQLClaimsPathPointerSegment.IndexSegment(it.long.toUInt())
+            it.isString -> DCQLClaimsPathPointerSegment.NameSegment(it.content)
 
-            else -> DCQLClaimsPathPointerSegment.NameSegment(it.content)
+            else -> it.content.toUIntOrNull()?.let { index -> DCQLClaimsPathPointerSegment.IndexSegment(index) }
+                ?: throw SerializationException("Invalid segment of a claims path pointer")
         }
     }
 )

@@ -221,14 +221,6 @@ data class OAuth2AuthorizationServerMetadata(
     @SerialName("require_signed_request_object")
     val requireSignedRequestObject: Boolean? = null,
 
-    @SerialName("subject_syntax_types_supported")
-    @Deprecated("Support for SIOPv2 has been removed")
-    val subjectSyntaxTypesSupported: Set<String>? = null,
-
-    @Suppress("DEPRECATION") @Deprecated("Support for SIOPv2 has been removed")
-    @SerialName("id_token_types_supported")
-    val idTokenTypesSupported: Set<IdTokenType>? = null,
-
     /**
      * OID4VP: REQUIRED. An object containing a list of key value pairs, where the key is a string identifying a
      * Credential format supported by the Wallet. Valid Credential format identifier values are defined in Annex E

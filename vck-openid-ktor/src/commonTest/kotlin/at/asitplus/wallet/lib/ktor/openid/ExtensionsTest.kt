@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.HttpErrorResponseException
+import at.asitplus.wallet.lib.ProblemDetails
 import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import com.benasher44.uuid.uuid4
@@ -112,6 +114,23 @@ val ExtensionsTest by matrixSuite {
                 ContentType.Application.ProblemJson,
             )
         }.problemDetails shouldBe ProblemDetails()
+    }
+
+    test("deprecated name catches error responses of ktor clients and of any other HTTP stack") {
+        @Suppress("DEPRECATION")
+        shouldThrow<at.asitplus.wallet.lib.ktor.openid.HttpErrorResponseException> {
+            requestWithValidation(HttpStatusCode.Unauthorized, "denied", ContentType.Text.Plain)
+        }.apply {
+            status shouldBe HttpStatusCode.Unauthorized
+            headers[HttpHeaders.ContentType] shouldBe ContentType.Text.Plain.toString()
+            responseBody shouldBe "denied"
+        }
+
+        // e.g. thrown by an HttpExchange whose requests are sent without ktor
+        @Suppress("DEPRECATION")
+        shouldThrow<at.asitplus.wallet.lib.ktor.openid.HttpErrorResponseException> {
+            throw HttpErrorResponseException(HttpStatusCode.Unauthorized, Headers.Empty, "denied")
+        }.status shouldBe HttpStatusCode.Unauthorized
     }
 
     test("unstructured error response is preserved") {

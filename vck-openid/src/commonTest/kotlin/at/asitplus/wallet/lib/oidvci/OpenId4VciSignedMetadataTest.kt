@@ -1,0 +1,324 @@
+package at.asitplus.wallet.lib.oidvci
+
+import at.asitplus.etsi.relyingParty.WrpConstants
+import at.asitplus.etsi.relyingParty.WrpCredential
+import at.asitplus.etsi.relyingParty.WrpCredentialMeta
+import at.asitplus.etsi.relyingParty.WrpLangString
+import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.etsi.relyingParty.WrpStatus
+import at.asitplus.etsi.relyingParty.WrpStatusList
+import at.asitplus.etsi.relyingParty.WrpSupervisoryAuthority
+import at.asitplus.openid.IssuerInfo
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OpenIdConstants.IssuerInfo.REGISTRATION_CERT_FORMAT
+import at.asitplus.openid.truncateToSeconds
+import at.asitplus.signum.indispensable.asn1.Asn1String
+import at.asitplus.signum.indispensable.asn1.Asn1Time
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
+import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
+import at.asitplus.signum.indispensable.pki.TbsCertificate
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
+import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.ReceivedHttpResponse
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.TestCertificateAuthority
+import at.asitplus.wallet.lib.agent.TrustedCertificates
+import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.MediaTypes
+import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.oauth2.FakeHttpStack
+import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
+import at.asitplus.wallet.lib.oauth2.received
+import at.asitplus.wallet.lib.oauth2.scripted
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.IssuerMetadataChecks
+import at.asitplus.wallet.lib.validation.IssuerMetadataValidator
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
+import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
+import at.asitplus.wallet.lib.validation.ValidationPolicy
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.*
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
+
+val OpenId4VciSignedMetadataTest by matrixSuite {
+
+    "signed metadata are requested over unsigned ones, and validated" {
+        val signing = SigningIssuer()
+        val http = signing.metadataEndpoint()
+
+        val loaded = http.execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+
+        http.sent.single().http.headers[HttpHeaders.Accept].shouldNotBeNull() shouldContain MediaTypes.Application.JWT
+        loaded.shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().validation.apply {
+            report.decision shouldBe ACCEPTED
+            report.children.single().decision shouldBe ACCEPTED
+        }
+        loaded.metadata.shouldNotBeNull().credentialIssuer shouldBe ISSUER
+    }
+
+    "credential configurations of signed metadata carry the validated issuer, also when serialized" {
+        val signing = SigningIssuer()
+        val client = signing.client()
+        val loaded = signing.metadataEndpoint().execute(client.loadIssuerMetadata(ISSUER, strictPolicy))
+
+        val info = client.parseCredentialMetadata(loaded).getOrThrow().first()
+
+        info.issuer.shouldNotBeNull().registrationCertificate.shouldNotBeNull().subjectIdentifier shouldBe IDENTIFIER
+        val serialized = joseCompliantSerializer.encodeToString(CredentialIdentifierInfo.serializer(), info)
+        joseCompliantSerializer.decodeFromString(CredentialIdentifierInfo.serializer(), serialized) shouldBe info
+    }
+
+    "credential configurations of unsigned metadata carry no issuer, rejected signed metadata none at all" {
+        val signing = SigningIssuer()
+        val unsigned = FakeHttpStack(scripted(jsonResponse(signing.server.metadata)))
+            .execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+        val untrusting = OpenId4VciProtocolClient(
+            issuerMetadataValidator = IssuerMetadataValidator(accessCertificates = { emptySet() }),
+        )
+        val rejected = signing.metadataEndpoint().execute(untrusting.loadIssuerMetadata(ISSUER, strictPolicy))
+
+        signing.client().parseCredentialMetadata(unsigned).getOrThrow().first().issuer.shouldBeNull()
+        untrusting.parseCredentialMetadata(rejected).isFailure shouldBe true
+    }
+
+    "rejected signed metadata can be parsed ignoring trust, without an issuer, if signed for the credential issuer" {
+        val signing = SigningIssuer()
+        val untrusting = OpenId4VciProtocolClient(
+            issuerMetadataValidator = IssuerMetadataValidator(accessCertificates = { emptySet() }),
+        )
+        val rejected = signing.metadataEndpoint().execute(untrusting.loadIssuerMetadata(ISSUER, strictPolicy))
+        val accepted = signing.metadataEndpoint().execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+        val unsigned = FakeHttpStack(scripted(jsonResponse(signing.server.metadata)))
+            .execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+        // the endpoint serves the metadata of ISSUER, so their subject is not the one requested
+        val otherIssuer = signing.metadataEndpoint()
+            .execute(untrusting.loadIssuerMetadata("https://other.example.com", strictPolicy))
+
+        rejected.shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().apply {
+            untrustedMetadata.shouldNotBeNull()
+            // the WRPRC in issuer_info is parsed, though not validated
+            untrustedRegistration.shouldNotBeNull().subjectIdentifier shouldBe IDENTIFIER
+        }
+        untrusting.parseCredentialMetadataIgnoringTrust(rejected).getOrThrow().first().apply {
+            issuerMetadata.credentialIssuer shouldBe ISSUER
+            issuer.shouldBeNull()
+        }
+        signing.client().parseCredentialMetadataIgnoringTrust(accepted).getOrThrow().first().issuer.shouldNotBeNull()
+        signing.client().parseCredentialMetadataIgnoringTrust(unsigned).getOrThrow().first().issuer.shouldBeNull()
+        otherIssuer.shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().untrustedMetadata.shouldBeNull()
+        untrusting.parseCredentialMetadataIgnoringTrust(otherIssuer).isFailure shouldBe true
+    }
+
+    "signed metadata of an untrusted issuer are rejected, or reported for a warning" {
+        val signing = SigningIssuer()
+        val http = signing.metadataEndpoint()
+        val client = OpenId4VciProtocolClient(
+            issuerMetadataValidator = IssuerMetadataValidator(accessCertificates = { emptySet() }),
+        )
+
+        http.execute(client.loadIssuerMetadata(ISSUER, strictPolicy)).apply {
+            shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().validation.report.decision shouldBe REJECTED
+            metadata.shouldBeNull()
+        }
+        http.execute(client.loadIssuerMetadata(ISSUER, strictPolicy.copy(trust = TrustPolicy.IntegrityOnly))).apply {
+            shouldBeInstanceOf<LoadedIssuerMetadata.Signed>().validation.report.checks
+                .shouldBeInstanceOf<IssuerMetadataChecks>().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+            metadata.shouldNotBeNull()
+        }
+    }
+
+    "unsigned metadata are returned as such, if they are of the requested credential issuer" {
+        val signing = SigningIssuer()
+        val unsigned = jsonResponse(signing.server.metadata)
+
+        FakeHttpStack(scripted(unsigned)).execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+            .shouldBeInstanceOf<LoadedIssuerMetadata.Unsigned>().metadata.credentialIssuer shouldBe ISSUER
+        shouldThrow<IllegalArgumentException> {
+            FakeHttpStack(scripted(unsigned))
+                .execute(signing.client().loadIssuerMetadata("https://other.example.com", strictPolicy))
+        }
+    }
+
+    "metadata without a supported media type are rejected" {
+        val signing = SigningIssuer()
+        val body = joseCompliantSerializer.encodeToString(IssuerMetadata.serializer(), signing.server.metadata)
+
+        shouldThrow<IllegalArgumentException> {
+            FakeHttpStack(scripted(ReceivedHttpResponse(HttpStatusCode.OK, Headers.Empty, body)))
+                .execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+        }
+        shouldThrow<IllegalArgumentException> {
+            FakeHttpStack(scripted(ReceivedHttpResponse(HttpStatusCode.OK, contentType("text/html"), body)))
+                .execute(signing.client().loadIssuerMetadata(ISSUER, strictPolicy))
+        }
+    }
+
+    "the legacy method asks for unsigned metadata, and rejects those of another credential issuer" {
+        val signing = SigningIssuer()
+        val http = signing.metadataEndpoint()
+
+        http.execute(signing.client().loadIssuerMetadata(ISSUER)).credentialIssuer shouldBe ISSUER
+        http.sent.single().http.headers[HttpHeaders.Accept] shouldBe MediaTypes.Application.JSON
+        shouldThrow<IllegalArgumentException> {
+            FakeHttpStack(scripted(jsonResponse(signing.server.metadata)))
+                .execute(signing.client().loadIssuerMetadata("https://other.example.com"))
+        }
+    }
+}
+
+private const val ISSUER = "https://issuer.example.com"
+private const val IDENTIFIER = "LEIXG-ISSUER"
+
+private val strictPolicy = ValidationPolicy(
+    trust = TrustPolicy.RequireAuthorizedSigner,
+    status = StatusPolicy.Skip,
+    timeLeeway = 5.minutes,
+    requireTimeliness = true,
+)
+
+private fun contentType(value: String) = headersOf(HttpHeaders.ContentType, value)
+
+private fun jsonResponse(metadata: IssuerMetadata) = ReceivedHttpResponse(
+    HttpStatusCode.OK,
+    contentType(MediaTypes.Application.JSON),
+    joseCompliantSerializer.encodeToString(IssuerMetadata.serializer(), metadata),
+)
+
+/**
+ * A credential issuer signing its metadata with an access certificate (WRPAC) of [provider], with its registration
+ * certificate (WRPRC) of [registrar] in `issuer_info` (ETSI TS 119 472-3 V1.1.1, 4.2).
+ */
+private class SigningIssuer private constructor(
+    private val provider: TestCertificateAuthority,
+    private val registrar: TestCertificateAuthority,
+    accessKey: KeyMaterial,
+    accessCertificate: X509Certificate,
+    registrationCertificate: String,
+) {
+    val server = OpenId4VciServer(
+        authorizationService = SimpleAuthorizationService(
+            strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet),
+            publicContext = ISSUER,
+        ),
+        issuer = IssuerAgent(identifier = ISSUER.toUri()),
+        credentialSchemes = AttributeIndex.schemeSet,
+        publicContext = ISSUER,
+        signMetadata = SignJwt(accessKey, { header, _ -> header.copy(certificateChain = listOf(accessCertificate)) }),
+        issuerInfo = listOf(
+            IssuerInfo(
+                format = REGISTRATION_CERT_FORMAT,
+                data = JsonPrimitive(registrationCertificate),
+            )
+        ),
+    )
+
+    /** Serves the metadata as the well-known endpoint does, signed if asked for (OpenID4VCI 1.0, 12.2.2). */
+    fun metadataEndpoint() = FakeHttpStack {
+        server.metadataHttpResponse(it.headers[HttpHeaders.Accept]).getOrThrow().received()
+    }
+
+    /** Trusts the WRPAC provider and the registrar of this issuer. */
+    fun client() = OpenId4VciProtocolClient(
+        issuerMetadataValidator = IssuerMetadataValidator(
+            accessCertificates = TrustedCertificates { setOf(provider.certificate) },
+            registrationCertificates = TrustedCertificates { setOf(registrar.certificate) },
+        ),
+    )
+
+    companion object {
+        suspend operator fun invoke(): SigningIssuer {
+            val providerKey = EphemeralKeyWithoutCert()
+            val provider = TestCertificateAuthority(name = PROVIDER_NAME, key = providerKey)
+            val accessKey = EphemeralKeyWithoutCert()
+            val registrar = TestCertificateAuthority(name = REGISTRAR_NAME, validity = 30.days)
+            val registrationCertificate = registrationCertificate(registrar.issue(validity = 30.days))
+            return SigningIssuer(
+                provider,
+                registrar,
+                accessKey,
+                accessCertificate(providerKey, accessKey),
+                registrationCertificate
+            )
+        }
+
+        private const val PROVIDER_NAME = "WRPAC Provider"
+        private const val REGISTRAR_NAME = "WRPRC Provider"
+
+        /**
+         * A WRPRC signed by [registrarKey], issued to the identifier of the WRPAC (ETSI TS 119 475 V1.2.1,
+         * GEN-5.2.4-02), with the entitlement of a PID provider (A.2), as `rc-wrp+jwt` (5.2.2).
+         */
+        private suspend fun registrationCertificate(registrarKey: KeyMaterial): String {
+            val issuedAt = Clock.System.now().truncateToSeconds()
+            val payload = WrpPayload(
+                name = "PID Provider",
+                subjectIdentifier = IDENTIFIER,
+                country = "AT",
+                registryUri = "https://registrar.example.com",
+                serviceDescription = listOf(WrpLangString(lang = "en", value = "Issues PIDs")),
+                entitlements = listOf(WrpConstants.ENTITLEMENT_PID_PROVIDER),
+                privacyPolicy = "$ISSUER/privacy",
+                infoUris = listOf(ISSUER),
+                supportUris = listOf("$ISSUER/support"),
+                supervisoryAuthority = WrpSupervisoryAuthority(emails = listOf("dpa@example.com")),
+                policyId = listOf(WrpConstants.POLICY_IDENTIFIER),
+                certificatePolicy = "https://registrar.example.com/policy",
+                iat = issuedAt,
+                exp = issuedAt + 30.days,
+                status = WrpStatus(WrpStatusList(idx = 0UL, uri = "https://registrar.example.com/status/1")),
+                providesAttestations = listOf(
+                    WrpCredential("dc+sd-jwt", WrpCredentialMeta(vctValues = listOf("urn:eudi:pid:1")))
+                ),
+            )
+            return SignJwt<WrpPayload>(registrarKey, JwsHeaderCertOrJwk())(
+                type = "rc-wrp+jwt",
+                payload = payload,
+                serializer = WrpPayload.serializer(),
+            ).getOrThrow().toString()
+        }
+
+        /** A WRPAC issued by [providerKey], with the identifier of a legal person (ETSI TS 119 475 V1.2.1, 5.1.2). */
+        private suspend fun accessCertificate(providerKey: KeyMaterial, accessKey: KeyMaterial): X509Certificate {
+            val algorithm = providerKey.signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
+            val notBefore = Clock.System.now().truncateToSeconds()
+            val tbsCertificate = TbsCertificate(
+                version = 2,
+                serialNumber = Random.nextBytes(8),
+                issuerName = listOf(
+                    RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(PROVIDER_NAME)))
+                ),
+                subjectName = listOf(
+                    RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8("PID Provider"))),
+                    RelativeDistinguishedName(
+                        AttributeTypeAndValue.Other(ObjectIdentifier("2.5.4.97"), Asn1String.UTF8(IDENTIFIER)),
+                    ),
+                ),
+                validFrom = Asn1Time(notBefore),
+                validUntil = Asn1Time(notBefore + 30.days),
+                signatureAlgorithm = algorithm,
+                publicKey = accessKey.publicKey,
+            )
+            val signature = providerKey.sign(tbsCertificate.encodeToDer()).asKmmResult().getOrThrow()
+            return X509Certificate(tbsCertificate, algorithm, signature)
+        }
+    }
+}

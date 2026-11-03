@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.iso.IssuerSigned
@@ -12,6 +14,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+@Deprecated("The timeliness of credentials is validated by at.asitplus.wallet.lib.validation.CredentialValidator, see CredentialChecks.timeliness. To be removed in the next major release.")
 data class CredentialTimelinessValidator @JvmOverloads constructor(
     /**
      * @param timeLeeway specifies tolerance for expiration and start of validity of credentials.
@@ -20,9 +23,9 @@ data class CredentialTimelinessValidator @JvmOverloads constructor(
      */
     private val timeLeeway: Duration = 300.seconds,
     private val clock: Clock = Clock.System,
-    val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator(),
-    val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator(),
-    val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator(),
+    val vcJwsTimelinessValidator: VcJwsTimelinessValidator = VcJwsTimelinessValidator,
+    val sdJwtTimelinessValidator: SdJwtTimelinessValidator = SdJwtTimelinessValidator,
+    val mdocTimelinessValidator: MdocTimelinessValidator = MdocTimelinessValidator,
 ) {
     operator fun invoke(issuerSigned: IssuerSigned) = CredentialTimelinessValidationSummary.Mdoc(
         mdocTimelinessValidator(issuerSigned, timeScope = TimeScope(clock.now(), timeLeeway)),

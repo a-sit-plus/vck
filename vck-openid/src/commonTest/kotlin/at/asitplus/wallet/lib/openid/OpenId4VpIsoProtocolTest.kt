@@ -59,10 +59,10 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                     keyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.RedirectUri(clientId),
                     //nonceService = FixedNonceService(),
+                    presentationPolicy = testPresentationPolicy,
                 )
                 val holderOid4vp = OpenId4VpHolder(
                     holder = holderAgent,
-                    keyMaterial = holderKeyMaterial,
                     randomSource = RandomSource.Default,
                 )
             }
@@ -81,10 +81,10 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
             val authnResponse = it.holderOid4vp
-                .createAuthnResponse(authnRequest).getOrThrow()
+                .createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -108,10 +108,10 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
             val authnResponse = it.holderOid4vp
-                .createAuthnResponse(authnRequest).getOrThrow()
+                .createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -135,10 +135,10 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -167,14 +167,14 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 .getOrThrow().url
             //println("this is the request:\n$authnRequest")
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             val input = authnResponse.params.formUrlEncode()
             //println("this is the response:\n$input")
 
             it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
@@ -205,14 +205,14 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             ).getOrThrow().url
             //println("this is the request:\n$authnRequest")
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             val input = authnResponse.params.formUrlEncode()
             //println("this is the response:\n$input")
 
             it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()
@@ -246,7 +246,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnRequest = scope.verifierOid4vp.createAuthnRequest(requestOptions, Query(scope.walletUrl))
                 .getOrThrow().url
 
-            val authnResponse = scope.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = scope.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>().apply {
                     // make sure there are two device responses for two credentials returned in the presentation
                     params["vp_token"].shouldNotBeEmpty().shouldNotBeNull().apply {
@@ -257,7 +257,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 }
 
             scope.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.shouldHaveSize(2).apply {
                     values.first { it.first().getOrThrow().hasDocType(AtomicAttribute2023.isoDocType) }.first()
@@ -281,10 +281,10 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
                 .getOrThrow().url
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()

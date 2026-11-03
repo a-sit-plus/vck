@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DCQLIsoMdocCredentialMetadataAndValidityConstraints(
     /**
-     * OID4VP 1.0 B.2.3: doctype_value: REQUIRED. String that specifies an allowed value for the
+     * OID4VP 1.0, B.2.3: doctype_value: REQUIRED. String that specifies an allowed value for the
      * doctype of the requested Verifiable Credential. It MUST be a valid doctype identifier as
      * defined in [ISO.18013-5].
      */

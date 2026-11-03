@@ -28,3 +28,8 @@ Agent-only operating notes:
 - Do not infer current protocol support from deprecated compatibility types, or feature completeness from
   preparation-only abstractions such as the ISO mDoc ZKP types. Confirm the active path in `ARCHITECTURE.md`, the
   implementation, and its tests before extending it.
+- Do not test placeholder behavior such as `TODO()` or temporary unsupported-operation errors. You may write tests for the 
+  intended behavior and disable them with `TestConfig.disable()` until that behavior is implemented if the shape 
+  is already known. Keep tests for already implemented behavior enabled.
+- Use `catchingUnwrapped` instead of `catching` when we don't need the `KmmResult` as a return type
+- Every `@Throws` annotation on a suspending function needs to include `CancellationException` for iOS builds

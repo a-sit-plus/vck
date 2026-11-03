@@ -3,11 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
@@ -28,7 +23,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.toIsoMdocClaimPath
-import com.benasher44.uuid.uuid4
 
 /**
  * This is a helper class to build a [CredentialPresentationRequest] from a collection of [RequestOptionsCredential]
@@ -39,32 +33,6 @@ data class CredentialPresentationRequestBuilder(
     val credentials: Collection<RequestOptionsCredential>,
 ) {
     constructor(vararg credentials: RequestOptionsCredential) : this(credentials.toList())
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    fun toPresentationExchangeRequest() = CredentialPresentationRequest.PresentationExchangeRequest(
-        PresentationDefinition(
-            id = uuid4().toString(),
-            inputDescriptors = credentials.map {
-                it.toInputDescriptor()
-            }
-        )
-    )
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    private fun RequestOptionsCredential.toInputDescriptor() = DifInputDescriptor(
-        id = buildId(),
-        format = toFormatHolder(),
-        constraints = toConstraint(),
-    )
-
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    private fun RequestOptionsCredential.toFormatHolder() = when (this.representation) {
-        PLAIN_JWT -> FormatHolder(jwtVp = FormatContainerJwt())
-        SD_JWT -> FormatHolder(sdJwt = FormatContainerSdJwt())
-        ISO_MDOC -> FormatHolder(msoMdoc = FormatContainerJwt())
-    }
 
     fun toIsoDeviceRetrievalRequest() = CredentialPresentationRequest.IsoDeviceRetrieval(
         deviceRequest = DeviceRequest(

@@ -12,14 +12,16 @@ data class DCQLAmbiguousClaimsQuery(
     @SerialName(DCQLClaimsQuery.SerialNames.VALUES)
     override val values: List<DCQLExpectedClaimValue>? = null,
     /**
-     * OID4VP draft 23: path: REQUIRED if the Credential Format uses a JSON-based claims structure
-     * (e.g., IETF SD-JWT VC and W3C Verifiable Credentials); MUST NOT be present otherwise. The
-     * value MUST be a non-empty array representing a claims path pointer that specifies the path
-     * to a claim within the Verifiable Credential, as defined in Section 6.4.
+     * OID4VP 1.0, 6.3: path: REQUIRED The value MUST be a non-empty array representing a claims path pointer that
+     * specifies the path to a claim within the Credential, as defined in Section 7.
      */
     @SerialName(DCQLClaimsQuery.SerialNames.PATH)
     override val path: DCQLClaimsPathPointer
 ) : DCQLClaimsQuery {
+    init {
+        requireNonEmptyValues()
+    }
+
     override fun executeClaimsQueryAgainstCredential(
         credentialStructure: DCQLCredentialClaimStructure,
     ): KmmResult<DCQLClaimsQueryResult> = catching {

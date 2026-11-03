@@ -1,14 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.IssuerSigned
-import at.asitplus.jsonpath.core.NodeList
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
@@ -88,79 +81,5 @@ interface Holder {
         presentationRequest: CredentialPresentationRequest,
         filterByIds: Collection<String>? = null,
     ): KmmResult<CredentialMatchingResult<SubjectCredentialStore.StoreEntry>>
-
-    /**
-     * Creates a mapping from the input descriptors of the presentation definition to matching
-     * credentials and the fields that would need to be disclosed.
-     *
-     * @param fallbackFormatHolder format holder to be used in case there is no format holder in a
-     *  given presentation definition and the input descriptor.
-     *  This will mostly resolve to be the same `clientMetadata.vpFormats`.
-     * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
-     *  authorization rules on attribute credentials that are to be disclosed.
-     * @param filterByIds filter the list of possible credentials by the provided IDs
-     */
-    @Deprecated("Use matchPresentationRequestAgainstCredentialStore instead")
-    suspend fun matchInputDescriptorsAgainstCredentialStoreV2(
-        inputDescriptors: Collection<InputDescriptor>,
-        fallbackFormatHolder: FormatHolder? = null,
-        pathAuthorizationValidator: PathAuthorizationValidator? = null,
-        filterByIds: Collection<String>? = null
-    ): KmmResult<HolderPresentationExchangeQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
-
-    /**
-     * Matches every document in [deviceRequest] against the credential store. Results preserve `docRequests` order
-     * and contain only credentials that provide every requested namespace and data element. Reader authentication is
-     * transport-specific and is not validated here.
-     *
-     * @param deviceRequest from the ISO Device Retrieval Request
-     * @param filterByIds filter the list of possible credentials by the provided IDs
-     */
-    @Deprecated(
-        "Use matchPresentationRequestAgainstCredentialStore instead",
-        ReplaceWith(
-            "matchPresentationRequestAgainstCredentialStore(CredentialPresentationRequest.IsoDeviceRetrieval(deviceRequest), filterByIds)",
-            "at.asitplus.wallet.lib.data.CredentialPresentationRequest",
-        ),
-    )
-    suspend fun matchDeviceRetrievalAgainstCredentialStore(
-        deviceRequest: DeviceRequest,
-        filterByIds: Collection<String>? = null
-    ): KmmResult<HolderIsoDeviceRetrievalQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
-
-    /**
-     * Evaluates a given input descriptor against a store entry.
-     *
-     * @param fallbackFormatHolder format holder to be used in case there is no format holder in the input descriptor.
-     *  This will mostly be some `presentationDefinition.formats ?: clientMetadata.vpFormats`
-     * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
-     *  authorization rules on attribute credentials that are to be disclosed.
-     * @return for each constraint field a set of matching nodes or null
-     */
-    @Deprecated("Use matchPresentationRequestAgainstCredentialStore instead")
-    fun evaluateInputDescriptorAgainstCredential(
-        inputDescriptor: InputDescriptor,
-        credential: SubjectCredentialStore.StoreEntry,
-        fallbackFormatHolder: FormatHolder?,
-        pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): KmmResult<Map<ConstraintField, NodeList>>
-
-    /**
-     * Creates a mapping from the DCQL credential query identifiers of the DCQL query to matching
-     * credentials and the claims credential set queries to be satisfied.
-     *
-     * @param filterByIds filter the list of possible credentials by the provided IDs
-     */
-    @Deprecated(
-        "Use matchPresentationRequestAgainstCredentialStore instead",
-        ReplaceWith(
-            "matchPresentationRequestAgainstCredentialStore(CredentialPresentationRequest.DCQLRequest(dcqlQuery), filterByIds)",
-            "at.asitplus.wallet.lib.data.CredentialPresentationRequest",
-        ),
-    )
-    suspend fun matchDCQLQueryAgainstCredentialStoreV2(
-        dcqlQuery: DCQLQuery,
-        filterByIds: Collection<String>? = null
-    ): KmmResult<HolderDCQLQueryMatchingResult<SubjectCredentialStore.StoreEntry>>
 
 }

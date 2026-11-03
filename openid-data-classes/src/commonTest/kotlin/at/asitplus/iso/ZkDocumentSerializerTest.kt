@@ -1,6 +1,6 @@
 package at.asitplus.iso
 
-import at.asitplus.csc.contentEquals
+import at.asitplus.csc.api.contentEquals
 import at.asitplus.iso.ZkDocumentData.Companion.PROP_CERT_CHAIN
 import at.asitplus.iso.ZkDocumentData.Companion.PROP_DOC_TYPE
 import at.asitplus.iso.ZkDocumentData.Companion.PROP_TIME_STAMP

@@ -15,8 +15,6 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.symmetric.isAuthenticated
 import at.asitplus.signum.indispensable.symmetric.requiresNonce
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.DecryptJweFun
@@ -46,8 +44,6 @@ class WalletEncryptionService @JvmOverloads constructor(
     private val supportedJweAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES,
     /** Algorithm to fallback to for credential response encryption. */
     private val fallbackJweEncryptionAlgorithm: JweEncryption = JweEncryption.A256GCM,
-    @Deprecated("Use [ephemeralEncryptionKeyService] instead")
-    private val decryptionKeyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     /** Creates one ephemeral encryption key per credential request. */
     private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
     /** Used to decrypt the credential response sent by the issuer. */
@@ -64,14 +60,14 @@ class WalletEncryptionService @JvmOverloads constructor(
     internal suspend fun wrapCredentialRequest(
         input: CredentialRequestParameters,
         metadata: IssuerMetadata
-    ): KmmResult<WalletService.CredentialRequest> = catching {
+    ): KmmResult<OpenId4VciClient.CredentialRequest> = catching {
         if (metadata.shouldEncryptRequest(input)) {
-            WalletService.CredentialRequest.Encrypted(
+            OpenId4VciClient.CredentialRequest.Encrypted(
                 request = encryptRequest(input, metadata).getOrThrow(),
                 credentialResponseEncryptionKeyId = input.credentialResponseEncryption?.jsonWebKey?.keyId,
             )
         } else {
-            WalletService.CredentialRequest.Plain(input)
+            OpenId4VciClient.CredentialRequest.Plain(input)
         }
     }
 
@@ -159,19 +155,6 @@ class WalletEncryptionService @JvmOverloads constructor(
             jweAlgorithm = null,
             jweEncryptionString = jweEncryption.identifier,
         )
-    }
-
-    /** Decrypts encrypted credential response from the issuer. */
-    internal suspend fun decryptToCredentialResponse(
-        input: String,
-        expectedKeyId: String,
-    ): KmmResult<CredentialResponseParameters> = catching {
-        if (input.count { it == '.' } != 4)
-            throw InvalidEncryptionParameters("Parsing of JWE failed, not five parts")
-        val jwe = JweEncrypted.deserialize(input).getOrElse {
-            throw InvalidEncryptionParameters("Parsing of JWE failed", it)
-        }
-        decryptToCredentialResponse(jwe, expectedKeyId).getOrThrow()
     }
 
     /** Decrypts encrypted credential response from the issuer. */

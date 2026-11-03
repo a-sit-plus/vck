@@ -65,7 +65,7 @@ class TestCertificateAuthority private constructor(
 
     companion object {
         /** Builds a certificate for [publicKey], signed by [issuerKey]. */
-        internal suspend fun certificateFor(
+        private suspend fun certificateFor(
             publicKey: CryptoPublicKey,
             subjectName: String,
             issuerName: String,

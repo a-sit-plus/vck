@@ -19,8 +19,7 @@ data class RequestInfo @JvmOverloads constructor(
 ) {
 
     // To be made internal after 8.0.0
-    @Deprecated("Use main constructor taking in all HTTP headers")
-    constructor(
+    internal constructor(
         url: String,
         method: HttpMethod,
         dpop: JwsCompactTyped<JsonWebToken>? = null,

@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.KmmResult
@@ -28,10 +30,12 @@ import kotlin.time.Clock
 /**
  * Checks the status mechanisms in a given status claim to extract the token status.
  */
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 fun interface TokenStatusResolver {
     suspend operator fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus>
 }
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 class TokenStatusResolverImpl @JvmOverloads constructor(
     private val resolveStatusListToken: StatusListTokenResolver,
     private val clock: Clock = Clock.System,
@@ -58,11 +62,13 @@ class TokenStatusResolverImpl @JvmOverloads constructor(
 }
 
 /** Fallback implementation: Token status is always valid. */
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 object TokenStatusResolverNoop : TokenStatusResolver {
     override suspend fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus> =
         catching { TokenStatus.Valid }
 }
 
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 fun StatusListTokenResolver.toTokenStatusResolver(
     clock: Clock = Clock.System,
     zlibService: ZlibService = DefaultZlibService(),
@@ -88,6 +94,7 @@ fun StatusListTokenResolver.toTokenStatusResolver(
 }
 
 /** Resolves every advertised status mechanism and requires them to agree. */
+@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
 suspend fun TokenStatusResolver.resolve(status: TokenStatusInfo): KmmResult<TokenStatus> = catching {
     val resolved = status.mechanisms.map { invoke(it).getOrThrow() }.distinct()
     require(resolved.size == 1) { "Token status mechanisms returned conflicting results" }
@@ -102,20 +109,34 @@ suspend fun TokenStatusResolver.resolve(status: TokenStatusInfo): KmmResult<Toke
  * Retrieve the status value of the index specified in the Referenced Token as described in
  * Section 4. Fail if the provided index is out of bound of the Status List
  */
-private fun extractTokenStatus(
+internal fun extractTokenStatus(
     revocationList: RevocationList,
     revocationListInfo: RevocationListInfo,
     zlibService: ZlibService = DefaultZlibService(),
-): KmmResult<TokenStatus> = catching {
-    if (revocationList is StatusList && revocationListInfo is StatusListInfo) {
-        revocationList.toView(zlibService).getOrNull(revocationListInfo.index)
-            ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
-    } else if (revocationList is IdentifierList && revocationListInfo is IdentifierListInfo) {
-        if (revocationList.identifiers.keys.map { Base64.encode(it.value) }
-                .contains(Base64.encode(revocationListInfo.identifier))) {
-            TokenStatus.Invalid
-        } else TokenStatus.Valid
-    } else throw IllegalArgumentException("RevocationList / RevocationListInfo mismatch")
+): KmmResult<TokenStatus> = RevocationListLookup(revocationList, zlibService).status(revocationListInfo)
+
+/**
+ * The statuses in [revocationList], see [extractTokenStatus], for any number of references: a status list is
+ * decompressed, and the identifiers of an identifier list are indexed, once, when a status is first looked up.
+ */
+internal class RevocationListLookup(
+    private val revocationList: RevocationList,
+    private val zlibService: ZlibService = DefaultZlibService(),
+) {
+    private val view by lazy { (revocationList as StatusList).toView(zlibService) }
+    private val identifiers by lazy {
+        (revocationList as IdentifierList).identifiers.keys.mapTo(HashSet()) { Base64.encode(it.value) }
+    }
+
+    fun status(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus> = catching {
+        if (revocationList is StatusList && revocationListInfo is StatusListInfo) {
+            view.getOrNull(revocationListInfo.index)
+                ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
+        } else if (revocationList is IdentifierList && revocationListInfo is IdentifierListInfo) {
+            if (Base64.encode(revocationListInfo.identifier) in identifiers) TokenStatus.Invalid
+            else TokenStatus.Valid
+        } else throw IllegalArgumentException("RevocationList / RevocationListInfo mismatch")
+    }
 }
 
 suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) =

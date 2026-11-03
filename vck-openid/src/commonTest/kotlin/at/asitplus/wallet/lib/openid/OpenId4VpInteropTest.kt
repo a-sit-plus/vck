@@ -9,7 +9,6 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -19,9 +18,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
-import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toIanaName
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -33,7 +30,6 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.openid.formUrlEncode
 import com.benasher44.uuid.uuid4
@@ -66,12 +62,7 @@ val OpenId4VpInteropTest by matrixSuite {
                 randomSource = RandomSource.Default
             )
             val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val holderAgent = HolderAgent(
-                holderKeyMaterial,
-                validatorSdJwt = ValidatorSdJwt(
-                    verifyJwsObject = VerifyJwsObjectTrusted(trustedKeys = { setOf(issuerKeyMaterial.publicKey.toJsonWebKey()) })
-                )
-            ).also {
+            val holderAgent = HolderAgent(holderKeyMaterial).also {
                 it.storeCredential(
                     issuerAgent.issueCredential(
                         DummyCredentialDataProvider.getCredential(
@@ -87,11 +78,9 @@ val OpenId4VpInteropTest by matrixSuite {
             object {
 
                 val sdAlgorithm = sdAlgorithm!!
-                val holderKeyMaterial = holderKeyMaterial
-                val holderAgent = holderAgent
                 val issuerKeyId = issuerKeyId
                 val issuerIdentifier = issuerIdentifier
-                var holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent, randomSource = RandomSource.Default)
+                var holderOid4vp = OpenId4VpHolder(holder = holderAgent, randomSource = RandomSource.Default)
 
                 val verifierKeyId = uuid4().toString()
                 val verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
@@ -102,19 +91,9 @@ val OpenId4VpInteropTest by matrixSuite {
                 val verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
                 val verifierOid4vp = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
-                    verifier = VerifierAgent(
-                        identifier = clientIdScheme.clientId,
-                        validatorSdJwt = ValidatorSdJwt(
-                            verifyJwsObject = VerifyJwsObjectTrusted(
-                                trustedKeys = {
-                                    setOf(
-                                        issuerKeyMaterial.publicKey.toJsonWebKey(),
-                                        holderKeyMaterial.publicKey.toJsonWebKey(),
-                                    )
-                                })
-                        )
-                    ),
                     clientIdScheme = clientIdScheme,
+                    // the issuer key has no certificate to put on a trust list
+                    presentationPolicy = testPresentationPolicy,
                 )
             }
         }
@@ -147,16 +126,11 @@ val OpenId4VpInteropTest by matrixSuite {
             requestUrlForWallet shouldContain it.verifierClientId.encodeURLParameter()
             requestUrlForWallet shouldStartWith "haip://"
 
-            it.holderOid4vp = OpenId4VpHolder(
-                keyMaterial = it.holderKeyMaterial,
-                holder = it.holderAgent,
-                remoteResourceRetriever = {
-                    if (it.url == requestUrl) requestObject.invoke(it.requestObjectParameters).getOrThrow() else null
-                },
-                randomSource = RandomSource.Default,
-            )
+            val endpoint = requestUriEndpoint(requestUrl) { parameters ->
+                requestObject.invoke(parameters).getOrThrow()
+            }
 
-            val state = it.holderOid4vp.startAuthorizationResponsePreparation(requestUrlForWallet).getOrThrow()
+            val state = it.holderOid4vp.prepareAuthorizationResponse(requestUrlForWallet, endpoint).getOrThrow()
             val parameters = state.request
                 .shouldBeInstanceOf<RequestParametersFrom.Jws<AuthenticationRequestParameters>>()
 
@@ -227,45 +201,11 @@ val OpenId4VpInteropTest by matrixSuite {
             response.params.entries.firstOrNull { it.key == "presentation_submission" }.shouldBeNull()
 
             it.verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.shouldBeSingleton().first()
                 .shouldBeSingleton().first().getOrThrow()
                 .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        }
-
-        "parse JAR sample from document" {
-            val input = """
-            eyJhbGciOiJFUzI1NiIsInR5cCI6IiBvYXV0aC1hdXRoei1yZXErand0ICJ9
-            .eyJpc3MiOiJodHRwczovL2Jkci5kZS9qd2siLCJhdWQiOiIgaHR0cHM6Ly9zZWxmLWlzc3VlZC5tZS92MiIsImNsaWVudF9pZCI6Imh0dHB
-            zOi8vYmRyLmRlIiwicHJlc2VudGF0aW9uX2RlZmluaXRpb24iOnsiaWQiOiIzMmY1NDE2My03MTY2LTQ4ZjEtOTNkOC1mZjIxN2JkYjA2NTU
-            iLCJpbnB1dF9kZXNjcmlwdG9ycyI6W3siaWQiOiIzMmY1NDE2My03MTY2LTQ4ZjEtOTNkOC1mZjIxN2JkYjA2NTYiLCJwdXJwb3NlIjoiUmV
-            xdWVzdCBwcmVzZW50YXRpb24gaG9sZGluZyBQb3dlciBvZiBSZXByZXNlbnRhdGlvbiBhdHRlc3RhdGlvbiIsImNvbnN0cmFpbnRzIjp7ImZ
-            pZWxkcyI6W3sicGF0aCI6WyIkLnZjdCJdLCJmaWx0ZXIiOnsidHlwZSI6InN0cmluZyIsInBhdHRlcm4iOiJ1cm46ZXUuZXVyb3BhLmVjLmV
-            1ZGk6cG9yOjEifX1dfX1dfSwibm9uY2UiOiJuLTBTNl9XekEyTWoiLCJzdGF0ZSI6ImFmMGlmanNsZGtqIiwicmVzcG9uc2VfdHlwZSI6InZ
-            wX3Rva2VuIiwiIHJlc3BvbnNlX21vZGUiOiJkaXJlY3RfcG9zdCIsInJlc3BvbnNlX3VyaSI6Imh0dHBzOi8vbndyLWJlLmRlL3Jlc3BvbnN
-            lIn0
-            .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
-        """.trimIndent()
-
-            val jar = JwsCompactTyped<AuthenticationRequestParameters>(input)
-
-            jar.jws.jwsHeader.algorithm shouldBe JwsAlgorithm.Signature.ES256
-            jar.jws.jwsHeader.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
-
-
-            jar.payload.issuer shouldBe "https://bdr.de/jwk"
-            jar.payload.audience shouldBe " https://self-issued.me/v2" // that's a typo in the document ...
-            jar.payload.clientId shouldBe "https://bdr.de"
-            jar.payload.nonce shouldBe "n-0S6_WzA2Mj"
-            jar.payload.state shouldBe "af0ifjsldkj"
-            jar.payload.responseUrl shouldBe "https://nwr-be.de/response"
-            val pres = jar.payload.presentationDefinition.shouldNotBeNull()
-            pres.id.shouldNotBeNull()
-            val inputdesc = pres.inputDescriptors.first()
-            inputdesc.purpose shouldBe "Request presentation holding Power of Representation attestation"
-            val field = inputdesc.constraints!!.fields!!.first { it.path == listOf("$.vct") }
-            field.filter!!.pattern shouldBe "urn:eu.europa.ec.eudi:por:1"
         }
 
         "parse SD-JWT from document" {

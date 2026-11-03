@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
@@ -18,6 +20,7 @@ import kotlin.jvm.JvmOverloads
 /**
  * An agent that only implements [Verifier], i.e. it can only verify credentials of other agents.
  */
+@Deprecated("Validate presentations with at.asitplus.wallet.lib.validation.CredentialValidator, in the context of NonceChallengeVerifier.ChallengeSession.context(). To be removed in the next major release.")
 class VerifierAgent @JvmOverloads constructor(
     /**
      * The identifier of this verifier. It is used as the default expected presentation audience when callers do not

@@ -48,7 +48,7 @@ val WrpacTest by matrixSuite {
                 registrationCertificate = emptyMap(),
             ),
             certificateTrustAnchors = fixture.trustAnchors
-        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("x509_hash binding failed")
+        ).exceptionOrNull().shouldNotBeNull().message.shouldContain("not the hash of the certificate")
     }
 
     "Provider certificate expired invalidates the chain" {

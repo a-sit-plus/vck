@@ -1,6 +1,5 @@
 package at.asitplus.iso
 
-import at.asitplus.etsi.relyingParty.WrpRegistrarInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
@@ -25,11 +24,14 @@ data class DocRequestInfo(
     val zkRequest: ZkRequest? = null,
     @SerialName("docResponseEncryption")
     val docResponseEncryption: EncryptionParameters? = null,
+    /**
+     * The CBOR-encoded registration certificate (WRPRC) of the relying party, which a request to an EUDI Wallet
+     * contains (ETSI TS 119 472-2 V1.2.1, ISO/IEC 18013-5-REQ-05 to -07, as adapted by CIR (EU) 2026/1731,
+     * Annex XII). The adaptation voids `euWrpRegistrarInfo` (REQ-08 to -11).
+     */
     @SerialName("euWrprc")
     @ByteString
     val euWrprc: ByteArray? = null,
-    @SerialName("euWrpRegistrarInfo")
-    val euWrpRegistrarInfo: WrpRegistrarInfo? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -52,7 +54,6 @@ data class DocRequestInfo(
         if (euWrprc != null && other.euWrprc != null) {
             if (!euWrprc.contentEquals(other.euWrprc)) return false
         } else if (euWrprc != other.euWrprc) return false
-        if (euWrpRegistrarInfo != other.euWrpRegistrarInfo) return false
 
         return true
     }
@@ -65,7 +66,6 @@ data class DocRequestInfo(
         result = 31 * result + (zkRequest?.hashCode() ?: 0)
         result = 31 * result + (docResponseEncryption?.hashCode() ?: 0)
         result = 31 * result + (euWrprc?.contentHashCode() ?: 0)
-        result = 31 * result + (euWrpRegistrarInfo?.hashCode() ?: 0)
         return result
     }
 }

@@ -34,6 +34,7 @@ fun interface TrustedCertificates {
  * Do not use this for holder signatures, i.e. key binding, proof of possession or a signed presentation,
  * those are self-asserted by design.
  */
+@Deprecated("Configure at.asitplus.wallet.lib.validation.CredentialValidator with trust anchors per credential type, see CredentialTrustAnchors. To be removed in the next major release.")
 fun issuerJwsVerifier(trustedIssuers: TrustedCertificates?): VerifyJwsObjectFun =
     trustedIssuers?.let { VerifyJwsObjectTrustedCertificate(trustedIssuers = it) } ?: VerifyJwsObject()
 
@@ -41,6 +42,7 @@ fun issuerJwsVerifier(trustedIssuers: TrustedCertificates?): VerifyJwsObjectFun 
  * How to verify the issuer's signature on a COSE-based credential, i.e. the `issuerAuth` of an mdoc:
  * Against [trustedIssuers] if there are any, otherwise against the certificate transported in the COSE headers.
  */
+@Deprecated("Configure at.asitplus.wallet.lib.validation.CredentialValidator with trust anchors per credential type, see CredentialTrustAnchors. To be removed in the next major release.")
 fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCoseSignatureFun<P> =
     trustedIssuers?.let { VerifyCoseSignatureTrustedCertificate<P>(trustedIssuers = it) } ?: VerifyCoseSignature()
 
@@ -50,13 +52,14 @@ fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCo
  * The signing certificate, and its issuer when applicable, must be valid at [at], see [isTrustedBy].
  *
  * The certificate of the trust anchor must be known out-of-band, so no certificate from [trustedIssuers] may
- * appear in this chain, and the signing certificate must not be self-signed. The anchor must also assert
+ * appear in this chain, except as its last certificate, which is then ignored, and the signing certificate must not
+ * be self-signed. The anchor must also assert
  * `BasicConstraints` with `cA` set, see [isTrustedBy] and
  * [at.asitplus.wallet.lib.etsi.isCertificateAuthority].
  *
- * Unless [allowDirectTrust] is disabled, one case is exempt from all of those rules: a chain consisting of
- * exactly one certificate that is itself contained in [trustedIssuers], regardless of whether it is self-signed
- * or CA-issued. This directly listed certificate verifies the signed object, not another certificate, so it
+ * Unless [allowDirectTrust] is disabled, one case is exempt from all of those rules: a signing certificate that is
+ * itself contained in [trustedIssuers], regardless of whether it is self-signed or CA-issued, and of the certificates
+ * transported with it. This directly listed certificate verifies the signed object, not another certificate, so it
  * need not be a CA.
  *
  * @return the signing certificate, for use in signature verification
@@ -67,12 +70,12 @@ fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCo
 suspend fun CertificateChain?.requireTrustedSigningCertificate(
     trustedIssuers: TrustedCertificates,
     at: Instant = Clock.System.now(),
-    /** Whether a chain of exactly one certificate contained in [trustedIssuers] counts as directly trusted. */
+    /** Whether a signing certificate contained in [trustedIssuers] counts as directly trusted. */
     allowDirectTrust: Boolean = true,
 ): X509Certificate {
-    val chain = this?.takeIf { it.isNotEmpty() }
+    val transported = this?.takeIf { it.isNotEmpty() }
         ?: throw IllegalArgumentException("No certificate transported with the signed object")
-    val signingCertificate = chain.leaf
+    val signingCertificate = transported.leaf
     val trusted = trustedIssuers()
     require(trusted.isNotEmpty()) { "No trusted issuer certificates" }
     require(signingCertificate.isValidAt(at)) { "Signing certificate is not valid at $at" }
@@ -82,10 +85,14 @@ suspend fun CertificateChain?.requireTrustedSigningCertificate(
     fun isListed(certificate: X509Certificate) = trusted.any {
         it.encodeToDer().contentEquals(certificate.encodeToDer())
     }
-    val isDirectlyTrusted = allowDirectTrust && chain.size == 1 && isListed(signingCertificate)
+    // A transported anchor confers no trust, as it is compared to the listed ones anyway, so tolerate it at the end
+    // of the chain, where signers transporting it put it
+    val chain = if (transported.size > 1 && isListed(transported.last())) transported.dropLast(1) else transported
+    // A listed signer is trusted itself, so the certificates transported with it, e.g. its issuer, confer nothing
+    val isDirectlyTrusted = allowDirectTrust && isListed(signingCertificate)
     if (!isDirectlyTrusted) {
         require(chain.none(::isListed)) {
-            "The certificate of the trust anchor must not be transported with the signed object"
+            "The certificate of the trust anchor must only be transported as the last one of the chain"
         }
         val isSelfSigned = signingCertificate.isIssuerOf(signingCertificate).isSuccess
         require(!isSelfSigned) { "The signing certificate must not be self-signed" }

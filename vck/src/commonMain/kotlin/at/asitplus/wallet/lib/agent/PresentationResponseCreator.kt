@@ -4,62 +4,42 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationSubmission
-import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.iso.DeviceRequest
-import at.asitplus.jsonpath.core.NodeList
+import at.asitplus.openid.QesApprovalRequest
+import at.asitplus.openid.TransactionDataBase64Url
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
+import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
 import at.asitplus.openid.dcql.DCQLIsoMdocZkCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.toTransactionData
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
-import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
-import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure
-import com.benasher44.uuid.uuid4
+
+private typealias QesApprovalSubmission = Pair<DCQLCredentialQueryIdentifier, Int>
 
 /** Resolves and validates holder submissions before creating their format-specific response artifacts. */
 internal class PresentationResponseCreator(
     private val verifiablePresentationFactory: VerifiablePresentationFactory,
 ) {
-    private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator
 
     suspend fun create(
         request: PresentationRequestParameters,
         credentialPresentation: CredentialPresentation,
         matchDCQLQuery: suspend (DCQLQuery) -> KmmResult<HolderDCQLQueryMatchingResult<StoreEntry>>,
         matchDeviceRequest: suspend (DeviceRequest) -> KmmResult<HolderIsoDeviceRetrievalQueryMatchingResult<StoreEntry>>,
-        matchPresentationExchange: suspend (PresentationExchangeRequest) -> KmmResult<HolderPresentationExchangeQueryMatchingResult<StoreEntry>>,
     ): KmmResult<PresentationResponseParameters> = catching {
         when (credentialPresentation) {
             is CredentialPresentation.DCQLPresentation ->
-                createDcql(
-                    request,
-                    credentialPresentation,
-                    matchDCQLQuery
-                )
-
-            is CredentialPresentation.PresentationExchangePresentation ->
-                createPresentationExchange(
-                    request,
-                    credentialPresentation,
-                    matchPresentationExchange
-                )
+                createDcqlResponse(request, credentialPresentation, matchDCQLQuery)
 
             is CredentialPresentation.IsoDeviceRetrievalPresentation ->
-                createDeviceResponse(
-                    request,
-                    credentialPresentation,
-                    matchDeviceRequest
-                )
+                createDeviceResponse(request, credentialPresentation, matchDeviceRequest)
         }
     }
 
-    private suspend fun createDcql(
+    private suspend fun createDcqlResponse(
         request: PresentationRequestParameters,
         presentation: CredentialPresentation.DCQLPresentation,
         matchDCQLQuery: suspend (DCQLQuery) -> KmmResult<HolderDCQLQueryMatchingResult<StoreEntry>>,
@@ -73,6 +53,7 @@ internal class PresentationResponseCreator(
             requestedCredentialSetQueries = dcqlQuery.requestedCredentialSetQueries,
         ).getOrThrow()
 
+        val approvals = selectQesApprovals(request.transactionData, dcqlQuery, credentialSubmissions)
         val presentations = credentialSubmissions.mapValues { (queryId, submissions) ->
             val query = dcqlQuery.credentials.first { it.id == queryId }
             if (!query.multiple && submissions.size != 1) {
@@ -80,7 +61,7 @@ internal class PresentationResponseCreator(
                     "Credential query ${query.id} does not allow multiple submission, but ${submissions.size} were provided."
                 )
             }
-            submissions.map {
+            submissions.mapIndexed { submissionIndex, it ->
                 val credential = it.credential
                 if (credential is StoreEntry.Vc && !query.requireCryptographicHolderBinding) {
                     if (it.matchingResult !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
@@ -89,7 +70,9 @@ internal class PresentationResponseCreator(
                     CreatePresentationResult.VcJws(credential.vcSerialized)
                 } else {
                     verifiablePresentationFactory.createVerifiablePresentation(
-                        request = request,
+                        request = request.copy(
+                            qesApprovalTransactionData = listOfNotNull(approvals[queryId to submissionIndex]),
+                        ),
                         credential = credential,
                         disclosedAttributes = it.matchingResult,
                         zkMetadata = when (query) {
@@ -102,6 +85,90 @@ internal class PresentationResponseCreator(
         }
 
         return PresentationResponseParameters.DCQLParameters(presentations)
+    }
+
+    /**
+     * OpenID4VP 1.0 section 5.1 requires one authorizing credential per transaction, even when credential_ids
+     * lists alternatives. Select one submitted credential in DCQL request order before any signatures are made.
+     * Prefer an unused submission, reassigning earlier approvals to another alternative when necessary, since
+     * each qesApproval field carries one digest. Preserve the original encoded data for the format-specific hash input.
+     */
+    private fun selectQesApprovals(
+        transactionData: List<TransactionDataBase64Url>?,
+        query: DCQLQuery,
+        submissions: Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<StoreEntry>>>,
+    ): Map<QesApprovalSubmission, TransactionDataBase64Url> {
+        val approvals = findQesApprovals(transactionData)
+        if (approvals.isEmpty()) return emptyMap()
+
+        val candidates = approvals.map { (_, approval) ->
+            findQesApprovalCandidates(approval, query, submissions)
+        }
+        val selected = assignQesApprovals(candidates)
+        return selected.mapValues { (_, approvalIndex) -> approvals[approvalIndex].first }
+    }
+
+    private fun findQesApprovals(
+        transactionData: List<TransactionDataBase64Url>?,
+    ): List<Pair<TransactionDataBase64Url, QesApprovalRequest>> = transactionData.orEmpty().mapNotNull { encoded ->
+        (encoded.toTransactionData() as? QesApprovalRequest)?.let { encoded to it }
+    }
+
+    private fun findQesApprovalCandidates(
+        approval: QesApprovalRequest,
+        query: DCQLQuery,
+        submissions: Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<StoreEntry>>>,
+    ): List<QesApprovalSubmission> {
+        val queryIds = query.credentials.map { it.id.string }.toSet()
+        if (approval.credentialIds.isEmpty()) {
+            throw PresentationException("QES approval credential_ids must be present and non-empty for DCQL")
+        }
+        if (!queryIds.containsAll(approval.credentialIds)) {
+            throw PresentationException("QES approval credential_ids references an unknown DCQL query")
+        }
+
+        return query.credentials.filter { it.id.string in approval.credentialIds }
+            .flatMap { credentialQuery ->
+                submissions[credentialQuery.id].orEmpty().mapIndexedNotNull { index, submission ->
+                    when (submission.credential) {
+                        is StoreEntry.SdJwt, is StoreEntry.Iso -> credentialQuery.id to index
+                        else -> null
+                    }
+                }
+            }.also {
+                if (it.isEmpty()) {
+                    throw PresentationException("No selected credential can authorize the QES approval")
+                }
+            }
+    }
+
+    private fun assignQesApprovals(
+        candidates: List<List<QesApprovalSubmission>>,
+    ): Map<QesApprovalSubmission, Int> {
+        val selected = mutableMapOf<QesApprovalSubmission, Int>()
+        candidates.indices.forEach { index ->
+            if (!tryAssignQesApproval(index, candidates, selected, mutableSetOf())) {
+                throw PresentationException("Only one qesApprovalRequest may be presented per credential submission")
+            }
+        }
+        return selected
+    }
+
+    private fun tryAssignQesApproval(
+        approvalIndex: Int,
+        candidates: List<List<QesApprovalSubmission>>,
+        selected: MutableMap<QesApprovalSubmission, Int>,
+        visited: MutableSet<QesApprovalSubmission>,
+    ): Boolean {
+        for (target in candidates[approvalIndex].sortedBy { it in selected }) {
+            if (!visited.add(target)) continue
+            val previous = selected[target]
+            if (previous == null || tryAssignQesApproval(previous, candidates, selected, visited)) {
+                selected[target] = approvalIndex
+                return true
+            }
+        }
+        return false
     }
 
     private suspend fun createDeviceResponse(
@@ -120,122 +187,4 @@ internal class PresentationResponseCreator(
         return PresentationResponseParameters.DeviceRetrievalParameters(result.deviceResponse)
     }
 
-    @Suppress("DEPRECATION")
-    private suspend fun createPresentationExchange(
-        request: PresentationRequestParameters,
-        presentation: CredentialPresentation.PresentationExchangePresentation,
-        matchPresentationExchange: suspend (PresentationExchangeRequest) -> KmmResult<HolderPresentationExchangeQueryMatchingResult<StoreEntry>>,
-    ): PresentationResponseParameters.PresentationExchangeParameters {
-        val presentationRequest = presentation.presentationRequest
-        val presentationDefinition = presentationRequest.presentationDefinition
-        val selection = presentation.inputDescriptorSubmissions
-            ?: matchPresentationExchange(presentation.presentationRequest).getOrThrow().toDefaultSubmission()
-
-        presentationRequest.validateSubmission(selection)
-            .onFailure { throw PresentationException(it) }
-        val submissions = selection.mapValues {
-            PresentationExchangeCredentialDisclosure(
-                credential = it.value.credential,
-                disclosedAttributes = it.value.disclosedAttributes,
-            )
-        }.toList()
-
-        return if (request.returnOneDeviceResponse) {
-            PresentationResponseParameters.PresentationExchangeParameters(
-                presentationSubmission = PresentationSubmission.fromMatches(
-                    presentationId = presentationDefinition.id,
-                    matches = submissions,
-                    isSingleIsoMdocPresentation = true,
-                ),
-                presentationResults = listOf(
-                    verifiablePresentationFactory.createVerifiablePresentation(
-                        request = request,
-                        isoPresentationParameters = submissions.map {
-                            IsoPresentationParameters.create(
-                                credential = it.second.credential as StoreEntry.Iso,
-                                claims = it.second.disclosedAttributes
-                            ).getOrThrow()
-                        },
-                    ).getOrThrow()
-                ),
-            )
-        } else {
-            PresentationResponseParameters.PresentationExchangeParameters(
-                presentationSubmission = PresentationSubmission.fromMatches(
-                    presentationId = presentationDefinition.id,
-                    matches = submissions,
-                ),
-                presentationResults = submissions.map { match ->
-                    verifiablePresentationFactory.createVerifiablePresentation(
-                        request = request,
-                        credential = match.second.credential,
-                        disclosedAttributes = match.second.disclosedAttributes,
-                    ).getOrThrow()
-                },
-            )
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun PresentationExchangeRequest.validateSubmission(
-        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure<StoreEntry>>,
-    ) = catching {
-        val validator = PresentationSubmissionValidator.createInstance(presentationDefinition).getOrThrow()
-        require(validator.isValidSubmission(credentialSubmissions.keys)) { "Submission requirements are not satisfied" }
-
-        credentialSubmissions.forEach { submission ->
-            val inputDescriptor = presentationDefinition.inputDescriptors
-                .firstOrNull { it.id == submission.key }
-                ?: throw IllegalArgumentException("Invalid input descriptor id: ${submission.key}")
-            val credential = submission.value.credential
-            val constraintFieldMatches = difInputEvaluator.evaluateInputDescriptorAgainstCredential(
-                inputDescriptor = inputDescriptor,
-                fallbackFormatHolder = fallbackFormatHolder,
-                credentialClaimStructure = CredentialToJsonConverter.toJsonElement(credential),
-                credentialFormat = credential.credentialFormat,
-                credentialScheme = credential.schemeIdentifier,
-                pathAuthorizationValidator = { true },
-            ).getOrThrow()
-            val disclosedAttributes = submission.value.disclosedAttributes.map { it.toString() }
-
-            constraintFieldMatches.filter { it.key.optional != true }.forEach { constraintField ->
-                val allowedPaths = constraintField.value.map { it.normalizedJsonPath.toString() }
-                disclosedAttributes.firstOrNull { allowedPaths.contains(it) }
-                    ?: throw IllegalArgumentException(inputDescriptor.errorMessage(constraintField))
-            }
-        }
-    }
-
-    private fun PresentationSubmission.Companion.fromMatches(
-        presentationId: String?,
-        matches: List<Pair<String, PresentationExchangeCredentialDisclosure<StoreEntry>>>,
-        isSingleIsoMdocPresentation: Boolean = false,
-    ) = PresentationSubmission(
-        id = uuid4().toString(),
-        definitionId = presentationId,
-        descriptorMap = matches.mapIndexed { index, match ->
-            PresentationSubmissionDescriptor.fromMatch(
-                inputDescriptorId = match.first,
-                credential = match.second.credential,
-                index = if (matches.size == 1 || isSingleIsoMdocPresentation) null else index,
-            )
-        },
-    )
-
-    private fun PresentationSubmissionDescriptor.Companion.fromMatch(
-        credential: StoreEntry,
-        inputDescriptorId: String,
-        index: Int?,
-    ) = PresentationSubmissionDescriptor(
-        id = inputDescriptorId,
-        format = credential.claimFormat,
-        // OpenID4VP 1.0 section 6.1: use the root for one VP and an indexed path for several VPs.
-        path = index?.let { "\$[$it]" } ?: "\$",
-    )
-
-    private fun InputDescriptor.errorMessage(field: Map.Entry<ConstraintField, NodeList>): String =
-        "Input descriptor constraints are not satisfied: ${details(field)}"
-
-    private fun InputDescriptor.details(field: Map.Entry<ConstraintField, NodeList>): String =
-        "${id}.${field.key.id?.let { " Missing field: $it" }}"
 }

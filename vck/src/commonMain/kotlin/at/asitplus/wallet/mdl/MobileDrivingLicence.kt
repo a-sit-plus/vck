@@ -1,8 +1,10 @@
 package at.asitplus.wallet.mdl
 
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
+import at.asitplus.wallet.lib.data.toUIntFromJava
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlin.jvm.JvmOverloads
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -213,6 +215,121 @@ data class MobileDrivingLicence(
     @Serializable(with = ByteArrayBase64UrlSerializer::class)
     val biometricTemplateIris: ByteArray? = null,
 ) {
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [UInt].
+     */
+    @JvmOverloads
+    internal constructor(
+        familyName: String,
+        givenName: String,
+        dateOfBirth: LocalDate? = null,
+        issueDate: LocalDate,
+        expiryDate: LocalDate,
+        issuingCountry: String? = null,
+        issuingAuthority: String? = null,
+        licenceNumber: String,
+        portrait: ByteArray,
+        drivingPrivileges: Array<DrivingPrivilege>,
+        unDistinguishingSign: String? = null,
+        administrativeNumber: String? = null,
+        sex: IsoSexEnum? = null,
+        height: Long? = null,
+        weight: Long? = null,
+        eyeColor: String? = null,
+        hairColor: String? = null,
+        placeOfBirth: String? = null,
+        placeOfResidence: String? = null,
+        portraitImageTimestamp: LocalDate? = null,
+        ageInYears: Long? = null,
+        ageBirthYear: Long? = null,
+        ageOver12: Boolean? = null,
+        ageOver13: Boolean? = null,
+        ageOver14: Boolean? = null,
+        ageOver16: Boolean? = null,
+        ageOver18: Boolean? = null,
+        ageOver21: Boolean? = null,
+        ageOver25: Boolean? = null,
+        ageOver60: Boolean? = null,
+        ageOver62: Boolean? = null,
+        ageOver65: Boolean? = null,
+        ageOver68: Boolean? = null,
+        issuingJurisdiction: String? = null,
+        nationality: String? = null,
+        residentCity: String? = null,
+        residentState: String? = null,
+        residentPostalCode: String? = null,
+        residentCountry: String? = null,
+        familyNameNationalCharacters: String? = null,
+        givenNameNationalCharacters: String? = null,
+        signatureOrUsualMark: ByteArray? = null,
+        biometricTemplateFace: ByteArray? = null,
+        biometricTemplateFinger: ByteArray? = null,
+        biometricTemplateSignatureSign: ByteArray? = null,
+        biometricTemplateIris: ByteArray? = null,
+    ) : this(
+        familyName = familyName,
+        givenName = givenName,
+        dateOfBirth = dateOfBirth,
+        issueDate = issueDate,
+        expiryDate = expiryDate,
+        issuingCountry = issuingCountry,
+        issuingAuthority = issuingAuthority,
+        licenceNumber = licenceNumber,
+        portrait = portrait,
+        drivingPrivileges = drivingPrivileges,
+        unDistinguishingSign = unDistinguishingSign,
+        administrativeNumber = administrativeNumber,
+        sex = sex,
+        height = height?.toUIntFromJava("height"),
+        weight = weight?.toUIntFromJava("weight"),
+        eyeColor = eyeColor,
+        hairColor = hairColor,
+        placeOfBirth = placeOfBirth,
+        placeOfResidence = placeOfResidence,
+        portraitImageTimestamp = portraitImageTimestamp,
+        ageInYears = ageInYears?.toUIntFromJava("ageInYears"),
+        ageBirthYear = ageBirthYear?.toUIntFromJava("ageBirthYear"),
+        ageOver12 = ageOver12,
+        ageOver13 = ageOver13,
+        ageOver14 = ageOver14,
+        ageOver16 = ageOver16,
+        ageOver18 = ageOver18,
+        ageOver21 = ageOver21,
+        ageOver25 = ageOver25,
+        ageOver60 = ageOver60,
+        ageOver62 = ageOver62,
+        ageOver65 = ageOver65,
+        ageOver68 = ageOver68,
+        issuingJurisdiction = issuingJurisdiction,
+        nationality = nationality,
+        residentCity = residentCity,
+        residentState = residentState,
+        residentPostalCode = residentPostalCode,
+        residentCountry = residentCountry,
+        familyNameNationalCharacters = familyNameNationalCharacters,
+        givenNameNationalCharacters = givenNameNationalCharacters,
+        signatureOrUsualMark = signatureOrUsualMark,
+        biometricTemplateFace = biometricTemplateFace,
+        biometricTemplateFinger = biometricTemplateFinger,
+        biometricTemplateSignatureSign = biometricTemplateSignatureSign,
+        biometricTemplateIris = biometricTemplateIris,
+    )
+
+    /** Java-safe accessor for [height]. */
+    val heightAsLong: Long?
+        get() = height?.toLong()
+
+    /** Java-safe accessor for [weight]. */
+    val weightAsLong: Long?
+        get() = weight?.toLong()
+
+    /** Java-safe accessor for [ageInYears]. */
+    val ageInYearsAsLong: Long?
+        get() = ageInYears?.toLong()
+
+    /** Java-safe accessor for [ageBirthYear]. */
+    val ageBirthYearAsLong: Long?
+        get() = ageBirthYear?.toLong()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

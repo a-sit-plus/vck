@@ -99,7 +99,7 @@ val DeserializationTest by matrixSuite {
         """.trimIndent()
 
         joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
-            supportedCredentialConfigurations.shouldNotBeNull().apply {
+            supportedCredentialConfigurations.apply {
                 shouldNotBeEmpty()
                 get("UniversityDegreeCredential").shouldNotBeNull().apply {
                     format shouldBe CredentialFormatEnum.JWT_VC
@@ -206,7 +206,7 @@ val DeserializationTest by matrixSuite {
         """.trimIndent()
 
         joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
-            supportedCredentialConfigurations.shouldNotBeNull().apply {
+            supportedCredentialConfigurations.apply {
                 shouldNotBeEmpty()
                 get(MDL_DOCTYPE).shouldBeInstanceOf<SupportedCredentialFormatIsoMdoc>().apply {
                     format shouldBe CredentialFormatEnum.MSO_MDOC
@@ -340,7 +340,7 @@ val DeserializationTest by matrixSuite {
         """.trimIndent()
 
         joseCompliantSerializer.decodeFromString<IssuerMetadata>(input).apply {
-            supportedCredentialConfigurations.shouldNotBeNull().apply {
+            supportedCredentialConfigurations.apply {
                 shouldNotBeEmpty()
                 get("SD_JWT_VC_example_in_OpenID4VCI").shouldBeInstanceOf<SupportedCredentialFormatSdJwt>().apply {
                     format shouldBe CredentialFormatEnum.DC_SD_JWT

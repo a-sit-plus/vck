@@ -4,14 +4,13 @@ import at.asitplus.data.NonEmptyList
 import at.asitplus.data.validation.third_party.kotlin.collections.requireIsNotNullOrEmpty
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
-import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
-import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.wallet.lib.RequestOptions
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest.*
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.IsoDeviceRetrieval
 import com.benasher44.uuid.uuid4
 
 enum class VerifierMetadataMode {
@@ -105,9 +104,6 @@ data class OpenId4VpRequestOptions(
                 is DCQLRequest -> presentationRequest.dcqlQuery
                     .credentials.map { it.id.string }
 
-                is PresentationExchangeRequest -> presentationRequest.presentationDefinition
-                    .inputDescriptors.map { it.id }
-
                 is IsoDeviceRetrieval -> setOf() // Transaction Data not supported for Device Retrieval
                 null -> setOf()
             }.toSet()
@@ -144,10 +140,4 @@ data class OpenId4VpRequestOptions(
     val isAnyDcApi: Boolean
         get() = responseMode == ResponseMode.DcApi || responseMode == ResponseMode.DcApiJwt
 
-    @Deprecated("Support for SIOPv2 has been removed")
-    val isSiop: Boolean
-        get() = responseType.contains(OpenIdConstants.ID_TOKEN)
-
-    @Deprecated("Support for SIOPv2 has been removed")
-    fun buildScope(): String = listOf(SCOPE_OPENID, SCOPE_PROFILE).joinToString(" ")
 }

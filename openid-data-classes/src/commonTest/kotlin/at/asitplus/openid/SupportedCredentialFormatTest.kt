@@ -1,10 +1,19 @@
 package at.asitplus.openid
 
 import at.asitplus.testballoon.matrix.matrixSuite
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
 
 val SupportedCredentialFormatTest by matrixSuite {
+    test("X.509 presentation format does not enable credential issuance") {
+        shouldThrowAny {
+            Json.decodeFromString<SupportedCredentialFormat>(
+                """{"format":"https://cloudsignatureconsortium.org/2025/x509"}""",
+            )
+        }
+    }
+
     testSuite("mdoc format deserialization") {
         data(
             listOf("""{"doctype": "eu.pid.1", "format": "mso_mdoc"}"""),

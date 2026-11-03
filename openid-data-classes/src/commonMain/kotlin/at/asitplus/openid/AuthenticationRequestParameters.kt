@@ -1,10 +1,9 @@
 package at.asitplus.openid
 
-import at.asitplus.csc.Hashes
-import at.asitplus.csc.enums.SignatureQualifier
-import at.asitplus.csc.serializers.HashesSerializer
+import at.asitplus.csc.api.Hashes
+import at.asitplus.csc.api.serializers.HashesSerializer
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.data.NonEmptyList
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -120,22 +119,6 @@ data class AuthenticationRequestParameters(
     @SerialName("client_metadata")
     val clientMetadata: RelyingPartyMetadata? = null,
 
-    @Deprecated("Support for SIOPv2 has been removed")
-    val idTokenHint: String? = null,
-
-    @Deprecated("Support for SIOPv2 has been removed")
-    @SerialName("id_token_type")
-    val idTokenType: String? = null,
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    @SerialName("presentation_definition")
-    val presentationDefinition: PresentationDefinition? = null,
-
-    @Deprecated("Support for Presentation Exchange been removed from OpenID4VP")
-    @SerialName("presentation_definition_uri")
-    val presentationDefinitionUrl: String? = null,
-
     /**
      * OID4VP 1.0: A JSON object containing a DCQL query as defined in
      * [Section 6](https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#dcql_query).
@@ -155,10 +138,6 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,
-
-    @Deprecated("Support for SIOPv2 has been removed")
-    @SerialName("wallet_issuer")
-    val walletIssuer: String? = null,
 
     /**
      * OID4VP: OPTIONAL. String containing an opaque End-User hint that the Wallet MAY use in subsequent callbacks to
@@ -326,6 +305,9 @@ data class AuthenticationRequestParameters(
      * contains a typed parameter set with details about the transaction that the Verifier is requesting
      * the End-User to authorize. The Wallet MUST return an error if a request contains even one unrecognized
      * transaction data type or transaction data not conforming to the respective type definition.
+     *
+     * In the response the hash is taken over the string itself and so it should not be
+     * Base64URL decoded before. For type-safe usage see [transactionDataDecoded]
      */
     @SerialName("transaction_data")
     val transactionData: List<TransactionDataBase64Url>? = null,
@@ -357,6 +339,8 @@ data class AuthenticationRequestParameters(
             ResponseType(it) // syntax validation
         }
     }
+
+    val transactionDataDecoded by lazy { transactionData?.map { it.toTransactionData() } }
 
     /**
      * Reads the [OpenIdConstants.ClientIdScheme] by extracting the prefix from [clientId]
@@ -403,13 +387,8 @@ data class AuthenticationRequestParameters(
         if (walletNonce != other.walletNonce) return false
         if (claims != other.claims) return false
         if (clientMetadata != other.clientMetadata) return false
-        if (idTokenHint != other.idTokenHint) return false
-        if (idTokenType != other.idTokenType) return false
-        if (presentationDefinition != other.presentationDefinition) return false
-        if (presentationDefinitionUrl != other.presentationDefinitionUrl) return false
         if (dcqlQuery != other.dcqlQuery) return false
         if (authorizationDetails != other.authorizationDetails) return false
-        if (walletIssuer != other.walletIssuer) return false
         if (userHint != other.userHint) return false
         if (issuerState != other.issuerState) return false
         if (responseMode != other.responseMode) return false
@@ -447,13 +426,8 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (walletNonce?.hashCode() ?: 0)
         result = 31 * result + (claims?.hashCode() ?: 0)
         result = 31 * result + (clientMetadata?.hashCode() ?: 0)
-        result = 31 * result + (idTokenHint?.hashCode() ?: 0)
-        result = 31 * result + (idTokenType?.hashCode() ?: 0)
-        result = 31 * result + (presentationDefinition?.hashCode() ?: 0)
-        result = 31 * result + (presentationDefinitionUrl?.hashCode() ?: 0)
         result = 31 * result + (dcqlQuery?.hashCode() ?: 0)
         result = 31 * result + (authorizationDetails?.hashCode() ?: 0)
-        result = 31 * result + (walletIssuer?.hashCode() ?: 0)
         result = 31 * result + (userHint?.hashCode() ?: 0)
         result = 31 * result + (issuerState?.hashCode() ?: 0)
         result = 31 * result + (responseMode?.hashCode() ?: 0)

@@ -17,8 +17,6 @@ data class IsoDocumentParsed @JvmOverloads constructor(
     val mso: MobileSecurityObject,
     /** All items that have been parsed correctly, i.e. have a matching digest. */
     val validItems: List<IssuerSignedItem> = listOf(),
-    @Deprecated("List is always empty, when validation fails, `ValidatorMdoc` will throw instead")
-    val invalidItems: List<IssuerSignedItem> = listOf(),
     val freshnessSummary: CredentialFreshnessSummary.Mdoc,
     /** Errors returned from the Wallet: May be items the user did not consent to disclose or doesn't possess. */
     val documentErrors: Map<String, Map<String, Int>> = emptyMap(),

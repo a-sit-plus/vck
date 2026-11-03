@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.csc.Hashes
-import at.asitplus.csc.contentEquals
-import at.asitplus.csc.contentHashCode
-import at.asitplus.csc.enums.SignatureQualifier
-import at.asitplus.csc.serializers.HashesSerializer
+import at.asitplus.csc.api.Hashes
+import at.asitplus.csc.api.contentEquals
+import at.asitplus.csc.api.contentHashCode
+import at.asitplus.csc.api.serializers.HashesSerializer
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken

@@ -1,19 +1,29 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.csc.bindings.QesApprovalBinding
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.QesApprovalTestData.approvalJson
+import at.asitplus.wallet.lib.agent.QesApprovalTestData.encodeTransactionData
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
@@ -63,6 +73,7 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
             ).getOrThrow()
 
             object {
+                val holder = holder
                 val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
                 val sdJwtCredential = sdJwtCredential
             }
@@ -114,6 +125,72 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
                         containsKey("birthplace") shouldBe false
                     }
                 }
+            }
+        }
+        /**
+         * CSC Data Model Bindings 1.0.0 section 7.2.1.2 hashes the original base64url transaction_data text;
+         * ETSI TS 119 432 V1.3.1 B.6.3 instead hashes the decoded UTF-8 JSON bytes.
+         * These tests verify the CSC input without JSON reserialization, using the request's hashAlgorithmOID.
+         */
+        "QES SD-JWT approval digest" - { fixture ->
+            "direct SD-JWT approval creation permits omitted protocol-specific credential_ids" {
+                val encoded = encodeTransactionData(approvalJson(Digest.SHA256.oid.toString(), credentialIds = null))
+                val result = fixture.verifiablePresentationFactory.createVerifiablePresentation(
+                    request = PresentationRequestParameters(
+                        nonce = uuid4().toString(), audience = "https://verifier.example.org",
+                        transactionData = listOf(JsonPrimitive(encoded)),
+                    ),
+                    credential = fixture.sdJwtCredential,
+                    disclosedAttributes = emptyList(),
+                ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+                result.sdJwt.keyBindingJws.shouldNotBeNull().payload.qesApproval.shouldNotBeNull()
+                    .contentEquals(Digest.SHA256.digest(encoded.encodeToByteArray())) shouldBe true
+            }
+
+            listOf(Digest.SHA256, Digest.SHA384, Digest.SHA512).asData(
+                nameFn = { digest -> "SD-JWT uses requested $digest over original base64url text" },
+            ) test { digest ->
+                val encodedTransactionData = encodeTransactionData(approvalJson(digest.oid.toString()))
+                val request = PresentationRequestParameters(
+                    nonce = uuid4().toString(),
+                    audience = "https://verifier.example.org",
+                    transactionData = listOf(JsonPrimitive(encodedTransactionData)),
+                )
+
+                val result = fixture.verifiablePresentationFactory.createVerifiablePresentation(
+                    request = request,
+                    credential = fixture.sdJwtCredential,
+                    disclosedAttributes = emptyList(),
+                ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+                val expectedDigest = digest.digest(encodedTransactionData.encodeToByteArray())
+                val keyBinding = result.sdJwt.keyBindingJws.shouldNotBeNull()
+                keyBinding.payload.qesApproval.shouldNotBeNull().contentEquals(expectedDigest) shouldBe true
+
+                val payloadJson = keyBinding.toString().split('.')[1]
+                    .decodeToByteArray(Base64UrlStrict).decodeToString()
+                val encodedApproval = Json.parseToJsonElement(payloadJson).jsonObject
+                    .getValue(QesApprovalBinding.SD_JWT_CLAIM).jsonPrimitive.content
+                Json.decodeFromString(ByteArrayBase64Serializer, "\"$encodedApproval\"")
+                    .contentEquals(expectedDigest) shouldBe true
+            }
+
+            "SD-JWT rejects an unsupported approval hash algorithm" {
+                val unsupportedOid = "1.2.3.4"
+                val encodedTransactionData = encodeTransactionData(approvalJson(unsupportedOid))
+                val request = PresentationRequestParameters(
+                    nonce = uuid4().toString(),
+                    audience = "https://verifier.example.org",
+                    transactionData = listOf(JsonPrimitive(encodedTransactionData)),
+                )
+
+                shouldThrow<PresentationException> {
+                    fixture.verifiablePresentationFactory.createVerifiablePresentation(
+                        request = request,
+                        credential = fixture.sdJwtCredential,
+                        disclosedAttributes = emptyList(),
+                    ).getOrThrow()
+                }.message shouldBe "Unsupported qesApproval hash algorithm $unsupportedOid"
             }
         }
     }

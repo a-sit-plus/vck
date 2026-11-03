@@ -8,8 +8,8 @@ import kotlin.jvm.JvmInline
 
 /**
  * Relevant references:
- * OID4VP draft 23: A non-empty array of Credential Queries as defined in Section 6.1 that
- * specify the requested Verifiable Credentials.
+ * OID4VP 1.0, 6: credentials: REQUIRED. A non-empty array of Credential Queries as defined in Section 6.1
+ * that specify the requested Credentials.
  *
  * - DCQLCredentialQuery: Within the Authorization Request, the same id MUST NOT be present
  *  more than once.

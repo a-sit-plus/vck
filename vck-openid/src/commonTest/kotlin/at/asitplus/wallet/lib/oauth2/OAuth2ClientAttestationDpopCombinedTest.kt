@@ -6,6 +6,7 @@ import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH_DPO
 import at.asitplus.openid.OpenIdConstants.ClientAttestationPopMethod
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
+import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
@@ -20,7 +21,6 @@ import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationJwt
 import at.asitplus.wallet.lib.oidvci.BuildClientAttestationPoPJwt
 import at.asitplus.wallet.lib.oidvci.BuildDPoPHeader
@@ -28,6 +28,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyUserProvider.user
+import at.asitplus.wallet.lib.validation.ClientAttestationValidator
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
@@ -37,6 +38,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /** RFC 8414 issuer identifier of the AS under test. */
 private const val AUTHORIZATION_SERVER = "https://wallet.a-sit.at/authorization-server"
@@ -61,6 +66,7 @@ val OAuth2ClientAttestationDpopCombinedTest by matrixSuite {
                 attesterBackend,
                 clientId = client.clientId,
                 clientKey = clientKey.jsonWebKey,
+                clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
             )
 
             /**
@@ -75,8 +81,8 @@ val OAuth2ClientAttestationDpopCombinedTest by matrixSuite {
                     tokenService = TokenService.jwt(dpopNonceService = proofNonceService),
                     clientAuthenticationService = AttestationBasedClientAuthenticationService(
                         issuerIdentifier = AUTHORIZATION_SERVER,
-                        verifyJwsObject = VerifyJwsObjectTrustedCertificate(
-                            trustedIssuers = { setOf(walletProviderCaCert) }
+                        clientAttestationValidator = ClientAttestationValidator(
+                            walletProviderAnchors = { setOf(walletProviderCaCert) },
                         ),
                         nonceService = proofNonceService,
                         acceptedPopMethods = popMethods.toSet(),
@@ -275,6 +281,7 @@ val OAuth2ClientAttestationDpopCombinedTest by matrixSuite {
                 it.attesterBackend,
                 clientId = it.client.clientId,
                 clientKey = EphemeralKeyWithoutCert().jsonWebKey,
+                clientStatus = ClientStatus(buildJsonObject {  }, Clock.System.now().plus(5.minutes)),
             )
             val dpop = BuildDPoPHeader(
                 signDpop = SignJwt(it.clientKey, JwsHeaderJwk()),

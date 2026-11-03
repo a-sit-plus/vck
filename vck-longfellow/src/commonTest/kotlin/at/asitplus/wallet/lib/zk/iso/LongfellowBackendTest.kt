@@ -208,7 +208,7 @@ val LongfellowBackendTest by matrixSuite {
         test("creates a ZK DeviceResponse for one requested attribute") {
             it.backendRegistry.register(LongfellowBackend()).getOrThrow()
 
-            val sessionTranscript = SessionTranscript.forQr(
+            val sessionTranscript = SessionTranscript.Qr(
                 deviceEngagementBytes = byteArrayOf(),
                 eReaderKeyBytes = byteArrayOf(),
             )
@@ -236,7 +236,7 @@ val LongfellowBackendTest by matrixSuite {
         test("creates a ZK DeviceResponse from a DeviceRequest") {
             it.backendRegistry.register(LongfellowBackend()).getOrThrow()
 
-            val sessionTranscript = SessionTranscript.forQr(
+            val sessionTranscript = SessionTranscript.Qr(
                 deviceEngagementBytes = byteArrayOf(),
                 eReaderKeyBytes = byteArrayOf(),
             )

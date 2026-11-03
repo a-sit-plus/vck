@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.dcapi.DCAPIHandover
 import at.asitplus.dcapi.NFCHandover
+import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.OpenId4VpHandover
 import at.asitplus.iso.OpenId4VpHandoverInfo
 import at.asitplus.iso.SessionTranscript
@@ -9,12 +11,15 @@ import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
+import io.kotest.assertions.throwables.shouldThrowAny
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
+import kotlin.random.Random
 
 val SessionTranscriptTest by matrixSuite {
 
@@ -187,16 +192,14 @@ val SessionTranscriptTest by matrixSuite {
                                                          #               889181bdcca222bc2079eefcc1317fe5 #     "\x88\x91\x81\xbd\xcc\xa2\"\xbc y\xee\xfc\xc11\x7f\xe5"
         """.decodeFromAnnotatedCbor()
 
-        val sessionTranscript = SessionTranscript.forNfc(
+        val sessionTranscript = SessionTranscript.Nfc(
             deviceEngagementBytes = encodedDeviceEngagement,
             eReaderKeyBytes = coseCompliantSerializer.encodeToByteArray(eReaderCoseKey),
-            nfcHandover = nfcHandover
-        ).apply {
-            openId4VpHandover shouldBe null
-            nfcHandover shouldNotBe null
-        }
+            handover = nfcHandover
+        )
 
         coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+        expectedEncodedSessionTranscript.shouldRoundTripTo(sessionTranscript)
     }
 
     "Local presentation with QR Handover" {
@@ -313,14 +316,12 @@ val SessionTranscriptTest by matrixSuite {
                                                          #               889181bdcca222bc2079eefcc1317fe5 #     "\x88\x91\x81\xbd\xcc\xa2\"\xbc y\xee\xfc\xc11\x7f\xe5"
         """.decodeFromAnnotatedCbor()
 
-        val sessionTranscript = SessionTranscript.forQr(
+        val sessionTranscript = SessionTranscript.Qr(
             deviceEngagementBytes = encodedDeviceEngagement,
             eReaderKeyBytes = coseCompliantSerializer.encodeToByteArray(eReaderCoseKey)
-        ).apply {
-            openId4VpHandover shouldBe null
-            nfcHandover shouldBe null
-        }
+        )
         coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+        expectedEncodedSessionTranscript.shouldRoundTripTo(sessionTranscript)
     }
 
     "OpenID4VP 1.0" {
@@ -339,7 +340,7 @@ val SessionTranscriptTest by matrixSuite {
 
         """.decodeFromAnnotatedCbor()
 
-        val sessionTranscript = SessionTranscript.forOpenId(
+        val sessionTranscript = SessionTranscript.OpenId4Vp(
             OpenId4VpHandover(
                 type = OpenId4VpHandover.TYPE_OPENID4VP,
                 hash = coseCompliantSerializer.encodeToByteArray(
@@ -352,13 +353,186 @@ val SessionTranscriptTest by matrixSuite {
                     )
                 ).sha256(),
             ),
-        ).apply {
-            openId4VpHandover shouldNotBe null
-            nfcHandover shouldBe null
-        }
+        )
         coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+        expectedEncodedSessionTranscript.shouldRoundTripTo(sessionTranscript)
+    }
+
+    "DC API" - {
+        listOf(DCAPIHandover.TYPE_DCAPI, DCAPIHandover.TYPE_OPENID4VP).forEach { type -> type {
+            val hash = Random.nextBytes(32)
+            val expectedEncodedSessionTranscript = cborArray(
+                byteArrayOf(0xf6.toByte()), // null
+                byteArrayOf(0xf6.toByte()), // null
+                cborArray(cborText(type), cborBytes(hash)),
+            )
+            val sessionTranscript = SessionTranscript.DcApi(DCAPIHandover(type, hash))
+
+            coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+            expectedEncodedSessionTranscript.shouldRoundTripTo(sessionTranscript)
+        } }
+    }
+
+    "NFC Handover without Handover Request" {
+        val handoverSelect = Random.nextBytes(40)
+        val sessionTranscript = SessionTranscript.Nfc(
+            deviceEngagementBytes = Random.nextBytes(30),
+            eReaderKeyBytes = Random.nextBytes(77),
+            handover = NFCHandover(handoverSelect = handoverSelect, handoverRequest = null),
+        )
+        val expectedEncodedSessionTranscript = cborArray(
+            cborEncodedData(sessionTranscript.deviceEngagementBytes),
+            cborEncodedData(sessionTranscript.eReaderKeyBytes),
+            cborArray(cborBytes(handoverSelect), byteArrayOf(0xf6.toByte())),
+        )
+
+        coseCompliantSerializer.encodeToByteArray(sessionTranscript) shouldBe expectedEncodedSessionTranscript
+        expectedEncodedSessionTranscript.shouldRoundTripTo(sessionTranscript)
+    }
+
+    "NFC transcript in DeviceAuthenticationBytes of ISO 18013-5 D.5.3" {
+        val deviceAuthenticationBytes = iso18013AnnexDDeviceAuthenticationBytes.decodeToByteArray(Base16)
+        val deviceAuthenticationEncoded = coseCompliantSerializer.decodeFromByteArray<ByteArray>(
+            deviceAuthenticationBytes.drop(2).toByteArray() // tag 24
+        )
+        val deviceAuthentication = coseCompliantSerializer.decodeFromByteArray<DeviceAuthentication>(
+            deviceAuthenticationEncoded
+        )
+
+        val sessionTranscript = deviceAuthentication.sessionTranscript.shouldBeInstanceOf<SessionTranscript.Nfc>()
+        sessionTranscript.handover.handoverRequest.shouldNotBeNull()
+        coseCompliantSerializer.encodeToByteArray(deviceAuthentication) shouldBe deviceAuthenticationEncoded
+    }
+
+    "decoding as another subtype fails" {
+        val encoded = coseCompliantSerializer.encodeToByteArray<SessionTranscript>(
+            SessionTranscript.Qr(Random.nextBytes(16), Random.nextBytes(16))
+        )
+        shouldThrowAny { coseCompliantSerializer.decodeFromByteArray<SessionTranscript.Nfc>(encoded) }
+    }
+
+    "unknown handovers are rejected" - {
+        mapOf(
+            "unknown type" to cborArray(cborText("unknown"), cborBytes(Random.nextBytes(32))),
+            "OID4VPHandover of ISO 18013-7 2024" to cborArray(
+                cborBytes(Random.nextBytes(32)), cborBytes(Random.nextBytes(32)), cborText("nonce")
+            ),
+            "empty array" to cborArray(),
+        ).forEach { (name, handover) ->
+            name {
+                shouldThrowAny {
+                    coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(
+                        cborArray(byteArrayOf(0xf6.toByte()), byteArrayOf(0xf6.toByte()), handover)
+                    )
+                }
+            }
+        }
+    }
+
+    "NFC handover without device engagement is rejected" {
+        shouldThrowAny {
+            coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(
+                cborArray(
+                    byteArrayOf(0xf6.toByte()),
+                    byteArrayOf(0xf6.toByte()),
+                    cborArray(cborBytes(Random.nextBytes(8)), byteArrayOf(0xf6.toByte()))
+                )
+            )
+        }
+    }
+
+    "DC API handover with device engagement is rejected" {
+        shouldThrowAny {
+            coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(
+                cborArray(
+                    cborEncodedData(Random.nextBytes(8)),
+                    cborEncodedData(Random.nextBytes(8)),
+                    cborArray(cborText(DCAPIHandover.TYPE_DCAPI), cborBytes(Random.nextBytes(32)))
+                )
+            )
+        }
+    }
+
+    "transcripts with only one of DeviceEngagementBytes and EReaderKeyBytes are rejected" {
+        val null_ = byteArrayOf(0xf6.toByte())
+        listOf(
+            cborArray(cborEncodedData(Random.nextBytes(8)), null_, null_),
+            cborArray(
+                null_,
+                cborEncodedData(Random.nextBytes(8)),
+                cborArray(cborText(DCAPIHandover.TYPE_DCAPI), cborBytes(Random.nextBytes(32)))
+            ),
+        ).forEach {
+            shouldThrowAny { coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(it) }
+        }
+    }
+
+    "malformed handovers are rejected, not decoded as another kind of handover" - {
+        mapOf(
+            // An indefinite-length text string with a byte string chunk, where an NFC handover is expected
+            "malformed text string in NFC handover" to "83d8184100d8184100827f40f6",
+            // The same where a handover without device engagement is expected
+            "malformed text string in DC API handover" to "83f6f6827f405820" + "00".repeat(32),
+        ).forEach { (name, hex) ->
+            name {
+                shouldThrowAny {
+                    coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(hex.decodeToByteArray(Base16))
+                }
+            }
+        }
+    }
+
+    "transcripts with other than three elements are rejected" {
+        val handover = cborArray(cborText(DCAPIHandover.TYPE_DCAPI), cborBytes(Random.nextBytes(32)))
+        shouldThrowAny {
+            coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(
+                cborArray(byteArrayOf(0xf6.toByte()), handover)
+            )
+        }
+        shouldThrowAny {
+            coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(
+                cborArray(byteArrayOf(0xf6.toByte()), byteArrayOf(0xf6.toByte()), handover, byteArrayOf(0xf6.toByte()))
+            )
+        }
     }
 
 }
+
+/** Decodes this to [expected], as a [SessionTranscript] and as its subtype, and re-encodes to the same bytes. */
+private inline fun <reified T : SessionTranscript> ByteArray.shouldRoundTripTo(expected: T) {
+    val decoded = coseCompliantSerializer.decodeFromByteArray<SessionTranscript>(this)
+    decoded shouldBe expected
+    coseCompliantSerializer.encodeToByteArray(decoded) shouldBe this
+    coseCompliantSerializer.decodeFromByteArray<T>(this) shouldBe expected
+}
+
+private fun cborHeader(majorType: Int, length: Int): ByteArray = when {
+    length < 24 -> byteArrayOf((majorType shl 5 or length).toByte())
+    length < 256 -> byteArrayOf((majorType shl 5 or 24).toByte(), length.toByte())
+    else -> byteArrayOf((majorType shl 5 or 25).toByte(), (length shr 8).toByte(), length.toByte())
+}
+
+private fun cborBytes(bytes: ByteArray) = cborHeader(2, bytes.size) + bytes
+private fun cborText(text: String) = text.encodeToByteArray().let { cborHeader(3, it.size) + it }
+private fun cborArray(vararg items: ByteArray) =
+    items.fold(cborHeader(4, items.size)) { acc, item -> acc + item }
+
+private fun cborEncodedData(bytes: ByteArray) = byteArrayOf(0xd8.toByte(), 0x18) + cborBytes(bytes)
+
+/** DeviceAuthenticationBytes of ISO/IEC 18013-5:2021 D.5.3, with the session transcript of an NFC engagement. */
+internal const val iso18013AnnexDDeviceAuthenticationBytes =
+    "d818590271847444657669636541757468656e7469636174696f6e83d8185858a20063312e30018201d818584ba401022001215820" +
+            "5a88d182bce5f42efa59943f33359d2e8a968ff289d93e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c33823" +
+            "7a8cfcf3de6aa672fc60a557aa32fc67d818584ba40102200121582060e3392385041f51403051f2415531cb56dd3f999c7168" +
+            "7013aac6768bc8187e225820e58deb8fdbe907f7dd5368245551a34796f7d2215c440c339bb0f7b67beccdfa8258c391020f48" +
+            "7315d10209616301013001046d646f631a200c016170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f" +
+            "6230081b28128b37282801021c015c1e580469736f2e6f72673a31383031333a646576696365656e676167656d656e746d646f" +
+            "63a20063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2e8a968ff289d93e5fa444b62434" +
+            "3167fe225820b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32fc6758cd9102254872159102026372" +
+            "0102110204616301013000110206616301036e6663005102046163010157001a201e016170706c69636174696f6e2f766e642e" +
+            "626c7565746f6f74682e6c652e6f6f6230081b28078080bf2801021c021107c832fff6d26fa0beb34dfcd555d4823a1c110103" +
+            "69736f2e6f72673a31383031333a6e66636e6663015a172b016170706c69636174696f6e2f766e642e7766612e6e616e570301" +
+            "01032302001324fec9a70b97ac9684a4e326176ef5b981c5e8533e5f00298cfccbc35e700a6b020414756f72672e69736f2e31" +
+            "383031332e352e312e6d444cd81841a0"
 private fun String.decodeFromAnnotatedCbor(): ByteArray =
     trimIndent().split("\n").joinToString("") { it.split("#").first().replace(" ", "") }.decodeToByteArray(Base16)

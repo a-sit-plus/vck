@@ -25,7 +25,12 @@ import kotlin.jvm.JvmInline
 @Serializable
 @JvmInline
 value class SchemeExtensions(
+    /** Scheme-specific extensions, each carrying a criticality indication (TS 119 602, 6.3.17). */
     private val list: List<SchemeExtension>
 ): List<SchemeExtension> by list {
+    init {
+        require(list.isNotEmpty()) { "Expected at least one SchemeExtensions entry." }
+    }
+
     constructor(vararg elements: SchemeExtension): this(elements.toList())
 }

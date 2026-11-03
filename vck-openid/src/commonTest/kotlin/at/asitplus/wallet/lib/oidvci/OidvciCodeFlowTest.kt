@@ -27,6 +27,10 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -39,11 +43,15 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oauth2.ClientAuthRequest
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
-import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
+import at.asitplus.wallet.lib.oidvci.OpenId4VciClient.RequestOptions
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.openid.DummyUserProvider
 import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidationDecision
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -55,6 +63,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.maps.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeEmpty
@@ -64,6 +73,9 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlin.time.Duration.Companion.minutes
 
 val OidvciCodeFlowTest by matrixSuite {
 
@@ -78,7 +90,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 requirePushedAuthorizationRequests = false,
                 strategy = strategy,
             )
-            var issuer = CredentialIssuer(
+            var issuer = OpenId4VciServer(
                 authorizationService = authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -87,7 +99,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 credentialSchemes = AttributeIndex.schemeSet,
                 credentialSchemeMapper = mapper,
             )
-            val client = WalletService()
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
             val oauth2Client = OAuth2Client()
             val state = uuid4().toString()
 
@@ -142,8 +154,7 @@ val OidvciCodeFlowTest by matrixSuite {
         }
     } - {
         test("metadata validation") {
-            val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeNull()
-                .shouldNotBeEmpty()
+            val issuerCredentialFormats = it.issuer.metadata.supportedCredentialConfigurations.shouldNotBeEmpty()
             issuerCredentialFormats.forEach { entry: Map.Entry<String, SupportedCredentialFormat> ->
                 entry.key.shouldNotBeEmpty()
                 entry.value.shouldNotBeNull().apply {
@@ -183,7 +194,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -221,7 +232,7 @@ val OidvciCodeFlowTest by matrixSuite {
                     ).getOrThrow().shouldBeSingleton().first(),
                     credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
                 ).getOrThrow()
-                    .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                    .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                     .response
                     .credentials.shouldNotBeEmpty().first()
                     .credentialString.shouldNotBeNull()
@@ -246,7 +257,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
@@ -267,18 +278,23 @@ val OidvciCodeFlowTest by matrixSuite {
 
         test("proof over different keys leads to different credentials") {
             val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-            val scope = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)?.scope
-                .shouldNotBeNull()
+            val credentialFormat = it.client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+            val scope = credentialFormat?.scope.shouldNotBeNull()
             val clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce
             val token = it.getToken(scope)
-            val proof = it.client.createCredentialRequestProofJwt(
+            val proof = it.client.createCredentialProof(
                 clientNonce = clientNonce,
-                credentialIssuer = it.issuer.metadata.credentialIssuer,
-            )
-            val differentProof = WalletService().createCredentialRequestProofJwt(
-                clientNonce = clientNonce,
-                credentialIssuer = it.issuer.metadata.credentialIssuer,
-            )
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientId = "https://wallet.a-sit.plus/app"
+            ).shouldNotBeNull()
+            val differentProof = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
+                .createCredentialProof(
+                    clientNonce = clientNonce,
+                    metadata = it.issuer.metadata,
+                    credentialFormat = credentialFormat,
+                    clientId = "https://wallet.a-sit.plus/app"
+                ).shouldNotBeNull()
             val credentialRequest = CredentialRequestParameters(
                 credentialConfigurationId = scope,
                 proofs = CredentialRequestProofContainer(
@@ -288,10 +304,10 @@ val OidvciCodeFlowTest by matrixSuite {
 
             val credentials: Collection<CredentialResponseSingleCredential> = it.issuer.credential(
                 authorizationHeader = token.toHttpHeaderValue(),
-                params = WalletService.CredentialRequest.Plain(credentialRequest),
+                params = OpenId4VciClient.CredentialRequest.Plain(credentialRequest),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
                 .credentials.shouldNotBeEmpty().shouldHaveSize(2)
             // subject identifies the key of the client, here the keys of different proofs, so they should be unique
@@ -308,7 +324,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 codeToClientAuthRequest = it.defectMapStore(),
                 strategy = CredentialAuthorizationServiceStrategy(setOf(AtomicAttribute2023)),
             )
-            it.issuer = CredentialIssuer(
+            it.issuer = OpenId4VciServer(
                 authorizationService = it.authorizationService,
                 issuer = IssuerAgent(
                     identifier = "https://issuer.example.com".toUri(),
@@ -342,7 +358,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -367,7 +383,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             val serializedCredential = credential.credentials.shouldNotBeEmpty().first()
                 .credentialString.shouldNotBeNull()
@@ -412,8 +428,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                .shouldNotBeNull()[credentialConfigurationId]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialConfigurationId]
                 .shouldNotBeNull()
             val token = it.getToken(authorizationDetails)
 
@@ -427,12 +442,42 @@ val OidvciCodeFlowTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
 
             serializedCredential.assertSdJwtReceived()
+        }
+
+        test("request one credential by credential configuration id, using scope") {
+            val credentialConfigurationId = it.mapper.toCredentialIdentifier(AtomicAttribute2023, SD_JWT)
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialConfigurationId]
+                .shouldNotBeNull()
+            val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
+
+            val credential = it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = it.client.createCredential(
+                    metadata = it.issuer.metadata,
+                    credentialConfigurationId = credentialConfigurationId,
+                    clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+                ).getOrThrow(),
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
+                .response
+            val serializedCredential = credential.credentials.shouldNotBeEmpty()
+                .first().credentialString.shouldNotBeNull()
+
+            serializedCredential.assertSdJwtReceived()
+        }
+
+        test("request one credential by unknown credential configuration id fails") {
+            it.client.createCredential(
+                metadata = it.issuer.metadata,
+                credentialConfigurationId = "unknown",
+            ).exceptionOrNull().shouldBeInstanceOf<OAuth2Exception.UnknownCredentialConfiguration>()
         }
 
         test("request credential in SD-JWT, using authorization details only in authnrequest") {
@@ -441,8 +486,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 credentialConfigurationId = credentialConfigurationId,
                 authorizationServers = it.issuer.metadata.authorizationServers
             )
-            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations
-                .shouldNotBeNull()[credentialConfigurationId]
+            val credentialFormat = it.issuer.metadata.supportedCredentialConfigurations[credentialConfigurationId]
                 .shouldNotBeNull()
             val token = it.getToken(authorizationDetails, false) // do not set authn details in token request
 
@@ -456,7 +500,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -554,7 +598,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 claimDescriptions = emptySet(),
             )
             val credentialFormat = with(
-                CredentialIssuer(
+                OpenId4VciServer(
                     authorizationService = SimpleAuthorizationService(
                         requirePushedAuthorizationRequests = false,
                         strategy = CredentialAuthorizationServiceStrategy(setOf(scheme)),
@@ -646,7 +690,7 @@ val OidvciCodeFlowTest by matrixSuite {
                 ).getOrThrow().shouldBeSingleton().first(),
                 credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
             ).getOrThrow()
-                .shouldBeInstanceOf<CredentialIssuer.CredentialResponse.Plain>()
+                .shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
                 .response
             val serializedCredential = credential.credentials.shouldNotBeEmpty()
                 .first().credentialString.shouldNotBeNull()
@@ -660,6 +704,75 @@ val OidvciCodeFlowTest by matrixSuite {
             val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
             numberOfClaims shouldBeGreaterThan 1
         }
+
+        // An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4)
+        "every credential of a response is decoded and prepared for storage on its own" { it ->
+            // An mdoc is verified with the certificate in its `x5chain`, so the issuer needs one
+            it.issuer = OpenId4VciServer(
+                authorizationService = it.authorizationService,
+                issuer = IssuerAgent(
+                    keyMaterial = EphemeralKeyWithSelfSignedCert(),
+                    identifier = "https://issuer.example.com".toUri(),
+                    randomSource = RandomSource.Default
+                ),
+                credentialSchemes = AttributeIndex.schemeSet,
+                credentialSchemeMapper = it.mapper,
+            )
+            // The client proves possession of the holder's key, so the holder accepts the credentials bound to it
+            val holderKey = EphemeralKeyWithoutCert()
+            val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(holderKey)))
+            val requestOptions = RequestOptions(AttributeIndex.resolveIdentifier(MDL_DOCTYPE, ISO_MDOC), ISO_MDOC)
+            val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, it.issuer.metadata)
+                .shouldNotBeNull()
+            val token = it.getToken(credentialFormat.scope.shouldNotBeNull())
+            val request = client.createCredential(
+                tokenResponse = token,
+                metadata = it.issuer.metadata,
+                credentialFormat = credentialFormat,
+                clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
+            ).getOrThrow().shouldBeSingleton().first()
+            val response = it.issuer.credential(
+                authorizationHeader = token.toHttpHeaderValue(),
+                params = request,
+                credentialDataProvider = DummyOAuth2IssuerCredentialDataProvider,
+            ).getOrThrow().shouldBeInstanceOf<OpenId4VciServer.CredentialResponse.Plain>()
+            val issued = response.response.credentials.shouldNotBeNull().shouldBeSingleton().first()
+            // An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4)
+            val batch = OpenId4VciServer.CredentialResponse.Plain(
+                response.response.copy(
+                    credentials = setOf(
+                        issued,
+                        CredentialResponseSingleCredential(JsonPrimitive("%% not base64url %%")),
+                        CredentialResponseSingleCredential(JsonObject(emptyMap())),
+                    )
+                )
+            )
+            // The issuer's certificate is self-signed, and its status list is not published in this test
+            val integrityOnly = ValidationPolicy(
+                trust = TrustPolicy.IntegrityOnly,
+                status = StatusPolicy.Skip,
+                timeLeeway = 5.minutes,
+                requireTimeliness = true,
+            )
+
+            val received = client.decodeCredentialResponse(batch, request, ISO_MDOC).getOrThrow().toList()
+            received.shouldHaveSize(3)
+            received[0].shouldBeInstanceOf<ReceivedCredential.Decoded>()
+            received[1].shouldBeInstanceOf<ReceivedCredential.Undecodable>()
+            received[2].shouldBeInstanceOf<ReceivedCredential.Undecodable>()
+
+            val prepared = received.map {
+                it.prepareCredentialStorage(HolderAgent(holderKey), requestOptions.credentialScheme, integrityOnly)
+                    .getOrThrow()
+            }
+            prepared[0].validation.report.decision shouldBe ValidationDecision.ACCEPTED
+            prepared[0].credential.shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
+                .issuerSigned.issuerAuth.payload.shouldNotBeNull().docType shouldBe MDL_DOCTYPE
+            prepared.drop(1).forEach {
+                it.validation.report.decision shouldBe ValidationDecision.REJECTED
+                it.credential.shouldBeNull()
+            }
+        }
     }
 }
 
@@ -669,10 +782,10 @@ private fun String.assertSdJwtReceived(): Int = JwsCompactTyped<VerifiableCreden
     .shouldNotBeNull()
     .size shouldBeGreaterThan 1
 
-private fun WalletService.CredentialRequest.wrongCredentialIdentifier(mapper: DefaultCredentialSchemeMapper) =
+private fun OpenId4VciClient.CredentialRequest.wrongCredentialIdentifier(mapper: DefaultCredentialSchemeMapper) =
     when (this) {
-        is WalletService.CredentialRequest.Encrypted -> this
-        is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
+        is OpenId4VciClient.CredentialRequest.Encrypted -> this
+        is OpenId4VciClient.CredentialRequest.Plain -> OpenId4VciClient.CredentialRequest.Plain(
             this.request.copy(
                 // enforces error on client, setting credential_identifier, although access token was for scope
                 // (which should be credential_configuration_id in credential request)
@@ -682,9 +795,9 @@ private fun WalletService.CredentialRequest.wrongCredentialIdentifier(mapper: De
         )
     }
 
-private fun WalletService.CredentialRequest.wrongCredentialConfigurationId(scope: String) = when (this) {
-    is WalletService.CredentialRequest.Encrypted -> this
-    is WalletService.CredentialRequest.Plain -> WalletService.CredentialRequest.Plain(
+private fun OpenId4VciClient.CredentialRequest.wrongCredentialConfigurationId(scope: String) = when (this) {
+    is OpenId4VciClient.CredentialRequest.Encrypted -> this
+    is OpenId4VciClient.CredentialRequest.Plain -> OpenId4VciClient.CredentialRequest.Plain(
         this.request.copy(
             // enforces error on client, setting credential_configuration_id, although access token was for
             // authorization details (which should be credential_identifier in credential request)

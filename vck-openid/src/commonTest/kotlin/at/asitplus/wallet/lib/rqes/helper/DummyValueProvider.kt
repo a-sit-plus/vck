@@ -1,15 +1,15 @@
 package at.asitplus.wallet.lib.rqes.helper
 
-import at.asitplus.csc.CredentialInfo
-import at.asitplus.csc.collection_entries.AuthParameters
-import at.asitplus.csc.collection_entries.CertificateParameters
-import at.asitplus.csc.collection_entries.CertificateParameters.CertStatus
-import at.asitplus.csc.collection_entries.CertificateParameters.CertStatus.VALID
-import at.asitplus.csc.collection_entries.KeyParameters
-import at.asitplus.csc.collection_entries.KeyParameters.KeyStatusOptions
-import at.asitplus.csc.collection_entries.KeyParameters.KeyStatusOptions.ENABLED
-import at.asitplus.csc.collection_entries.OAuthDocumentDigest
-import at.asitplus.csc.enums.SignatureQualifier
+import at.asitplus.csc.api.CredentialInfo
+import at.asitplus.csc.api.collection_entries.AuthParameters
+import at.asitplus.csc.api.collection_entries.CertificateParameters
+import at.asitplus.csc.api.collection_entries.CertificateParameters.CertStatus
+import at.asitplus.csc.api.collection_entries.CertificateParameters.CertStatus.VALID
+import at.asitplus.csc.api.collection_entries.KeyParameters
+import at.asitplus.csc.api.collection_entries.KeyParameters.KeyStatusOptions
+import at.asitplus.csc.api.collection_entries.KeyParameters.KeyStatusOptions.ENABLED
+import at.asitplus.csc.api.collection_entries.OAuthDocumentDigest
+import at.asitplus.csc.datamodel.basic.SignatureQualifier
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict

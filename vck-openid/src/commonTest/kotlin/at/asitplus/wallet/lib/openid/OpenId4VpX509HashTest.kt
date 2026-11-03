@@ -35,15 +35,14 @@ val OpenId4VpX509HashTest by matrixSuite {
                 clientIdScheme = ClientIdScheme.CertificateHash(
                     listOf(verifierKeyMaterial.getCertificate()!!),
                     "https://example.com/redirect"
-                )
-
+                ),
+                presentationPolicy = testPresentationPolicy,
             )
 
             object {
                 val holderKeyMaterial = holderKeyMaterial
                 val holderAgent = holderAgent
                 var holderOid4vp = OpenId4VpHolder(
-                    keyMaterial = holderKeyMaterial,
                     holder = holderAgent,
                     randomSource = RandomSource.Default,
                 )
@@ -70,20 +69,13 @@ val OpenId4VpX509HashTest by matrixSuite {
             ).getOrThrow()
             jar.shouldNotBeNull()
 
-            it.holderOid4vp = OpenId4VpHolder(
-                keyMaterial = it.holderKeyMaterial,
-                holder = it.holderAgent,
-                remoteResourceRetriever = {
-                    if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-                },
-                randomSource = RandomSource.Default,
-            )
+            val endpoint = requestUriEndpoint(requestUrl) { parameters -> jar.invoke(parameters).getOrThrow() }
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(walletUrl, endpoint).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
@@ -111,20 +103,13 @@ val OpenId4VpX509HashTest by matrixSuite {
             ).getOrThrow()
             jar.shouldNotBeNull()
 
-            it.holderOid4vp = OpenId4VpHolder(
-                keyMaterial = it.holderKeyMaterial,
-                holder = it.holderAgent,
-                remoteResourceRetriever = {
-                    if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
-                },
-                randomSource = RandomSource.Default,
-            )
+            val endpoint = requestUriEndpoint(requestUrl) { parameters -> jar.invoke(parameters).getOrThrow() }
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(walletUrl, endpoint).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow()
+                .vpTokenOrThrow()
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
                     credentialQueryResponseValidations.values
                         .shouldBeSingleton().first()

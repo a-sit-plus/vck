@@ -1,0 +1,179 @@
+package at.asitplus.wallet.lib.validation
+
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import kotlin.jvm.JvmOverloads
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * Whether the signer of an artifact has to be authorized by trust anchors: the issuer of a credential, the signer of
+ * a status list token, a wallet provider, a relying party, ...
+ */
+sealed interface TrustPolicy {
+    /**
+     * The signature is checked against the key the artifact asserts itself, but no trust decision is required.
+     * This is an explicit interoperability choice, not a synonym for trusted.
+     */
+    data object IntegrityOnly : TrustPolicy
+
+    /** The signing certificate has to chain to an anchor configured for the artifact. */
+    data object RequireAuthorizedSigner : TrustPolicy
+}
+
+/**
+ * Whether and how the status of an artifact is checked.
+ * Every advertised status mechanism is resolved, and all of them have to yield an
+ * [accepted][ValidateIfPresent.accepted] and agreeing status.
+ */
+sealed interface StatusPolicy {
+    /** The status is not checked, even if the artifact advertises one. */
+    data object Skip : StatusPolicy
+
+    /** The status is checked if the artifact advertises one, an artifact without a status claim passes. */
+    data class ValidateIfPresent @JvmOverloads constructor(
+        /** Whether the signers of the status list tokens have to be authorized, independently of the artifact's. */
+        val signerTrust: TrustPolicy,
+        val accepted: Set<TokenStatus> = setOf(TokenStatus.Valid),
+    ) : StatusPolicy {
+        init {
+            require(accepted.isNotEmpty()) { "At least one token status has to be accepted" }
+        }
+    }
+
+    /** The artifact has to advertise a status, and that status is checked. */
+    data class RequireClaim @JvmOverloads constructor(
+        /** Whether the signers of the status list tokens have to be authorized, independently of the artifact's. */
+        val signerTrust: TrustPolicy,
+        val accepted: Set<TokenStatus> = setOf(TokenStatus.Valid),
+    ) : StatusPolicy {
+        init {
+            require(accepted.isNotEmpty()) { "At least one token status has to be accepted" }
+        }
+    }
+}
+
+/**
+ * Which checks have to pass for an artifact to be accepted.
+ *
+ * There is deliberately no default and no preset: callers choose whether signers have to be authorized, whether a
+ * status is checked, and whether an artifact outside its validity period is rejected. Parsing, signatures, and the
+ * binding of holder proofs to the request can not be relaxed.
+ */
+data class ValidationPolicy(
+    val trust: TrustPolicy,
+    val status: StatusPolicy,
+    /** Applied to every time comparison of a validation, including the time claims of holder proofs. */
+    val timeLeeway: Duration,
+    /**
+     * Whether an artifact that is not valid at the time of validation is rejected. The time claims of holder proofs,
+     * e.g. the `iat` of a key binding JWT, are always required: relaxing them would relax replay protection.
+     */
+    val requireTimeliness: Boolean,
+    /**
+     * Whether a credential validated on its own has to be bound to [CredentialValidationContext.expectedHolderKey].
+     * In a presentation, the presentation decides the holder binding of its credentials, e.g. a VC-JWT in a VP has to
+     * be bound to the key of the VP, and other artifacts have no holder, so it does not apply to them.
+     */
+    val holderBinding: HolderBindingPolicy = HolderBindingPolicy.None,
+    /**
+     * Whether a credential validated on its own has to contain every claim its type requires, e.g. when a wallet
+     * receives it. A presentation discloses claims selectively, so it does not apply to presented credentials.
+     */
+    val requiredClaims: RequiredClaimsPolicy = RequiredClaimsPolicy.Skip,
+    /** Whether a relying party has to transport registration certificates (WRPRCs) with its request. */
+    val registration: RegistrationPolicy = RegistrationPolicy.Require,
+) {
+    init {
+        require(timeLeeway.isFinite() && !timeLeeway.isNegative()) { "Time leeway has to be finite and not negative" }
+    }
+
+    /**
+     * Java-safe constructor: Java can't call the primary constructor, because it takes the value class [Duration].
+     * [requireTimeliness] precedes [timeLeewayMilliseconds], because the JVM signature would otherwise clash with
+     * the primary constructor's, where [Duration] is a `long` too.
+     */
+    @JvmOverloads
+    internal constructor(
+        trust: TrustPolicy,
+        status: StatusPolicy,
+        requireTimeliness: Boolean,
+        timeLeewayMilliseconds: Long,
+        holderBinding: HolderBindingPolicy = HolderBindingPolicy.None,
+        requiredClaims: RequiredClaimsPolicy = RequiredClaimsPolicy.Skip,
+        registration: RegistrationPolicy = RegistrationPolicy.Require,
+    ) : this(
+        trust = trust,
+        status = status,
+        timeLeeway = timeLeewayMilliseconds.milliseconds,
+        requireTimeliness = requireTimeliness,
+        holderBinding = holderBinding,
+        requiredClaims = requiredClaims,
+        registration = registration,
+    )
+
+    /** Java-safe accessor for [timeLeeway], in milliseconds. */
+    val timeLeewayMilliseconds: Long
+        get() = timeLeeway.inWholeMilliseconds
+}
+
+/**
+ * Whether a standalone credential has to be bound to a key the caller expects, e.g. the wallet's key when storing it.
+ *
+ * Presentations take holder binding from the request instead, see [PresentationContext.requireHolderBinding].
+ */
+sealed interface HolderBindingPolicy {
+    /** The credential's holder binding is not compared to any key. */
+    data object None : HolderBindingPolicy
+
+    /** The credential has to be bound to [CredentialValidationContext.expectedHolderKey]. */
+    data object RequireExpectedKey : HolderBindingPolicy
+}
+
+/**
+ * Whether a standalone credential has to contain the claims its type requires, see [RequiredClaimsResolver].
+ */
+sealed interface RequiredClaimsPolicy {
+    /** The claims are not checked, and their metadata are not resolved. */
+    data object Skip : RequiredClaimsPolicy
+
+    /**
+     * The credential has to contain every claim the metadata of its signed type describe as `mandatory`. Without
+     * metadata of that type, the check is blocked. A registered scheme is metadata, including when its claim
+     * descriptions are empty or all optional, in which case there are no mandatory claims and the check passes.
+     */
+    data object RequireMandatory : RequiredClaimsPolicy
+}
+
+/**
+ * Whether a wallet-relying party has to transport registration certificates (WRPRCs) with its request, see
+ * [RelyingPartyChecks.registration]. A WRPRC that is transported has to be valid under every policy.
+ */
+sealed interface RegistrationPolicy {
+    /**
+     * The request has to carry WRPRCs, as every relying party registered in the Union has them: Member States
+     * authorise certificate authorities to issue them to every registered relying party (CIR (EU) 2025/848,
+     * Article 8(1), as amended by CIR (EU) 2026/1730).
+     */
+    data object Require : RegistrationPolicy
+
+    /**
+     * A request without WRPRCs passes, e.g. of an ISO/IEC 18013-5 mdoc reader outside of the EUDI Wallet ecosystem,
+     * like the wallet app of another wallet provider. Its reader certificate need not be a WRPAC, but has to be
+     * trusted as [ValidationPolicy.trust] requires, see [RelyingPartyTrustAnchors.accessCertificates].
+     */
+    data object ValidateIfPresent : RegistrationPolicy
+}
+
+/**
+ * Values the caller expects of a credential, e.g. from the negotiated credential configuration or the request.
+ *
+ * These constrain the credential, but never replace the identity signed into it: in particular,
+ * [expectedCredentialIdentifier] does not select trust anchors for a credential whose signed type differs.
+ */
+data class CredentialValidationContext @JvmOverloads constructor(
+    /** The key the credential has to be bound to, see [HolderBindingPolicy.RequireExpectedKey]. */
+    val expectedHolderKey: CryptoPublicKey? = null,
+    /** The signed `vct`, `docType`, or VC type the credential has to carry. */
+    val expectedCredentialIdentifier: String? = null,
+)

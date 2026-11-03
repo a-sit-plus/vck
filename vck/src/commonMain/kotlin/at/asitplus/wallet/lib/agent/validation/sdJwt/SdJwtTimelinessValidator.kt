@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import io.github.aakira.napier.Napier
 
-class SdJwtTimelinessValidator {
+object SdJwtTimelinessValidator {
     operator fun invoke(
         sdJwt: VerifiableCredentialSdJwt,
         timeScope: TimeScope,

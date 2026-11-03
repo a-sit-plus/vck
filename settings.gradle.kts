@@ -17,7 +17,6 @@ plugins {
 
 
 rootProject.name = "vc-k"
-include(":dif-data-classes")
 include(":openid-data-classes")
 include(":csc-data-classes")
 include(":etsi-data-classes")

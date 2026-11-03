@@ -6,8 +6,8 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AttestationChallengeResponse
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferGrants
 import at.asitplus.openid.CredentialOfferGrantsAuthCode
@@ -24,32 +24,36 @@ import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.openid.TokenIntrospectionJwtPayload
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionRequest
 import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.encodeToParameters
+import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.wallet.lib.acceptsOverJson
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
+import at.asitplus.wallet.lib.data.MediaTypes.Application.TOKEN_INTROSPECTION_JWT
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.oidvci.CodeService
-import at.asitplus.wallet.lib.oidvci.CredentialIssuer
 import at.asitplus.wallet.lib.oidvci.DefaultCodeService
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFun
 import at.asitplus.wallet.lib.oidvci.OAuth2LoadUserFunInput
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer
 import at.asitplus.wallet.lib.oidvci.TokenInfo
-import at.asitplus.openid.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.RequestParser
 import at.asitplus.wallet.lib.utils.DefaultMapStore
@@ -60,12 +64,13 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlin.jvm.JvmOverloads
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 
 /**
- * Simple authorization server implementation, to be used for [CredentialIssuer],
+ * Simple authorization server implementation, to be used for [OpenId4VciServer],
  * with the actual authentication and authorization logic for credential schemes implemented in [strategy].
  *
  * Implemented from
@@ -79,6 +84,7 @@ import kotlin.time.Duration.Companion.minutes
  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449),
  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  * [OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
+ * [JWT Response for OAuth Token Introspection](https://www.rfc-editor.org/rfc/rfc9701)
  * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
  */
 class SimpleAuthorizationService @JvmOverloads constructor(
@@ -110,8 +116,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      */
     private val userInfoEndpointPath: String = "/userinfo",
     /**
-     * Used to build [OAuth2AuthorizationServerMetadata.introspectionEndpoint], i.e. implementers need to forward POST or GET
-     * requests to that URI (which starts with [publicContext]) to [getTokenInfo].
+     * Used to build [OAuth2AuthorizationServerMetadata.introspectionEndpoint], i.e. implementers need to forward POST
+     * requests to that URI (which starts with [publicContext]) to [tokenIntrospection], as the endpoint accepts only
+     * POST ([RFC 7662 2.1](https://datatracker.ietf.org/doc/html/rfc7662#section-2.1)).
      */
     private val introspectionEndpointPath: String = "/introspect",
     /**
@@ -150,8 +157,11 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
     /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */
     private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = DEFAULT_WALLET_ATTESTATION_ALGORITHMS,
-    /** Used to sign JWT introspection responses (RFC 9701). */
-    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionResponse> =
+    /**
+     * Used to sign JWT introspection responses (RFC 9701), which resource servers verify with the key of this
+     * authorization server, i.e. the default ephemeral key is only good for tests.
+     */
+    private val signIntrospectionJwt: SignJwtFun<TokenIntrospectionJwtPayload> =
         SignJwt(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk()),
     /** Used to create and verify `issuer_state` values of credential offers. */
     private val issuerStateService: CodeService = DefaultCodeService(),
@@ -162,6 +172,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Requires [tokenService] with support for it.
      */
     private val supportTokenExchange: Boolean = false,
+    /** Clock to use for timestamps in the tokens generated. */
+    private val clock: Clock = Clock.System,
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
 
     init {
@@ -196,6 +208,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             introspectionEndpoint = "$publicContext$introspectionEndpointPath",
             challengeEndpoint = clientAuthenticationService.supportedAuthMethods.takeIf { it != null }
                 ?.let { "$publicContext$challengeEndpointPath" },
+            responseTypesSupported = setOf(OpenIdConstants.GRANT_TYPE_CODE),
             requirePushedAuthorizationRequests = requirePushedAuthorizationRequests,
             codeChallengeMethodsSupported = setOf(OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256),
             introspectionEndpointAuthMethodsSupported = clientAuthenticationService.supportedAuthMethods,
@@ -216,17 +229,17 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     /**
-     * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
+     * Serve this result under `/.well-known/openid-configuration`,
      * see [OpenIdConstants.WellKnownPaths.OpenidConfiguration],
      * and under `/.well-known/oauth-authorization-server`,
-     * see [OpenIdConstants.WellKnownPaths.OauthAuthorizationServer].
+     * see [OpenIdConstants.WellKnownPaths.OauthAuthorizationServer], converted with
+     * [OAuth2AuthorizationServerMetadata.toHttpResponse].
      */
     override suspend fun metadata(): OAuth2AuthorizationServerMetadata = _metadata
 
     /**
-     * MUST be delivered with HTTP header `Cache-Control: no-store` (see [io.ktor.http.HttpHeaders.CacheControl]).
-     * Serialize the body as JSON.
-     * See
+     * Provides a challenge for the challenge endpoint, send it converted with
+     * [AttestationChallengeResponse.toHttpResponse]. See
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#name-challenges)
      */
     suspend fun attestationChallenge(): KmmResult<AttestationChallengeResponse?> = catching {
@@ -241,7 +254,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
      * i.e. by displaying a QR Code that can be scanned with wallet apps.
      *
-     * @param credentialIssuer the public context of an [CredentialIssuer]
+     * @param credentialIssuer the public context of an [OpenId4VciServer]
      * @param schemes which credential configuration IDs to use in the offer.
      * Pass an empty set to offer all known schemes.
      */
@@ -278,7 +291,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * i.e. by displaying a QR Code that can be scanned with wallet apps.
      *
      * @param user used to create the credential when the wallet app requests the credential
-     * @param credentialIssuer the public context of an [CredentialIssuer]
+     * @param credentialIssuer the public context of an [OpenId4VciServer]
      * @param schemes which credential configuration IDs to use in the offer.
      * Pass an empty set to offer all known schemes.
      * @param transactionCode OID4VCI transaction code the user has to enter in the wallet app, to be transmitted to
@@ -332,7 +345,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
-     * Responses have to be sent with HTTP status code `201`.
+     * Responses have to be sent with HTTP status code `201`, as `toHttpResponse()` of the result of
+     * [parWithDpopNonce] does.
      *
      * @param input as sent from the client as `POST` body
      * @param httpRequest information about the HTTP request from the client to validate authentication
@@ -350,7 +364,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
-     * Responses have to be sent with HTTP status code `201`.
+     * Responses have to be sent with HTTP status code `201`, as `toHttpResponse()` of the result of
+     * [parWithDpopNonce] does.
      *
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client to validate authentication
@@ -385,15 +400,17 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     /**
-     * Like [par], but also provides a fresh DPoP nonce for the success response header.
-     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8)
+     * Like [par], but also provides a fresh DPoP nonce and, with attestation-based client authentication, a fresh
+     * attestation challenge for the success response headers; send it converted with `toHttpResponse()`.
+     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8),
+     * [OA-ABCA 6.2](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#challenge-in-response)
      */
     suspend fun parWithDpopNonce(
         request: RequestParameters,
         httpRequest: RequestInfo? = null,
     ): KmmResult<ResponseWithDpopNonce<PushedAuthenticationResponseParameters>> = catching {
         val response = par(request, httpRequest).getOrThrow()
-        ResponseWithDpopNonce(response, tokenService.dpopNonce())
+        ResponseWithDpopNonce(response, tokenService.dpopNonce(), clientAuthenticationService.getAttestationChallenge())
     }
 
     private suspend fun RequestParameters.extractPushedRequestParams() = when (this) {
@@ -409,7 +426,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
     /**
      * Builds the authentication response for this specific user from [loadUserFun].
-     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * Send this result converted with [AuthenticationResponseResult.Redirect.toHttpResponse].
      * @return URL built from client's `redirect_uri` with `code` parameter, [KmmResult] may contain a [OAuth2Exception]
      */
     override suspend fun authorize(
@@ -423,7 +440,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         }
         with(actualRequest) {
             issueCodeForUserInfo(userInfo, actualRequest, authenticatedClient)
-                .also { Napier.i("authorize returns $it") }
         }
     }
 
@@ -542,7 +558,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
     /**
      * Verifies the authorization code sent by the client and issues an access token, uses [tokenService].
-     * Send this value JSON-serialized back to the client.
+     * Send the result of [tokenWithDpopNonce] converted with `toHttpResponse()`, which sets the headers the token
+     * response needs.
 
      * @param request as sent from the client as `POST`
      * @param httpRequest information about the HTTP request from the client, to validate authentication
@@ -666,15 +683,17 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     /**
-     * Like [token], but also provides a fresh DPoP nonce for the success response header.
-     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8)
+     * Like [token], but also provides a fresh DPoP nonce and, with attestation-based client authentication, a fresh
+     * attestation challenge for the success response headers; send it converted with `toHttpResponse()`.
+     * See [RFC 9449 8. Authorization Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-8),
+     * [OA-ABCA 6.2](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#challenge-in-response)
      */
     suspend fun tokenWithDpopNonce(
         request: TokenRequestParameters,
         httpRequest: RequestInfo? = null,
     ): KmmResult<ResponseWithDpopNonce<TokenResponseParameters>> = catching {
         val response = token(request, httpRequest).getOrThrow()
-        ResponseWithDpopNonce(response, tokenService.dpopNonce())
+        ResponseWithDpopNonce(response, tokenService.dpopNonce(), clientAuthenticationService.getAttestationChallenge())
     }
 
     private fun validateCodeChallenge(code: String, codeVerifier: String?, codeChallenge: String) {
@@ -783,7 +802,8 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     }
 
     /**
-     * Like [userInfo], but also provides a fresh DPoP nonce for the success response header.
+     * Like [userInfo], but also provides a fresh DPoP nonce for the success response header; send it converted with
+     * `toHttpResponse()`.
      * See [RFC 9449 9. Resource Server-Provided Nonce](https://datatracker.ietf.org/doc/html/rfc9449#section-9)
      */
     suspend fun userInfoWithDpopNonce(
@@ -815,12 +835,18 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         tokenService.verification.getTokenInfo(authorizationHeader)
     }
 
+    /**
+     * Answers with a [TokenIntrospectionJwtResponse]
+     * ([RFC 9701](https://www.rfc-editor.org/rfc/rfc9701)) when the `Accept` header of [httpRequest] asks for
+     * `application/token-introspection+jwt`, which needs an [AuthenticatedClient], the resource server, as `aud`
+     * ([RFC 9701 5.](https://www.rfc-editor.org/rfc/rfc9701#section-5)); else with a [TokenIntrospectionResponse].
+     */
     override suspend fun tokenIntrospection(
         request: TokenIntrospectionRequest,
         httpRequest: RequestInfo?,
     ): KmmResult<TokenIntrospectionResult> = catching {
         val validatedClientKey = httpRequest?.validatedClientKey()
-        clientAuthenticationService.authenticateClient(
+        val client = clientAuthenticationService.authenticateClient(
             httpRequest = httpRequest,
             clientId = null,
             validatedClientKey = validatedClientKey
@@ -833,22 +859,32 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                     active = true,
                     scope = it.scope,
                     authorizationDetails = it.authorizationDetails,
+                    // RFC 9449 6.2: the binding of a DPoP-bound token, whose token_type then MUST be DPoP
+                    confirmationClaim = it.confirmationClaim,
+                    tokenType = it.confirmationClaim?.jsonWebKeyThumbprint?.let { OpenIdConstants.TOKEN_TYPE_DPOP },
                 )
             },
             onFailure = {
                 TokenIntrospectionResponse(active = false)
             }
         )
-        when (request.responseFormat) {
-            TokenIntrospectionRequest.ResponseFormat.JWT -> TokenIntrospectionJwtResponse(
-                jwt = signIntrospectionJwt(
+        if (acceptsOverJson(httpRequest?.headers?.get(HttpHeaders.Accept), TOKEN_INTROSPECTION_JWT)) {
+            val resourceServer = (client as? AuthenticatedClient)?.clientId
+                ?: throw InvalidClient("JWT introspection responses require client authentication")
+            TokenIntrospectionJwtResponse(
+                signIntrospectionJwt(
                     JwsContentTypeConstants.TOKEN_INTROSPECTION_JWT,
-                    response,
-                    TokenIntrospectionResponse.serializer()
-                ).getOrThrow().toString()
+                    TokenIntrospectionJwtPayload(
+                        issuer = publicContext,
+                        audience = setOf(resourceServer),
+                        issuedAt = clock.now().truncateToSeconds(),
+                        tokenIntrospection = response,
+                    ),
+                    TokenIntrospectionJwtPayload.serializer()
+                ).getOrThrow()
             )
-
-            else -> response
+        } else {
+            response
         }
     }
 
@@ -870,12 +906,18 @@ class SimpleAuthorizationService @JvmOverloads constructor(
 
 /**
  * Implements [RFC 9449 8.2.](https://datatracker.ietf.org/doc/html/rfc9449#name-providing-a-new-nonce-value):
- * Authorization servers may include a fresh DPoP nonce by including values in HTTP 200 responses
+ * Authorization servers may include a fresh DPoP nonce by including values in HTTP 200 responses, and
+ * [OA-ABCA 6.2](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html#challenge-in-response)
+ * likewise for attestation challenges.
+ *
+ * Send it converted with `toHttpResponse()`, which sets the headers.
  */
-data class ResponseWithDpopNonce<T>(
+data class ResponseWithDpopNonce<T> @JvmOverloads constructor(
     val response: T,
-    /** Set as HTTP header `DPoP-Nonce` in the response, see [HttpHeaders.DPoPNonce] */
+    /** Sent as HTTP header `DPoP-Nonce`, see [HttpHeaders.DPoPNonce] */
     val dpopNonce: String?,
+    /** Sent as HTTP header `OAuth-Client-Attestation-Challenge`, see [HttpHeaders.OAuthClientAttestationChallenge] */
+    val attestationChallenge: String? = null,
 )
 
 /**

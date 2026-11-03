@@ -10,6 +10,8 @@ local.properties
 
 **/src/androidInstrumentedTest/
 
+local/
+
 ### STS ###
 .apt_generated
 .classpath

@@ -20,17 +20,22 @@ import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DeviceSigned
+import at.asitplus.iso.DeviceSignedItem
+import at.asitplus.iso.DeviceSignedItemList
 import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
+import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.ZkDocument
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.openid.QesApprovalRequest
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.supreme.hash.digest
@@ -54,10 +59,14 @@ import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import io.github.aakira.napier.Napier
 import io.github.z4kn4fein.semver.Version
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 
 class VerifiablePresentationFactory(
@@ -71,19 +80,10 @@ class VerifiablePresentationFactory(
         keyMaterial = keyMaterial,
         protectedHeaderModifier = CoseHeaderNone(),
         unprotectedHeaderModifier = CoseHeaderNone()
-    )
+    ),
+    /** Clock to use for timestamps in the presentations generated. */
+    private val clock: Clock = Clock.System,
 ) {
-    @Deprecated("Use createVerifiablePresentation(request, isoPresentationParameters) instead")
-    suspend fun createVerifiablePresentation(
-        request: PresentationRequestParameters,
-        credentialAndDisclosedAttributes: Map<StoreEntry.Iso, Collection<NormalizedJsonPath>>,
-    ): KmmResult<CreatePresentationResult.DeviceResponse> = createVerifiablePresentation(
-        request = request,
-        isoPresentationParameters = credentialAndDisclosedAttributes.map { (credential, claims) ->
-            IsoPresentationParameters.create(credential, claims).getOrThrow()
-        }
-    )
-
     /**
      * Creates one Device Response while preserving every selected document and its order. A collection is used rather
      * than a map because one credential may satisfy more than one `DocRequest`.
@@ -98,6 +98,7 @@ class VerifiablePresentationFactory(
         )
     }
 
+    @Deprecated("Internal function, used previously for Presentation Exchange presentations")
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         credential: StoreEntry,
@@ -118,11 +119,13 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                isoPresentationParameters = listOf(IsoPresentationParameters.create(
-                    credential = credential,
-                    claims = disclosedAttributes,
-                    zkMetadata = zkMetadata
-                ).getOrThrow()),
+                isoPresentationParameters = listOf(
+                    IsoPresentationParameters.create(
+                        credential = credential,
+                        claims = disclosedAttributes,
+                        zkMetadata = zkMetadata
+                    ).getOrThrow()
+                ),
             )
         }
     }
@@ -149,8 +152,12 @@ class VerifiablePresentationFactory(
 
             is StoreEntry.Iso -> createIsoPresentation(
                 request = request,
-                isoPresentationParameters = listOf(IsoPresentationParameters.create(
-                    credential, disclosedAttributes.toRequestedIsoClaims(credential), zkMetadata).getOrThrow()
+                isoPresentationParameters = listOf(
+                    IsoPresentationParameters.create(
+                        credential = credential,
+                        claims = disclosedAttributes.toRequestedIsoClaims(credential),
+                        zkMetadata = zkMetadata
+                    ).getOrThrow()
                 ),
             )
         }
@@ -206,7 +213,7 @@ class VerifiablePresentationFactory(
         isoPresentationParameters.forEach { param ->
             val zkMetadata = param.zkMetadata
             if (zkMetadata is ZkMetadata.IsoMdocZk) {
-                mdocZkEngine.generate(request, param, keyMaterial).fold(
+                mdocZkEngine.generate(request, param, keyMaterial, clock.now()).fold(
                     onSuccess = { zkDocuments += it.zkDocument },
                     onFailure = { error ->
                         if (zkMetadata.zkRequest.zkRequired) throw error
@@ -236,39 +243,53 @@ class VerifiablePresentationFactory(
     ): KmmResult<Document> = catching {
         // grouping by namespace and all requested claims for that namespace
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
-            .mapNotNull { path -> path.toIsoNamespaceAttribute().also { if (it == null) {
-                Napier.w { "Ignoring requested claim '$path': does not follow namespaced path format (expected 2 segments)." }
-            } } }
+            .mapNotNull { path ->
+                path.toIsoNamespaceAttribute().also {
+                    if (it == null) {
+                        Napier.w { "Ignoring requested claim '$path': does not follow namespaced path format (expected 2 segments)." }
+                    }
+                }
+            }
             .groupBy { it.first }
             .mapValues { it.value.map { it.second } }
         val disclosedItems = namespaceToAttributesMap.mapValues { entry ->
-            entry.value.map {
-                discloseItem(entry.key, it)
+            IssuerSignedList(entry.value.map {
+                discloseIssuedItem(entry.key, it)
                     .mapFailure { PresentationException(it) }
                     .getOrThrow()
-            }
+            })
         }
 
-        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+        val approvalDigest = request.qesApprovalDigest(encodedTransactionData = false)
+        val deviceNamespaces = approvalDigest?.let { digest ->
+            mapOf(
+                at.asitplus.csc.bindings.QesApprovalBinding.NAMESPACE to DeviceSignedItemList(
+                    listOf(
+                        DeviceSignedItem(
+                            key = at.asitplus.csc.bindings.QesApprovalBinding.DATA_ELEMENT_IDENTIFIER,
+                            value = digest,
+                        ),
+                    ),
+                ),
+            )
+        }.orEmpty()
+        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(deviceNamespaces))
         val input = IsoDeviceSignatureInput(schemeIdentifier, deviceNameSpaceBytes)
 
-        @Suppress("DEPRECATION")
-        val deviceSignature = request.calcIsoDeviceSignaturePlain(input) ?: run {
-            val sessionTranscript = request.calcIsoSessionTranscript()
-                ?: throw PresentationException("calcIsoSessionTranscript not implemented")
+        val sessionTranscript = request.calcIsoSessionTranscript()
+            ?: throw PresentationException("calcIsoSessionTranscript not implemented")
 
-            calculateIsoDeviceAuthenticationBytes(input, sessionTranscript).transform {
-                Napier.d("Device authentication signature input is ${it.toHexString()}")
-                calculateIsoDeviceSignature(it, signDeviceAuthDetached)
-            }.getOrElse { e ->
-                Napier.w("Could not create DeviceAuth for presentation", e)
-                throw PresentationException(e)
-            }
+        val deviceSignature = calculateIsoDeviceAuthenticationBytes(input, sessionTranscript).transform {
+            Napier.d("Device authentication signature input is ${it.toHexString()}")
+            calculateIsoDeviceSignature(it, signDeviceAuthDetached)
+        }.getOrElse { e ->
+            Napier.w("Could not create DeviceAuth for presentation", e)
+            throw PresentationException(e)
         }
 
         Document(
             docType = schemeIdentifier,
-            issuerSigned = IssuerSigned.fromIssuerSignedItems(
+            issuerSigned = IssuerSigned.fromIssuerSignedLists(
                 namespacedItems = disclosedItems,
                 issuerAuth = issuerSigned.issuerAuth
             ),
@@ -422,16 +443,52 @@ class VerifiablePresentationFactory(
     ): JwsCompactTyped<KeyBindingJws> = signKeyBinding(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
-            issuedAt = Clock.System.now().truncateToSeconds(),
+            issuedAt = clock.now().truncateToSeconds(),
             audience = request.audience,
             challenge = request.nonce,
             sdHash = digest.digest(hashInput.encodeToByteArray()),
             transactionDataHashes = request.transactionData?.hash(request.transactionDataHashesAlgorithm),
             transactionDataHashesAlgorithmString = request.transactionDataHashesAlgorithm?.toIanaName(),
+            qesApproval = request.qesApprovalDigest(encodedTransactionData = true),
         ),
         KeyBindingJws.serializer(),
     ).getOrElse {
         throw PresentationException(it)
+    }
+
+    /**
+     * Computes qesApproval when a qesApprovalRequest is present, following the approved decisions in
+     * csc-data-classes/STANDARDS_CONFLICTS.md.
+     *
+     * DCQL response creation supplies the approval selected for this submission in qesApprovalTransactionData,
+     * or an empty list when the submission does not authorize QES. Direct callers default to transactionData.
+     * The single-approval limit applies to this presentation, not to the complete DCQL request.
+     *
+     * For mdoc, use the supported algorithm identified by the request's hashAlgorithmOID, following ETSI TS 119 432
+     * V1.3.1 B.6.3. This intentionally differs from CSC Data Model Bindings 1.0.0 section 7.2.1.1's fixed SHA-256.
+     *
+     * Preserve the approved CSC format-specific hash input: mdoc hashes the original decoded UTF-8 JSON bytes;
+     * SD-JWT VC hashes the UTF-8 bytes of the original base64url transaction_data text, following CSC Data Model
+     * Bindings 1.0.0 section 7.2.1.2. The SD-JWT input intentionally differs from ETSI 119 432 B.6.3's UTF-8 JSON input.
+     * Parsing is only used to identify the request and its algorithm; never reserialize JSON before hashing.
+     */
+    private fun PresentationRequestParameters.qesApprovalDigest(encodedTransactionData: Boolean): ByteArray? {
+        val matching = (qesApprovalTransactionData ?: transactionData).orEmpty().mapNotNull { transactionData ->
+            val decoded = transactionData.content.decodeToByteArray(Base64UrlStrict)
+            val json = Json.parseToJsonElement(decoded.decodeToString()).jsonObject
+            if (json["type"]?.jsonPrimitive?.content != QesApprovalRequest.TYPE) {
+                null
+            } else {
+                val request = Json.decodeFromJsonElement(QesApprovalRequest.serializer(), json)
+                Triple(transactionData.content, decoded, request)
+            }
+        }
+        if (matching.size > 1) throw PresentationException("Only one qesApprovalRequest may be presented")
+        val (encoded, decoded, approvalRequest) = matching.singleOrNull() ?: return null
+        val digest = Digest.entries.firstOrNull { it.oid == approvalRequest.hashAlgorithmOid }
+            ?: throw PresentationException("Unsupported qesApproval hash algorithm ${approvalRequest.hashAlgorithmOid}")
+        val input = if (encodedTransactionData) encoded.encodeToByteArray() else decoded
+        return digest.digest(input)
     }
 
     /**
@@ -457,5 +514,4 @@ class VerifiablePresentationFactory(
         CreatePresentationResult.VpJws(toString(), this)
     }
 }
-
 

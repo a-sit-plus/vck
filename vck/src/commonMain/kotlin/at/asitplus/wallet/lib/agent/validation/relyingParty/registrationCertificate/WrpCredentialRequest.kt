@@ -3,12 +3,8 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertifi
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.etsi.relyingParty.WrpCredentialMetaDomain
 import at.asitplus.iso.DocRequest
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.IndexSegment
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment.NameSegment
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLAmbiguousClaimsQuery
-import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
@@ -53,17 +49,7 @@ sealed interface WrpCredentialRequest {
 
         override suspend fun getAttributes() = this.query.claims?.associateWith {
             when (it) {
-                is DCQLJsonClaimsQuery -> JsonClaimReference(
-                    NormalizedJsonPath(it.path.map { segment ->
-                        when (segment) {
-                            is DCQLClaimsPathPointerSegment.IndexSegment -> IndexSegment(segment.index)
-                            is DCQLClaimsPathPointerSegment.NameSegment -> NameSegment(segment.name)
-                            DCQLClaimsPathPointerSegment.NullSegment -> throw IllegalStateException(
-                                "NullSegment is not supported for WRPRC claim validation: $it"
-                            )
-                        }
-                    })
-                )
+                is DCQLJsonClaimsQuery -> JsonClaimReference(it.path)
 
                 is DCQLIsoMdocClaimsQuery -> MdocClaimReference(namespace = it.namespace, claimName = it.claimName)
 

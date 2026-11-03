@@ -21,8 +21,9 @@ import kotlin.coroutines.cancellation.CancellationException
  * Private keys are kept PKCS#8-PEM-encoded in [identifierToPrivateKeyPem], so that deployments running several
  * instances can synchronize them between the instance that created the request and the instance receiving the response,
  * by passing the same sort of [MapStore] implementation they use for the other stores of e.g. `OpenId4VpVerifier`.
- * Note that keys of abandoned flows are never consumed, so entries
- * need to be evicted eventually, which [DefaultMapStore] does after its `lifetime`.
+ * Verifiers remove the key of every request they process a response to, see [discardKey], but keys of abandoned
+ * flows, i.e. without any response, are never consumed, so entries need to be evicted eventually, which
+ * [DefaultMapStore] does after its `lifetime`.
  * Attackers might extract the `kid` from a request sent to the other party,
  * and trick us into decrypting a forged response with that `kid` in the header,
  * leading us into consuming the key, and burning that session for the righteous party.
@@ -53,6 +54,14 @@ class EphemeralEncryptionKeyService(
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun consumeKey(identifier: String): KeyMaterial? =
         identifierToPrivateKeyPem.remove(identifier)?.toKeyMaterial(identifier)
+
+    /**
+     * Removes the key stored under [identifier] without decoding it, e.g. when the response to its request has been
+     * processed without decrypting anything. Does nothing if no key is stored under [identifier].
+     */
+    suspend fun discardKey(identifier: String) {
+        identifierToPrivateKeyPem.remove(identifier)
+    }
 
     private fun String.toKeyMaterial(identifier: String): KeyMaterial {
         val privateKey = CryptoPrivateKey.decodeFromPem(this).getOrThrow()

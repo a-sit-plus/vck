@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestObjectParameters
@@ -24,7 +23,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
@@ -35,7 +33,6 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
     val walletUrl = "https://example.com/wallet/${uuid4()}"
     val holderKeyMaterial = EphemeralKeyWithoutCert()
     val holderOid4vp = OpenId4VpHolder(
-        keyMaterial = holderKeyMaterial,
         holder = HolderAgent(holderKeyMaterial),
         randomSource = RandomSource.Default,
     )
@@ -56,7 +53,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val authnRequest =
                 verifierOid4vp.createAuthnRequest(reqOptions, CreationOptions.Query(walletUrl)).getOrThrow().url
 
-            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
+            val params = holderOid4vp.prepareAuthorizationResponse(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
             val serialized =
@@ -73,7 +70,6 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                         JwsCompactTyped<AuthenticationRequestParameters>(this).payload
                     }
             )
-            authnRequest.shouldNotContain(DifInputDescriptor::class.simpleName!!)
             val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Json<AuthenticationRequestParameters>>()
 
@@ -113,7 +109,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
             val jarRequest: JarRequestParameters = Url(authnRequestUrl).decodeFromQuery()
             jarRequest.clientId shouldBe clientId
             val serializedRequest = jarRequest.request.shouldNotBeNull()
-            val params = holderOid4vp.startAuthorizationResponsePreparation(serializedRequest).getOrThrow().request
+            val params = holderOid4vp.prepareAuthorizationResponse(serializedRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Jws<AuthenticationRequestParameters>>()
 
             val serialized =

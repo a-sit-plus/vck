@@ -5,9 +5,9 @@ import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
 /**
- * A string identifying the particular claim. The value MUST be a non-empty string consisting of
- * alphanumeric, underscore (_) or hyphen (-) characters. Within the particular claims array, the
- * same id MUST NOT be present more than once.
+ * OID4VP 1.0, 6.3: id: […] A string identifying the particular claim. The value MUST be a non-empty string consisting
+ * of alphanumeric, underscore (_), or hyphen (-) characters. Within the particular claims array, the same id MUST NOT
+ * be present more than once.
  */
 @Serializable
 @JvmInline

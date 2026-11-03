@@ -76,7 +76,8 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
                 )
                 val verifierOid4vp = OpenId4VpVerifier(
                     keyMaterial = verifierKeyMaterial,
-                    clientIdScheme = ClientIdScheme.RedirectUri(clientId)
+                    clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+                    presentationPolicy = testPresentationPolicy,
                 )
             }
         }
@@ -109,11 +110,11 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
                 CreationOptions.Query(it.walletUrl)
             ).getOrThrow().url
 
-            val authnResponse = it.holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenValidationResult.shouldNotBeNull().getOrThrow().apply {
+                .vpTokenOrThrow().apply {
                     shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                     credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first()
                         .getOrThrow().apply {

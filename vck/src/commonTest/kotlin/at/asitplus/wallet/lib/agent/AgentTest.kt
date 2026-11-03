@@ -62,7 +62,6 @@ val AgentTest by matrixSuite {
             val holder = HolderAgent(
                 keyMaterial = holderKeyMaterial,
                 subjectCredentialStore = holderCredentialStore,
-                validator = validator,
             )
             val verifier = VerifierAgent(
                 identifier = verifierId,

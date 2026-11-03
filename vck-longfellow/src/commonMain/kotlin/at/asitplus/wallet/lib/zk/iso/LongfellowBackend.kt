@@ -22,6 +22,7 @@ import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystem
 import kotlin.ByteArray
 import kotlin.concurrent.Volatile
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * An [IsoMdocZkBackend] implementation backed by the Longfellow-ZK zero-knowledge system
@@ -151,6 +152,7 @@ class LongfellowBackend : IsoMdocZkBackend {
      * @param requestedClaims The set of normalized JSON paths representing requested claims.
      * @param requestedZkSystemSpecs Acceptable ZK system specifications requested by the verifier.
      * @param keyMaterial The key material used for signing device authentication in the mDoc context.
+     * @param timestamp The timestamp to use for the proof.
      * @return A [KmmResult] wrapping the generated [IsoMdocZkProof].
      * @throws IllegalStateException if [initialize] has not been called.
      */
@@ -159,7 +161,8 @@ class LongfellowBackend : IsoMdocZkBackend {
         credential: StoreEntry.Iso,
         requestedClaims: Collection<NormalizedJsonPath>,
         requestedZkSystemSpecs: List<ZkSystemSpec>,
-        keyMaterial: KeyMaterial
+        keyMaterial: KeyMaterial,
+        timestamp: Instant,
     ): KmmResult<IsoMdocZkProof> = catching {
         val sessionTranscript = requireNotNull(request.calcIsoSessionTranscript()) {
             "calcIsoSessionTranscript not implemented"
@@ -182,7 +185,7 @@ class LongfellowBackend : IsoMdocZkBackend {
             zkSystemSpec = selectedMultipazZkSystemSpec,
             document = plainMultipazDocument,
             sessionTranscript = sessionTranscript.toMultipazSessionTranscript(),
-            timestamp = Clock.System.now().truncateToSeconds(),
+            timestamp = timestamp.truncateToSeconds(),
         ).toZkDocument()
 
         IsoMdocZkProof(

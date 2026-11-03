@@ -11,6 +11,7 @@ import at.asitplus.openid.TokenIntrospectionResponse
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -188,7 +189,15 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 null
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
-                .apply { active shouldBe true }
+                .apply {
+                    active shouldBe true
+                    // RFC 9449 6.2
+                    tokenType shouldBe TOKEN_TYPE_DPOP
+                    confirmationClaim shouldBe ConfirmationClaim(
+                        jsonWebKeyThumbprint = it.clientKey.jsonWebKey.jwkThumbprint
+                            .removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
+                    )
+                }
 
             val dpopForResource = BuildDPoPHeader(
                 signDpop = it.signDpop,

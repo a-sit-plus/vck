@@ -31,6 +31,12 @@ object OpenIdConstants {
     /** `refresh_token` */
     const val GRANT_TYPE_REFRESH_TOKEN = "refresh_token"
 
+    /** `access_token`, a `token_type_hint` ([RFC 7009 4.1.2](https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2)) */
+    const val TOKEN_TYPE_HINT_ACCESS_TOKEN = "access_token"
+
+    /** `refresh_token`, a `token_type_hint` ([RFC 7009 4.1.2](https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2)) */
+    const val TOKEN_TYPE_HINT_REFRESH_TOKEN = "refresh_token"
+
     /** `Bearer ` */
     const val TOKEN_PREFIX_BEARER = "Bearer "
 
@@ -44,6 +50,10 @@ object OpenIdConstants {
     const val TOKEN_TYPE_DPOP = "DPoP"
 
     /** `urn:ietf:params:oauth:jwk-thumbprint` */
+    @Deprecated(
+        "Not a cryptographic binding method, OpenID4VCI 1.0, 12.2.4 defines only `jwk`, `cose_key`, and DID methods",
+        ReplaceWith("BINDING_METHOD_JWK")
+    )
     const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
 
     /** `cose_key` */
@@ -400,7 +410,21 @@ object OpenIdConstants {
      * Constants for VerifierInfo
      */
     object VerifierInfo {
+        /**
+         * ETSI TS 119 472-2 V1.3.1 OIDFVP-HAIP-COMMON-REQ-RO-15: `format` of the `verifier_info` element enclosing the
+         * registration certificate, whose `data` is the base64url encoding of the serialized registration certificate
+         * (RO-16, OIDFVP-HAIP_COMMON_RO_REQ-09 in V1.1.1).
+         */
         const val REGISTRATION_CERT_FORMAT = "registration_cert"
+    }
+
+    /**
+     * Formats of [at.asitplus.openid.IssuerInfo], see ETSI TS 119 472-3 V1.1.1, 4.2.3.
+     */
+    object IssuerInfo {
+        /** The registration certificate (WRPRC) of the provider (ISS-MDATA-REG_CERT-4.2.3-05). */
+        const val REGISTRATION_CERT_FORMAT = "registration_cert"
+
     }
 
 
@@ -500,6 +524,9 @@ object OpenIdConstants {
 
         /** Invalid request in general: `invalid_request`. */
         const val INVALID_REQUEST = "invalid_request"
+
+        /** Invalid OpenID4VP transaction data or credential references: `invalid_transaction_data`. */
+        const val INVALID_TRANSACTION_DATA = "invalid_transaction_data"
 
         /** Invalid client, e.g. missing client authentication: `invalid_client`. */
         const val INVALID_CLIENT = "invalid_client"

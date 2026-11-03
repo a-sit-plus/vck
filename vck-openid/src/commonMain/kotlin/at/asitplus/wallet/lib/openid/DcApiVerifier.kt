@@ -29,24 +29,22 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.openid.dcql.toIso180137AnnexCDeviceRequest
-import at.asitplus.rfc6749OAuth2AuthorizationFramework.ResponseType
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.signum.supreme.sign.Signer
 import at.asitplus.wallet.lib.DefaultNonceService
-import at.asitplus.wallet.lib.MdocDeviceSignatureVerifier
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier
-import at.asitplus.wallet.lib.agent.NonceChallengeVerifier.ChallengeSession
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
@@ -55,7 +53,6 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.IsoDeviceRetrieval
-import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
@@ -63,12 +60,20 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.PresentationContext
+import at.asitplus.wallet.lib.validation.PresentationValidationInput
+import at.asitplus.wallet.lib.validation.PresentationValidationResult
+import at.asitplus.wallet.lib.validation.ProtocolResponseChecks
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.ktor.utils.io.core.*
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 
 /**
@@ -86,8 +91,6 @@ class DcApiVerifier @JvmOverloads constructor(
     private val clientIdScheme: ClientIdScheme,
     /** Key material to sign the authentication request with [signAuthnRequest]. */
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    /** Verifies the holder's response against our identifier from [clientIdScheme]. */
-    val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     /**
      * Long-lived key advertised in [metadata] so that holders can encrypt responses, but **only** for client
      * identifier schemes that do not convey client metadata in the request, i.e. where this key is distributed
@@ -97,9 +100,6 @@ class DcApiVerifier @JvmOverloads constructor(
     private val decryptionKeyMaterial: KeyMaterial? = null,
     /** Creates one ephemeral encryption key per authentication request (Annex C and OpenID4VP) */
     private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
-    @Deprecated("Will be derived from [ephemeralEncryptionKeyService] and [decryptionKeyMaterial]")
-    private val decryptJwe: DecryptJweFun =
-        DecryptJweWithEphemeralKey(ephemeralEncryptionKeyService, decryptionKeyMaterial),
     /** Signs authentication requests for signed DC API requests. */
     private val signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
         SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
@@ -107,8 +107,6 @@ class DcApiVerifier @JvmOverloads constructor(
     private val verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
     /** Advertised in [metadata]. */
     private val supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
-    /** Used to verify session transcripts from mDoc responses. */
-    private val verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
     /** Creates and validates OpenID4VP request nonces. */
     private val nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests to verify the authn response to it */
@@ -125,15 +123,80 @@ class DcApiVerifier @JvmOverloads constructor(
         keyMaterial = keyMaterial,
         unprotectedHeaderModifier = CoseHeaderClientIdScheme(clientIdScheme),
     ),
+    /**
+     * Validates every presentation of a response for its report, see [AuthnResponseResult.Success.validationReport]
+     * and [Iso180137AnnexCWrapper.validationReport]: configure it with the trust anchors per credential type and the
+     * status list token resolver.
+     */
+    private val credentialValidator: CredentialValidator = CredentialValidator(),
+    /**
+     * The policy presentations are validated under, by default [defaultPresentationPolicy], which rejects every
+     * presentation unless [credentialValidator] has trust anchors for its issuer.
+     */
+    private val presentationPolicy: ValidationPolicy = defaultPresentationPolicy,
 ) {
-    private val mdocDeviceSignatureVerifier = MdocDeviceSignatureVerifier(verifyCoseSignature = verifyCoseSignature)
+
+    /** The verifier passed to the deprecated constructor, which no longer takes effect. */
+    @Deprecated(
+        "Presentations are validated with credentialValidator, see AuthnResponseResult.Success.validationReport " +
+                "and Iso180137AnnexCWrapper.validationReport. To be removed in the next major release."
+    )
+    @Suppress("DEPRECATION")
+    var verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId)
+        private set
+
+    @Deprecated(
+        "verifier and verifyCoseSignature no longer take effect: presentations are validated with " +
+                "credentialValidator under presentationPolicy. To be removed in the next major release.",
+    )
+    @JvmOverloads
+    constructor(
+        clientIdScheme: ClientIdScheme,
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+        verifier: Verifier,
+        decryptionKeyMaterial: KeyMaterial? = null,
+        ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
+        signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
+            SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
+        verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
+        supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+        @Suppress("UNUSED_PARAMETER")
+        verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
+        nonceService: NonceService = DefaultNonceService(),
+        stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+        stateToIsoMdocRequestStore: MapStore<String, IsoMdocRequest> = DefaultMapStore(),
+        supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
+        signReaderAuth: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+            keyMaterial = keyMaterial,
+            unprotectedHeaderModifier = CoseHeaderClientIdScheme(clientIdScheme),
+        ),
+        credentialValidator: CredentialValidator = CredentialValidator(),
+        presentationPolicy: ValidationPolicy = defaultPresentationPolicy,
+    ) : this(
+        clientIdScheme = clientIdScheme,
+        keyMaterial = keyMaterial,
+        decryptionKeyMaterial = decryptionKeyMaterial,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        signAuthnRequest = signAuthnRequest,
+        verifyJwsObject = verifyJwsObject,
+        supportedAlgorithms = supportedAlgorithms,
+        nonceService = nonceService,
+        stateToAuthnRequestStore = stateToAuthnRequestStore,
+        stateToIsoMdocRequestStore = stateToIsoMdocRequestStore,
+        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
+        signReaderAuth = signReaderAuth,
+        credentialValidator = credentialValidator,
+        presentationPolicy = presentationPolicy,
+    ) {
+        @Suppress("DEPRECATION")
+        this.verifier = verifier
+    }
 
     /** Cipher suite to decrypt responses acc. to ISO/IEC 18013-7 Annex C */
     private val hpke = HPKE(HPKE.KEM.DHKEM_P256_HKDF_SHA256, HPKE.KDF.HKDF_SHA256, HPKE.AEAD.AES_128_GCM)
 
     private val nonceAwareVerifier = NonceChallengeVerifier(
         verifierId = clientIdScheme.clientId,
-        verifier = verifier,
         nonceService = nonceService,
     )
     private val requestFactory = OpenId4VpRequestFactory(
@@ -146,10 +209,12 @@ class DcApiVerifier @JvmOverloads constructor(
         stateToAuthnRequestStore = stateToAuthnRequestStore,
         supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
     )
+    private val responseProcessor = AuthnResponseProcessor(requestFactory, nonceAwareVerifier)
     private val vpTokenValidator = VpTokenValidator(
-        mdocDeviceSignatureVerifier = mdocDeviceSignatureVerifier,
         createSessionTranscript = DcApiSessionTranscriptCalculator(),
         decryptionKeyMaterial = decryptionKeyMaterial,
+        credentialValidator = credentialValidator,
+        presentationPolicy = presentationPolicy,
     )
     private val responseParser = ResponseParser(
         decryptJwe = DecryptJweWithEphemeralKey(ephemeralEncryptionKeyService, decryptionKeyMaterial),
@@ -281,6 +346,16 @@ class DcApiVerifier @JvmOverloads constructor(
      * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.
      *
      * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store.
+     *
+     * For OpenID4VP, succeeds with an [AuthnResponseResult] if the response has been processed: a presentation
+     * ([AuthnResponseResult.Success], valid or not) or an authorization error response of the wallet
+     * ([AuthnResponseResult.Error], carrying only `error`, see OpenID4VP 1.0, A.4). Either one ends the request, so a
+     * second response to it fails. Fails if the response has not been processed, i.e. it is malformed, can't be
+     * correlated with a request, comes from an origin not in the `expected_origins` of a signed request, or violates
+     * the protection its request requires.
+     *
+     * For ISO/IEC 18013-7 Annex C, succeeds with an [Iso180137AnnexCResult]: the verified documents
+     * ([Iso180137AnnexCWrapper]), or the error status of the wallet's device response ([Iso180137AnnexCError]).
      */
     suspend fun validateAuthnResponse(
         input: String,
@@ -298,6 +373,16 @@ class DcApiVerifier @JvmOverloads constructor(
      * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.
      *
      * The [externalId] will be used to load the corresponding [AuthenticationRequestParameters] from the store.
+     *
+     * For OpenID4VP, succeeds with an [AuthnResponseResult] if the response has been processed: a presentation
+     * ([AuthnResponseResult.Success], valid or not) or an authorization error response of the wallet
+     * ([AuthnResponseResult.Error], carrying only `error`, see OpenID4VP 1.0, A.4). Either one ends the request, so a
+     * second response to it fails. Fails if the response has not been processed, i.e. it is malformed, can't be
+     * correlated with a request, comes from an origin not in the `expected_origins` of a signed request, or violates
+     * the protection its request requires.
+     *
+     * For ISO/IEC 18013-7 Annex C, succeeds with an [Iso180137AnnexCResult]: the verified documents
+     * ([Iso180137AnnexCWrapper]), or the error status of the wallet's device response ([Iso180137AnnexCError]).
      */
     suspend fun validateAuthnResponse(
         input: DigitalCredentialInterface,
@@ -336,34 +421,32 @@ class DcApiVerifier @JvmOverloads constructor(
         expectedOrigin: String,
     ): KmmResult<AuthnResponseResult> = catching {
         Napier.d("validateAuthnResponse: $input")
-        val authnRequest = requestFactory.loadAuthnRequest(input, externalId)
-
-        // the request has been consumed above, and an authentication response is not retryable,
-        // so end the challenge's lifecycle here, no matter how validating the response turns out
-        val session = nonceAwareVerifier.consumeChallenge(
-            authnRequest.nonce ?: throw IllegalArgumentException("nonce not present in $authnRequest")
-        )
-
-        val responseType = authnRequest.responseType?.let { ResponseType(it) }
-        require(responseType != null) {
-            "No response type was specified in the original authentication request."
+        with(responseProcessor.consume(input, externalId)) {
+            // the request has been consumed, so a response over the wrong transport or origin ends it, too
+            validateTransport(request, input, expectedOrigin)
+            error?.let { AuthnResponseResult.Error(it, request) } ?: vpTokenValidator.validateVpToken(
+                authnRequest = request,
+                responseParameters = input,
+                origin = expectedOrigin,
+                // validateTransport rejects a signed request from an origin not in its expected_origins
+                expectedOrigin = if (input.clientIdRequired) CheckOutcome.Passed else CheckOutcome.NotApplicable,
+                session = session,
+            ).let {
+                AuthnResponseResult.Success(
+                    vpTokenResult = it.result,
+                    request = request,
+                    validationReport = it.report,
+                    presentationValidations = it.presentationValidations,
+                )
+            }
         }
-        require(OpenIdConstants.VP_TOKEN in responseType) {
-            "Unsupported response type: $responseType"
-        }
-
-        AuthnResponseResult(
-            idTokenValidationResult = null,
-            vpTokenValidationResult = validateVpToken(authnRequest, input, expectedOrigin, session),
-            request = authnRequest,
-        )
     }
 
     internal suspend fun validateIsoResponse(
         receivedData: DCAPIResponse,
         externalId: String,
         expectedOrigin: String
-    ): KmmResult<Iso180137AnnexCWrapper> = catching {
+    ): KmmResult<Iso180137AnnexCResult> = catching {
         val isoMdocRequest = stateToIsoMdocRequestStore.remove(externalId)
             ?: throw IllegalStateException("Can't load request for response to $externalId")
         val decryptionKey = ephemeralEncryptionKeyService.consumeKey(externalId)?.getUnderLyingSigner() as? Signer.ECDSA
@@ -386,37 +469,77 @@ class DcApiVerifier @JvmOverloads constructor(
             ct = encryptedResponseData.cipherText,
         )
         val deviceResponse = coseCompliantSerializer.decodeFromByteArray<DeviceResponse>(encodedDeviceResponse)
+        if (deviceResponse.status != DEVICE_RESPONSE_STATUS_OK) {
+            // ISO/IEC 18013-5, 10.3.6: "If the mdoc returns a status code different than 0, it shall not return any
+            // documents"; the request has been consumed above, so the error ends it like a presentation
+            with(deviceResponse) {
+                require(listOf(documents, zkDocuments, encryptedDocuments).all { it.isNullOrEmpty() }) {
+                    "Device response with status $status must not contain documents"
+                }
+            }
+            return@catching Iso180137AnnexCError(deviceResponse.status)
+        }
 
-        val documents = verifier.verifyPresentationIsoMdoc(
-            input = deviceResponse,
-            verifyDocument = mdocDeviceSignatureVerifier.verifyDocument(
-                sessionTranscript = sessionTranscript
-            )
-        ).getOrThrow().documents
-
-        // an authentic document of a type we never asked for must not be mistaken for the requested one
+        // a document of a type we never asked for must not be mistaken for the requested one
         val requestedDocTypes = isoMdocRequest.deviceRequest.docRequests
             .map { it.itemsRequest.value.docType }.toSet()
-        documents.forEach { document ->
-            require(document.document.docType in requestedDocTypes) {
-                "Response contains docType '${document.document.docType}', but requested were $requestedDocTypes"
+        deviceResponse.documents.orEmpty().forEach { document ->
+            require(document.docType in requestedDocTypes) {
+                "Response contains docType '${document.docType}', but requested were $requestedDocTypes"
             }
         }
 
-        Iso180137AnnexCWrapper(documents)
+        val context = PresentationContext(
+            // Not checked for mdoc documents: the session transcript binds them to the request and the origin
+            challenge = isoMdocRequest.encryptionInfo.encryptionParameters.nonce?.encodeToString(Base64UrlStrict) ?: "",
+            audience = "origin:$expectedOrigin",
+            sessionTranscript = sessionTranscript,
+        )
+        val presentationValidations = deviceResponse.documents.orEmpty().map {
+            credentialValidator.validate(PresentationValidationInput.MdocDocument(it), context, presentationPolicy)
+        }
+        Iso180137AnnexCWrapper(
+            documents = legacyIsoDocuments(presentationValidations),
+            presentationValidations = presentationValidations,
+            validationReport = credentialValidator.reportResponse(
+                checks = ProtocolResponseChecks(
+                    parsing = CheckOutcome.Passed,
+                    // HPKE with the session transcript as info, which contains the origin
+                    // (ISO/IEC DTS 18013-7, C.4, C.5)
+                    encryption = CheckOutcome.Passed,
+                    expectedOrigin = CheckOutcome.Passed,
+                    requestState = CheckOutcome.Passed,
+                    submissionRequirements = requestedDocTypes.submissionRequirements(presentationValidations),
+                ),
+                presentations = presentationValidations.map { it.report },
+            ),
+        )
     }
 
     /**
-     * Validates the `vp_token` of the response with the shared [VpTokenValidator],
-     * enforcing this verifier's transport: the Digital Credentials API.
+     * Every requested document has to be answered by an accepted one: the mdoc may return only some of the requested
+     * documents (ISO/IEC 18013-5:2021, 8.3.2.1.2.2), which does not satisfy the request.
      */
-    @Throws(IllegalArgumentException::class, CancellationException::class)
-    private suspend fun validateVpToken(
+    private fun Set<String>.submissionRequirements(presentations: List<PresentationValidationResult>): CheckOutcome {
+        val accepted = presentations.mapNotNull { it.presentation as? ValidatedPresentation.MdocDocument }
+            .map { it.document.docType }.toSet()
+        val missing = this - accepted
+        return if (missing.isEmpty())
+            CheckOutcome.Passed
+        else
+            CheckOutcome.Failed(IllegalArgumentException("No accepted document of the requested types $missing"))
+    }
+
+    /**
+     * Enforces this verifier's transport: the Digital Credentials API, and for signed requests, a calling origin
+     * listed in the request's `expected_origins`.
+     */
+    @Throws(IllegalArgumentException::class)
+    private fun validateTransport(
         authnRequest: AuthenticationRequestParameters,
         responseParameters: ResponseParametersFrom,
         expectedOrigin: String,
-        session: ChallengeSession,
-    ): KmmResult<VpTokenValidationResult> = catching {
+    ) {
         val originalResponseParameters = responseParameters.originalResponseParameters
         require(originalResponseParameters is ResponseParametersFrom.DcApi) {
             "Unsupported response parameters: $originalResponseParameters"
@@ -427,17 +550,11 @@ class DcApiVerifier @JvmOverloads constructor(
                 "expected origin '$expectedOrigin' does not match expected_origins"
             }
         }
-        vpTokenValidator.validateVpToken(
-            authnRequest = authnRequest,
-            responseParameters = responseParameters,
-            origin = expectedOrigin,
-            session = session,
-        ).getOrThrow()
     }
 
     fun createDcApiSessionTranscriptAnnexC(
         toBeHashed: SessionTranscriptContentHashable,
-    ): SessionTranscript = SessionTranscript.forDcApi(
+    ): SessionTranscript = SessionTranscript.DcApi(
         DCAPIHandover(
             type = TYPE_DCAPI,
             hash = coseCompliantSerializer.encodeToByteArray(
@@ -446,3 +563,6 @@ class DcApiVerifier @JvmOverloads constructor(
         )
     )
 }
+
+/** ISO/IEC 18013-5, 10.3.6: normal processing, the only status of a device response that carries documents. */
+private const val DEVICE_RESPONSE_STATUS_OK = 0U

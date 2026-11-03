@@ -66,6 +66,18 @@ val TrustedIssuerTest by matrixSuite {
         )(signed).getOrThrow()
     }
 
+    "JWS signed by a directly listed certificate transported with its unlisted issuer is verified" {
+        val ca = TestCertificateAuthority()
+        val signer = ca.issue()
+        val signed = signJws(signer, JwsHeaderIdentifierFun { header, keyMaterial ->
+            header.copy(certificateChain = listOf(keyMaterial.getCertificate()!!, ca.certificate))
+        })
+
+        VerifyJwsObjectTrustedCertificate(
+            trustedIssuers = { setOf(signer.getCertificate()!!) },
+        )(signed).getOrThrow()
+    }
+
     "JWS signed by an untrusted self-signed certificate is not verified" {
         val signed = signJws(selfSignedKey())
 
@@ -87,18 +99,30 @@ val TrustedIssuerTest by matrixSuite {
         }.message.shouldNotBeNull() shouldContain "not valid at"
     }
 
-    "JWS transporting the trust anchor in its certificate chain is not verified" {
+    "JWS transporting the trust anchor as the last certificate of its chain is verified" {
         val ca = TestCertificateAuthority()
         val issuerKey = ca.issue()
         val anchor = ca.certificate
-        // the trust anchor has to be known out-of-band, so shipping it with the JWS must not help
+        // the trust anchor is known out-of-band anyway, so shipping it with the JWS is ignored
         val signed = signJws(issuerKey, JwsHeaderIdentifierFun { header, keyMaterial ->
             header.copy(certificateChain = listOf(keyMaterial.getCertificate()!!, anchor))
         })
 
+        VerifyJwsObjectTrustedCertificate(trustedIssuers = { setOf(anchor) })(signed).getOrThrow()
+    }
+
+    "JWS transporting the trust anchor before another certificate is not verified" {
+        val ca = TestCertificateAuthority()
+        val issuerKey = ca.issue()
+        val anchor = ca.certificate
+        val unrelated = TestCertificateAuthority().certificate
+        val signed = signJws(issuerKey, JwsHeaderIdentifierFun { header, keyMaterial ->
+            header.copy(certificateChain = listOf(keyMaterial.getCertificate()!!, anchor, unrelated))
+        })
+
         shouldThrowAny {
             VerifyJwsObjectTrustedCertificate(trustedIssuers = { setOf(anchor) })(signed).getOrThrow()
-        }.message.shouldNotBeNull() shouldContain "must not be transported"
+        }.message.shouldNotBeNull() shouldContain "last one of the chain"
     }
 
     "JWS without a certificate chain is not verified, even for a trusted issuer" {
@@ -170,6 +194,8 @@ val TrustedIssuerTest by matrixSuite {
         }
     }
 
+    // The deprecated trustedIssuers of HolderAgent, see HolderAgentValidatedStoreTest for the credential validator
+    @Suppress("DEPRECATION")
     "HolderAgent stores an SD-JWT of a trusted issuer only" {
         val ca = TestCertificateAuthority()
         val holderKey = EphemeralKeyWithoutCert()

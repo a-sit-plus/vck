@@ -345,13 +345,13 @@ val StoreEntrySerializationTest by matrixSuite {
             9TJvI8dGCZwTaOlEbouZIZc8Si8Jbyi0wjv8hif0TjI-2mXy_o3AUSpXaQMYYleYDIsy_-FYLpe9kvA
         """.trimIndent()
 
-            val credentialsInput = input.decodeToByteArray(Base64())
-                .let { coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(it) }
-                .let { Holder.StoreCredentialInput.Iso(it, ConstantIndex.AtomicAttribute2023) }
-                .shouldNotBeNull()
-
-            val entry = it.holder.storeCredential(credentialsInput).getOrThrow()
+            // A credential of another holder and type, so it is stored without validation: this tests serialization
+            val entry = InMemorySubjectCredentialStore()
+                .storeCredential(SubjectCredentialStore.StoreEntry.Iso.fromString(input).getOrThrow()).getOrThrow()
                 .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
+
+            entry.issuerSigned shouldBe input.decodeToByteArray(Base64())
+                .let { coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(it) }
 
             val serialized = joseCompliantSerializer.encodeToString(entry)
 

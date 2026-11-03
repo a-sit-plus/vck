@@ -25,7 +25,6 @@ import at.asitplus.signum.indispensable.josef.jsonWebKeyBytes
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.signum.indispensable.symmetric.AuthCapability
 import at.asitplus.signum.indispensable.symmetric.KeyType
@@ -458,7 +457,7 @@ class DecryptJwe(
  * Decrypts JWE payloads with the ephemeral key referenced by the JWE's `kid` header, as per
  * [OpenID4VP 1.0, 8.3](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-encrypted-responses).
  *
- * *Note that this function only loads the key but does not consume it from [ephemeralEncryptionKeyService]!*
+ * Consumes the ephemeral key from [ephemeralEncryptionKeyService], so that it decrypts at most one response.
  */
 class DecryptJweWithEphemeralKey(
     private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService,
@@ -514,19 +513,6 @@ fun interface PublicJsonWebKeyLookup {
     suspend operator fun invoke(
         jwsObject: JwsCompact,
     ): Set<JsonWebKey>?
-}
-
-/**
- * Assumes that truststore is populated by x509 certificates
- */
-@Deprecated(
-    "Trusted certificates are not selected per signed object, use TrustedCertificates instead",
-    ReplaceWith("at.asitplus.wallet.lib.agent.TrustedCertificates")
-)
-fun interface TrustStoreLookup {
-    suspend operator fun invoke(
-        jwsObject: JwsCompact,
-    ): Set<X509Certificate>?
 }
 
 fun interface VerifyJwsSignatureFun {
@@ -630,6 +616,7 @@ class VerifyJwsSignatureWithCnf @JvmOverloads constructor(
  * The X.509 certificate of the trust anchor MUST NOT be included in the x5c JOSE header of the Status List Token.
  * The X.509 certificate signing the request MUST NOT be self-signed.
  */
+@Deprecated("Status list tokens are validated by at.asitplus.wallet.lib.validation.StatusValidator, which also accepts signers listed on a LoTE themselves (ETSI TS 119 602 V1.1.1, 6.6.3). To be removed in the next major release.")
 class VerifyStatusListTokenHAIP @JvmOverloads constructor(
     val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
     /** Certificates of trusted issuers of status list tokens, if trust in the issuer shall be evaluated */
@@ -700,24 +687,9 @@ class VerifyJwsObject @JvmOverloads constructor(
     val jwkSetRetriever: JwkSetRetrieverFunction = JwkSetRetrieverFunction { null },
 ) : VerifyJwsObjectFun {
 
-    /** Set only by the deprecated constructor taking a [PublicJsonWebKeyLookup]. */
-    private var trustedDelegate: VerifyJwsObjectFun? = null
-
-    @Deprecated(
-        "A key lookup used to be ignored whenever the JWS header asserted a key itself, so it could not " +
-                "enforce anything. Use VerifyJwsObjectTrusted to treat the keys as a trust list, or drop the " +
-                "parameter to keep verifying against the key asserted by the JWS.",
-        ReplaceWith("VerifyJwsObjectTrusted(verifyJwsSignature, publicKeyLookup)")
-    )
-    constructor(
-        verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
-        jwkSetRetriever: JwkSetRetrieverFunction = JwkSetRetrieverFunction { null },
-        publicKeyLookup: PublicJsonWebKeyLookup,
-    ) : this(verifyJwsSignature, jwkSetRetriever) {
-        trustedDelegate = VerifyJwsObjectTrusted(verifyJwsSignature, publicKeyLookup)
-    }
-
-    override suspend operator fun invoke(jwsObject: JwsCompact) = trustedDelegate?.invoke(jwsObject) ?: catching {
+    override suspend operator fun invoke(
+        jwsObject: JwsCompact
+    ) = catching {
         require(jwsObject.loadPublicKeys().any { verifyJwsSignature(jwsObject, it).isSuccess }) {
             "Invalid Signature"
         }

@@ -1,6 +1,5 @@
 package at.asitplus.etsi.relyingParty
 
-import at.asitplus.etsi.relyingParty.WrpConstants.POLICY_IDENTIFIER
 import at.asitplus.signum.indispensable.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -11,77 +10,163 @@ import kotlin.time.Instant
  */
 @Serializable
 data class WrpPayload(
+    /** Trade name, common name or service name of the relying party (Table 7; clause B.2.1). */
     @SerialName("name")
     val name: String? = null,
 
+    /**
+     * Officially recorded legal names, when the relying party is a legal person (Table 7; legalName `[1..*]`,
+     * clause B.2.3), always encoded as an array, see [WrpStringListSerializer].
+     */
     @SerialName("sub_ln")
-    val subjectLegalName: String? = null,
+    @Serializable(with = WrpStringListSerializer::class)
+    val subjectLegalNames: List<String>? = null,
 
+    /** Officially recorded given names, including middle names, for a natural person (Table 7; clause B.2.4). */
     @SerialName("sub_gn")
     val subjectGivenName: String? = null,
 
+    /** Officially recorded family names or surnames for a natural person (Table 7; clause B.2.4). */
     @SerialName("sub_fn")
     val subjectFamilyName: String? = null,
 
+    /** Registered identifier of the relying party on whose behalf data access occurs, even via an intermediary (Table 7). */
     @SerialName("sub")
     val subjectIdentifier: String,
 
+    /** ISO 3166-1 alpha-2 country of establishment, or "EU" for providers operating at European level (clause B.2.2). */
     @SerialName("country")
     val country: String,
 
+    /** URL of the national registry API endpoint for the registered relying party (Table 7). */
     @SerialName("registry_uri")
     val registryUri: String,
 
+    /**
+     * Localized versions of the description of the service the WRPRC is issued for (Table 7; clause B.2.1),
+     * encoded as an array, and also decoded from an array of arrays, see [WrpServiceDescriptionSerializer].
+     */
     @SerialName("srv_description")
-    val srvDescription: List<List<WrpLangString>>,
+    @Serializable(with = WrpServiceDescriptionSerializer::class)
+    val serviceDescription: List<WrpLangString>,
 
+    /** Entitlement identifiers assigned to the relying party as specified in Annex A (Table 7). */
     @SerialName("entitlements")
     val entitlements: List<String>,
 
+    /**
+     * URL of the privacy policy explaining data processing and storage practices, mapped from the single
+     * `policyURI` of the Policy class (Table 7; policyURI `[1..1]`, clause B.2.8; Annex C; CIR (EU) 2025/848
+     * Article 8(2)(g) and Annex V point 3).
+     */
     @SerialName("privacy_policy")
     val privacyPolicy: String,
 
+    /**
+     * General-purpose URLs providing public information about the relying party (Table 7), absent when the registry
+     * provides none (infoURI `[0..*]`, clause B.2.2), always encoded as an array, see [WrpStringListSerializer].
+     */
     @SerialName("info_uri")
-    val infoUri: String,
+    @Serializable(with = WrpStringListSerializer::class)
+    val infoUris: List<String>? = null,
 
+    /**
+     * URLs or email addresses for data deletion or portability requests (Table 7; supportURI `[1..*]`,
+     * clause B.2.1), always encoded as an array, see [WrpStringListSerializer].
+     */
     @SerialName("support_uri")
-    val supportUri: String? = null,
+    @Serializable(with = WrpStringListSerializer::class)
+    val supportUris: List<String>,
 
+    /**
+     * Contact details of the competent data protection supervisory authority (Table 7; supervisoryAuthority `[1..1]`,
+     * clause B.2.1).
+     */
     @SerialName("supervisory_authority")
-    val supervisoryAuthority: WrpSupervisoryAuthority? = null,
+    val supervisoryAuthority: WrpSupervisoryAuthority,
 
+    /**
+     * Certificate policy identifiers applicable to the WRPRC (Table 7), which include
+     * [WrpConstants.POLICY_IDENTIFIER] (clause 6.1.3, OVR-6.1.3-01). Without a default, so that it is always
+     * encoded and never assumed when absent.
+     */
     @SerialName("policy_id")
-    val policyId: List<String> = listOf(POLICY_IDENTIFIER),
+    val policyId: List<String>,
 
+    /** URL of the certificate policy and certification practice statement (Table 7). */
     @SerialName("certificate_policy")
     val certificatePolicy: String,
 
+    /** Time the WRPRC was issued, encoded as a Unix timestamp (Table 7). */
     @SerialName("iat")
     @Serializable(with = InstantLongSerializer::class)
     val iat: Instant,
 
+    /** Status list reference conveying the validity of the WRPRC (Table 7; Annex C). */
     @SerialName("status")
     val status: WrpStatus,
 
+    /**
+     * Localized descriptions of data processing associated with the intended use, only for service providers
+     * (Table 9, GEN-5.2.4-06); non-empty when present (purpose `[1..*]`, clause B.2.7).
+     */
     @SerialName("purpose")
-    val purpose: List<WrpLangString> = emptyList(),
+    val purpose: List<WrpLangString>? = null,
 
+    /**
+     * Credential queries describing what the relying party may request, used for over-asking validation, only for
+     * service providers (Table 9, GEN-5.2.4-06); non-empty when present (credential `[1..*]`, clause B.2.7).
+     */
     @SerialName("credentials")
-    val credentials: List<WrpCredential> = emptyList(),
+    val credentials: List<WrpCredential>? = null,
 
+    /** Registry-provided unique identifier used to retrieve the intended use from the registry (Table 9). */
     @SerialName("intended_use_id")
     val intendedUseId: String? = null,
 
+    /**
+     * Credentials issued by the relying party with attestation-provider entitlements (Table 8), present only for
+     * them (providesAttestations `[0..*]`, clause B.2.1).
+     */
     @SerialName("provides_attestations")
-    val providesAttestations: List<WrpCredential> = emptyList(),
+    val providesAttestations: List<WrpCredential>? = null,
 
+    /** Whether the relying party is a public sector body (Table 10). */
     @SerialName("public_body")
     val publicBody: Boolean? = null,
 
+    /** Intermediary acting on behalf of the relying party in intermediated interactions (Table 10). */
     @SerialName("intermediary")
     val intermediary: WrpIntermediary? = null,
 
+    /** WRPRC expiration time, at most 12 months after [iat], encoded as a Unix timestamp (Table 10; GEN-5.2.4-08). */
     @SerialName("exp")
     @Serializable(with = InstantLongSerializer::class)
     val exp: Instant? = null,
-)
+) {
+    init {
+        require(serviceDescription.isNotEmpty()) { "srv_description must not be empty" } // B.2.1: [1..*]
+        require(entitlements.isNotEmpty()) { "entitlements must not be empty" } // B.2.1: [1..*]
+        require(purpose?.isNotEmpty() != false) { "purpose must not be empty" } // B.2.7: [1..*]
+        require(credentials?.isNotEmpty() != false) { "credentials must not be empty" } // B.2.7: [1..*]
+        require(subjectLegalNames?.isNotEmpty() != false) { "sub_ln must not be empty" } // B.2.3: [1..*]
+        require(infoUris?.isNotEmpty() != false) { "info_uri must not be empty" } // B.2.2: [0..*], absent if none
+        require(supportUris.isNotEmpty()) { "support_uri must not be empty" } // B.2.1: [1..*]
+    }
+
+    @Deprecated("A WRPRC is issued for one service", ReplaceWith("serviceDescription"))
+    val srvDescription: List<List<WrpLangString>>
+        get() = listOf(serviceDescription)
+
+    @Deprecated("Several legal names may be registered", ReplaceWith("subjectLegalNames?.first()"))
+    val subjectLegalName: String?
+        get() = subjectLegalNames?.first()
+
+    @Deprecated("Several information URLs may be registered", ReplaceWith("infoUris?.first()"))
+    val infoUri: String?
+        get() = infoUris?.first()
+
+    @Deprecated("Several support URLs may be registered", ReplaceWith("supportUris.first()"))
+    val supportUri: String
+        get() = supportUris.first()
+}
