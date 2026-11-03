@@ -50,8 +50,8 @@ val JwsHeaderSerializationTest by matrixSuite {
         parsed.keyId shouldBe kid
         parsed.type shouldBe type
         parsed.certificateChain.shouldNotBeNull()
-        parsed.certificateChain?.shouldContain(first)
-        parsed.certificateChain?.shouldContain(second)
+        parsed.certificateChain.shouldContain(first)
+        parsed.certificateChain.shouldContain(second)
     }
 
 }

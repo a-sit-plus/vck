@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
 import at.asitplus.wallet.lib.jws.encodeBase64
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.MemScope
@@ -204,6 +205,8 @@ data class DefaultEphemeralKeyHolder(val publicKey: SecKeyRef, val privateKey: S
 
 }
 
+@OptIn(BetaInteropApi::class)
+@Suppress("NOTHING_TO_INLINE")
 inline fun MemScope.toData(array: ByteArray): NSData =
     NSData.create(
         bytes = allocArrayOf(array),

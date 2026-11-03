@@ -4,10 +4,19 @@ kotlin ="2.4.10"
 testballoon = "1.1.0"
 asp = "20260918"
 agp = "9.1.1"
+encoding = "2.4.0"
+okio = "3.10.2"
+nimbus-jose-jwt = "9.48"
+json = "20250107"
 
 [libraries]
 asp = { module = "at.asitplus.gradle:k2", version.ref = "asp" }
 agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+encoding-base16 = { module = "io.matthewnelson.encoding:base16", version.ref = "encoding" }
+encoding-base64 = { module = "io.matthewnelson.encoding:base64", version.ref = "encoding" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
+json = { module = "org.json:json", version.ref = "json" }
 
 [plugins]
 asp = { id = "at.asitplus.gradle.conventions", version.ref = "asp" }

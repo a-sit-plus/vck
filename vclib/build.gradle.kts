@@ -23,6 +23,18 @@ kotlin {
         namespace = "at.asitplus.wallet.vclib"
         withDeviceTestBuilder {
             sourceSetTreeName = "test"
+        }.configure {
+            instrumentationRunnerArguments["timeout_msec"] = "2400000"
+            instrumentationRunnerArguments["TESTBALLOON_REPORTING_PATH_LIMIT"] = "400"
+            managedDevices {
+                localDevices {
+                    create("pixelAVD").apply {
+                        device = "Pixel 4"
+                        apiLevel = 35
+                        systemImageSource = "aosp-atd"
+                    }
+                }
+            }
         }
         packaging.resources.excludes += listOf(
             "/META-INF/{AL2.0,LGPL2.1}",
@@ -39,6 +51,9 @@ kotlin {
         commonMain {
             dependencies {
                 commonImplementationAndApiDependencies()
+                api(libs.okio)
+                api(libs.encoding.base16)
+                api(libs.encoding.base64)
             }
         }
 
@@ -54,14 +69,18 @@ kotlin {
         }
         jvmTest {
             dependencies {
-                implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
-                implementation("org.json:json:${VcLibVersions.Jvm.json}")
+                implementation(libs.nimbus.jose.jwt)
+                implementation(libs.json)
             }
         }
     }
 }
 
-exportXCFramework("VcLibKmm", transitiveExports = false, additionalExports = commonIosExports())
+exportXCFramework(
+    "VcLibKmm",
+    transitiveExports = false,
+    additionalExports = arrayOf(datetime(), kmmresult(), libs.encoding.base16.get()),
+)
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/vck/tree/release-pupilid/")
 
