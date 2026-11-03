@@ -37,7 +37,7 @@ For a contributor-oriented guide to module boundaries, implementation entry poin
 VC-K implements multiple credential formats to ensure maximum interoperability:
 
 - **W3C Verifiable Credentials Data Model**: Rudimentary implementation of the  [W3C VC Data Model](https://w3c.github.io/vc-data-model/) (skipping everything around DIDs)
-- **SD-JWT (Selective Disclosure JWT)**: Privacy-preserving credential format with selective disclosure capabilities, see [SD-JWT VC](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/) (including key binding JWT, JWT VC issuer metadata). We're also following [Selective Disclosure for JSON Web Tokens](https://datatracker.ietf.org/doc/html/rfc9901), including features like key binding JWT and nested structures.
+- **SD-JWT VC**: Privacy-preserving credential format with selective disclosure capabilities, see [SD-JWT-based Verifiable Credentials](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/) (including type metadata and JWT VC issuer metadata), built on [Selective Disclosure for JSON Web Tokens (RFC 9901)](https://datatracker.ietf.org/doc/html/rfc9901) with key binding JWTs and nested disclosures.
 - **ISO 18013-5 and 18013-7**: ISO standard defining Mobile Driving Licence and its generalization mDoc credentials as a CBOR-based credential format
 
 When using the plain JWT representation, the W3C VC `credentialSubject` is handled as `JsonElement`. For ISO mDoc claims see `IssuerSignedItems` and related classes like `Document` and `MobileSecurityObject`. For SD-JWT claims see `SelectiveDisclosureItem` and `SdJwtSigned`.
@@ -93,19 +93,28 @@ store a credential of an untrusted issuer after the user accepts it.
 
 ## EUDI Wallet Compatibility
 
-VC-K is designed to be fully compatible with the **EU Digital Identity Wallet (EUDI Wallet)** ecosystem:
+VC-K is built for the **EU Digital Identity Wallet (EUDI Wallet)** ecosystem:
 
-- Implements all required credential formats and presentation protocols
-- Supports the European Digital Identity Regulation requirements
-- Compatible with EUDI Wallet Reference Implementation
-- Follows ARF (Architecture Reference Framework) specifications
+- Implements the credential formats (SD-JWT VC, ISO mDoc) and protocols (OpenID4VCI, OpenID4VP, ISO/IEC 18013-5 and
+  18013-7, Digital Credentials API) of the ARF (Architecture and Reference Framework)
+- Validates trust and registration as the EUDI Wallet ecosystem defines it: Lists of Trusted Entities (ETSI TS 119 602),
+  access and registration certificates of relying parties and credential issuers (ETSI TS 119 475), and Token Status
+  Lists
+- Compatible with the EUDI Wallet Reference Implementation
 
-VC-K demonstrated very high **interoperability** with various implementations across the digital identity ecosystem. The library has been successfully tested and validated at **Interop Events** for [Potential](https://www.digital-identity-wallet.eu/), showcasing compatibility with:
+### Interoperability
 
-- Multiple wallet implementations
-- Various issuer systems
-- Different verifier platforms
-- Cross-vendor credential exchange scenarios
+VC-K has been tested against many wallet, issuer, and verifier implementations across the digital identity ecosystem:
+
+- **[EUDI Wallets Launchpad 2026](https://ec.europa.eu/digital-building-blocks/sites/spaces/EUDIGITALIDENTITYWALLET/pages/973932074/Launchpad+about+2026)**
+  (October 2026, Brussels): With VC-K as their base, A-SIT Plus' wallet, issuer, and relying party passed a large
+  number of test cases.
+- **[EUDI Wallets Launchpad 2025](https://ec.europa.eu/digital-building-blocks/sites/spaces/EUDIGITALIDENTITYWALLET/pages/924975727/EUDI+Wallets+Launchpad)**
+  (December 2025, Brussels): With VC-K as their base, A-SIT Plus' wallet, issuer, and relying party passed a large
+  number of test cases at the European Commission's first interoperability testing event for Member State wallets.
+- **Interop Events of [POTENTIAL](https://www.digital-identity-wallet.eu/)**: VC-K has been successfully tested with
+  multiple wallet implementations, issuer systems, and verifier platforms in cross-vendor credential exchange
+  scenarios.
 
 
 ## Usage

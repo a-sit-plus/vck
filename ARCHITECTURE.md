@@ -231,8 +231,9 @@ Some platform-sensitive building blocks live in separate repositories. [KmmResul
 is used instead of Kotlin's inline `Result` for Swift-friendly public APIs, and
 [Signum](https://github.com/a-sit-plus/signum) provides crypto, ASN.1, JOSE, and COSE types.
 
-The primary application entry points are `HolderAgent`, `IssuerAgent`, and `VerifierAgent`, following the
-[W3C VC Data Model](https://w3c.github.io/vc-data-model/) nomenclature.
+The primary application entry points are `HolderAgent` and `IssuerAgent`, following the
+[W3C VC Data Model](https://w3c.github.io/vc-data-model/) nomenclature. Verifiers validate with `CredentialValidator`;
+the deprecated `VerifierAgent` only remains for migration.
 
 ### Credential Formats
 

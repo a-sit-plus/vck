@@ -1,6 +1,6 @@
 # Changelog
 
-Release 9.0.0 (unreleased):
+Release 9.0.0:
 
 The new validation API (`CredentialValidator`, `RelyingPartyValidator`, `IssuerMetadataValidator`) reports every check
 of a credential, presentation, relying party, or credential issuer in a `ValidationReport`, decided by a configurable
