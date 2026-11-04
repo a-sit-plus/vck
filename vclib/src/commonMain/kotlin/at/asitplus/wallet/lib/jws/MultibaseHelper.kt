@@ -1,18 +1,15 @@
 package at.asitplus.wallet.lib.jws
 
-import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.base64.Base64ConfigBuilder
+import io.matthewnelson.encoding.base64.Base64 as Base64Encoder
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
 
-val Base64UrlNoPad = Base64(config = Base64ConfigBuilder().apply {
-    lineBreakInterval = 0
-    encodeToUrlSafe = true
-    isLenient = true
-    padEncoded = false
-}.build())
-val Base64 = Base64()
+val Base64UrlNoPad = Base64Encoder.Builder {
+    encodeUrlSafe(true)
+    padEncoded(false)
+}
+val Base64 = Base64Encoder.Builder {}
 fun ByteArray.encodeBase64() = encodeToString(Base64)
 fun String.decodeBase64() = decodeToByteArrayOrNull(Base64)
 

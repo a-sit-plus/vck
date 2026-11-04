@@ -8,7 +8,6 @@ import at.asitplus.wallet.lib.jws.JwsExtensions.encodeToByteArray
 import at.asitplus.wallet.lib.jws.JwsExtensions.encodeWithLength
 import at.asitplus.wallet.lib.jws.JwsExtensions.extractSignatureValues
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
@@ -112,7 +111,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             return null
         }
         val iv = jweObject.iv
-        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlNoPad)
+        val aad = jweObject.headerAsParsed.encodeToString(Base64UrlNoPad).encodeToByteArray()
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
         val plaintext =
@@ -159,7 +158,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val iv = Random.Default.nextBytes(jweEncryption.ivLengthBits / 8)
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()
-        val aadForCipher = aad.encodeToByteArray(Base64UrlNoPad)
+        val aadForCipher = aad.encodeToString(Base64UrlNoPad).encodeToByteArray()
         val ciphertext =
             cryptoService.encrypt(key, iv, aadForCipher, payload, jweEncryption).getOrElse {
                 Napier.w("No ciphertext from native code", it)
