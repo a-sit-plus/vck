@@ -3,15 +3,9 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureTrustedCertificate
 import at.asitplus.wallet.lib.etsi.isIssuerOf
 import at.asitplus.wallet.lib.etsi.isTrustedBy
 import at.asitplus.wallet.lib.etsi.isValidAt
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrustedCertificate
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -26,25 +20,6 @@ import kotlin.time.Instant
 fun interface TrustedCertificates {
     suspend operator fun invoke(): Set<X509Certificate>
 }
-
-/**
- * How to verify the issuer's signature on a JWS-based credential, i.e. an SD-JWT or a VC-JWS:
- * Against [trustedIssuers] if there are any, otherwise against the key asserted by the credential itself.
- *
- * Do not use this for holder signatures, i.e. key binding, proof of possession or a signed presentation,
- * those are self-asserted by design.
- */
-@Deprecated("Configure at.asitplus.wallet.lib.validation.CredentialValidator with trust anchors per credential type, see CredentialTrustAnchors. To be removed in the next major release.")
-fun issuerJwsVerifier(trustedIssuers: TrustedCertificates?): VerifyJwsObjectFun =
-    trustedIssuers?.let { VerifyJwsObjectTrustedCertificate(trustedIssuers = it) } ?: VerifyJwsObject()
-
-/**
- * How to verify the issuer's signature on a COSE-based credential, i.e. the `issuerAuth` of an mdoc:
- * Against [trustedIssuers] if there are any, otherwise against the certificate transported in the COSE headers.
- */
-@Deprecated("Configure at.asitplus.wallet.lib.validation.CredentialValidator with trust anchors per credential type, see CredentialTrustAnchors. To be removed in the next major release.")
-fun <P : Any> issuerCoseVerifier(trustedIssuers: TrustedCertificates?): VerifyCoseSignatureFun<P> =
-    trustedIssuers?.let { VerifyCoseSignatureTrustedCertificate<P>(trustedIssuers = it) } ?: VerifyCoseSignature()
 
 /**
  * Extracts the signing certificate, i.e. the [leaf], from this certificate chain, and requires it to be trusted:

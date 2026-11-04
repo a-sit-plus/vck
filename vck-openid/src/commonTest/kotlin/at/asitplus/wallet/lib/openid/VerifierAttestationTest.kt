@@ -23,21 +23,28 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.oauth2.FakeHttpStack
+import at.asitplus.wallet.lib.oauth2.scripted
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
+import at.asitplus.wallet.lib.validation.RelyingPartyTrustAnchors
+import at.asitplus.wallet.lib.validation.RelyingPartyValidator
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
+import at.asitplus.wallet.lib.validation.ValidationDecision
+import at.asitplus.wallet.lib.validation.VerifierAttesters
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonElement
 
 val VerifierAttestationTest by matrixSuite {
 
@@ -69,25 +76,18 @@ val VerifierAttestationTest by matrixSuite {
                 requestOptionsAtomicAttribute(), CreationOptions.SignedRequestByValue(it.walletUrl)
             ).getOrThrow().url
 
-            // Trust in verifier attesters is only configurable with the deprecated relyingPartyTrust
-            @Suppress("DEPRECATION")
             val holderOid4vp = OpenId4VpHolder(
                 holder = it.holderAgent,
-                relyingPartyTrust = setOf(
-                    RelyingPartyTrust.VerifierAttesterKeys { setOf(sprsKeyMaterial.jsonWebKey) },
-                ),
+                relyingPartyValidator = trustingAttester(sprsKeyMaterial),
                 randomSource = RandomSource.Default,
             )
             val authnResponse = holderOid4vp.createAuthorizationResponse(authnRequestWithRequestObject).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>().apply {
-                    vp.freshVerifiableCredentials.shouldNotBeEmpty().map { it.vcJws }.forEach {
+                .singleAcceptedPresentation()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>().apply {
+                    credentials.shouldNotBeEmpty().map { it.credential }.forEach {
                         it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                             shouldNotThrowAny {
                                 AtomicAttribute2023.fromJsonElement(credentialSubject)
@@ -96,11 +96,37 @@ val VerifierAttestationTest by matrixSuite {
                     }
                 }
         }
-        // "test with request object and invalid Attestation JWT" removed: an untrusted attester is covered by
-        // OpenId4VpRelyingPartyTrustTest, against the library's own implementation rather than a test-local one.
+
+        "test with request object and Attestation JWT of an untrusted attester" {
+            val attestationJwt = buildAttestationJwt(EphemeralKeyWithoutCert(), it.clientId, it.verifierKeyMaterial)
+            val verifierOid4vp = OpenId4VpVerifier(
+                keyMaterial = it.verifierKeyMaterial,
+                clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, it.redirectUrl),
+            )
+            val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
+                requestOptionsAtomicAttribute(), CreationOptions.SignedRequestByValue(it.walletUrl)
+            ).getOrThrow().url
+            val holderOid4vp = OpenId4VpHolder(
+                holder = it.holderAgent,
+                relyingPartyValidator = trustingAttester(EphemeralKeyWithoutCert()),
+                randomSource = RandomSource.Default,
+            )
+
+            FakeHttpStack(scripted()).execute(
+                OpenId4VpProtocolClient(holderOid4vp).prepareAuthorizationResponse(
+                    authnRequestWithRequestObject,
+                    testPresentationPolicy.copy(trust = TrustPolicy.RequireAuthorizedSigner),
+                )
+            ).validationReport.decision shouldBe ValidationDecision.REJECTED
+        }
     }
 }
 
+
+/** Trusts the verifier attestations signed by [attester]. */
+private fun trustingAttester(attester: KeyMaterial) = RelyingPartyValidator(
+    trust = RelyingPartyTrustAnchors(verifierAttesters = VerifierAttesters(keys = { setOf(attester.publicKey) }))
+)
 
 private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
     presentationRequest = CredentialPresentationRequestBuilder(

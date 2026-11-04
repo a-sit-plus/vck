@@ -1,9 +1,13 @@
 # Changelog
 
-Release 10.0.0:
+Release 10.0.0 (unreleased):
 
+- Removals:
+    - Remove code elements deprecated in 9.0.0: `Verifier` and its legacy validation classes
 - Status lists:
-    - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still emitted as stored blocks.
+    - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status
+      List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still
+      emitted as stored blocks.
 
 Release 9.0.0:
 
@@ -49,11 +53,12 @@ check the entries marked BREAKING when migrating.
       `ReceivedCredential.prepareCredentialStorage(holder, scheme, policy, renewalInfo)`, validating it for storage by
       the `HolderAgent`, which reports a credential that can not be decoded as rejected
     - Add `ValidationPolicy.requiredClaims` (`RequiredClaimsPolicy.Skip` by default, or `RequireMandatory`) and the
-      check `CredentialChecks.requiredClaims` (`RequiredClaimsValidation`, failing with `MissingRequiredClaimException`): whether a
-      credential received on its own contains every claim the metadata of its signed type describe as `mandatory`
-      (draft-ietf-oauth-sd-jwt-vc-19, 5.6.3), resolved by the new `requiredClaimsResolver` of `CredentialValidator`
-      (`RequiredClaimsResolver.Default` uses the credential metadata registries and schemes of `AttributeIndex`, and
-      blocks the check for a type without metadata). Not applicable to presented credentials
+      check `CredentialChecks.requiredClaims` (`RequiredClaimsValidation`, failing with
+      `MissingRequiredClaimException`): whether a credential received on its own contains every claim the metadata of
+      its signed type describe as `mandatory` (draft-ietf-oauth-sd-jwt-vc-19, 5.6.3), resolved by the new
+      `requiredClaimsResolver` of `CredentialValidator` (`RequiredClaimsResolver.Default` uses the credential metadata
+      registries and schemes of `AttributeIndex`, and blocks the check for a type without metadata). Not applicable to
+      presented credentials
     - Add `CredentialValidationResult.unacceptedCredential` and `ValidationReport.isIntactCredential()`: the
       credential whatever the decision, if only checks a policy may relax are not satisfied (issuer trust, timeliness,
       required claims, status), so that a wallet can store it after the user accepts the report
@@ -130,7 +135,8 @@ check the entries marked BREAKING when migrating.
           `UnsupportedWrpRequestException`, and their WRPRCs are not evaluated, while a reader authentication that does
           not verify fails the `signature`, so that a wallet can tell an unauthenticated reader from a forged one
         - A relying party reports its WRPRCs in the new named check `registration` of `RelyingPartyChecks`, required
-          unless `ValidationPolicy.registration` is `ValidateIfPresent`: a missing WRPRC (`MissingRegistrationCertificateException`) or one that can not be parsed
+          unless `ValidationPolicy.registration` is `ValidateIfPresent`: a missing WRPRC
+          (`MissingRegistrationCertificateException`) or one that can not be parsed
           (`InvalidRegistrationCertificateException`) fails `registration` instead of `requestData`, which keeps the
           extraction of the request, e.g. its `client_id` and DCQL query, and fails for unsigned requests, whose
           `registration` is blocked
@@ -173,7 +179,8 @@ check the entries marked BREAKING when migrating.
       binding JWT. `VerifyPresentationResult.SuccessSdJwt.sdJwtSigned` is the latter, so it contains no key binding JWT
       the request did not require, as such a key binding JWT is not checked
     - `StatusValidation` requires mechanisms for a passed `agreement`
-    - Reduce certificate trust-check allocations by reusing the BasicConstraints OID and encoding the top certificate once when comparing it with trust anchors.
+    - Reduce certificate trust-check allocations by reusing the BasicConstraints OID and encoding the top certificate
+      once when comparing it with trust anchors.
     - Known limitations:
         - Certificate paths: trust is evaluated by walking the transported chain, without RFC 5280 path building,
           `pathLenConstraint` or `keyUsage`, and without certificate revocation (CRL, OCSP). So a chain missing an
@@ -191,23 +198,50 @@ check the entries marked BREAKING when migrating.
       `StoreEntry.SdJwt.fromString(...)`, and `StoreEntry.Iso.fromString(...)` (base64url as in OpenID4VCI, or
       base64), parsing a serialized credential without validating it
 - Trusted relying parties:
-    - Fix JSON serialization of `JsonClaimReference` as `SingleClaimReference`, e.g. in `RequestDataValidity`, which produced invalid JSON since `NormalizedJsonPath` became a list in JsonPath4K 4.0.0. It is now serialized as an object holding `normalizedJsonPath`
-    - BREAKING: `JsonClaimReference` now wraps `path: DCQLClaimsPathPointer`, preserving wildcards during WRPRC authorization. The concrete-path
-      constructor is retained; deprecate `normalizedJsonPath`, which cannot represent wildcards. Its JSON member name
-      remains `normalizedJsonPath`
+    - Fix JSON serialization of `JsonClaimReference` as `SingleClaimReference`, e.g. in `RequestDataValidity`, which
+      produced invalid JSON since `NormalizedJsonPath` became a list in JsonPath4K 4.0.0. It is now serialized as an
+      object holding `normalizedJsonPath`
+    - BREAKING: `JsonClaimReference` now wraps `path: DCQLClaimsPathPointer`, preserving wildcards during WRPRC
+      authorization. The concrete-path constructor is retained; deprecate `normalizedJsonPath`, which cannot represent
+      wildcards. Its JSON member name remains `normalizedJsonPath`
     - WRPRC authorization exempts only the root `vct` claim; nested claims named `vct` must be registered
-    - `WrprcValidator` no longer drops the cause when a registration certificate can not be validated, e.g. for a missing or unparseable certificate chain: `WrprcValidationResult.certificateValidationResults` holds a `KmmResult` for each certificate. Deprecate `WrprcValidationResult.certificateValidation`, which maps such certificates to `null`
-    - `WrprcValidator` validates each credential request on its own, so a request that can not be validated (e.g. a DCQL claims path with a `null` segment) no longer fails the whole validation: `WrprcValidationResult.requestDataValidationResults` holds a `KmmResult` for each request. Deprecate `WrprcValidationResult.requestDataValidation`, which maps such requests to an invalid credential type without attributes, `WrprcValidator.validateRequest()` in favor of `validateCredentialRequests()`, and the `WrprcValidationResult` constructor taking the old types
-    - `WrpAuthenticationRequestValidator` tells apart why it can not extract a WRPRC, with exceptions extending `IllegalArgumentException`: `MissingRegistrationCertificateException` if the request contains none, `InvalidRegistrationCertificateException` with the parsing error as cause if it can not be parsed, and `UnsupportedWrpRequestException` for requests it can not validate, e.g. unsigned ones
-    - `WrpAuthenticationRequestValidator` rejects requests with more than one `registration_cert` entry in `verifier_info`, also if only one of them can be parsed, and ISO requests that carry an `euWrprc` in only some of their `DocRequest`s
-    - `WrpAuthenticationRequestValidator` rejects a `registration_cert` entry in `verifier_info` whose data is a JSON object instead of a string
-    - `RelyingPartyValidator`, `IssuerMetadataValidator`, and `WrpAuthenticationRequestValidator` accept a `registration_cert` in `verifier_info` or `issuer_info` given as the base64url encoding of the compact JWS (ETSI TS 119 472-2 V1.1.1, OIDFVP-HAIP_COMMON_RO_REQ-09), which could not be parsed before, as well as the compact JWS itself
-    - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list, or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is unknown
+    - `WrprcValidator` no longer drops the cause when a registration certificate can not be validated, e.g. for a
+      missing or unparseable certificate chain: `WrprcValidationResult.certificateValidationResults` holds a `KmmResult`
+      for each certificate. Deprecate `WrprcValidationResult.certificateValidation`, which maps such certificates to
+      `null`
+    - `WrprcValidator` validates each credential request on its own, so a request that can not be validated (e.g. a DCQL
+      claims path with a `null` segment) no longer fails the whole validation:
+      `WrprcValidationResult.requestDataValidationResults` holds a `KmmResult` for each request. Deprecate
+      `WrprcValidationResult.requestDataValidation`, which maps such requests to an invalid credential type without
+      attributes, `WrprcValidator.validateRequest()` in favor of `validateCredentialRequests()`, and the
+      `WrprcValidationResult` constructor taking the old types
+    - `WrpAuthenticationRequestValidator` tells apart why it can not extract a WRPRC, with exceptions extending
+      `IllegalArgumentException`: `MissingRegistrationCertificateException` if the request contains none,
+      `InvalidRegistrationCertificateException` with the parsing error as cause if it can not be parsed, and
+      `UnsupportedWrpRequestException` for requests it can not validate, e.g. unsigned ones
+    - `WrpAuthenticationRequestValidator` rejects requests with more than one `registration_cert` entry in
+      `verifier_info`, also if only one of them can be parsed, and ISO requests that carry an `euWrprc` in only some of
+      their `DocRequest`s
+    - `WrpAuthenticationRequestValidator` rejects a `registration_cert` entry in `verifier_info` whose data is a JSON
+      object instead of a string
+    - `RelyingPartyValidator`, `IssuerMetadataValidator`, and `WrpAuthenticationRequestValidator` accept a
+      `registration_cert` in `verifier_info` or `issuer_info` given as the base64url encoding of the compact JWS (ETSI
+      TS 119 472-2 V1.1.1, OIDFVP-HAIP_COMMON_RO_REQ-09), which could not be parsed before, as well as the compact JWS
+      itself
+    - Add `WrpRegistrationCertificateValidation.tokenStatus`, which holds the status of the WRPRC from its status list,
+      or why it could not be obtained, so that a revoked or suspended WRPRC can be told apart from one whose status is
+      unknown
 - Trust List filtering:
-    - BREAKING: `LoteProfile.fromSchemeIdentifier()` returns `null` for a credential identifier without a known list, instead of `LoteProfile.EAA`, so that `LoTETrustAnchorProvider` no longer authorizes every Pub-EAA provider for arbitrary credential types. Identifiers match case-sensitively, and the mDL `docType` `org.iso.18013.5.1.mDL` matches exactly instead of by prefix
-    - BREAKING: Remove `additionalAnchors` of `LoTETrustAnchorProvider`, which was added to the anchors of every credential type and every list, and so merged trust sources across types. Trust further sources for a type with a `CredentialTrustScope` instead
+    - BREAKING: `LoteProfile.fromSchemeIdentifier()` returns `null` for a credential identifier without a known list,
+      instead of `LoteProfile.EAA`, so that `LoTETrustAnchorProvider` no longer authorizes every Pub-EAA provider for
+      arbitrary credential types. Identifiers match case-sensitively, and the mDL `docType` `org.iso.18013.5.1.mDL`
+      matches exactly instead of by prefix
+    - BREAKING: Remove `additionalAnchors` of `LoTETrustAnchorProvider`, which was added to the anchors of every
+      credential type and every list, and so merged trust sources across types. Trust further sources for a type with a
+      `CredentialTrustScope` instead
 - Status lists:
-    - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by Token Status List draft 21. Generic COSE serialization remains unchanged.
+    - Add `StatusListCwt.encodeForPublication()` to encode a CWT as a tagged COSE_Sign1 (CBOR tag 18), as required by
+      Token Status List draft 21. Generic COSE serialization remains unchanged.
     - `StatusValidator` keeps what it verified of the last 32 status list tokens, by identity: their media type,
       signature, and decompressed list, so that validating many credentials referencing one token parses it,
       verifies its signature, and decompresses it once. Its signer, subject, and time are still checked on every
@@ -215,16 +249,35 @@ check the entries marked BREAKING when migrating.
       instead of encoding every identifier for every lookup
 - DCQL:
     - Claim paths preserve numeric object keys as strings and reject invalid or overflowing indices
-    - `DCQLClaimsPathPointer.query` processes claims path pointers as OpenID4VP 1.0, 7.1.1 specifies: if any selected element is not an object for a name component, or not an array for an index or `null` component, the result is empty, i.e. the claim does not match, instead of continuing with the other selected elements; other options of `claim_sets` that do not request the claim may still match
-    - Reject queries that OpenID4VP 1.0 does not allow: empty `values` of a claims query, empty `vct_values`, empty arrays in `type_values` or in the `options` of `credential_sets`, `options` that reference an unknown Credential Query and `claim_sets` that reference an unknown claims query; a claims query that points to the same claim again is ignored when matching
-    - Match the `values` of a claims query against the JSON value of an ISO mdoc data element as OpenID4VP 1.0, 6.3 requires, converted with `CredentialToJsonConverter`, so that a full-date or date-time matches its string, e.g. `"1990-01-01"` for `birth_date`, a byte string its base64url encoding, and a value of a scheme-specific type the JSON encoding of the serializer registered for its data element with `CborCredentialSerializer`, e.g. the integer code of `IsoSexEnum`, or else of its registered `JsonValueEncoder`; such elements matched no value before. Add `CredentialToJsonConverter.toJsonElementOrNull`, which returns null instead of the `toString()` of a value of a type without a known encoding. `DCQLCredentialClaimStructure.IsoMdocStructure` holds the JSON values of the data elements (`Map<String, Map<String, JsonElement>>` instead of `Any`), with `JsonNull` for an element without a JSON value, and `DCQLClaimsQueryResult.IsoMdocResult.claimValue` is that JSON value
-    - `HolderDCQLQueryMatchingResult.toDefaultSubmission` selects the first option of a required credential set whose queries all match a credential, instead of always the first option, which produced an empty submission when no credential matched it; it fails if no option of a required credential set is satisfiable
+    - `DCQLClaimsPathPointer.query` processes claims path pointers as OpenID4VP 1.0, 7.1.1 specifies: if any selected
+      element is not an object for a name component, or not an array for an index or `null` component, the result is
+      empty, i.e. the claim does not match, instead of continuing with the other selected elements; other options of
+      `claim_sets` that do not request the claim may still match
+    - Reject queries that OpenID4VP 1.0 does not allow: empty `values` of a claims query, empty `vct_values`, empty
+      arrays in `type_values` or in the `options` of `credential_sets`, `options` that reference an unknown Credential
+      Query and `claim_sets` that reference an unknown claims query; a claims query that points to the same claim again
+      is ignored when matching
+    - Match the `values` of a claims query against the JSON value of an ISO mdoc data element as OpenID4VP 1.0, 6.3
+      requires, converted with `CredentialToJsonConverter`, so that a full-date or date-time matches its string, e.g.
+      `"1990-01-01"` for `birth_date`, a byte string its base64url encoding, and a value of a scheme-specific type the
+      JSON encoding of the serializer registered for its data element with `CborCredentialSerializer`, e.g. the integer
+      code of `IsoSexEnum`, or else of its registered `JsonValueEncoder`; such elements matched no value before. Add
+      `CredentialToJsonConverter.toJsonElementOrNull`, which returns null instead of the `toString()` of a value of a
+      type without a known encoding. `DCQLCredentialClaimStructure.IsoMdocStructure` holds the JSON values of the data
+      elements (`Map<String, Map<String, JsonElement>>` instead of `Any`), with `JsonNull` for an element without a JSON
+      value, and `DCQLClaimsQueryResult.IsoMdocResult.claimValue` is that JSON value
+    - `HolderDCQLQueryMatchingResult.toDefaultSubmission` selects the first option of a required credential set whose
+      queries all match a credential, instead of always the first option, which produced an empty submission when no
+      credential matched it; it fails if no option of a required credential set is satisfiable
     - Add request-side X.509 DCQL support for ETSI TS 119 432 Annex A.6: `CredentialFormatEnum.X509`,
       `DCQLX509CredentialQuery`, and `X509MetadataQuery` implementing `DCQLCredentialMetadataAndValidityConstraints`.
 - QES approvals:
-    - Bind each approval transaction to one selected DCQL credential submission, allowing separate approvals for distinct queries without adding approvals to unrelated identity presentations
-    - Treat multiple `credential_ids` as alternatives and reject missing, empty, or unknown query references in OpenID4VP transaction data with `invalid_transaction_data`
-    - Add optional `PresentationRequestParameters.qesApprovalTransactionData` for selecting approval data independently of the general SD-JWT transaction-data integrity hashes
+    - Bind each approval transaction to one selected DCQL credential submission, allowing separate approvals for
+      distinct queries without adding approvals to unrelated identity presentations
+    - Treat multiple `credential_ids` as alternatives and reject missing, empty, or unknown query references in
+      OpenID4VP transaction data with `invalid_transaction_data`
+    - Add optional `PresentationRequestParameters.qesApprovalTransactionData` for selecting approval data independently
+      of the general SD-JWT transaction-data integrity hashes
 - Credential schemes:
     - Add `IsoMdocCredentialScheme.isoQualifiedClaimDescriptions` in `vck`, the claim descriptions of a scheme with their
       paths qualified by its ISO namespace, as the ISO mdoc credential configurations of `DefaultCredentialSchemeMapper` use
@@ -406,7 +459,8 @@ check the entries marked BREAKING when migrating.
     - Add `OAuth2KtorClient.clientAttestation`, deprecate `OAuth2KtorClient.loadInstanceAttestation`
     - Form-encoded requests (PAR, token, token introspection) are sent as `application/x-www-form-urlencoded` without
       `charset` in the `Content-Type`, as the media type defines no such parameter
-    - Change: `BuildDPoPHeader`/`BuildClientAttestationJwt`/`BuildClientAttestationPoPJwt` get a parameter `issuedAt` that is set without applying the clock skew, so callers need to set it on their own
+    - Change: `BuildDPoPHeader`/`BuildClientAttestationJwt`/`BuildClientAttestationPoPJwt` get a parameter `issuedAt`
+      that is set without applying the clock skew, so callers need to set it on their own
 - Token introspection with JWT responses (RFC 9701):
     - BREAKING: Remove `TokenIntrospectionRequest.responseFormat` and `TokenIntrospectionRequest.ResponseFormat`, as
       no specification defines the form parameter `response_format`: a JWT response is requested with the header

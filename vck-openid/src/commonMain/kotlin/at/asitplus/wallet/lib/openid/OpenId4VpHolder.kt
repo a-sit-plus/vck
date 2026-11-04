@@ -29,13 +29,12 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
-import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredentialMatchingResult
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationResponseParameters.*
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.DCQLParameters
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters.DeviceRetrievalParameters
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
@@ -53,6 +52,7 @@ import at.asitplus.wallet.lib.validation.RequestObjectChecks
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import kotlin.jvm.JvmOverloads
+import at.asitplus.wallet.lib.agent.CredentialMatchingResult as HolderCredentialMatchingResult
 
 /**
  * Combines Verifiable Presentations with OAuth 2.0.
@@ -110,50 +110,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
      */
     private val relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
 ) {
-
-    /**
-     * Maps the certificates of [RelyingPartyTrust.Certificates] in [relyingPartyTrust] to the anchors of the access
-     * certificate providers of a [RelyingPartyValidator]; the other sources no longer take effect, so requests with
-     * their client identifier prefixes are rejected if trust is configured.
-     */
-    @Deprecated(
-        "keyMaterial is not used, and trust in relying parties is established by relyingPartyValidator: use the " +
-                "constructor without keyMaterial and relyingPartyTrust"
-    )
-    @Suppress("DEPRECATION")
-    constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        holder: Holder = HolderAgent(keyMaterial),
-        encryptJarm: EncryptJweFun = EncryptJwe(),
-        supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
-        clientId: String = "https://wallet.a-sit.at/",
-        authorizationEndpoint: String = "openid4vp:",
-        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-        /** How to establish trust in the relying party sending an authorization request, or `null` for trusting all. */
-        relyingPartyTrust: Set<RelyingPartyTrust>? = null,
-        walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
-        randomSource: RandomSource = RandomSource.Secure,
-        lookupJsonWebKeysForClient: (JsonWebKeyLookupInput) -> JsonWebKeySet? = { null },
-        allowedDcApiOriginSchemes: suspend () -> Set<String> = { DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES },
-        ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
-        supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
-        requireEncryptedRequests: Boolean = false,
-    ) : this(
-        holder = holder,
-        encryptJarm = encryptJarm,
-        supportedAlgorithms = supportedAlgorithms,
-        clientId = clientId,
-        authorizationEndpoint = authorizationEndpoint,
-        remoteResourceRetriever = remoteResourceRetriever,
-        walletNonceMapStore = walletNonceMapStore,
-        randomSource = randomSource,
-        lookupJsonWebKeysForClient = lookupJsonWebKeysForClient,
-        allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
-        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
-        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
-        requireEncryptedRequests = requireEncryptedRequests,
-        relyingPartyValidator = relyingPartyTrust.toRelyingPartyValidator(),
-    )
 
     init {
         require(!requireEncryptedRequests || ephemeralEncryptionKeyService != null) {
@@ -244,23 +200,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
             nonce = uuid4().toString().also { walletNonceMapStore.put(it, it) })
     }
 
-    /**
-     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to create [AuthenticationResponseResult] that can be sent back to the Verifier.
-     *
-     * Exceptions thrown during request parsing are caught by [KmmResult],
-     * exceptions during request handling result in the [AuthenticationResponseResult] containing the [OAuth2Error].
-     */
-    @Deprecated(
-        "Fetches the request object with remoteResourceRetriever; use " +
-                "OpenId4VpProtocolClient.prepareAuthorizationResponse, then finalizeAuthorizationResponse"
-    )
-    suspend fun createAuthnResponse(
-        input: String,
-    ): KmmResult<AuthenticationResponseResult> = catching {
-        createAuthnResponse(parse(input)).getOrThrow()
-    }
-
     private suspend fun parse(
         input: String,
     ) = requestParser.parseRequestParameters(input)
@@ -326,23 +265,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
             current = current.cause
         }
         return null
-    }
-
-    /**
-     * Parses the [AuthenticationRequestParameters] from [input], fetching the request object passed by reference
-     * in `request_uri`, and validates it, see the overload taking parsed parameters.
-     * Clients need to inform the user, get consent, and resume in [finalizeAuthorizationResponse].
-     *
-     * Exceptions thrown during request parsing are caught by [KmmResult],
-     */
-    @Deprecated(
-        "Fetches the request object with remoteResourceRetriever; use " +
-                "OpenId4VpProtocolClient.prepareAuthorizationResponse"
-    )
-    suspend fun startAuthorizationResponsePreparation(
-        input: String,
-    ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        startAuthorizationResponsePreparation(parse(input)).getOrThrow()
     }
 
     /**

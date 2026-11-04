@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -22,7 +23,6 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.uuid4
@@ -134,7 +134,7 @@ val JarmTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             newInstance().validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult.Success>()
         }
     }
 }

@@ -1,11 +1,11 @@
 package at.asitplus.wallet.openid.dcql
 
-import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLQueryResponse
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.Document
+import at.asitplus.iso.IssuerSigned
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -19,20 +19,24 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.ValidatorMdoc
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.integrityOnlyPolicy
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.AuthorityKeyIdentifier
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.PresentationContext
+import at.asitplus.wallet.lib.validation.PresentationValidationInput
+import at.asitplus.wallet.lib.validation.ValidatedCredential
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import io.kotest.matchers.maps.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.json.Json
 import kotlin.random.Random
+import kotlinx.serialization.json.Json
 
 val DCQLQueryProcedureAdapterTest by matrixSuite {
 
@@ -44,21 +48,24 @@ val DCQLQueryProcedureAdapterTest by matrixSuite {
         )
         val credential = issueIsoMdoc(issuer, EphemeralKeyWithoutCert())
             .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
-        val parsedDocument = ValidatorMdoc().verifyDocument(
-            Document(
+        // the document as accepted without the requested claim, i.e. the holder withheld it
+        val issuerSigned = IssuerSigned.fromIssuerSignedItems(
+            namespacedItems = credential.issuerSigned.namespaces.shouldNotBeNull().mapValues { namespace ->
+                namespace.value.entries.map { it.value }
+                    .filter { it.elementIdentifier != ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME }
+            },
+            issuerAuth = credential.issuerSigned.issuerAuth,
+        )
+        val presentation = ValidatedPresentation.MdocDocument(
+            document = Document(
                 docType = ConstantIndex.AtomicAttribute2023.isoDocType,
-                issuerSigned = credential.issuerSigned,
+                issuerSigned = issuerSigned,
                 deviceSigned = DeviceSigned(
                     namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
                     deviceAuth = DeviceAuth(),
                 ),
-            )
-        ) { _, _ -> true }
-        val requestedClaim = parsedDocument.validItems.first {
-            it.elementIdentifier == ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-        }
-        val presentation = Verifier.VerifyPresentationResult.SuccessIso(
-            listOf(parsedDocument.copy(validItems = parsedDocument.validItems - requestedClaim))
+            ),
+            credential = ValidatedCredential.IsoMdoc(issuerSigned),
         )
         val dcqlQuery = Json.decodeFromString<DCQLQuery>(
             """
@@ -100,11 +107,7 @@ val DCQLQueryProcedureAdapterTest by matrixSuite {
         val issuedCredential = issueSdJwt(issuer, holderKeyMaterial)
             .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
         val credential = holder.storeCredential(issuedCredential.toStoreCredentialInput()).getOrThrow()
-        val presentation = VerifierAgent("verifier").verifyPresentationSdJwt(
-            input = issuedCredential.signedSdJwtVc,
-            challenge = "",
-            requireCryptographicHolderBinding = false,
-        ).getOrThrow()
+        val presentation = issuedCredential.presentWithoutHolderBinding()
 
         val validQuery = Json.decodeFromString<DCQLQuery>(
             """
@@ -205,11 +208,7 @@ val DCQLQueryProcedureAdapterTest by matrixSuite {
         val issuedCredential = issueSdJwt(issuer, holderKeyMaterial)
             .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
         val credential = holder.storeCredential(issuedCredential.toStoreCredentialInput()).getOrThrow()
-        val presentation = VerifierAgent("verifier").verifyPresentationSdJwt(
-            input = issuedCredential.signedSdJwtVc,
-            challenge = "",
-            requireCryptographicHolderBinding = false,
-        ).getOrThrow()
+        val presentation = issuedCredential.presentWithoutHolderBinding()
 
         val validQuery = Json.decodeFromString<DCQLQuery>(
             """
@@ -293,7 +292,13 @@ val DCQLQueryProcedureAdapterTest by matrixSuite {
     }
 }
 
-private fun DCQLQuery.checkSubmissionRequirements(presentation: Verifier.VerifyPresentationResult) =
-    DCQLQueryAdapter(this).checkSubmissionRequirements(
-        DCQLQueryResponse(mapOf(credentials.single().id to listOf(presentation)))
-    )
+private fun DCQLQuery.checkSubmissionRequirements(presentation: ValidatedPresentation) =
+    DCQLQueryAdapter(this).checkAcceptedSubmissions(mapOf(credentials.single().id to listOf(presentation)))
+
+/** The issued SD-JWT, presented without key binding JWT, as accepted by a verifier not requiring holder binding. */
+private suspend fun Issuer.IssuedCredential.VcSdJwt.presentWithoutHolderBinding(): ValidatedPresentation =
+    CredentialValidator().validate(
+        input = PresentationValidationInput.SdJwt(signedSdJwtVc.serialize()),
+        context = PresentationContext(challenge = "challenge", audience = "verifier", requireHolderBinding = false),
+        policy = integrityOnlyPolicy,
+    ).presentation.shouldNotBeNull()

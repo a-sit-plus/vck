@@ -1,14 +1,10 @@
-@file:Suppress("DEPRECATION")
-
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
-import at.asitplus.iso.Document
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
-import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.ClaimDescription
@@ -33,9 +29,9 @@ import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.randomCwtOrJwtResolver
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import com.benasher44.uuid.uuid4
 import io.github.z4kn4fein.semver.Version
 import io.kotest.engine.runBlocking
@@ -44,7 +40,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.kotest.matchers.types.shouldNotBeInstanceOf
 
 val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
 
@@ -58,9 +53,7 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
                 randomSource = RandomSource.Default
             )
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val validator = ValidatorMdoc(
-                validator = Validator(tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer))
-            )
+            val validator = statusCheckingValidator(statusListIssuer)
             val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
             val holder = HolderAgent(keyMaterial = holderKeyMaterial).also {
                 runBlocking {
@@ -87,13 +80,7 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
                 }
             }
             val verifierId = "urn:${uuid4()}"
-            val verifier = NonceChallengeVerifier(
-                verifierId = verifierId,
-                verifier = VerifierAgent(
-                    identifier = verifierId,
-                    validatorMdoc = validator,
-                ),
-            )
+            val verifier = NonceChallengeVerifier(verifierId = verifierId)
         }
     } - {
 
@@ -119,24 +106,16 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
             val presentationResults = presentationParameters.verifiablePresentations.values.flatten()
             // all presentations of this response answer the single challenge of the request above,
             // so it is consumed once, and not per presentation
-            val session = scope.verifier.consumeChallenge(request.nonce)
-            presentationResults.shouldHaveSize(2).forEach { result ->
+            val context = scope.verifier.consumeChallenge(request.nonce).context(
+                audience = scope.verifierId,
+                sessionTranscript = simpleTranscriptCallback(),
+            )
+            presentationResults.shouldHaveSize(2).map { result ->
                 result.shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
-                session.verifyPresentationIsoMdoc(result.deviceResponse) { documentVerifier() }.getOrThrow()
-                    .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>().apply {
-                        documents.shouldBeSingleton().forEach {
-                            it.freshnessSummary.tokenStatusValidationResult
-                                .shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
-                        }
-                    }
-            }
-            presentationResults
-                .filterIsInstance<CreatePresentationResult.DeviceResponse>()
-                .map { resp ->
-                    session.verifyPresentationIsoMdoc(resp.deviceResponse) { documentVerifier() }.getOrThrow()
-                }
-                .flatMap { it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>().documents }
-                .flatMap { it.validItems }.apply {
+                scope.validator.validatePresentation(result, context, statusCheckingPolicy).shouldBeSingleton().first()
+                    .apply { observedStatus shouldBe TokenStatus.Valid }
+                    .acceptedOrThrow()
+            }.flatMap { it.issuerSignedItems() }.apply {
                     firstOrNull { item -> item.elementIdentifier == CLAIM_GIVEN_NAME }
                         .shouldNotBeNull().elementValue shouldBe "Susanne"
                     firstOrNull { item -> item.elementIdentifier == CLAIM_FAMILY_NAME }
@@ -161,10 +140,14 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
                 ),
             ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.DeviceRetrievalParameters>()
 
-            it.verifier.consumeChallenge(request.nonce)
-                .verifyPresentationIsoMdoc(result.deviceResponse) { documentVerifier() }.getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
-                .documents.shouldHaveSize(2).flatMap { it.validItems }.apply {
+            it.validator.validatePresentation(
+                presentation = CreatePresentationResult.DeviceResponse(result.deviceResponse),
+                context = it.verifier.consumeChallenge(request.nonce).context(
+                    audience = it.verifierId,
+                    sessionTranscript = simpleTranscriptCallback(),
+                ),
+                policy = statusCheckingPolicy,
+            ).shouldHaveSize(2).flatMap { it.acceptedOrThrow().issuerSignedItems() }.apply {
                     first { it.elementIdentifier == CLAIM_GIVEN_NAME }.elementValue shouldBe "Susanne"
                     first { it.elementIdentifier == CLAIM_FAMILY_NAME }.elementValue shouldBe "Meier"
                 }
@@ -208,8 +191,8 @@ private val simpleTranscriptCallback: () -> SessionTranscript = {
     )
 }
 
-// No OpenID4VP, no need to verify the device signature
-private fun documentVerifier(): suspend (MobileSecurityObject, Document) -> Boolean = { _, _ -> true }
+private fun ValidatedPresentation.issuerSignedItems() = shouldBeInstanceOf<ValidatedPresentation.MdocDocument>()
+    .credential.issuerSigned.namespaces.shouldNotBeNull().values.flatMap { list -> list.entries.map { it.value } }
 
 
 object AtomicAttribute2025 : CredentialScheme, IsoMdocCredentialScheme, SdJwtCredentialScheme, VcJwtCredentialScheme {

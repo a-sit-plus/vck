@@ -45,12 +45,8 @@ import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.NonceChallengeVerifier
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKey
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.IsoDeviceRetrieval
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
@@ -135,62 +131,6 @@ class DcApiVerifier @JvmOverloads constructor(
      */
     private val presentationPolicy: ValidationPolicy = defaultPresentationPolicy,
 ) {
-
-    /** The verifier passed to the deprecated constructor, which no longer takes effect. */
-    @Deprecated(
-        "Presentations are validated with credentialValidator, see AuthnResponseResult.Success.validationReport " +
-                "and Iso180137AnnexCWrapper.validationReport. To be removed in the next major release."
-    )
-    @Suppress("DEPRECATION")
-    var verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId)
-        private set
-
-    @Deprecated(
-        "verifier and verifyCoseSignature no longer take effect: presentations are validated with " +
-                "credentialValidator under presentationPolicy. To be removed in the next major release.",
-    )
-    @JvmOverloads
-    constructor(
-        clientIdScheme: ClientIdScheme,
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        verifier: Verifier,
-        decryptionKeyMaterial: KeyMaterial? = null,
-        ephemeralEncryptionKeyService: EphemeralEncryptionKeyService = EphemeralEncryptionKeyService(),
-        signAuthnRequest: SignJwtFun<AuthenticationRequestParameters> =
-            SignJwt(keyMaterial, JwsHeaderClientIdScheme(clientIdScheme)),
-        verifyJwsObject: VerifyJwsObjectFun = VerifyJwsObject(),
-        supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
-        @Suppress("UNUSED_PARAMETER")
-        verifyCoseSignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
-        nonceService: NonceService = DefaultNonceService(),
-        stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
-        stateToIsoMdocRequestStore: MapStore<String, IsoMdocRequest> = DefaultMapStore(),
-        supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
-        signReaderAuth: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
-            keyMaterial = keyMaterial,
-            unprotectedHeaderModifier = CoseHeaderClientIdScheme(clientIdScheme),
-        ),
-        credentialValidator: CredentialValidator = CredentialValidator(),
-        presentationPolicy: ValidationPolicy = defaultPresentationPolicy,
-    ) : this(
-        clientIdScheme = clientIdScheme,
-        keyMaterial = keyMaterial,
-        decryptionKeyMaterial = decryptionKeyMaterial,
-        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
-        signAuthnRequest = signAuthnRequest,
-        verifyJwsObject = verifyJwsObject,
-        supportedAlgorithms = supportedAlgorithms,
-        nonceService = nonceService,
-        stateToAuthnRequestStore = stateToAuthnRequestStore,
-        stateToIsoMdocRequestStore = stateToIsoMdocRequestStore,
-        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
-        signReaderAuth = signReaderAuth,
-        credentialValidator = credentialValidator,
-        presentationPolicy = presentationPolicy,
-    ) {
-        @Suppress("DEPRECATION")
-        this.verifier = verifier
-    }
 
     /** Cipher suite to decrypt responses acc. to ISO/IEC 18013-7 Annex C */
     private val hpke = HPKE(HPKE.KEM.DHKEM_P256_HKDF_SHA256, HPKE.KDF.HKDF_SHA256, HPKE.AEAD.AES_128_GCM)
@@ -433,7 +373,6 @@ class DcApiVerifier @JvmOverloads constructor(
                 session = session,
             ).let {
                 AuthnResponseResult.Success(
-                    vpTokenResult = it.result,
                     request = request,
                     validationReport = it.report,
                     presentationValidations = it.presentationValidations,
@@ -499,7 +438,6 @@ class DcApiVerifier @JvmOverloads constructor(
             credentialValidator.validate(PresentationValidationInput.MdocDocument(it), context, presentationPolicy)
         }
         Iso180137AnnexCWrapper(
-            documents = legacyIsoDocuments(presentationValidations),
             presentationValidations = presentationValidations,
             validationReport = credentialValidator.reportResponse(
                 checks = ProtocolResponseChecks(

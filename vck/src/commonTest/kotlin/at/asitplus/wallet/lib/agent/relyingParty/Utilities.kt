@@ -2,7 +2,6 @@
 
 package at.asitplus.wallet.lib.agent.relyingParty
 
-import at.asitplus.catching
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.etsi.relyingParty.WrpClaim
@@ -42,7 +41,6 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
 import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
 import at.asitplus.signum.indispensable.pki.TbsCertificate
@@ -55,19 +53,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
-import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolver
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAccessCertificate
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpAuthenticationRequestValidator
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRegistrationCertificate
-import at.asitplus.wallet.lib.agent.validation.relyingParty.WrpRequestData
 import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacIdentifier
-import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidationResult
-import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator
-import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
-import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrprcValidator
-import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.toWrpCredentialRequest
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.MediaTypes
@@ -82,7 +68,6 @@ import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.random.Random
 import kotlin.time.Clock.System
 import kotlin.time.Duration
@@ -90,6 +75,7 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import kotlinx.serialization.builtins.ByteArraySerializer
 
 const val CA_NAME = "MS Root CA"
 const val WRPAC_PROVIDER_NAME = "WRPAC Provider"
@@ -190,15 +176,6 @@ suspend fun buildWrpFixture(
 
     return WrpFixture(trustAnchors, wrpIdentifier, wrpacChain, clientId, wrprcSigningKeyMaterial, wrpKey)
 }
-
-suspend fun WrpFixture.validateWrpac() = WrpacValidator(
-    validationData = WrpRequestData(
-        clientId = clientId,
-        accessCertificate = WrpAccessCertificate(wrpacChain),
-        registrationCertificate = emptyMap(),
-    ),
-    certificateTrustAnchors = trustAnchors,
-)
 
 fun defaultMdocCredential(
     doctypeValue: String = DEFAULT_DOCTYPE,
@@ -316,38 +293,6 @@ fun mdocDocRequest(
     ),
 )
 
-suspend fun WrpFixture.validateWrprc(
-    payload: WrpPayload,
-    request: CredentialPresentationRequest? = mdocDcqlRequest(),
-    signingKeyMaterial: KeyMaterial = wrprcSigningKeyMaterial,
-    jwsType: String = WRPRC_JWS_TYPE,
-    revokedStatusIndex: Int = 1,
-    accessCertValidation: WrpacValidationResult? = null,
-    tokenStatusResolver: TokenStatusResolver? = null,
-) = catching {
-    val wrprcJws = signWrprc(signingKeyMaterial, payload, type = jwsType)
-    val registrationCertificate: WrpRegistrationCertificate =
-        WrpRegistrationCertificate.WrpJwtRegistrationCertificate(jwsTyped = JwsCompactTyped<WrpPayload>(wrprcJws))
-    val credentialRequests = request?.toWrpCredentialRequest() ?: emptyList()
-    val validationData = WrpRequestData(
-        clientId = clientId,
-        accessCertificate = WrpAccessCertificate(wrpacChain),
-        registrationCertificate = mapOf(registrationCertificate to credentialRequests),
-    )
-
-    val resolvedAccessCertValidation = accessCertValidation ?: validateWrpac().getOrThrow()
-    val statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
-        buildStatusListToken(statusListUrl, revokedIndex = revokedStatusIndex)
-    }
-
-    WrprcValidator()(
-        identifierResult = resolvedAccessCertValidation.identifierResult,
-        validationData = validationData,
-        tokenStatusResolver = tokenStatusResolver ?: TokenStatusResolverImpl(statusListTokenResolver),
-        certificateTrustAnchors = trustAnchors,
-    ).getOrThrow()
-}
-
 enum class CertificateChainPlacement { PROTECTED, UNPROTECTED, NONE }
 
 suspend fun signWrprcCose(
@@ -370,41 +315,6 @@ suspend fun signWrprcCose(
         unprotectedHeader = unprotectedHeader,
         payload = payloadBytes,
         serializer = ByteArraySerializer(),
-    ).getOrThrow()
-}
-
-suspend fun WrpFixture.validateWrprcCose(
-    payload: WrpPayload,
-    request: DocRequest? = mdocDocRequest(),
-    signingKeyMaterial: KeyMaterial = wrprcSigningKeyMaterial,
-    type: String = WRPRC_CWT_TYPE,
-    parsePayload: Boolean = true,
-    certificateChainPlacement: CertificateChainPlacement = CertificateChainPlacement.UNPROTECTED,
-    revokedStatusIndex: Int = 1,
-    accessCertValidation: WrpacValidationResult? = null,
-) = catching {
-    val cose =
-        signWrprcCose(signingKeyMaterial, payload, type = type, certificateChainPlacement = certificateChainPlacement)
-    val parsedPayload = if (parsePayload) WrpAuthenticationRequestValidator.parseCose(cose) else payload
-    val registrationCertificate: WrpRegistrationCertificate =
-        WrpRegistrationCertificate.WrpCwtRegistrationCertificate(cose = cose, payload = parsedPayload)
-    val credentialRequests = request?.let { listOf(WrpCredentialRequest.WrpDocRequest(it)) } ?: emptyList()
-    val validationData = WrpRequestData(
-        clientId = clientId,
-        accessCertificate = WrpAccessCertificate(wrpacChain),
-        registrationCertificate = mapOf(registrationCertificate to credentialRequests),
-    )
-    val resolvedAccessCertValidation = accessCertValidation ?: validateWrpac().getOrThrow()
-    val statusListTokenResolver = StatusListTokenResolver { statusListUrl ->
-        buildStatusListToken(statusListUrl, revokedIndex = revokedStatusIndex)
-    }
-    val tokenStatusResolver = TokenStatusResolverImpl(statusListTokenResolver)
-
-    WrprcValidator()(
-        identifierResult = resolvedAccessCertValidation.identifierResult,
-        validationData = validationData,
-        tokenStatusResolver = tokenStatusResolver,
-        certificateTrustAnchors = trustAnchors,
     ).getOrThrow()
 }
 

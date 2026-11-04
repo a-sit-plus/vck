@@ -40,8 +40,11 @@ val QesApprovalDcqlPresentationTest by matrixSuite {
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val holder = HolderAgent(
                 keyMaterial = holderKeyMaterial,
-                mdocZkEngine = at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine(
-                    at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry()
+                verifiablePresentationFactory = VerifiablePresentationFactory(
+                    keyMaterial = holderKeyMaterial,
+                    mdocZkEngine = at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine(
+                        at.asitplus.wallet.lib.zk.iso.IsoMdocZkBackendRegistry()
+                    ),
                 ),
             )
             val sdJwtCredential = issueAndStoreSdJwt(holder, holderKeyMaterial, issuer)

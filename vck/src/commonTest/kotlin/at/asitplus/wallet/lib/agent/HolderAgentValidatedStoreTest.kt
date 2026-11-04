@@ -268,17 +268,6 @@ val HolderAgentValidatedStoreTest by matrixSuite {
                 .shouldBeInstanceOf<CheckOutcome.Failed>()
         }
     }
-
-    "trusted issuers and a credential validator are exclusive" {
-        shouldThrow<IllegalArgumentException> {
-            @Suppress("DEPRECATION")
-            HolderAgent(
-                keyMaterial = EphemeralKeyWithoutCert(),
-                trustedIssuers = TrustedCertificates { emptySet() },
-                credentialValidator = CredentialValidator(statusValidator = StatusValidator()),
-            )
-        }
-    }
 }
 
 private object OtherSdJwtScheme : SdJwtCredentialScheme {

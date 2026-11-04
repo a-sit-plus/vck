@@ -17,22 +17,6 @@ import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.serialization.kotlinx.json.*
 
-@Deprecated(
-    "Moved to vck-openid, which does not depend on a ktor client",
-    ReplaceWith("ProblemDetails", "at.asitplus.wallet.lib.ProblemDetails"),
-)
-typealias ProblemDetails = at.asitplus.wallet.lib.ProblemDetails
-
-/**
- * A non-success HTTP response with its OAuth or RFC 9457 error details, when available,
- * as thrown by the ktor-based clients in this module.
- */
-@Deprecated(
-    "Moved to vck-openid, which does not depend on a ktor client",
-    ReplaceWith("HttpErrorResponseException", "at.asitplus.wallet.lib.HttpErrorResponseException"),
-)
-typealias HttpErrorResponseException = at.asitplus.wallet.lib.HttpErrorResponseException
-
 internal fun buildHttpClient(
     engine: HttpClientEngine,
     cookiesStorage: CookiesStorage? = null,

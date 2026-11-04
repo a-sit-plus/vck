@@ -39,15 +39,10 @@ import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
-import io.ktor.client.engine.*
-import io.ktor.client.plugins.cookies.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromByteArray
 import kotlin.coroutines.cancellation.CancellationException
 
-
-@Deprecated("Renamed", ReplaceWith("OpenId4VciKtorClient"))
-typealias OpenId4VciClient = OpenId4VciKtorClient
 
 /**
  * Implements the client side of
@@ -107,37 +102,6 @@ class OpenId4VciKtorClient private constructor(
         ),
         issuerMetadataValidator = issuerMetadataValidator,
     )
-
-    /**
-     * @param engine ktor engine to use to make requests to issuing service.
-     * @param cookiesStorage Callers are advised to implement a persistent cookie storage,
-     * to keep the session at the issuing service alive after receiving the auth code.
-     * @param httpClientConfig Additional configuration for building the HTTP client, e.g. callers may enable logging.
-     * @param oid4vciClient Implements OID4VCI protocol, `cryptoService` provides proof of possession for credential
-     * key material.
-     * @param oauth2InternalClient Internal OAuth 2.0 client passed on to [oauth2Client], with the (deprecated)
-     * `clientId` from [oid4vciClient]. The `client_id` of the OAuth 2.0 client in [oauth2Client] is the issuer of
-     * credential proofs.
-     * @param oauth2Client OAuth 2.0 client to use during the protocol run.
-     */
-    @Deprecated(
-        "Pass the app's HttpClient instead of engine, cookiesStorage and httpClientConfig, the OAuth2Client, which " +
-                "holds the client ID for credential proofs too, and the client attestation as ClientAttestation"
-    )
-    @Suppress("DEPRECATION") // in the default values
-    constructor(
-        engine: HttpClientEngine,
-        cookiesStorage: CookiesStorage? = null,
-        httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-        oid4vciClient: OpenId4VciClient = OpenId4VciClient(),
-        oauth2InternalClient: OAuth2Client = OAuth2Client(clientId = oid4vciClient.clientId),
-        oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
-            engine = engine,
-            cookiesStorage = cookiesStorage,
-            httpClientConfig = httpClientConfig,
-            oAuth2Client = oauth2InternalClient,
-        ),
-    ) : this(oid4vciClient = oid4vciClient, oauth2Client = oauth2Client)
 
     /** Shares the DPoP nonces of [oauth2Client], which sends all requests. */
     private val vci = OpenId4VciProtocolClient(
@@ -573,24 +537,6 @@ sealed interface CredentialIssuanceResult {
         val reissuingStoreEntryId: Long? = null,
     ) : CredentialIssuanceResult {
 
-        /** The renewal info of the first of [issued]. */
-        @Deprecated(
-            "The credentials of several configurations may be issued: use the refreshToken of each of issued",
-            ReplaceWith("issued.first().refreshToken"),
-        )
-        val refreshToken: CredentialRenewalInfo?
-            get() = issued.first().refreshToken
-
-        /** The credentials of all [issued] configurations, decoded without validating them. */
-        @Deprecated(
-            "The credentials have not been validated: prepare their storage with prepareCredentialStorage, which " +
-                    "validates them with the HolderAgent",
-        )
-        val credentials: Collection<Holder.StoreCredentialInput>
-            get() = issued.flatMap { group ->
-                group.receivedCredentials.map { it.toStoreCredentialInput(group.scheme) }
-            }
-
         /**
          * Validates every credential of [issued] as the type of its [IssuedCredentials.scheme] for storage by [holder]
          * under [policy], with its [IssuedCredentials.refreshToken] for its renewal, see
@@ -644,12 +590,6 @@ data class IssuedCredentials(
      */
     val refreshToken: CredentialRenewalInfo?,
 )
-
-@Deprecated(
-    "Moved to vck-openid, which does not depend on a ktor client",
-    ReplaceWith("CredentialIdentifierInfo", "at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo"),
-)
-typealias CredentialIdentifierInfo = at.asitplus.wallet.lib.oidvci.CredentialIdentifierInfo
 
 /** Decodes the credential without validating it, see [CredentialIssuanceResult.Success.credentials]. */
 @Throws(Throwable::class)

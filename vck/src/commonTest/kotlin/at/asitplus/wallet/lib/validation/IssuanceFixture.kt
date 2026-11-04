@@ -12,11 +12,17 @@ import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.StatusListJwt
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
+import at.asitplus.wallet.lib.jws.SignJwt
 import io.kotest.matchers.nulls.shouldNotBeNull
-import kotlinx.serialization.encodeToByteArray
 import kotlin.time.Clock
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.JsonObject
 
 internal val scheme = ConstantIndex.AtomicAttribute2023
 
@@ -86,3 +92,27 @@ internal fun IssuedCredential.status(): RevocationListInfo = when (this) {
     is IssuedCredential.VcSdJwt -> sdJwtVc.statusElement
     is IssuedCredential.Iso -> issuerSigned.issuerAuth.payload?.status
 }.shouldNotBeNull()
+
+/** The issued SD-JWT with every disclosure, its issuer-signed payload changed by [change] and signed again. */
+internal suspend fun Issuance.sdJwtWithPayload(change: (JsonObject) -> JsonObject): String {
+    val issued = (issue(CredentialRepresentation.SD_JWT) as IssuedCredential.VcSdJwt).signedSdJwtVc
+    val jws = SignJwt<JsonObject>(issuer.keyMaterial, JwsHeaderCertOrJwk())(
+        JwsContentTypeConstants.SD_JWT,
+        change(issued.jws.getPayload<JsonObject>().getOrThrow()),
+        JsonObject.serializer(),
+    ).getOrThrow().jws
+    return (listOf(jws.toString()) + issued.rawDisclosures).joinToString("~", postfix = "~")
+}
+
+/** The issued VC-JWT, its credential changed by [vc] and then its JWT claims by [jwt], signed again. */
+internal suspend fun Issuance.vcJwtWithPayload(
+    vc: (VerifiableCredential) -> VerifiableCredential = { it },
+    jwt: (VerifiableCredentialJws) -> VerifiableCredentialJws = { it },
+): String {
+    val issued = (issue(CredentialRepresentation.PLAIN_JWT) as IssuedCredential.VcJwt).signedVcJws.payload
+    return SignJwt<VerifiableCredentialJws>(issuer.keyMaterial, JwsHeaderCertOrJwk())(
+        JwsContentTypeConstants.JWT,
+        jwt(issued.copy(vc = vc(issued.vc))),
+        VerifiableCredentialJws.serializer(),
+    ).getOrThrow().jws.toString()
+}

@@ -46,7 +46,6 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toEncryptionJsonWebKey
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -76,7 +75,6 @@ import at.asitplus.wallet.lib.openid.DcApiPreparationState
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
 import at.asitplus.wallet.lib.openid.directPostHttpResponse
 import at.asitplus.wallet.lib.openid.loadRequestObjectHttpResponse
 import at.asitplus.wallet.lib.validation.RelyingPartyTrustAnchors
@@ -84,6 +82,7 @@ import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import at.asitplus.wallet.lib.validation.RequestObjectChecks
 import at.asitplus.wallet.lib.validation.StatusPolicy
 import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import at.asitplus.wallet.lib.validation.ValidationDecision
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
@@ -104,15 +103,15 @@ import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.random.Random
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 
 
 val OpenId4VpKtorHolderTest by matrixSuite {
@@ -511,58 +510,6 @@ val OpenId4VpKtorHolderTest by matrixSuite {
             engine.requestHistory.map { request -> request.url.toString() } shouldBe listOf(requestUrl)
         }
 
-        test("deprecated constructor taking an engine sends the requests too") {
-            it.setup(
-                scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
-                representation = SD_JWT,
-                attributes = mapOf(
-                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
-                ),
-                responseMode = ResponseMode.DirectPost,
-                clientId = uuid4().toString(),
-            )
-            @Suppress("DEPRECATION")
-            val wallet = OpenId4VpKtorHolder(
-                engine = it.mockEngine,
-                keyMaterial = it.keyMaterial,
-                holderAgent = it.holderAgent,
-            )
-
-            val state = wallet.startAuthorizationResponsePreparation(it.url).getOrThrow()
-            wallet.finalizeAuthorizationResponse(state).getOrThrow()
-                .shouldBeInstanceOf<OpenId4VpKtorHolder.AuthenticationSuccess>()
-
-            assertPresentation(it.countdownLatch)
-        }
-
-        test("deprecated OpenId4VpHolder methods fetch request objects with the app's client") {
-            it.setup(
-                scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
-                representation = SD_JWT,
-                attributes = mapOf(
-                    DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString()
-                ),
-                responseMode = ResponseMode.DirectPost,
-                clientId = uuid4().toString(),
-                requestUriMethod = JarRequestParameters.RequestUriMethod.POST,
-            )
-            val unknownRequestUri = URLBuilder(it.url)
-                .apply { parameters["request_uri"] = "http://rp.example.com/unknown" }.buildString()
-
-            @Suppress("DEPRECATION")
-            val prepared = it.wallet.openId4VpHolder.startAuthorizationResponsePreparation(it.url)
-            @Suppress("DEPRECATION")
-            val notFound = it.wallet.openId4VpHolder.startAuthorizationResponsePreparation(unknownRequestUri)
-
-            prepared.getOrThrow()
-            notFound.exceptionOrNull().shouldBeInstanceOf<HttpErrorResponseException>()
-                .status shouldBe HttpStatusCode.NotFound
-            (it.mockEngine as MockEngine).requestHistory.first().apply {
-                method shouldBe HttpMethod.Post
-                body.contentType.toString() shouldBe "application/x-www-form-urlencoded"
-            }
-        }
-
         test("presentEuPidCredentialSdJwtEncryptedRequestByPost") {
             val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
             it.setup(
@@ -858,37 +805,25 @@ private fun Map.Entry<DCQLClaimsPathPointer, Any>.toIssuerSignedItem(digestId: U
 
 private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<DCQLClaimsPathPointer, String>): Boolean =
     catching {
-        val vpTokenValidationResult = shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.getOrThrow()
-        when (vpTokenValidationResult) {
-            is VpTokenValidationResultDCQL -> vpTokenValidationResult.credentialQueryResponseValidations.values
-                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
-                .containsAllAttributes(expectedAttributes)
-
-        }
+        shouldBeInstanceOf<AuthnResponseResult.Success>().presentationValidations.values
+            .shouldBeSingleton().first().shouldBeSingleton().first().presentation.shouldNotBeNull()
+            .containsAllAttributes(expectedAttributes)
     }.getOrElse {
         false
     }
 
-private fun Verifier.VerifyPresentationResult.containsAllAttributes(
-    attributes: Map<DCQLClaimsPathPointer, String>
-): Boolean = when (this) {
-    is Verifier.VerifyPresentationResult.SuccessIso -> containsAllAttributes(attributes)
-    is Verifier.VerifyPresentationResult.SuccessSdJwt -> containsAllAttributes(attributes)
-    is Verifier.VerifyPresentationResult.Success -> false
-    is Verifier.VerifyPresentationResult.SuccessUnsigned -> false
-}
+private fun ValidatedPresentation.containsAllAttributes(attributes: Map<DCQLClaimsPathPointer, String>): Boolean =
+    when (this) {
+        is ValidatedPresentation.MdocDocument -> credential.issuerSigned.namespaces.orEmpty().values
+            .flatMap { list -> list.entries.map { it.value } }
+            .let { items -> attributes.all { attribute -> items.any { it.matchesAttribute(attribute) } } }
 
-private fun Verifier.VerifyPresentationResult.SuccessSdJwt.containsAllAttributes(attributes: Map<DCQLClaimsPathPointer, String>): Boolean =
-    attributes.all { containsAttribute(it) }
+        is ValidatedPresentation.SdJwt -> attributes.all { attribute ->
+            credential.disclosures.values.any { it.matchesAttribute(attribute) }
+        }
 
-private fun Verifier.VerifyPresentationResult.SuccessSdJwt.containsAttribute(attribute: Map.Entry<DCQLClaimsPathPointer, String>): Boolean =
-    disclosures.toList().any { it.matchesAttribute(attribute) }
-
-private fun Verifier.VerifyPresentationResult.SuccessIso.containsAllAttributes(attributes: Map<DCQLClaimsPathPointer, String>): Boolean =
-    attributes.all { containsAttribute(it) }
-
-private fun Verifier.VerifyPresentationResult.SuccessIso.containsAttribute(attribute: Map.Entry<DCQLClaimsPathPointer, String>): Boolean =
-    documents.any { doc -> doc.validItems.any { it.matchesAttribute(attribute) } }
+        is ValidatedPresentation.VpJwt, is ValidatedPresentation.VcJwt -> false
+    }
 
 private fun SelectiveDisclosureItem.matchesAttribute(attribute: Map.Entry<DCQLClaimsPathPointer, String>): Boolean =
     claimName == attribute.key.getFirstName() && claimValue.jsonPrimitive.content == attribute.value

@@ -9,9 +9,9 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
+import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialRepresentation
@@ -20,28 +20,33 @@ import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oauth2.toResourceServerHttpResponse
 import at.asitplus.wallet.lib.oidvci.CredentialDataProviderFun
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.ReceivedCredential
+import at.asitplus.wallet.lib.validation.CredentialValidationContext
 import at.asitplus.wallet.lib.validation.CredentialValidationInput
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.HolderBindingPolicy
+import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.TrustPolicy
+import at.asitplus.wallet.lib.validation.ValidatedCredential
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import at.asitplus.wallet.lib.PreparedHttpResponse
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.json.jsonPrimitive
 
 object TestUtils {
 
@@ -128,7 +133,15 @@ object TestUtils {
         val input = group.receivedCredentials.shouldBeSingleton().first()
             .shouldBeInstanceOf<ReceivedCredential.Decoded>().input
             .shouldBeInstanceOf<CredentialValidationInput.SdJwtVc>()
-        ValidatorSdJwt().verifySdJwt(SdJwtSigned.parseCatching(input.compact).getOrThrow(), credentialKey).getOrThrow()
+        val policy = ValidationPolicy(
+            trust = TrustPolicy.IntegrityOnly,
+            status = StatusPolicy.Skip,
+            timeLeeway = 5.minutes,
+            requireTimeliness = true,
+            holderBinding = HolderBindingPolicy.RequireExpectedKey,
+        )
+        CredentialValidator().validate(input, policy, CredentialValidationContext(expectedHolderKey = credentialKey))
+            .credential.shouldBeInstanceOf<ValidatedCredential.SdJwtVc>()
             .disclosures.values.any {
                 it.claimName == claimName &&
                         it.claimValue.jsonPrimitive.content == expectedClaimValue

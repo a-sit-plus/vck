@@ -23,7 +23,6 @@ import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
-import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -50,95 +49,6 @@ interface SubjectCredentialStore {
      */
     suspend fun storeCredential(entry: StoreEntry): KmmResult<StoreEntry>
 
-    /**
-     * Implementations should store the passed credential in a secure way.
-     * Passed credentials have been validated before.
-     *
-     * @param vc Instance of [VerifiableCredentialJws]
-     * @param vcSerialized Serialized form of [VerifiableCredential]
-     */
-    @Deprecated(
-        "Use storeCredential(StoreEntry)",
-        ReplaceWith(
-            "storeCredential(SubjectCredentialStore.StoreEntry.Vc(vcSerialized = vcSerialized, vc = vc, " +
-                    "renewalInfo = renewalInfo, issuer = issuer, schemeIdentifier = scheme.vcType)).getOrThrow()"
-        )
-    )
-    suspend fun storeCredential(
-        vc: VerifiableCredentialJws,
-        vcSerialized: String,
-        scheme: VcJwtCredentialScheme,
-        renewalInfo: CredentialRenewalInfo? = null,
-        issuer: X509Certificate? = null
-    ): StoreEntry = storeCredential(
-        StoreEntry.Vc(
-            vcSerialized = vcSerialized,
-            vc = vc,
-            renewalInfo = renewalInfo,
-            issuer = issuer,
-            schemeIdentifier = scheme.vcType,
-        )
-    ).getOrThrow()
-
-    /**
-     * Implementations should store the passed credential in a secure way.
-     * Passed credentials have been validated before.
-     *
-     * @param vc Instance of [VerifiableCredentialSdJwt]
-     * @param vcSerialized Serialized form of [at.asitplus.wallet.lib.jws.SdJwtSigned]
-     */
-    @Deprecated(
-        "Use storeCredential(StoreEntry)",
-        ReplaceWith(
-            "storeCredential(SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized = vcSerialized, sdJwt = vc, " +
-                    "disclosures = disclosures, renewalInfo = renewalInfo, issuer = issuer, " +
-                    "schemeIdentifier = scheme.sdJwtType)).getOrThrow()"
-        )
-    )
-    suspend fun storeCredential(
-        vc: VerifiableCredentialSdJwt,
-        vcSerialized: String,
-        disclosures: Map<String, SelectiveDisclosureItem?>,
-        scheme: SdJwtCredentialScheme,
-        renewalInfo: CredentialRenewalInfo? = null,
-        issuer: X509Certificate? = null
-    ): StoreEntry = storeCredential(
-        StoreEntry.SdJwt(
-            vcSerialized = vcSerialized,
-            sdJwt = vc,
-            disclosures = disclosures,
-            renewalInfo = renewalInfo,
-            issuer = issuer,
-            schemeIdentifier = scheme.sdJwtType,
-        )
-    ).getOrThrow()
-
-    /**
-     * Implementations should store the passed credential in a secure way.
-     * Passed credentials have been validated before.
-     *
-     * @param issuerSigned Instance of [IssuerSigned] (an ISO credential)
-     */
-    @Deprecated(
-        "Use storeCredential(StoreEntry)",
-        ReplaceWith(
-            "storeCredential(SubjectCredentialStore.StoreEntry.Iso(issuerSigned = issuerSigned, " +
-                    "renewalInfo = renewalInfo, issuer = issuer, schemeIdentifier = scheme.isoDocType)).getOrThrow()"
-        )
-    )
-    suspend fun storeCredential(
-        issuerSigned: IssuerSigned,
-        scheme: IsoMdocCredentialScheme,
-        renewalInfo: CredentialRenewalInfo? = null,
-        issuer: X509Certificate? = null
-    ): StoreEntry = storeCredential(
-        StoreEntry.Iso(
-            issuerSigned = issuerSigned,
-            renewalInfo = renewalInfo,
-            issuer = issuer,
-            schemeIdentifier = scheme.isoDocType,
-        )
-    ).getOrThrow()
 
     /**
      * Return all stored credentials.

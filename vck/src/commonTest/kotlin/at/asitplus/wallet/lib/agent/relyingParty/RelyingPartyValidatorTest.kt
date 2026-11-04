@@ -7,6 +7,7 @@ import at.asitplus.dcapi.NFCHandover
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.etsi.relyingParty.WrpClaim
 import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
+import at.asitplus.etsi.relyingParty.WrpClaimValue
 import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpIntermediary
@@ -19,6 +20,7 @@ import at.asitplus.iso.EncryptionParameters
 import at.asitplus.iso.ReaderAuthentication
 import at.asitplus.iso.ReaderAuthenticationAll
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.openid.RequestParametersFrom
@@ -26,6 +28,7 @@ import at.asitplus.openid.VerifierInfo
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.IndexSegment
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NullSegment
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
@@ -33,25 +36,30 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.KeyWithFixedCert
+import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.relyingParty.InvalidRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.UnsupportedWrpRequestException
+import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.WrpCredentialRequest
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.jws.JwsHeaderNone
+import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.validation.AccessCertificateChecks
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.NamedCheck
@@ -77,6 +85,7 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
@@ -85,6 +94,8 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 val RelyingPartyValidatorTest by matrixSuite {
 
@@ -603,6 +614,365 @@ val RelyingPartyValidatorTest by matrixSuite {
                 .shouldBeInstanceOf<CheckOutcome.Blocked>()
         }
     }
+
+    "a request without client_id fails its request data" {
+        val fixture = buildWrpFixture()
+        val parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier)).copy(clientId = null)
+
+        fixture.validate(fixture.signedByWrp(parameters)).apply {
+            report.decision shouldBe REJECTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                .shouldBeInstanceOf<CheckOutcome.Failed>()
+        }
+    }
+
+    "a request without the chain of its WRPAC fails the parsing of the WRPAC" {
+        val fixture = buildWrpFixture()
+        val parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier))
+        val request = SignJwt<AuthenticationRequestParameters>(fixture.wrpKey, JwsHeaderNone())(
+            type = "oauth-authz-req+jwt",
+            payload = parameters,
+            serializer = AuthenticationRequestParameters.serializer(),
+        ).getOrThrow().let { RequestParametersFrom.Jws(jws = it.jws, parameters = parameters) }
+
+        fixture.validate(request).apply {
+            report.decision shouldBe REJECTED
+            accessChecks().parsing.shouldBeInstanceOf<CheckOutcome.Failed>()
+        }
+    }
+
+    "a WRPAC chain" - {
+        "with an unrelated intermediate fails trust, although its leaf is issued by an anchor" {
+            val ca = TestCertificateAuthority(name = CA_NAME)
+            val leaf = ca.issue(subjectName = WRP_NAME)
+            val unrelated = TestCertificateAuthority(name = "Unrelated CA").certificate
+
+            buildWrpFixture().validateAccessCertificate(ca, leaf, unrelated) shouldContain "is not signed by"
+        }
+
+        "with an expired certificate fails trust" - {
+            listOf(
+                "provider" to listOf(true, false),
+                "relying party" to listOf(false, true),
+                "provider and relying party" to listOf(true, true),
+            ).asData(nameFn = { "of the ${it.first}" }) test { case ->
+                val providerExpired = case.second[0]
+                val leafExpired = case.second[1]
+                val ca = TestCertificateAuthority(name = CA_NAME)
+                val providerKey = EphemeralKeyWithoutCert()
+                val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+                val providerCert = ca.issue(
+                    subjectName = WRPAC_PROVIDER_NAME,
+                    certificateAuthority = true,
+                    validity = 1.days,
+                    validFrom = if (providerExpired) Clock.System.now() - 2.days else Clock.System.now(),
+                    key = providerKey,
+                ).getCertificate().shouldNotBeNull()
+                val leaf = provider.issue(
+                    subjectName = WRP_NAME,
+                    validity = 1.days,
+                    validFrom = if (leafExpired) Clock.System.now() - 2.days else Clock.System.now(),
+                )
+
+                buildWrpFixture().validateAccessCertificate(ca, leaf, providerCert) shouldContain "Certificate is expired"
+            }
+        }
+
+        "with a self-signed leaf fails trust" {
+            val ca = TestCertificateAuthority(name = CA_NAME)
+            val providerCert = ca.issue(subjectName = WRPAC_PROVIDER_NAME, certificateAuthority = true)
+                .getCertificate().shouldNotBeNull()
+
+            buildWrpFixture().validateAccessCertificate(ca, EphemeralKeyWithSelfSignedCert(), providerCert) shouldContain
+                    "is not signed by"
+        }
+
+        // RFC 5280 section 4.2.1.9: a key whose certificate does not set cA "MUST NOT be used to verify certificate
+        // signatures". Only the top of the chain is anchored, so without this an end entity certificate could vouch
+        // for anything below it.
+        "with a provider certificate that is not a certificate authority fails trust" {
+            val ca = TestCertificateAuthority(name = CA_NAME)
+            val providerKey = EphemeralKeyWithoutCert()
+            val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+            val providerCert = ca.issue(subjectName = WRPAC_PROVIDER_NAME, key = providerKey, certificateAuthority = false)
+                .getCertificate().shouldNotBeNull()
+
+            buildWrpFixture().validateAccessCertificate(ca, provider.issue(subjectName = WRP_NAME), providerCert) shouldContain
+                    "may not issue certificates"
+        }
+
+        "with a provider of another subject name than the issuer of the leaf fails trust" {
+            val ca = TestCertificateAuthority(name = CA_NAME)
+            val providerKey = EphemeralKeyWithoutCert()
+            val provider = TestCertificateAuthority(name = WRPAC_PROVIDER_NAME, key = providerKey)
+            // a legitimate intermediate whose only defect is its name, so the linkage is why the chain is rejected
+            val providerCert = ca.issue(subjectName = "Provider Wrong", key = providerKey, certificateAuthority = true)
+                .getCertificate().shouldNotBeNull()
+
+            buildWrpFixture().validateAccessCertificate(ca, provider.issue(subjectName = WRP_NAME), providerCert) shouldContain
+                    "is not signed by"
+        }
+    }
+
+    "a WRPRC" - {
+        WrprcFormat.entries.asData(nameFn = { "as $it" }) - { format ->
+            "signed under an untrusted CA fails its trust, not its signature" {
+                val fixture = buildWrpFixture()
+                val untrusted = TestCertificateAuthority(name = "Untrusted CA").issue(subjectName = WRPRC_PROVIDER_NAME)
+
+                fixture.validateWrprc(format, signingKey = untrusted).apply {
+                    report.decision shouldBe REJECTED
+                    registrationChecks().signature shouldBe CheckOutcome.Passed
+                    registrationChecks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+                }
+            }
+
+            "signed by another key than the one of its certificate fails the signature" {
+                val fixture = buildWrpFixture()
+                val certificate = fixture.wrprcSigningKeyMaterial.getCertificate().shouldNotBeNull()
+                val mismatched = KeyWithFixedCert(EphemeralKeyWithoutCert(), certificate)
+
+                fixture.validateWrprc(format, signingKey = mismatched).apply {
+                    report.decision shouldBe REJECTED
+                    registrationChecks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+                }
+            }
+
+            "without a certificate chain fails parsing" {
+                val fixture = buildWrpFixture()
+                val result = when (format) {
+                    WrprcFormat.JWT -> fixture.validateWrprc(format, signingKey = EphemeralKeyWithoutCert())
+                    WrprcFormat.CWT -> fixture.validateWrprc(format, chainPlacement = CertificateChainPlacement.NONE)
+                }
+
+                result.report.decision shouldBe REJECTED
+                result.registrationChecks().parsing.shouldBeInstanceOf<CheckOutcome.Failed>()
+            }
+
+            "without an optional claim is accepted" - {
+                listOf<Pair<String, (String) -> WrpPayload>>(
+                    "intendedUseId" to { buildWrpPayload(it, intendedUseId = null) },
+                    "name" to { buildWrpPayload(it, name = null) },
+                    "exp" to { buildWrpPayload(it, exp = null) },
+                ).asData(nameFn = { it.first }) test { case ->
+                    val fixture = buildWrpFixture()
+
+                    fixture.validateWrprc(format, case.second(fixture.wrpIdentifier)).report.decision shouldBe ACCEPTED
+                }
+            }
+
+            "not meeting a requirement of TS 119 475 fails parsing" - {
+                listOf<Pair<String, (WrpPayload) -> WrpPayload>>(
+                    "without an entitlement of A.2" to { it.copy(entitlements = listOf("https://example.com/entitlement")) },
+                    "providing attestations without their entitlement" to {
+                        it.copy(providesAttestations = listOf(defaultMdocCredential()))
+                    },
+                    "of a service provider without purpose" to { it.copy(purpose = null) },
+                    "of a service provider without credentials" to { it.copy(credentials = null) },
+                ).asData(nameFn = { it.first }) test { case ->
+                    val fixture = buildWrpFixture()
+                    val result = fixture.validateWrprc(format, case.second(buildWrpPayload(fixture.wrpIdentifier)))
+
+                    result.report.decision shouldBe REJECTED
+                    result.registrationChecks().parsing.shouldBeInstanceOf<CheckOutcome.Failed>()
+                }
+            }
+
+            "with values of a claim, which are not supported, fails parsing" - {
+                listOf(WrpClaimValue.Text("Alice"), WrpClaimValue.Integer(18), WrpClaimValue.Bool(true))
+                    .asData() test { value ->
+                        val fixture = buildWrpFixture()
+                        val credential = defaultMdocCredential().copy(
+                            claim = listOf(WrpClaim.named(DEFAULT_DOCTYPE, "given_name").copy(values = listOf(value)))
+                        )
+                        val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
+                        val result = fixture.validateWrprc(format, payload, claimNames = listOf("given_name"))
+
+                        result.report.decision shouldBe REJECTED
+                        result.registrationChecks().parsing.shouldBeInstanceOf<CheckOutcome.Failed>()
+                    }
+            }
+
+            "valid for more than 12 months fails timeliness" {
+                val fixture = buildWrpFixture()
+                val now = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
+                val payload = buildWrpPayload(fixture.wrpIdentifier, iat = now, exp = now + 400.days)
+
+                fixture.validateWrprc(format, payload).registrationChecks().timeliness
+                    .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<TimelinessException>()
+            }
+
+            "whose status list can not be obtained is rejected, as its status is unknown" {
+                val fixture = buildWrpFixture()
+                val validator = RelyingPartyValidator(
+                    trust = RelyingPartyTrustAnchors(
+                        accessCertificates = fixture.trustAnchors,
+                        registrationCertificates = fixture.trustAnchors,
+                    ),
+                    statusValidator = StatusValidator(
+                        StatusListTokenResolver { throw IllegalStateException("status list unavailable") }
+                    ),
+                )
+
+                fixture.validateWrprc(format, validator = validator).apply {
+                    report.decision shouldBe REJECTED
+                    registrationChecks().status.mechanisms.shouldBeSingleton().first().outcome
+                        .shouldBeInstanceOf<CheckOutcome.Blocked>()
+                }
+            }
+        }
+
+        "as JWT of another type fails parsing" {
+            val fixture = buildWrpFixture()
+
+            fixture.validateWrprc(WrprcFormat.JWT, type = "not-rc-wrp+jwt").registrationChecks().parsing
+                .shouldBeInstanceOf<CheckOutcome.Failed>()
+        }
+
+        "as CWT of another type can not be parsed, which fails the registration" {
+            val fixture = buildWrpFixture()
+
+            fixture.validateWrprc(WrprcFormat.CWT, type = "not-rc-wrp+cwt").report.checks
+                .shouldBeInstanceOf<RelyingPartyChecks>().registration.shouldBeInstanceOf<CheckOutcome.Failed>()
+                .throwable.shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+        }
+
+        "as CWT with x5chain in the protected header is accepted" {
+            val fixture = buildWrpFixture()
+
+            fixture.validateWrprc(WrprcFormat.CWT, chainPlacement = CertificateChainPlacement.PROTECTED)
+                .report.decision shouldBe ACCEPTED
+        }
+
+        "as CWT with an additional numeric path still authorizes its named claims" {
+            val fixture = buildWrpFixture()
+            val credential = defaultMdocCredential().let {
+                it.copy(
+                    claim = it.claim.orEmpty() + WrpClaim(
+                        listOf(WrpClaimPathSegment.Name(DEFAULT_DOCTYPE), WrpClaimPathSegment.Index(0u))
+                    )
+                )
+            }
+            val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
+
+            fixture.validateWrprc(WrprcFormat.CWT, payload).report.decision shouldBe ACCEPTED
+        }
+
+        "as CWT does not authorize a document request for more claims than it registers" {
+            val fixture = buildWrpFixture()
+            val claimNames = listOf("given_name", "family_name", "birth_date", "portrait")
+
+            fixture.validateWrprc(WrprcFormat.CWT, claimNames = claimNames).apply {
+                report.decision shouldBe REJECTED
+                registrationChecks().requestAuthorization.shouldBeInstanceOf<CheckOutcome.Failed>()
+                    .throwable.shouldBeInstanceOf<UnregisteredRequestException>()
+            }
+        }
+
+        "does not authorize a credential format it does not register" {
+            val fixture = buildWrpFixture()
+            val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(defaultMdocCredential()))
+
+            fixture.validateWrprc(WrprcFormat.JWT, payload, request = sdJwtDcqlRequest(vctValue = PID_VCT)).apply {
+                report.decision shouldBe REJECTED
+                registrationChecks().requestAuthorization.shouldBeInstanceOf<CheckOutcome.Failed>()
+                    .throwable.shouldBeInstanceOf<UnregisteredRequestException>()
+            }
+        }
+
+        "does not authorize an unregistered wildcard request, and names only that one" {
+            val fixture = buildWrpFixture()
+            val mdocQuery = (mdocDcqlRequest() as CredentialPresentationRequest.DCQLRequest)
+                .dcqlQuery.credentials.single()
+            val wildcardQuery = DCQLSdJwtCredentialQuery(
+                id = DCQLCredentialQueryIdentifier("wildcard"),
+                meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(vctValues = listOf(PID_VCT)),
+                claims = DCQLClaimsQueryList(
+                    nonEmptyListOf(
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(nonEmptyListOf(NameSegment("nationalities"), NullSegment))
+                        )
+                    )
+                ),
+            )
+            val request = CredentialPresentationRequest.DCQLRequest(
+                DCQLQuery(credentials = DCQLCredentialQueryList(nonEmptyListOf(mdocQuery, wildcardQuery)))
+            )
+
+            fixture.validateWrprc(WrprcFormat.JWT, request = request).registrationChecks().requestAuthorization
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<UnregisteredRequestException>()
+                .requests.shouldBeSingleton().first().first
+                .shouldBeInstanceOf<WrpCredentialRequest.WrpDcqlCredentialQuery>().query.id shouldBe wildcardQuery.id
+        }
+    }
+
+    "a verifier_info whose WRPRC can not be parsed fails the registration" - {
+        listOf<Pair<String, suspend (WrpFixture) -> List<VerifierInfo>>>(
+            "base64url-encoded, but no JWS" to {
+                listOf(VerifierInfo(REGISTRATION_CERT_FORMAT, "no-jws".encodeToByteArray().encodeToString(Base64UrlStrict)))
+            },
+            "next to another format" to {
+                listOf(VerifierInfo("other-format", "ignored"), VerifierInfo(REGISTRATION_CERT_FORMAT, "not-a-jws"))
+            },
+            "given as a JSON object" to {
+                listOf(VerifierInfo(REGISTRATION_CERT_FORMAT, buildJsonObject { put("jwt", "not-a-string-wrprc") }))
+            },
+            "next to a valid one" to {
+                listOf(
+                    VerifierInfo(REGISTRATION_CERT_FORMAT, "not-a-jws"),
+                    VerifierInfo(
+                        REGISTRATION_CERT_FORMAT,
+                        signWrprc(it.wrprcSigningKeyMaterial, buildWrpPayload(it.wrpIdentifier)),
+                    ),
+                )
+            },
+        ).asData(nameFn = { it.first }) test { case ->
+            val fixture = buildWrpFixture()
+            val parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier))
+                .copy(verifierInfo = case.second(fixture).toNonEmptyList())
+
+            fixture.validate(fixture.signedByWrp(parameters)).report.checks.shouldBeInstanceOf<RelyingPartyChecks>()
+                .registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                .shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+        }
+    }
+
+    "a verifier_info of another format only has no WRPRC" {
+        val fixture = buildWrpFixture()
+        val parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier))
+            .copy(verifierInfo = nonEmptyListOf(VerifierInfo("other-format", "ignored")))
+
+        fixture.validate(fixture.signedByWrp(parameters)).report.checks.shouldBeInstanceOf<RelyingPartyChecks>()
+            .registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+            .shouldBeInstanceOf<MissingRegistrationCertificateException>()
+    }
+
+    "a device request" - {
+        "with a WRPRC that can not be parsed fails the registration" {
+            val fixture = buildWrpFixture()
+            val transcript = nfcTranscript()
+            val docRequest = mdocDocRequest().withEuWrprc(byteArrayOf(1, 2, 3))
+            val deviceRequest = fixture.isoRequest(docRequest, transcript).parameters.isoMdocRequest.deviceRequest
+
+            fixture.validator().validate(deviceRequest, transcript, policy).report.checks
+                .shouldBeInstanceOf<RelyingPartyChecks>().registration.shouldBeInstanceOf<CheckOutcome.Failed>()
+                .throwable.shouldBeInstanceOf<InvalidRegistrationCertificateException>().cause.shouldNotBeNull()
+        }
+
+        "with a WRPRC in only some of its document requests fails the registration" {
+            val fixture = buildWrpFixture()
+            val transcript = nfcTranscript()
+            val deviceRequest = fixture.isoRequest(
+                fixture.docRequestWithWrprc(),
+                transcript,
+                mdocDocRequest(doctypeValue = "org.iso.18013.5.1.mDL"),
+            ).parameters.isoMdocRequest.deviceRequest
+
+            fixture.validator().validate(deviceRequest, transcript, policy).report.checks
+                .shouldBeInstanceOf<RelyingPartyChecks>().registration.shouldBeInstanceOf<CheckOutcome.Failed>()
+                .throwable.shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+        }
+    }
 }
 
 /** The status list tokens are signed by a key without certificate, so their signers are not authorized. */
@@ -689,10 +1059,7 @@ private suspend fun WrpFixture.docRequestWithWrprc(
     payload: WrpPayload = buildWrpPayload(wrpIdentifier),
 ): DocRequest {
     val wrprc = coseCompliantSerializer.encodeToByteArray(signWrprcCose(wrprcSigningKeyMaterial, payload))
-    return mdocDocRequest(claimNames = claimNames).let {
-        val itemsRequest = it.itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = wrprc))
-        it.copy(itemsRequest = ByteStringWrapper(itemsRequest))
-    }
+    return mdocDocRequest(claimNames = claimNames).withEuWrprc(wrprc)
 }
 
 /** A device request of a proximity presentation, authenticated by the WRPAC over [transcript]. */
@@ -748,3 +1115,70 @@ private suspend fun signDetached(key: KeyMaterial, chain: List<X509Certificate>,
         payload = payload,
         serializer = ByteArraySerializer(),
     ).getOrThrow()
+
+/** The transport of a WRPRC: a JWT in `verifier_info` of an authorization request, a CWT in `euWrprc` of an mdoc request. */
+private enum class WrprcFormat { JWT, CWT }
+
+/**
+ * Validates a request of this relying party with [payload] as its WRPRC in [format], signed by [signingKey]: a JWT in
+ * an authorization request for [request], a CWT in a proximity device request for the mdoc claims [claimNames].
+ */
+private suspend fun WrpFixture.validateWrprc(
+    format: WrprcFormat,
+    payload: WrpPayload = buildWrpPayload(wrpIdentifier),
+    signingKey: KeyMaterial = wrprcSigningKeyMaterial,
+    type: String = when (format) {
+        WrprcFormat.JWT -> WRPRC_JWS_TYPE
+        WrprcFormat.CWT -> WRPRC_CWT_TYPE
+    },
+    chainPlacement: CertificateChainPlacement = CertificateChainPlacement.UNPROTECTED,
+    claimNames: List<String> = listOf("given_name", "family_name", "birth_date"),
+    request: CredentialPresentationRequest = mdocDcqlRequest(claimNames = claimNames),
+    validator: RelyingPartyValidator = validator(),
+): RelyingPartyValidationResult = when (format) {
+    WrprcFormat.JWT -> validator.validate(
+        signedByWrp(
+            AuthenticationRequestParameters(
+                clientId = clientId,
+                verifierInfo = nonEmptyListOf(
+                    VerifierInfo(REGISTRATION_CERT_FORMAT, signWrprc(signingKey, payload, type))
+                ),
+                dcqlQuery = (request as CredentialPresentationRequest.DCQLRequest).dcqlQuery,
+            )
+        ),
+        policy,
+    )
+
+    WrprcFormat.CWT -> {
+        val transcript = nfcTranscript()
+        val wrprc = signWrprcCose(signingKey, payload, type, chainPlacement)
+        val docRequest = mdocDocRequest(claimNames = claimNames)
+            .withEuWrprc(coseCompliantSerializer.encodeToByteArray(wrprc))
+        validator.validate(isoRequest(docRequest, transcript).parameters.isoMdocRequest.deviceRequest, transcript, policy)
+    }
+}
+
+/**
+ * Validates a request signed by [leaf], the key of the WRPAC, transporting [leaf] and [intermediates] as the chain of
+ * the WRPAC, with [anchor] as the anchor of WRPACs, returning why its trust failed.
+ */
+private suspend fun WrpFixture.validateAccessCertificate(
+    anchor: TestCertificateAuthority,
+    leaf: KeyMaterial,
+    vararg intermediates: X509Certificate,
+): String {
+    val chain = listOf(leaf.getCertificate().shouldNotBeNull(), *intermediates)
+    val fixture = copy(
+        trustAnchors = TrustedCertificates { setOf(anchor.certificate) },
+        wrpacChain = chain,
+        wrpKey = leaf,
+        clientId = "x509_hash:${chain.first().encodeToDer().sha256().encodeToString(Base64UrlStrict)}",
+    )
+    val result = fixture.validate(fixture.request(buildWrpPayload(wrpIdentifier)))
+
+    result.report.decision shouldBe REJECTED
+    return result.accessChecks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>().throwable.message.shouldNotBeNull()
+}
+
+private fun DocRequest.withEuWrprc(euWrprc: ByteArray) =
+    copy(itemsRequest = ByteStringWrapper(itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = euWrprc))))

@@ -18,8 +18,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import io.ktor.client.*
-import io.ktor.client.engine.*
-import io.ktor.client.plugins.cookies.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -78,47 +76,6 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
             clientAttestation = clientAttestation,
             verifyTokenIntrospectionJwt = verifyTokenIntrospectionJwt,
         ),
-        internalTokenVerificationService = internalTokenVerificationService,
-        dpopNonceService = dpopNonceService,
-        scope = scope,
-    )
-
-    /**
-     * @param publicContext Base URL of the remote Authorization Server.
-     * @param engine ktor engine to make requests to the verifier.
-     * @param cookiesStorage Callers are advised to implement a persistent cookie storage,
-     * to keep the session at the issuing service alive after receiving the auth code.
-     * @param httpClientConfig Additional configuration for building the HTTP client, e.g., callers may enable logging.
-     * @param scope [CoroutineScope] to fetch the authorization server's metadata.
-     * @param oauth2Client OAuth 2.0 client to use when exchanging Wallet's token for a fresh access token, make sure
-     * to configure it to use the correct [OAuth2KtorClient.clientAttestation].
-     * @param internalTokenVerificationService Validates access tokens received in [validateAccessToken].
-     * @param dpopNonceService Used to provide DPoP nonces for credential requests, which will be verified by
-     * [internalTokenVerificationService].
-     */
-    @Deprecated(
-        "Pass the app's HttpClient instead of engine, cookiesStorage and httpClientConfig, which oauth2Client " +
-                "ignored when passed, and configure the OAuth 2.0 client with oauth2Client, clientAttestation and " +
-                "verifyTokenIntrospectionJwt"
-    )
-    constructor(
-        publicContext: String,
-        engine: HttpClientEngine,
-        cookiesStorage: CookiesStorage? = null,
-        httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
-        scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-        @Suppress("DEPRECATION")
-        oauth2Client: OAuth2KtorClient = OAuth2KtorClient(
-            engine = engine,
-            cookiesStorage = cookiesStorage,
-            httpClientConfig = httpClientConfig,
-            oAuth2Client = OAuth2Client(),
-        ),
-        internalTokenVerificationService: TokenVerificationService,
-        dpopNonceService: NonceService = DefaultNonceService(),
-    ) : this(
-        publicContext = publicContext,
-        oauth2Client = oauth2Client,
         internalTokenVerificationService = internalTokenVerificationService,
         dpopNonceService = dpopNonceService,
         scope = scope,

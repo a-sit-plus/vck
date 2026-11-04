@@ -12,16 +12,15 @@ import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeIn
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -80,14 +79,8 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values
-                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    verifiableCredentialSdJwt.shouldNotBeNull()
-                    reconstructedJsonObject[requestedClaim].shouldNotBeNull()
-                }
+                .singleAcceptedPresentation().sdJwtVc
+                .reconstructedJsonObject[requestedClaim].shouldNotBeNull()
         }
 
         "authn response nonce cannot be replayed" {
@@ -134,7 +127,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
             // but it burns the request, as authentication responses are never retryable
             it.verifierOid4vp.validateAuthnResponse(
                 ResponseParametersFrom.Post(AuthenticationResponseParameters(state = state))
-            ).getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.isFailure shouldBe true
+            ).getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Success>().validationReport.decision shouldBe REJECTED
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).isFailure shouldBe true
         }
@@ -161,7 +154,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(
                 ResponseParametersFrom.Post(AuthenticationResponseParameters(state = state))
-            ).getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Success>().vpTokenResult.isFailure shouldBe true
+            ).getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Success>().validationReport.decision shouldBe REJECTED
 
             // restore the stored request, so only the consumed challenge can reject the genuine response
             it.stateToAuthnRequestStore.put(state, storedRequest)
@@ -193,13 +186,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values
-                .shouldBeSingleton().first()
-                .shouldBeSingleton().first().getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    verifiableCredentialSdJwt.shouldNotBeNull()
+                .singleAcceptedPresentation().sdJwtVc.apply {
                     requestedClaims.forEach {
                         it.shouldBeIn(reconstructedJsonObject.keys)
                         reconstructedJsonObject[it].shouldNotBeNull()

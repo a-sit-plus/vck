@@ -67,12 +67,4 @@ val OpenId4VciClientCredentialOfferTest by matrixSuite {
             .isFailure shouldBe true
         requestedUrls shouldBe listOf("https://issuer.example.org/offer")
     }
-
-    test("deprecated constructor sends with its own HTTP client") {
-        @Suppress("DEPRECATION")
-        val client = OpenId4VciKtorClient(engine = MockEngine { respondOffer() })
-
-        client.loadCredentialOffer("haip-vci://?credential_offer_uri=https://issuer.example.org/offer")
-            .getOrThrow() shouldBe offer
-    }
 }

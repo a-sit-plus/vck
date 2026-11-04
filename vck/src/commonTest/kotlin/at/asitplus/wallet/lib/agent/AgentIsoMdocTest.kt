@@ -3,10 +3,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
-import at.asitplus.iso.Document
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
-import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.CredentialFormatEnum
@@ -23,7 +21,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreIsoMdoc
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
+import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -34,18 +32,21 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.randomCwtOrJwtResolver
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.PresentationValidationResult
+import at.asitplus.wallet.lib.validation.StatusValidator
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import com.benasher44.uuid.uuid4
 import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.kotest.matchers.types.shouldNotBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 
@@ -56,10 +57,7 @@ val AgentIsoMdocTest by matrixSuite {
             "dcql: simple walk-through success${mode.testNameSuffix}" {
                 val vp = it.createDcqlDeviceResponse(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
 
-                it.verifyPresentation(vp).apply {
-                    assertPresentedClaims(expectDateOfBirth = true)
-                    assertRevocationInvalid(expectedInvalid = false)
-                }
+                it.verifyPresentation(vp).assertPresentedClaims(expectDateOfBirth = true)
             }
 
             "dcql: revoked credential${mode.testNameSuffix}" {
@@ -67,10 +65,7 @@ val AgentIsoMdocTest by matrixSuite {
 
                 it.revokeSingleStoredCredential() shouldBe true
 
-                it.verifyPresentation(vp).apply {
-                    assertPresentedClaims(expectDateOfBirth = false)
-                    assertRevocationInvalid(expectedInvalid = true)
-                }
+                it.verifyPresentation(vp).assertRevoked()
             }
 
             if (mode == IsoRevocationMode.STATUS_LIST) {
@@ -89,9 +84,9 @@ val AgentIsoMdocTest by matrixSuite {
                         .issuerSigned.namespaces.shouldNotBeNull()
                         .getValue(ConstantIndex.AtomicAttribute2023.isoNamespace).entries.shouldBeSingleton()
                         .single().value.elementIdentifier shouldBe CLAIM_GIVEN_NAME
-                    it.verifier.consumeChallenge(request.nonce)
-                        .verifyPresentationIsoMdoc(result.deviceResponse) { documentVerifier() }.getOrThrow()
-                        .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
+                    it.verifyPresentation(
+                        PresentedIsoResponse(request, CreatePresentationResult.DeviceResponse(result.deviceResponse))
+                    ).assertPresentedClaims(expectDateOfBirth = false)
                 }
 
                 "device retrieval: rejects a request for a missing data element" {
@@ -202,36 +197,21 @@ val AgentIsoMdocTest by matrixSuite {
 
                     it.revokeSingleStoredCredential() shouldBe true
 
-                    it.verifyPresentation(firstVp).apply {
-                        assertPresentedClaims(expectDateOfBirth = false)
-                        assertRevocationInvalid(expectedInvalid = true)
-                    }
-
-                    it.verifyPresentation(secondVp).apply {
-                        assertPresentedClaims(expectDateOfBirth = false)
-                        assertRevocationInvalid(expectedInvalid = false)
-                    }
+                    it.verifyPresentation(firstVp).assertRevoked()
+                    it.verifyPresentation(secondVp).assertPresentedClaims(expectDateOfBirth = false)
                 }
 
                 "identifier list: verifier rejects presentation when resolver returns status list token" {
                     val vp = it.createDcqlDeviceResponse(CLAIM_GIVEN_NAME)
 
-                    // no challenge involved here: this verifies the token status of a presentation
-                    // that was created for a challenge of another verifier
-                    val mismatchedVerifier = VerifierAgent(
-                        identifier = it.verifierId,
-                        validatorMdoc = ValidatorMdoc(
-                            validator = Validator(
-                                tokenStatusResolver = statusListResolver(it.statusListIssuer)
-                            )
-                        ),
+                    val mismatchedValidator = CredentialValidator(
+                        statusValidator = StatusValidator(statusListResolver(it.statusListIssuer)),
                     )
 
-                    mismatchedVerifier.verifyPresentationIsoMdoc(vp.response.deviceResponse, documentVerifier())
-                        .getOrThrow()
-                        .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
-                        .documents.shouldBeSingleton().first().freshnessSummary.tokenStatusValidationResult
-                        .shouldBeInstanceOf<TokenStatusValidationResult.Rejected>()
+                    it.verifyPresentation(vp, mismatchedValidator).apply {
+                        presentation.shouldBeNull()
+                        observedStatus.shouldBeNull()
+                    }
                 }
             }
         }
@@ -277,6 +257,7 @@ private data class IsoMdocFixture(
     val issuer: IssuerAgent,
     val statusListIssuer: StatusListAgent,
     val holder: HolderAgent,
+    val validator: CredentialValidator,
     val verifier: NonceChallengeVerifier,
     val verifierId: String,
 )
@@ -292,9 +273,9 @@ private suspend fun createIsoMdocFixture(mode: IsoRevocationMode): IsoMdocFixtur
         randomSource = RandomSource.Default
     )
     val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-    val validator = ValidatorMdoc(
-        validator = Validator(
-            tokenStatusResolver = when (mode) {
+    val validator = CredentialValidator(
+        statusValidator = StatusValidator(
+            when (mode) {
                 IsoRevocationMode.STATUS_LIST -> randomCwtOrJwtResolver(statusListIssuer)
                 IsoRevocationMode.IDENTIFIER_LIST -> identifierListResolver(statusListIssuer)
             }
@@ -312,31 +293,25 @@ private suspend fun createIsoMdocFixture(mode: IsoRevocationMode): IsoMdocFixtur
         issuer = issuer,
         statusListIssuer = statusListIssuer,
         holder = holder,
-        verifier = NonceChallengeVerifier(
-            verifierId = verifierId,
-            verifier = VerifierAgent(identifier = verifierId, validatorMdoc = validator),
-        ),
+        validator = validator,
+        verifier = NonceChallengeVerifier(verifierId = verifierId),
         verifierId = verifierId,
     )
 }
 
-private fun identifierListResolver(statusListIssuer: StatusListAgent) = TokenStatusResolverImpl(
-    resolveStatusListToken = { _ ->
-        StatusListCwt(
-            value = statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.IDENTIFIER_LIST),
-            resolvedAt = null,
-        )
-    }
-)
+private fun identifierListResolver(statusListIssuer: StatusListAgent) = StatusListTokenResolver {
+    StatusListCwt(
+        value = statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.IDENTIFIER_LIST),
+        resolvedAt = null,
+    )
+}
 
-private fun statusListResolver(statusListIssuer: StatusListAgent) = TokenStatusResolverImpl(
-    resolveStatusListToken = { _ ->
-        StatusListCwt(
-            value = statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.STATUS_LIST),
-            resolvedAt = null,
-        )
-    }
-)
+private fun statusListResolver(statusListIssuer: StatusListAgent) = StatusListTokenResolver {
+    StatusListCwt(
+        value = statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.STATUS_LIST),
+        resolvedAt = null,
+    )
+}
 
 /** A device response together with the request it answers, so that its challenge can be consumed. */
 private data class PresentedIsoResponse(
@@ -356,10 +331,17 @@ private suspend fun IsoMdocFixture.createDcqlDeviceResponse(vararg attributeName
         )
     }
 
-private suspend fun IsoMdocFixture.verifyPresentation(presented: PresentedIsoResponse) =
-    verifier.consumeChallenge(presented.request.nonce)
-        .verifyPresentationIsoMdoc(presented.response.deviceResponse) { documentVerifier() }.getOrThrow()
-        .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
+private suspend fun IsoMdocFixture.verifyPresentation(
+    presented: PresentedIsoResponse,
+    credentialValidator: CredentialValidator = validator,
+) = credentialValidator.validatePresentation(
+    presentation = presented.response,
+    context = verifier.consumeChallenge(presented.request.nonce).context(
+        audience = verifierId,
+        sessionTranscript = simpleTranscriptCallback(),
+    ),
+    policy = statusCheckingPolicy,
+).shouldBeSingleton().first()
 
 private suspend fun IsoMdocFixture.revokeSingleStoredCredential(): Boolean {
     val storeEntry = holderCredentialStore.getCredentials().getOrThrow()
@@ -404,25 +386,26 @@ private suspend fun createDcqlDeviceResponse(
         .shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
 }
 
-private fun Verifier.VerifyPresentationResult.SuccessIso.assertPresentedClaims(expectDateOfBirth: Boolean) {
-    documents.shouldBeSingleton().first().apply {
-        validItems.firstOrNull { item -> item.elementIdentifier == CLAIM_GIVEN_NAME }
-            .shouldNotBeNull().elementValue shouldBe "Susanne"
+/** The document is accepted with a valid status, and discloses the requested claims. */
+private fun PresentationValidationResult.assertPresentedClaims(expectDateOfBirth: Boolean) {
+    observedStatus shouldBe TokenStatus.Valid
+    val items = acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.MdocDocument>()
+        .credential.issuerSigned.namespaces.shouldNotBeNull()
+        .getValue(ConstantIndex.AtomicAttribute2023.isoNamespace).entries.map { it.value }
 
-        if (expectDateOfBirth) {
-            validItems.firstOrNull { item -> item.elementIdentifier == CLAIM_DATE_OF_BIRTH }
-                .shouldNotBeNull().elementValue shouldBe LocalDate(1990, 1, 1)
-        }
+    items.firstOrNull { item -> item.elementIdentifier == CLAIM_GIVEN_NAME }
+        .shouldNotBeNull().elementValue shouldBe "Susanne"
+
+    if (expectDateOfBirth) {
+        items.firstOrNull { item -> item.elementIdentifier == CLAIM_DATE_OF_BIRTH }
+            .shouldNotBeNull().elementValue shouldBe LocalDate(1990, 1, 1)
     }
 }
 
-private fun Verifier.VerifyPresentationResult.SuccessIso.assertRevocationInvalid(expectedInvalid: Boolean) {
-    val tokenStatusValidationResult = documents.shouldBeSingleton().first().freshnessSummary.tokenStatusValidationResult
-    if (expectedInvalid) {
-        tokenStatusValidationResult.shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
-    } else {
-        tokenStatusValidationResult.shouldNotBeInstanceOf<TokenStatusValidationResult.Invalid>()
-    }
+/** The document is rejected, as its credential has been revoked. */
+private fun PresentationValidationResult.assertRevoked() {
+    presentation.shouldBeNull()
+    observedStatus shouldBe TokenStatus.Invalid
 }
 // Simple Session Transcript (mostly empty)
 private val simpleTranscriptCallback: () -> SessionTranscript = {
@@ -449,9 +432,6 @@ private suspend fun IssuerAgent.issueIdentifierListIsoMdoc(subjectPublicKey: Cry
         revocationKind = RevocationList.Kind.IDENTIFIER_LIST,
     ).getOrThrow()
 ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
-
-// No OpenID4VP, no need to verify the device signature
-private fun documentVerifier(): suspend (MobileSecurityObject, Document) -> Boolean = { _, _ -> true }
 
 private fun buildDCQLQuery(vararg claimsQueries: DCQLIsoMdocClaimsQuery) = DCQLQuery(
     credentials = DCQLCredentialQueryList(

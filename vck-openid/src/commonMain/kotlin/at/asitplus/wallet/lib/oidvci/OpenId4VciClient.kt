@@ -44,18 +44,12 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.decodeFromQuery
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
-import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
-import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
@@ -75,11 +69,6 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
-import kotlin.time.Clock
-import kotlin.time.Duration
-
-@Deprecated("Renamed", ReplaceWith("OpenId4VciClient"))
-typealias WalletService = OpenId4VciClient
 
 /**
  * Client service to retrieve credentials using OID4VCI
@@ -105,73 +94,7 @@ class OpenId4VciClient @JvmOverloads constructor(
     private val proofCreators: List<ProofCreator>,
 ) {
 
-    @Deprecated("Use constructor with proofCreators")
-    @JvmOverloads
-    constructor(
-        /**
-         * Used as the issuer in credential proofs when [createCredential] gets no `clientId`. Deprecated, as the `client_id`
-         * belongs to the OAuth 2.0 client: [OpenId4VciProtocolClient.createCredential] passes the one of its [OAuth2Client].
-         */
-        clientId: String = "https://wallet.a-sit.at/app",
-        /** Used to prove possession of the key material for [CredentialRequestProofContainer], i.e., the holder key. */
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        /**
-         * Only used by the deprecated [parseCredentialOffer], to retrieve the resource referenced by
-         * `credential_offer_uri`; use [OpenId4VciProtocolClient.loadCredentialOffer] instead.
-         */
-        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-        /** Handles credential request encryption and credential response decryption. */
-        encryptionService: WalletEncryptionService = WalletEncryptionService(),
-        loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt>>)? = null,
-        /**
-         * Selects the key binding to embed in the [JwsHeader] of a credential request proof JWT,
-         * as defined in the OpenID for Verifiable Credential Issuance specification.
-         *
-         * This function determines how the holder's key is referenced in the proof JWT header,
-         * by selecting between two mutually exclusive binding mechanisms:
-         *
-         * - **`jwk`** ([JwsHeader.jsonWebKey]): embeds the [JsonWebKey] inline in the header,
-         *   suitable when the holder has no associated DID.
-         * - **`kid`** ([JwsHeader.keyId]): embeds a DID URL string in the header,
-         *   identifying a specific key within the holder's DID Document.
-         *
-         * The lambda receives the current [KeyMaterial] and must return a [Pair] where:
-         * - the **first** element is the [JsonWebKey] to embed as the `jwk` header parameter, or `null`,
-         * - the **second** element is the DID URL string to embed as the `kid` header parameter, or `null`.
-         *
-         * Exactly **one** of the two values must be non-null, as `jwk` and `kid` are mutually exclusive:
-         * - Returning **both non-null** will throw an [IllegalArgumentException] during proof creation.
-         * - Returning **both null** will throw an [IllegalArgumentException] during proof creation.
-         *
-         * Defaults to selecting the [JsonWebKey] from [KeyMaterial.jsonWebKey] as the `jwk` binding,
-         * which is suitable when no DID is associated with the holder.
-         *
-         * @see JwsHeader.jsonWebKey
-         * @see JwsHeader.keyId
-         */
-        selectProofJwtKeyBinding: (suspend (KeyMaterial) -> Pair<JsonWebKey?, String?>) = { key ->
-            Pair(key.jsonWebKey, null)
-        },
-        /** Clock to use for proof generation. */
-        clock: Clock = Clock.System,
-    ) : this(
-        clientId = clientId,
-        remoteResourceRetriever = remoteResourceRetriever,
-        encryptionService = encryptionService,
-        proofCreators = listOfNotNull(
-            JwtProofCreator(keyMaterial, loadKeyAttestation, selectProofJwtKeyBinding, clock),
-            loadKeyAttestation?.let { AttestationProofCreator(it) },
-        )
-    )
-
     private val defaultClientId = clientId
-
-    @Deprecated(
-        "The client ID belongs to the OAuth 2.0 client: use OAuth2Client.clientId, which " +
-                "OpenId4VciProtocolClient.createCredential passes to createCredential",
-    )
-    val clientId: String
-        get() = defaultClientId
 
     /**
      * What [JwtProofCreator] and [AttestationProofCreator] pass to their `loadKeyAttestation`, to load a key
@@ -187,9 +110,6 @@ class OpenId4VciClient @JvmOverloads constructor(
         val clientNonce: String?,
         /** The `proof_signing_alg_values_supported` of the proof type (12.2.4). */
         val supportedAlgorithms: Collection<String>?,
-        /** The preferred validity of the key storage status, see [KeyAttestationRequired.preferredTtl]. */
-        @Deprecated("Use requirements instead", ReplaceWith("requirements?.preferredTtl"))
-        val preferredKeyStorageStatusPeriod: Duration?,
         /**
          * The `key_attestations_required` of the proof type (12.2.4), i.e. the `key_storage` and `user_authentication`
          * values (Appendix D.2) the credential issuer accepts, `null` if it states none for this proof type.
@@ -243,28 +163,6 @@ class OpenId4VciClient @JvmOverloads constructor(
          */
         val state: String = uuid4().toString(),
     )
-
-    /**
-     * Parses [input] as either a JSON-encoded [CredentialOffer] or a credential offer URL.
-     *
-     * A credential offer URL may contain an embedded `credential_offer` or a `credential_offer_uri`.
-     * Resources referenced by `credential_offer_uri` are retrieved with [remoteResourceRetriever] and parsed.
-     */
-    @Deprecated(
-        "Retrieving a credential offer by reference is a request to the credential issuer: use " +
-                "OpenId4VciProtocolClient.loadCredentialOffer, or OpenId4VciClient.loadCredentialOffer with ktor",
-    )
-    suspend fun parseCredentialOffer(input: String): KmmResult<CredentialOffer> = catching {
-        when (val parsed = parseCredentialOfferInput(input)) {
-            is CredentialOfferInput.ByValue -> parsed.offer
-            is CredentialOfferInput.ByReference -> {
-                val response = remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(parsed.uri))
-                    ?: throw InvalidRequest("credential offer retrieval returned no response")
-                @Suppress("DEPRECATION")
-                parseCredentialOffer(response).getOrThrow()
-            }
-        }
-    }
 
     /** A credential offer passed by value, or the `credential_offer_uri` to load it from. */
     internal sealed interface CredentialOfferInput {
@@ -651,51 +549,6 @@ class OpenId4VciClient @JvmOverloads constructor(
     }
 
     /**
-     * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
-     * rejecting encrypted responses because they require the originating [CredentialRequest].
-     */
-    @Deprecated(
-        "Without the originating credential request, a plain response is accepted even if the request asked for an " +
-                "encrypted one: pass the CredentialRequest to decodeCredentialResponse, and prepare the storage of " +
-                "each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which validates it",
-    )
-    fun parseCredentialResponse(
-        response: String,
-        isEncrypted: Boolean,
-        representation: CredentialRepresentation,
-        scheme: CredentialScheme,
-    ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        @Suppress("DEPRECATION")
-        parseCredentialResponse(
-            response = response.toCredentialResponse(isEncrypted),
-            representation = representation,
-            scheme = scheme
-        ).getOrThrow()
-    }
-
-    /** Parses a response and binds its encryption to the exact [request] that caused it. */
-    @Deprecated(
-        "Decodes the credentials without validating them: decode them with decodeCredentialResponse, and prepare " +
-                "the storage of each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which " +
-                "validates it",
-    )
-    suspend fun parseCredentialResponse(
-        response: String,
-        isEncrypted: Boolean,
-        request: CredentialRequest,
-        representation: CredentialRepresentation,
-        scheme: CredentialScheme,
-    ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        @Suppress("DEPRECATION")
-        parseCredentialResponse(
-            response = response.toCredentialResponse(isEncrypted),
-            request = request,
-            representation = representation,
-            scheme = scheme
-        ).getOrThrow()
-    }
-
-    /**
      * Decodes [response] received from the credential issuer like [decodeCredentialResponse], reading it as a compact
      * JWE if [isEncrypted], i.e. if its media type is `application/jwt`.
      */
@@ -736,43 +589,6 @@ class OpenId4VciClient @JvmOverloads constructor(
                 onFailure = { ReceivedCredential.Undecodable(it) },
             )
         }
-    }
-
-    /**
-     * Parses [response] received from the credential issuer, mapping to [Holder.StoreCredentialInput],
-     * rejecting encrypted responses because they require the originating [CredentialRequest].
-     */
-    @Deprecated(
-        "Without the originating credential request, a plain response is accepted even if the request asked for an " +
-                "encrypted one: pass the CredentialRequest to decodeCredentialResponse, and prepare the storage of " +
-                "each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which validates it",
-    )
-    fun parseCredentialResponse(
-        response: CredentialResponse,
-        representation: CredentialRepresentation,
-        scheme: CredentialScheme,
-    ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        if (response is CredentialResponse.Encrypted)
-            throw InvalidEncryptionParameters("Originating credential request required for encrypted response")
-        (response as CredentialResponse.Plain).response
-            .extractCredentials()
-            .map { it.toStoreCredentialInput(representation, scheme) }
-    }
-
-    /** Parses a response and binds its encryption to the exact [request] that caused it. */
-    @Deprecated(
-        "Decodes the credentials without validating them: decode them with decodeCredentialResponse, and prepare " +
-                "the storage of each ReceivedCredential with ReceivedCredential.prepareCredentialStorage, which " +
-                "validates it",
-    )
-    suspend fun parseCredentialResponse(
-        response: CredentialResponse,
-        request: CredentialRequest,
-        representation: CredentialRepresentation,
-        scheme: CredentialScheme,
-    ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        decryptCredentialResponse(response, request)
-            .extractCredentials().map { it.toStoreCredentialInput(representation, scheme) }
     }
 
     @Throws(Exception::class)

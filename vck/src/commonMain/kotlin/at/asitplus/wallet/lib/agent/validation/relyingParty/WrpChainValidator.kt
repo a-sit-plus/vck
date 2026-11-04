@@ -1,42 +1,14 @@
-@file:Suppress("DEPRECATION")
-
 package at.asitplus.wallet.lib.agent.validation.relyingParty
 
-import at.asitplus.KmmResult
-import at.asitplus.catching
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.etsi.isCertificateAuthority
 import at.asitplus.wallet.lib.etsi.isExpired
 import at.asitplus.wallet.lib.etsi.isIssuerOf
 import at.asitplus.wallet.lib.etsi.isTrustedBy
 import at.asitplus.wallet.lib.etsi.isValidAt
 import io.github.aakira.napier.Napier
-import kotlin.time.Clock
 import kotlin.time.Instant
-
-/**
- * Class to verify a certificate chain against trusted roots.
- * Validations:
- *  - Validity periods
- *  - Certificate trust anchors
- *  - Signature chain
- *  - That every certificate issuing another one is a certificate authority
- *
- * Not validated: `pathLenConstraint`, `keyUsage`, and revocation.
- **/
-
-@Deprecated("Validate relying parties with at.asitplus.wallet.lib.validation.RelyingPartyValidator. To be removed in the next major release.")
-object WrpChainValidator {
-    suspend operator fun invoke(
-        chain: CertificateChain,
-        certificateTrustAnchors: TrustedCertificates
-    ): KmmResult<Boolean> = catching {
-        requireChainToAnchor(chain, certificateTrustAnchors(), Clock.System.now())
-        true
-    }
-}
 
 /**
  * Validates [chain] as [WrpChainValidator] does, against [trusted] anchors at [now]: every certificate is valid and

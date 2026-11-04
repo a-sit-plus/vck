@@ -4,10 +4,10 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -18,7 +18,6 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toIanaName
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -31,7 +30,7 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
-import at.asitplus.openid.formUrlEncode
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
@@ -201,11 +200,7 @@ val OpenId4VpInteropTest by matrixSuite {
             response.params.entries.firstOrNull { it.key == "presentation_submission" }.shouldBeNull()
 
             it.verifierOid4vp.validateAuthnResponse(response.params.formUrlEncode()).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.shouldBeSingleton().first()
-                .shouldBeSingleton().first().getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                .singleAcceptedPresentation().shouldBeInstanceOf<ValidatedPresentation.SdJwt>()
         }
 
         "parse SD-JWT from document" {

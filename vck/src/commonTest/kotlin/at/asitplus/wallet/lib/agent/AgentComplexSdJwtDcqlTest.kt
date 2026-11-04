@@ -18,13 +18,16 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import com.benasher44.uuid.uuid4
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 val AgentComplexSdJwtDcqlTest by matrixSuite {
 
@@ -39,8 +42,15 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
             val verifierId = "urn:${uuid4()}"
             val verifier = NonceChallengeVerifier(
                 verifierId = verifierId,
-                verifier = VerifierAgent(identifier = verifierId),
             )
+
+            /** The credential of the accepted [presentation] answering [request]. */
+            suspend fun validate(presentation: CreatePresentationResult, request: PresentationRequestParameters) =
+                CredentialValidator().validatePresentation(
+                    presentation = presentation,
+                    context = verifier.consumeChallenge(request.nonce).context(audience = verifierId),
+                ).shouldBeSingleton().first().acceptedOrThrow()
+                    .shouldBeInstanceOf<ValidatedPresentation.SdJwt>().credential
         }
     } - {
 
@@ -68,14 +78,13 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
             val vp = createPresentation(it.holder, request, dcqlQuery)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    disclosures.size shouldBe 1 // for address only
-                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                        ?.jsonPrimitive?.content shouldBe "Vienna"
-                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                        ?.jsonPrimitive?.content shouldBe "AT"
-                }
+            it.validate(vp, request).apply {
+                disclosures.size shouldBe 1 // for address only
+                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                    ?.jsonPrimitive?.content shouldBe "Vienna"
+                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                    ?.jsonPrimitive?.content shouldBe "AT"
+            }
         }
 
         test("with claims in address selectively disclosable, but address not") {
@@ -102,15 +111,14 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
             val vp = createPresentation(it.holder, request, dcqlQuery)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    disclosures.size shouldBe 2 // for region, country
+            it.validate(vp, request).apply {
+                disclosures.size shouldBe 2 // for region, country
 
-                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                        ?.jsonPrimitive?.content shouldBe "Vienna"
-                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                        ?.jsonPrimitive?.content shouldBe "AT"
-                }
+                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                    ?.jsonPrimitive?.content shouldBe "Vienna"
+                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                    ?.jsonPrimitive?.content shouldBe "AT"
+            }
         }
 
         test("with claims in address recursively selectively disclosable") {
@@ -138,14 +146,13 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
             val vp = createPresentation(it.holder, request, dcqlQuery)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    disclosures.size shouldBe 3 // for address, region, country
-                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                        ?.jsonPrimitive?.content shouldBe "Vienna"
-                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                        ?.jsonPrimitive?.content shouldBe "AT"
-                }
+            it.validate(vp, request).apply {
+                disclosures.size shouldBe 3 // for address, region, country
+                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                    ?.jsonPrimitive?.content shouldBe "Vienna"
+                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                    ?.jsonPrimitive?.content shouldBe "AT"
+            }
         }
 
         test("with claims in address recursively selectively disclosable, getting inner disclosures") {
@@ -166,14 +173,13 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
             val vp = createPresentation(it.holder, request, dcqlQuery)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    disclosures.size shouldBe 3 // for address, region, country
-                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
-                        ?.jsonPrimitive?.content shouldBe "Vienna"
-                    reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
-                        ?.jsonPrimitive?.content shouldBe "AT"
-                }
+            it.validate(vp, request).apply {
+                disclosures.size shouldBe 3 // for address, region, country
+                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                    ?.jsonPrimitive?.content shouldBe "Vienna"
+                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                    ?.jsonPrimitive?.content shouldBe "AT"
+            }
         }
 
         test("claim name with dot is stored flat, NOT nested") {
@@ -191,12 +197,11 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
             val vp = createPresentation(it.holder, request, dcqlQuery)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    disclosures.size shouldBe 1
-                    reconstructedJsonObject[CLAIM_ADDRESS] shouldBe null
-                    reconstructedJsonObject[dotClaimName]?.jsonPrimitive?.content shouldBe "Vienna"
-                }
+            it.validate(vp, request).apply {
+                disclosures.size shouldBe 1
+                reconstructedJsonObject[CLAIM_ADDRESS] shouldBe null
+                reconstructedJsonObject[dotClaimName]?.jsonPrimitive?.content shouldBe "Vienna"
+            }
         }
 
         test("simple walk-through success") {
@@ -217,16 +222,15 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
             val vp = createPresentation(it.holder, request, dcqlQuery)
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.verifier.consumeChallenge(request.nonce).verifyPresentationSdJwt(vp.sdJwt).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>().apply {
-                    disclosures.size shouldBe 2 // claim_given_name, claim_family_name
-                    reconstructedJsonObject[AtomicAttribute2023.CLAIM_GIVEN_NAME]
-                        ?.jsonPrimitive?.content shouldBe "Susanne"
-                    reconstructedJsonObject[AtomicAttribute2023.CLAIM_FAMILY_NAME]
-                        ?.jsonPrimitive?.content shouldBe "Meier"
-                    reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
-                        ?.jsonPrimitive?.content shouldBe "anything"
-                }
+            it.validate(vp, request).apply {
+                disclosures.size shouldBe 2 // claim_given_name, claim_family_name
+                reconstructedJsonObject[AtomicAttribute2023.CLAIM_GIVEN_NAME]
+                    ?.jsonPrimitive?.content shouldBe "Susanne"
+                reconstructedJsonObject[AtomicAttribute2023.CLAIM_FAMILY_NAME]
+                    ?.jsonPrimitive?.content shouldBe "Meier"
+                reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
+                    ?.jsonPrimitive?.content shouldBe "anything"
+            }
         }
     }
 }

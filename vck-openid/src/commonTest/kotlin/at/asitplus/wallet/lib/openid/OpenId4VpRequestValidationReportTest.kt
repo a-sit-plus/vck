@@ -44,20 +44,20 @@ import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.ValidationReport
+import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import com.benasher44.uuid.uuid4
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.minutes
 
 val OpenId4VpRequestValidationReportTest by matrixSuite {
 
@@ -82,7 +82,7 @@ val OpenId4VpRequestValidationReportTest by matrixSuite {
             }
             preparationState.request.parameters.clientId.shouldNotBeNull()
         }
-        // The legacy method does not evaluate trust without relyingPartyTrust, as before
+        // Without a policy, trust is not evaluated
         holder.startAuthorizationResponsePreparation(relyingParty.request()).getOrThrow()
     }
 
@@ -188,15 +188,6 @@ val OpenId4VpRequestValidationReportTest by matrixSuite {
         holder(setOf(EphemeralKeyWithoutCert().publicKey)).startAuthorizationResponsePreparation(request(), strictPolicy)
             .getOrThrow().validationReport.requestChecks().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
     }
-
-    "with trust configured the deprecated way, a request is accepted" {
-        val relyingParty = relyingParty()
-        @Suppress("DEPRECATION")
-        val holder = OpenId4VpHolder(relyingPartyTrust = relyingParty.trust)
-
-        holder.startAuthorizationResponsePreparation(relyingParty.request(), strictPolicy).getOrThrow()
-            .validationReport.decision shouldBe ACCEPTED
-    }
 }
 
 private val strictPolicy = ValidationPolicy(
@@ -253,7 +244,6 @@ private class RelyingParty(val keyMaterial: KeyMaterial, certificate: X509Certif
         clientIdScheme = ClientIdScheme.CertificateHash(listOf(certificate), "https://example.com/redirect"),
     )
     val certificates = TrustedCertificates { setOf(certificate) }
-    val trust = setOf(RelyingPartyTrust.Certificates(certificates))
     val validator = RelyingPartyValidator(trust = RelyingPartyTrustAnchors(accessCertificates = certificates))
 
     suspend fun requestParameters(): AuthenticationRequestParameters {

@@ -1,18 +1,14 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.oidvci.JwtProofCreator
-import at.asitplus.wallet.lib.oidvci.OpenId4VciClient
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
@@ -69,34 +65,5 @@ val RemoteResourceRetrieverFunctionTest by matrixSuite {
             jws.toString() shouldBe authnRequestSigned
             parameters shouldBe authnRequest
         }
-    }
-
-    "location response is used when body missing" {
-        val offerUri = "https://issuer.example.org/credential-offer"
-        val offer = CredentialOffer(
-            credentialIssuer = "https://issuer.example.org",
-            configurationIds = setOf("example-credential"),
-        )
-        val offerJson = joseCompliantSerializer.encodeToString(offer)
-        val locationUrl = URLBuilder("https://redirect.example.org/offer").apply {
-            parameters.append("credential_offer", offerJson)
-        }.buildString()
-        val retriever = FakeRemoteResourceRetriever(
-            mapOf(
-                offerUri to FakeHttpResponse(
-                    location = locationUrl,
-                )
-            )
-        )
-        val client = OpenId4VciClient(
-            remoteResourceRetriever = retriever::invoke,
-            proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert()))
-        )
-        val input = URLBuilder("https://wallet.example.org").apply {
-            parameters.append("credential_offer_uri", offerUri)
-        }.buildString()
-
-        @Suppress("DEPRECATION") // the only user of this retriever contract for credential offers
-        client.parseCredentialOffer(input).getOrThrow() shouldBe offer
     }
 }

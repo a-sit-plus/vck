@@ -10,7 +10,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -24,11 +23,11 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
 
 val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
 
@@ -114,18 +113,12 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow().apply {
-                    shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                    credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton().first()
-                        .getOrThrow().apply {
-                        shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-                        verifiableCredentialSdJwt.shouldNotBeNull()
-                        CLAIM_ADDRESS shouldBeIn reconstructedJsonObject.keys
-                        reconstructedJsonObject[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
-                            CLAIM_ADDRESS_REGION shouldBeIn this.keys
-                            this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
-                            this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion
-                        }
+                .singleAcceptedPresentation().sdJwtVc.apply {
+                    CLAIM_ADDRESS shouldBeIn reconstructedJsonObject.keys
+                    reconstructedJsonObject[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
+                        CLAIM_ADDRESS_REGION shouldBeIn this.keys
+                        this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
+                        this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion
                     }
                 }
         }

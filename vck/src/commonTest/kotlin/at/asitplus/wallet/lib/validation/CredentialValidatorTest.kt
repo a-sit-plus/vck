@@ -7,11 +7,16 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.wrapInCborTag
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider
 import at.asitplus.wallet.lib.agent.InMemoryIssuerCredentialStore
@@ -20,7 +25,6 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.StatusListAgent
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
-import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
@@ -28,10 +32,12 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.StatusListJwt
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
 import at.asitplus.wallet.lib.jws.patchHeader
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
@@ -39,20 +45,26 @@ import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
 import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
 import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
+import at.asitplus.wallet.sdjwt.SdJwtTypeMetadata
+import at.asitplus.wallet.sdjwt.SdJwtVcType
+import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.JsonPrimitive
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import net.orandja.obor.codec.Cbor
 import net.orandja.obor.data.CborMap
 import net.orandja.obor.data.CborObject
@@ -232,6 +244,56 @@ val CredentialValidatorTest by matrixSuite {
             .checks.issuerSignature.shouldBeInstanceOf<Failed>()
     }
 
+    "VC-JWT" - {
+        suspend fun Issuance.validateVcJwt(compact: String) =
+            validator().validate(
+                CredentialValidationInput.VcJwt(compact),
+                strictPolicy.copy(holderBinding = HolderBindingPolicy.RequireExpectedKey),
+                context(),
+            )
+
+        "JWT claims other than those of the credential fail semantics" {
+            val issuance = issuance()
+            listOf<(VerifiableCredentialJws) -> VerifiableCredentialJws>(
+                { it.copy(issuer = "https://other.example.com/") },
+                { it.copy(jwtId = "urn:uuid:${uuid4()}") },
+                { it.copy(subject = EphemeralKeyWithoutCert().publicKey.didEncoded) },
+                { it.copy(notBefore = it.notBefore - 1.hours) },
+                { it.copy(expiration = it.expiration?.plus(1.hours)) },
+                { it.copy(expiration = null) },
+            ).forEach { change ->
+                issuance.validateVcJwt(issuance.vcJwtWithPayload(jwt = change)).let {
+                    it.report.decision shouldBe REJECTED
+                    it.checks.semantics.shouldBeInstanceOf<Failed>()
+                }
+            }
+        }
+
+        "a credential without expiration is accepted" {
+            val issuance = issuance()
+            val compact = issuance.vcJwtWithPayload(
+                vc = { it.copy(expirationDate = null) },
+                jwt = { it.copy(expiration = null) },
+            )
+
+            issuance.validateVcJwt(compact).report.decision shouldBe ACCEPTED
+        }
+
+        "a credential issued in the future is not yet valid" {
+            val issuance = issuance()
+            val compact = issuance.vcJwtWithPayload(
+                vc = { it.copy(issuanceDate = Clock.System.now() + 1.hours) },
+                jwt = { it.copy(notBefore = it.vc.issuanceDate) },
+            )
+
+            issuance.validateVcJwt(compact).let {
+                it.report.decision shouldBe REJECTED
+                it.checks.semantics shouldBe Passed
+                it.checks.timeliness.outcome.shouldBeInstanceOf<Failed>()
+            }
+        }
+    }
+
     "SD-JWT" - {
         suspend fun Issuance.sdJwt() = issue(CredentialRepresentation.SD_JWT) as Issuer.IssuedCredential.VcSdJwt
 
@@ -305,6 +367,41 @@ val CredentialValidatorTest by matrixSuite {
             issuance.validateSdJwt(issued.serialize() + kb).checks.parsing.shouldBeInstanceOf<Failed>()
         }
 
+        "a credential without cnf fails holder binding" {
+            val issuance = issuance()
+            val result = issuance.validateSdJwt(issuance.sdJwtWithPayload { JsonObject(it - "cnf") })
+
+            result.report.decision shouldBe REJECTED
+            result.checks.holderBinding.shouldBeInstanceOf<Failed>()
+        }
+
+        "a sub that does not identify the holder is fine, as cnf binds the credential" {
+            val issuance = issuance()
+            val sdJwt = issuance.sdJwtWithPayload { JsonObject(it + ("sub" to JsonPrimitive("urn:${uuid4()}"))) }
+
+            issuance.validateSdJwt(sdJwt).report.decision shouldBe ACCEPTED
+        }
+
+        "type metadata in the header is accepted, and kept" {
+            val issuance = issuance()
+            val typeMetadata = SdJwtTypeMetadata(vct = SdJwtVcType("https://www.w3.org/2018/credentials/v1"))
+            val vctm = joseCompliantSerializer.encodeToString(typeMetadata).encodeToByteArray()
+                .encodeToString(Base64UrlStrict)
+            val issued = issuance.issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    issuance.holderKey.publicKey,
+                    scheme,
+                    CredentialRepresentation.SD_JWT,
+                ).getOrThrow().shouldBeInstanceOf<CredentialToBeIssued.VcSd>().copy(
+                    modifyHeader = JwsHeaderModifierFun { it.copy(vcTypeMetadata = setOf(vctm)) }
+                )
+            ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
+
+            issuance.validateSdJwt(issued.signedSdJwtVc.serialize()).credential
+                .shouldBeInstanceOf<ValidatedCredential.SdJwtVc>()
+                .sdJwtSigned.jws.jwsHeader.vcTypeMetadata shouldBe setOf(vctm)
+        }
+
         "the legacy type vc+sd-jwt fails parsing" {
             val issuance = issuance()
             val issued = issuance.sdJwt().signedSdJwtVc
@@ -359,6 +456,22 @@ val CredentialValidatorTest by matrixSuite {
             )
 
             issuance.validateMdoc(reissued).report.decision shouldBe ACCEPTED
+        }
+
+        "an MSO with digests of another algorithm than SHA-256 is accepted" {
+            val issuance = issuance()
+            val issuerSigned = issuance.issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    issuance.holderKey.publicKey,
+                    scheme,
+                    CredentialRepresentation.ISO_MDOC,
+                ).getOrThrow().shouldBeInstanceOf<CredentialToBeIssued.Iso>().copy(digest = Digest.SHA384)
+            ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>().issuerSigned
+            val result = issuance.validateMdoc(issuerSigned)
+
+            issuerSigned.issuerAuth.payload.shouldNotBeNull().digest shouldBe Digest.SHA384
+            result.report.decision shouldBe ACCEPTED
+            result.checks.disclosedItems.shouldNotBeEmpty().forEach { it.digest shouldBe Passed }
         }
 
         "a withheld item is fine" {

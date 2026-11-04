@@ -33,7 +33,6 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -44,13 +43,12 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.assertions.throwables.shouldNotThrowAny
-import io.kotest.matchers.booleans.shouldBeFalse
-import io.kotest.matchers.booleans.shouldBeTrue
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -126,13 +124,9 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values
-                .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-                .map { it.vcJws }.forEach {
+                .singleAcceptedPresentation()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>().credentials.shouldNotBeEmpty()
+                .map { it.credential }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
                             AtomicAttribute2023.fromJsonElement(credentialSubject)
@@ -175,17 +169,11 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
             val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-            val vcFreshnessSummary = it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton()
-                .first()
-                .getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessUnsigned>()
-                .vc
-            vcFreshnessSummary.vcJws.vc.credentialSubject.shouldBeInstanceOf<JsonObject>()
-            // the status is not resolved under testPresentationPolicy, so the credential is not verifiably fresh
-            vcFreshnessSummary.freshnessSummary.timelinessValidationSummary.isTimely.shouldBeTrue()
+            // accepted under testPresentationPolicy, which requires timeliness
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .singleAcceptedPresentation()
+                .shouldBeInstanceOf<ValidatedPresentation.VcJwt>()
+                .credential.credential.vc.credentialSubject.shouldBeInstanceOf<JsonObject>()
         }
 
         test("sd-jwt dcql: if not available despite others with correct format or correct attribute, but not both") {
@@ -226,13 +214,8 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.shouldBeSingleton().first().shouldBeSingleton()
-                .first()
-                .getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-                .verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
+                .singleAcceptedPresentation().sdJwtVc
+                .credential.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
         }
 
         "mdoc dcql: if not available despite others with correct format or correct attribute, but not both" {
@@ -273,9 +256,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .submissionRequirementsValidationResult.isSuccess.shouldBeTrue()
+                .submissionRequirements() shouldBe CheckOutcome.Passed
         }
 
         "mdoc dcql: presenting for incorrect query identifiers is invalid" {
@@ -373,9 +354,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .submissionRequirementsValidationResult.isSuccess.shouldBeFalse()
+                .submissionRequirements().shouldBeInstanceOf<CheckOutcome.Failed>()
         }
 
         "mdoc dcql: presenting correct credentials yields valid submission validation result" {
@@ -410,9 +389,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .submissionRequirementsValidationResult.isSuccess.shouldBeTrue()
+                .submissionRequirements() shouldBe CheckOutcome.Passed
         }
 
         "presentation of multiple credentials with different formats in one request/response" {
@@ -431,9 +408,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.shouldHaveSize(2)
+                .acceptedPresentations().values.shouldHaveSize(2)
         }
 
         "presentation of multiple SD-JWT credentials in one request/response" {
@@ -467,15 +442,12 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val groupedResult = it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .acceptedPresentations().values.flatten().map { it.sdJwtVc }
 
             groupedResult.size shouldBe 2
             groupedResult.forEach { result ->
-                result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
                 result.reconstructedJsonObject.entries.shouldNotBeEmpty()
-                when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
+                when (result.credential.verifiableCredentialType) {
                     EU_PID_SD_JWT_VCT -> {
                         result.reconstructedJsonObject[EuPidSdJwtDataElements.FAMILY_NAME].shouldNotBeNull()
                         result.reconstructedJsonObject[EuPidSdJwtDataElements.GIVEN_NAME].shouldNotBeNull()
@@ -486,7 +458,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                     }
 
                     else -> {
-                        fail("Unexpected SD-JWT type: ${result.verifiableCredentialSdJwt.verifiableCredentialType}")
+                        fail("Unexpected SD-JWT type: ${result.credential.verifiableCredentialType}")
                     }
                 }
             }

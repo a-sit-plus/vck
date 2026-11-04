@@ -96,7 +96,8 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
             )
 
             encodedAgain.docRequests.single().itemsRequest.serialized shouldBe receivedItemsRequest
-            ReaderAuthenticationVerifier()(encodedAgain, transcript).isSuccess shouldBe true
+            ReaderAuthenticationVerifier().authenticate(encodedAgain, transcript).getOrThrow()
+                .unauthenticatedDocRequests.shouldBeEmpty()
         }
     }
 

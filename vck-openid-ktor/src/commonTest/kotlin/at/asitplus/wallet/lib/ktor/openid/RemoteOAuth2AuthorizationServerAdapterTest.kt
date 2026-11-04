@@ -103,11 +103,9 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
             }
         }
 
-        // Also covers the deprecated constructor, which builds its own HTTP client
-        @Suppress("DEPRECATION")
         val adapter = RemoteOAuth2AuthorizationServerAdapter(
             publicContext = issuer,
-            engine = mockEngine,
+            httpClient = HttpClient(mockEngine),
             internalTokenVerificationService = tokenVerificationService,
         )
 

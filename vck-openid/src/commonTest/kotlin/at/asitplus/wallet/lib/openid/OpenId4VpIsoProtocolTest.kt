@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -9,20 +10,17 @@ import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult.SuccessIso
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.CreationOptions.Query
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import com.benasher44.uuid.uuid4
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldHaveSize
@@ -32,7 +30,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 val OpenId4VpIsoProtocolTest by matrixSuite {
@@ -84,14 +81,8 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 .createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    credentialQueryResponseValidations.values
-                        .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
-                        .shouldBeInstanceOf<SuccessIso>()
-                        .documents.first().apply {
-                            validItems.shouldNotBeEmpty()
-                        }
+                .singleAcceptedPresentation().issuerSignedItems.apply {
+                    shouldNotBeEmpty()
                 }
         }
 
@@ -111,14 +102,8 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 .createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    credentialQueryResponseValidations.values
-                        .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
-                        .shouldBeInstanceOf<SuccessIso>()
-                        .documents.first().apply {
-                            validItems.shouldNotBeEmpty()
-                        }
+                .singleAcceptedPresentation().issuerSignedItems.apply {
+                    shouldNotBeEmpty()
                 }
         }
 
@@ -138,15 +123,9 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    credentialQueryResponseValidations.values
-                        .shouldBeSingleton().first().shouldBeSingleton().first().getOrThrow()
-                        .shouldBeInstanceOf<SuccessIso>()
-                        .documents.first().apply {
-                            validItems.shouldBeSingleton()
-                            validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                        }
+                .singleAcceptedPresentation().issuerSignedItems.apply {
+                    shouldBeSingleton()
+                    shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
                 }
         }
 
@@ -174,16 +153,9 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             //println("this is the response:\n$input")
 
             it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    credentialQueryResponseValidations.values
-                        .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().getOrThrow()
-                        .shouldBeInstanceOf<SuccessIso>()
-                        .documents.first().apply {
-                            validItems.shouldBeSingleton()
-                            validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                        }
+                .singleAcceptedPresentation().issuerSignedItems.apply {
+                    shouldBeSingleton()
+                    shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
                 }
         }
 
@@ -212,15 +184,9 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             //println("this is the response:\n$input")
 
             it.verifierOid4vp.validateAuthnResponse(input).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    credentialQueryResponseValidations.values
-                        .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<SuccessIso>()
-                        .documents.first().apply {
-                            validItems.shouldBeSingleton()
-                            validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
-                        }
+                .singleAcceptedPresentation().issuerSignedItems.apply {
+                    shouldBeSingleton()
+                    shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
                 }
         }
 
@@ -257,15 +223,11 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 }
 
             scope.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.shouldHaveSize(2).apply {
-                    values.first { it.first().getOrThrow().hasDocType(AtomicAttribute2023.isoDocType) }.first()
-                        .getOrThrow().shouldBeInstanceOf<SuccessIso>().documents.first()
-                        .validItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
-                    values.first { it.first().getOrThrow().hasDocType(scope.mdlScheme.isoDocType!!) }.first()
-                        .getOrThrow().shouldBeInstanceOf<SuccessIso>().documents.first()
-                        .validItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
+                .acceptedPresentations().shouldHaveSize(2).apply {
+                    values.first { it.first().hasDocType(AtomicAttribute2023.isoDocType) }.first()
+                        .issuerSignedItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
+                    values.first { it.first().hasDocType(scope.mdlScheme.isoDocType!!) }.first()
+                        .issuerSignedItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
                 }
         }
 
@@ -284,21 +246,14 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>().apply {
-                    credentialQueryResponseValidations.values
-                        .shouldBeSingleton().first()
-                        .shouldBeSingleton().first().getOrThrow().shouldBeInstanceOf<SuccessIso>()
-                        .documents.first().apply {
-                            validItems.shouldBeSingleton()
-                            validItems.shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
-                        }
+                .singleAcceptedPresentation().issuerSignedItems.apply {
+                    shouldBeSingleton()
+                    shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
                 }
         }
     }
 }
 
-private fun Verifier.VerifyPresentationResult.hasDocType(docType: String): Boolean =
-    this.shouldBeInstanceOf<SuccessIso>().documents
-        .shouldBeSingleton().first().mso.docType == docType
+private fun ValidatedPresentation.hasDocType(docType: String): Boolean =
+    shouldBeInstanceOf<ValidatedPresentation.MdocDocument>().document.docType == docType
 

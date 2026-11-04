@@ -64,10 +64,13 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val holder = HolderAgent(
                 keyMaterial = holderKeyMaterial,
-                // Ensure a clean ZK backend registry is being used for these tests.
-                // By default, IsoMdocZkEngine uses IsoMdocZkBackendRegistry.Default, which is a global singleton.
-                // In a test environment, this can lead to state leakage between tests if backends are registered.
-                mdocZkEngine = IsoMdocZkEngine(IsoMdocZkBackendRegistry())
+                verifiablePresentationFactory = VerifiablePresentationFactory(
+                    keyMaterial = holderKeyMaterial,
+                    // Ensure a clean ZK backend registry is being used for these tests.
+                    // By default, IsoMdocZkEngine uses IsoMdocZkBackendRegistry.Default, which is a global singleton.
+                    // In a test environment, this can lead to state leakage between tests if backends are registered.
+                    mdocZkEngine = IsoMdocZkEngine(IsoMdocZkBackendRegistry()),
+                ),
             )
             val sdJwtCredential = issueAndStoreSdJwt(holder, holderKeyMaterial, issuer)
             val isoCredential = issueAndStoreIsoMdoc(holder, holderKeyMaterial, issuer)
@@ -79,36 +82,6 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             }
         }
     } - {
-
-        "sd-jwt createVerifiablePresentation uses disclosedAttributes (collection)" {
-            val disclosedAttributes = listOf(
-                NormalizedJsonPath() + CLAIM_GIVEN_NAME,
-                NormalizedJsonPath() + CLAIM_FAMILY_NAME,
-                NormalizedJsonPath() + CLAIM_DATE_OF_BIRTH,
-            )
-
-            it.verifiablePresentationFactory.createVerifiablePresentation(
-                request = presentationRequest(),
-                credential = it.sdJwtCredential,
-                disclosedAttributes = disclosedAttributes,
-            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-                .disclosedClaimNames().apply {
-                    this shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_FAMILY_NAME, CLAIM_DATE_OF_BIRTH) +
-                            setOfDefaultSdJwtClaims
-                    this.shouldNotContain(CLAIM_PORTRAIT)
-                }
-        }
-
-        "sd-jwt createVerifiablePresentation with empty disclosedAttributes discloses nothing" {
-            it.verifiablePresentationFactory.createVerifiablePresentation(
-                request = presentationRequest(),
-                credential = it.sdJwtCredential,
-                disclosedAttributes = emptyList(),
-            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-                .disclosedClaimNames().apply {
-                    this shouldBe setOfDefaultSdJwtClaims
-                }
-        }
 
         "sd-jwt createVerifiablePresentation discloses claims of foreign credentials with non-canonical disclosures" {
             // A foreign issuer may serialize disclosures with whitespace: digests are computed over
@@ -144,7 +117,13 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             it.verifiablePresentationFactory.createVerifiablePresentation(
                 request = presentationRequest(),
                 credential = credential,
-                disclosedAttributes = listOf(NormalizedJsonPath() + "family_name"),
+                disclosedAttributes = ClaimsQueryResults(
+                    listOf(
+                        JsonResult(
+                            listOf(NodeListEntry(NormalizedJsonPath() + "family_name", JsonPrimitive("Musterfrau")))
+                        )
+                    )
+                ),
             ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
                 .disclosedClaimNames() shouldContain "family_name"
         }
@@ -190,40 +169,6 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 }
         }
 
-        "iso createVerifiablePresentation uses disclosedAttributes (collection)" {
-            val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
-
-            it.verifiablePresentationFactory.createVerifiablePresentation(
-                request = presentationRequest(),
-                credential = it.isoCredential,
-                disclosedAttributes = listOf(
-                    NormalizedJsonPath() + namespace + CLAIM_GIVEN_NAME,
-                    NormalizedJsonPath() + namespace + CLAIM_FAMILY_NAME,
-                    NormalizedJsonPath() + namespace + CLAIM_DATE_OF_BIRTH + "ignored",
-                    NormalizedJsonPath() + CLAIM_PORTRAIT,
-                ),
-            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>().apply {
-                deviceResponse.documents.shouldNotBeNull().shouldHaveSize(1)
-                disclosedIsoClaimNames(namespace).apply {
-                    this shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_FAMILY_NAME, CLAIM_DATE_OF_BIRTH)
-                    this.shouldNotContain(CLAIM_PORTRAIT)
-                }
-            }
-        }
-
-        "iso createVerifiablePresentation ignores attributes without namespace" {
-            it.verifiablePresentationFactory.createVerifiablePresentation(
-                request = presentationRequest(),
-                credential = it.isoCredential,
-                disclosedAttributes = listOf(
-                    NormalizedJsonPath() + CLAIM_GIVEN_NAME,
-                ),
-            ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>().apply {
-                deviceResponse.documents.shouldNotBeNull().shouldHaveSize(1)
-                disclosedIsoClaimNames(ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()).shouldBeEmpty()
-            }
-        }
-
         "iso createVerifiablePresentation throws for unknown disclosedAttributes" {
             val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
 
@@ -231,7 +176,9 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 it.verifiablePresentationFactory.createVerifiablePresentation(
                     request = presentationRequest(),
                     credential = it.isoCredential,
-                    disclosedAttributes = listOf(NormalizedJsonPath() + namespace + "unknown-attribute"),
+                    disclosedAttributes = ClaimsQueryResults(
+                        listOf(IsoMdocResult(namespace, "unknown-attribute", "unknown"))
+                    ),
                 ).getOrThrow()
             }
         }
@@ -313,7 +260,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                         ),
                     ),
                     credential = fixture.isoCredential,
-                    disclosedAttributes = emptyList(),
+                    disclosedAttributes = AllMandatoryClaimsMatchingResult,
                 ).getOrThrow()
                 result.qesApprovalDigest().shouldNotBeNull()
                     .contentEquals(Digest.SHA256.digest(raw.encodeToByteArray())) shouldBe true
@@ -331,7 +278,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 val result = fixture.verifiablePresentationFactory.createVerifiablePresentation(
                     request = request,
                     credential = fixture.isoCredential,
-                    disclosedAttributes = emptyList(),
+                    disclosedAttributes = AllMandatoryClaimsMatchingResult,
                 ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>()
 
                 val deviceNamespaces =
@@ -353,7 +300,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                     fixture.verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
                         credential = fixture.isoCredential,
-                        disclosedAttributes = emptyList(),
+                        disclosedAttributes = AllMandatoryClaimsMatchingResult,
                     ).getOrThrow()
                 }.message shouldBe "Unsupported qesApproval hash algorithm $unsupportedOid"
             }

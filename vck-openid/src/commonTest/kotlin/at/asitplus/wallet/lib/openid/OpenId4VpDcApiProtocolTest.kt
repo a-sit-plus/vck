@@ -34,18 +34,17 @@ import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalMatchingResult
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.EncryptJwe
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
@@ -54,7 +53,6 @@ import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.PresentationChecks
 import at.asitplus.wallet.lib.validation.ProtocolResponseChecks
 import com.benasher44.uuid.uuid4
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -423,10 +421,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             val result = f.dcApiVerifier.validateAuthnResponse(response, transactionId, rpOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult.Success>()
-            result.vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.single().single()
-                .getOrThrow()
+            result.singleAcceptedPresentation()
             result.validationReport.apply {
                 // an unsigned request has no expected_origins, the audience binds the presentation to the origin
                 checks.shouldBeInstanceOf<ProtocolResponseChecks>().expectedOrigin shouldBe CheckOutcome.NotApplicable
@@ -449,14 +444,9 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             f.dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.single().single().getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
-                .documents.single().apply {
-                    validItems.firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
-                        .shouldNotBeNull().elementValue shouldBe "Susanne"
-                }
+                .singleAcceptedPresentation().issuerSignedItems
+                .firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
+                .shouldNotBeNull().elementValue shouldBe "Susanne"
         }
 
         test("DC API unsigned: mdoc device signature is bound to the calling origin") { f ->
@@ -475,12 +465,10 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             // the origin is hashed into the session transcript, so claiming another one does not verify
             val result = f.dcApiVerifier.validateAuthnResponse(response, transactionId, "https://evil.example.com")
                 .getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Success>()
-            result.vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.single().single()
-                .exceptionOrNull().shouldBeInstanceOf<InvalidSignature>()
+            result.presentationValidations.values.single().single().presentation.shouldBeNull()
             result.validationReport.children.single().checks
                 .shouldBeInstanceOf<PresentationChecks>().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+                .throwable.shouldBeInstanceOf<InvalidSignature>()
         }
 
         test("DC API unsigned: mdoc device signature is bound to the nonce of its own request") { f ->
@@ -509,12 +497,10 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             // even though origin, client and credential are the same
             val result = f.dcApiVerifier.validateAuthnResponse(response, otherId, callingOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult.Success>()
-            result.vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.single().single()
-                .exceptionOrNull().shouldBeInstanceOf<InvalidSignature>()
+            result.presentationValidations.values.single().single().presentation.shouldBeNull()
             result.validationReport.children.single().checks
                 .shouldBeInstanceOf<PresentationChecks>().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+                .throwable.shouldBeInstanceOf<InvalidSignature>()
         }
 
         test("DC API unsigned: encrypted mdoc response validates, binding the recipient key") { f ->
@@ -547,11 +533,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             dcApiVerifier.validateAuthnResponse(response, transactionId, callingOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.single().single().getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessIso>()
-                .documents.single().validItems
+                .singleAcceptedPresentation().issuerSignedItems
                 .firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
                 .shouldNotBeNull().elementValue shouldBe "Susanne"
         }
@@ -782,9 +764,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             f.dcApiVerifier.validateAuthnResponse(response, transactionId, androidCallingOrigin).getOrThrow()
                 .shouldBeInstanceOf<AuthnResponseResult>()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.single().single().getOrThrow()
+                .singleAcceptedPresentation()
         }
 
         test("DC API multisigned: parsed as DcApiMultiSigned, validates and responds with OpenId4VpResponseMultiSigned") { f ->

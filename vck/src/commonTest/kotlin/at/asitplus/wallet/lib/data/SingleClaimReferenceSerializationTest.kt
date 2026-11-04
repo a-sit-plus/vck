@@ -32,7 +32,7 @@ val SingleClaimReferenceSerializationTest by matrixSuite {
         joseCompliantSerializer.encodeToString(SingleClaimReference.serializer(), reference) shouldBe wire
     }
 
-    "concrete-path callers can use the compatibility constructor and getter" {
+    "concrete-path callers can use the compatibility constructor" {
         val concrete = NormalizedJsonPath(
             NormalizedJsonPathSegment.NameSegment("address"), NormalizedJsonPathSegment.IndexSegment(0u),
         )
@@ -40,16 +40,6 @@ val SingleClaimReferenceSerializationTest by matrixSuite {
         reference.path shouldBe DCQLClaimsPathPointer(
             DCQLClaimsPathPointerSegment.NameSegment("address"), DCQLClaimsPathPointerSegment.IndexSegment(0u),
         )
-        @Suppress("DEPRECATION")
-        reference.normalizedJsonPath shouldBe concrete
-    }
-
-    "a wildcard cannot be read as a concrete path" {
-        val reference = JsonClaimReference(DCQLClaimsPathPointer("degrees") + null)
-        shouldThrow<IllegalStateException> {
-            @Suppress("DEPRECATION")
-            reference.normalizedJsonPath
-        }
     }
 
     "MdocClaimReference round-trips as SingleClaimReference" {

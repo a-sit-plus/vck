@@ -9,6 +9,7 @@ import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.toFormParameters
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.ClientStatus
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
@@ -20,14 +21,13 @@ import at.asitplus.wallet.lib.agent.CredentialRenewalInfo
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider
-import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.InMemoryIssuerCredentialStore
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.StatusListAgent
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
+import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
@@ -60,8 +60,11 @@ import at.asitplus.wallet.lib.oidvci.ProofValidator
 import at.asitplus.wallet.lib.oidvci.toHttpResponse
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
+import at.asitplus.wallet.lib.validation.CredentialValidationInput
+import at.asitplus.wallet.lib.validation.CredentialValidator
 import at.asitplus.wallet.lib.validation.RequiredClaimsPolicy
 import at.asitplus.wallet.lib.validation.StatusPolicy
+import at.asitplus.wallet.lib.validation.StatusValidator
 import at.asitplus.wallet.lib.validation.TrustPolicy
 import at.asitplus.wallet.lib.validation.ValidationDecision
 import at.asitplus.wallet.lib.validation.ValidationPolicy
@@ -80,10 +83,11 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.buildJsonObject
 
 /**
  * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] with our own internal [SimpleAuthorizationService].
@@ -362,21 +366,34 @@ val OpenId4VciKtorClientTest by matrixSuite {
             val statusInfo = issuerSigned.issuerAuth.payload.shouldNotBeNull()
                 .status.shouldNotBeNull().shouldBeInstanceOf<IdentifierListInfo>()
 
-            val tokenStatusResolver = TokenStatusResolverImpl(
-                resolveStatusListToken = { _ ->
-                    StatusListCwt(
-                        value = statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.IDENTIFIER_LIST),
-                        resolvedAt = null,
-                    )
-                }
+            val validator = CredentialValidator(
+                statusValidator = StatusValidator(
+                    StatusListTokenResolver {
+                        StatusListCwt(
+                            value = statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.IDENTIFIER_LIST),
+                            resolvedAt = null,
+                        )
+                    }
+                ),
             )
+            val policy = ValidationPolicy(
+                trust = TrustPolicy.IntegrityOnly,
+                status = StatusPolicy.RequireClaim(signerTrust = TrustPolicy.IntegrityOnly),
+                timeLeeway = 5.minutes,
+                requireTimeliness = true,
+            )
+            suspend fun observedStatus() = validator.validate(
+                CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(issuerSigned)),
+                policy,
+            ).report.checks.shouldBeInstanceOf<CredentialChecks>().status.mechanisms.shouldBeSingleton().first()
+                .observed
 
-            tokenStatusResolver(statusInfo).getOrThrow() shouldBe TokenStatus.Valid
+            observedStatus() shouldBe TokenStatus.Valid
             statusListIssuer.revokeCredentialByIdentifier(
                 FixedTimePeriodProvider.timePeriod,
                 statusInfo.identifier
             ) shouldBe true
-            tokenStatusResolver(statusInfo).getOrThrow() shouldBe TokenStatus.Invalid
+            observedStatus() shouldBe TokenStatus.Invalid
         }
     }
 
@@ -401,10 +418,6 @@ val OpenId4VciKtorClientTest by matrixSuite {
                 it.shouldBeInstanceOf<CredentialIssuanceResult.Success>().also {
                     refreshTokenStore = it.issued.single().refreshToken!!
                     it.verifyIsoMdocCredential(expectedAttributeName, expectedAttributeValue)
-                    // The deprecated credentials are decoded as before, without validation
-                    @Suppress("DEPRECATION")
-                    it.credentials.shouldBeSingleton().first().shouldBeInstanceOf<Holder.StoreCredentialInput.Iso>()
-                        .scheme shouldBe euPidScheme
                 }
             }
             refreshTokenStore.shouldNotBeNull()

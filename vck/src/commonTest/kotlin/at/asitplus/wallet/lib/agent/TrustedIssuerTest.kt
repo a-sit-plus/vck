@@ -1,15 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureTrustedCertificate
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
@@ -19,9 +15,9 @@ import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import kotlinx.serialization.builtins.serializer
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.serialization.builtins.serializer
 
 /**
  * Verification of issuer signatures against a list of trusted issuer certificates, see
@@ -168,56 +164,6 @@ val TrustedIssuerTest by matrixSuite {
         VerifyCoseSignatureTrustedCertificate<ByteArray>(
             trustedIssuers = { setOf(TestCertificateAuthority().certificate) },
         )(signed, byteArrayOf(), null).isFailure shouldBe true
-    }
-
-    "mdoc credential of a trusted issuer is verified, of an untrusted issuer is not" {
-        val ca = TestCertificateAuthority()
-        val holderKey = EphemeralKeyWithoutCert()
-        val credential = DummyCredentialDataProvider.issueIsoMdoc(
-            IssuerAgent(
-                keyMaterial = ca.issue(),
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default,
-            ),
-            holderKey,
-        ) as Issuer.IssuedCredential.Iso
-
-        ValidatorMdoc(verifyCoseSignature = issuerCoseVerifier<MobileSecurityObject> { setOf(ca.certificate) })
-            .verifyIsoCred(credential.issuerSigned).getOrThrow()
-
-        shouldThrowAny {
-            ValidatorMdoc(
-                verifyCoseSignature = issuerCoseVerifier<MobileSecurityObject> {
-                    setOf(TestCertificateAuthority().certificate)
-                },
-            ).verifyIsoCred(credential.issuerSigned).getOrThrow()
-        }
-    }
-
-    // The deprecated trustedIssuers of HolderAgent, see HolderAgentValidatedStoreTest for the credential validator
-    @Suppress("DEPRECATION")
-    "HolderAgent stores an SD-JWT of a trusted issuer only" {
-        val ca = TestCertificateAuthority()
-        val holderKey = EphemeralKeyWithoutCert()
-        val credential = IssuerAgent(
-            keyMaterial = ca.issue(),
-            identifier = "https://issuer.example.com/".toUri(),
-            randomSource = RandomSource.Default,
-        ).issueCredential(
-            DummyCredentialDataProvider.getCredential(
-                holderKey.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                SD_JWT,
-            ).getOrThrow()
-        ).getOrThrow().toStoreCredentialInput()
-
-        HolderAgent(holderKey, trustedIssuers = { setOf(ca.certificate) })
-            .storeCredential(credential).getOrThrow()
-
-        shouldThrowAny {
-            HolderAgent(holderKey, trustedIssuers = { setOf(TestCertificateAuthority().certificate) })
-                .storeCredential(credential).getOrThrow()
-        }
     }
 }
 

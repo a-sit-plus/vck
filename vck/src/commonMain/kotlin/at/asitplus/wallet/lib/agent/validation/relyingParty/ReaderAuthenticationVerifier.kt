@@ -17,21 +17,6 @@ import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureWithKeyFun
 class ReaderAuthenticationVerifier(
     private val verifySignature: VerifyCoseSignatureWithKeyFun<ByteArray> = VerifyCoseSignatureWithKey(),
 ) {
-    /**
-     * Authenticates the complete mdoc request with one reader certificate, failing if a document request is not
-     * covered by reader authentication.
-     */
-    @Deprecated(
-        "Use authenticate, which returns every chain whose readerAuthAll signature verifies, to check the trust of " +
-                "each, and the document requests without reader authentication."
-    )
-    suspend operator fun invoke(
-        request: DeviceRequest,
-        transcript: SessionTranscript
-    ): KmmResult<CertificateChain> = authenticate(request, transcript).mapCatching {
-        require(it.unauthenticatedDocRequests.isEmpty()) { "DocRequest is missing readerAuth" }
-        it.chains.first()
-    }
 
     /**
      * Authenticates the mdoc [request] over [transcript] (ISO/IEC DIS 18013-5:2025, 12.5.4), which "can be used for

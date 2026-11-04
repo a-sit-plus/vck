@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.BatchCredentialIssuanceMetadata
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialResponseParameters
@@ -42,9 +41,6 @@ import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
-
-@Deprecated("Renamed", ReplaceWith("OpenId4VciServer"))
-typealias CredentialIssuer = OpenId4VciServer
 
 /**
  * Server implementation to issue credentials using OID4VCI.

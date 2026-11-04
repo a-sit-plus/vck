@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.KmmResult
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
@@ -33,11 +32,6 @@ sealed interface AuthnResponseResult : DcApiResponseResult {
      * presentations.
      */
     data class Success(
-        @Deprecated(
-            "The legacy result, projected from presentationValidations under the presentation policy of the " +
-                    "verifier: use validationReport and presentationValidations. To be removed in the next major release."
-        )
-        val vpTokenResult: KmmResult<VpTokenValidationResult>,
         override val request: AuthenticationRequestParameters,
         /** Report of the response, see [ProtocolResponseChecks]. */
         val validationReport: ValidationReport,

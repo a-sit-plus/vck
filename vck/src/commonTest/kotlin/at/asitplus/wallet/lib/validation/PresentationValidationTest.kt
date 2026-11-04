@@ -25,7 +25,6 @@ import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.kdf.deriveKey
 import at.asitplus.signum.supreme.mac.mac
 import at.asitplus.signum.supreme.sign.Signer
-import at.asitplus.wallet.lib.sessionTranscriptBytes
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -41,28 +40,30 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderJwk
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
+import at.asitplus.wallet.lib.sessionTranscriptBytes
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
 import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
 import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
+import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 
 private const val CHALLENGE = "challenge-1"
 private const val AUDIENCE = "x509_hash:verifier"
@@ -119,14 +120,14 @@ private suspend fun Issuance.vpJwt(
     signer: KeyMaterial = holderKey,
     issuer: String = signer.publicKey.didEncoded,
     challenge: String = CHALLENGE,
-): String {
-    val vp = VerifiablePresentation(vcs)
-    return SignJwt<VerifiablePresentationJws>(signer, JwsHeaderJwk())(
-        null,
-        VerifiablePresentationJws(vp, challenge, issuer, AUDIENCE, vp.id),
-        VerifiablePresentationJws.serializer(),
-    ).getOrThrow().jws.toString()
-}
+    audience: String = AUDIENCE,
+    vp: VerifiablePresentation = VerifiablePresentation(vcs),
+    jwtId: String = vp.id,
+): String = SignJwt<VerifiablePresentationJws>(signer, JwsHeaderJwk())(
+    null,
+    VerifiablePresentationJws(vp, challenge, issuer, audience, jwtId),
+    VerifiablePresentationJws.serializer(),
+).getOrThrow().jws.toString()
 
 private suspend fun Issuance.vcJwt() =
     (issue(CredentialRepresentation.PLAIN_JWT) as Issuer.IssuedCredential.VcJwt).signedVcJws.jws.toString()
@@ -245,6 +246,16 @@ val PresentationValidationTest by matrixSuite {
             result.checks.challenge.shouldBeInstanceOf<Blocked>()
         }
 
+        "an SD-JWT without cnf fails the signature of the key binding JWT, whichever key signed it" {
+            val issuance = issuance()
+            val sdJwt = issuance.sdJwtWithPayload { JsonObject(it - "cnf") }
+
+            listOf(issuance.holderKey, EphemeralKeyWithoutCert()).forEach { signer ->
+                issuance.validatePresentation(PresentationValidationInput.SdJwt(sdJwt + keyBinding(sdJwt, signer)))
+                    .checks.signature.shouldBeInstanceOf<Failed>()
+            }
+        }
+
         "another nonce, audience, or sd_hash fails" {
             val issuance = issuance()
             val sdJwt = issuance.presentedSdJwt()
@@ -318,12 +329,32 @@ val PresentationValidationTest by matrixSuite {
             result.presentation.shouldBeInstanceOf<ValidatedPresentation.VpJwt>().credentials.shouldHaveSize(2)
         }
 
-        "another nonce fails the challenge" {
+        "another nonce or audience fails" {
             val issuance = issuance()
-            val vp = issuance.vpJwt(listOf(issuance.vcJwt()), challenge = "other")
+            val vcs = listOf(issuance.vcJwt())
 
-            issuance.validatePresentation(PresentationValidationInput.VpJwt(vp)).checks.challenge
-                .shouldBeInstanceOf<Failed>()
+            issuance.validatePresentation(PresentationValidationInput.VpJwt(issuance.vpJwt(vcs, challenge = "other")))
+                .checks.challenge.shouldBeInstanceOf<Failed>()
+            issuance.validatePresentation(PresentationValidationInput.VpJwt(issuance.vpJwt(vcs, audience = "other")))
+                .checks.audience.shouldBeInstanceOf<Failed>()
+        }
+
+        "an iss of the JWK thumbprint of the signing key identifies it" {
+            val issuance = issuance()
+            val vp = issuance.vpJwt(listOf(issuance.vcJwt()), issuer = issuance.holderKey.jsonWebKey.jwkThumbprint)
+
+            issuance.validatePresentation(PresentationValidationInput.VpJwt(vp)).report.decision shouldBe ACCEPTED
+        }
+
+        "a jti other than the id of the presentation, or another type than VerifiablePresentation, fails parsing" {
+            val issuance = issuance()
+            val vcs = listOf(issuance.vcJwt())
+            val otherType = VerifiablePresentation(id = "urn:uuid:${uuid4()}", type = "other", verifiableCredential = vcs)
+
+            listOf(issuance.vpJwt(vcs, jwtId = "urn:uuid:${uuid4()}"), issuance.vpJwt(vcs, vp = otherType)).forEach {
+                issuance.validatePresentation(PresentationValidationInput.VpJwt(it)).checks.parsing
+                    .shouldBeInstanceOf<Failed>()
+            }
         }
 
         "an iss that does not identify the signing key fails the signature" {

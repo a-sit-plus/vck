@@ -19,23 +19,21 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.ValidatorSdJwt
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
 import at.asitplus.wallet.lib.openid.createAuthorizationResponse
+import at.asitplus.wallet.lib.openid.singleAcceptedPresentation
 import at.asitplus.wallet.lib.openid.testPresentationPolicy
-import at.asitplus.wallet.lib.openid.vpTokenOrThrow
 import at.asitplus.wallet.lib.utils.DefaultMapStore
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -99,12 +97,9 @@ val KeyBindingTests by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-                .sdJwtSigned.keyBindingJws.shouldNotBeNull().payload.apply {
+                .singleAcceptedPresentation()
+                .shouldBeInstanceOf<ValidatedPresentation.SdJwt>()
+                .keyBinding.shouldNotBeNull().payload.apply {
                     transactionDataHashes.shouldNotBeNull()
                     transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA256) })
                     transactionDataHashesAlgorithmString.shouldBeNull()
@@ -133,13 +128,10 @@ val KeyBindingTests by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierOid4Vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+                .singleAcceptedPresentation()
+                .shouldBeInstanceOf<ValidatedPresentation.SdJwt>()
 
-            with(result.sdJwtSigned.keyBindingJws.shouldNotBeNull().payload) {
+            with(result.keyBinding.shouldNotBeNull().payload) {
                 transactionDataHashes.shouldNotBeNull()
                 transactionDataHashes.contentEquals(requestOptions.transactionData!!.map { it.digest(Digest.SHA384) })
                 transactionDataHashesAlgorithmString.shouldBe(SdJwtConstants.SHA_384)
@@ -174,47 +166,8 @@ val KeyBindingTests by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
             verifierOid4Vp.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.shouldBeSingleton().first().first().isFailure shouldBe true
-        }
-
-        "Transaction data can not be turned off by the verifier passed in, which no longer takes effect" {
-            val clientIdScheme = ClientIdScheme.RedirectUri(it.clientId)
-            @Suppress("DEPRECATION")
-            val lenientVerifier = OpenId4VpVerifier(
-                keyMaterial = EphemeralKeyWithoutCert(),
-                clientIdScheme = clientIdScheme,
-                stateToAuthnRequestStore = it.externalMapStore,
-                verifier = VerifierAgent(
-                    identifier = clientIdScheme.clientId,
-                    validatorSdJwt = ValidatorSdJwt(verifyTransactionData = false)
-                ),
-                presentationPolicy = testPresentationPolicy,
-            )
-
-            val requestOptions = buildRequestOptions(OpenIdConstants.ResponseMode.DirectPost, null)
-            val authnRequest = lenientVerifier.createAuthnRequest(
-                requestOptions = requestOptions,
-                creationOptions = CreationOptions.Query(it.walletUrl)
-            ).getOrThrow().url.run {
-                Url(this).decodeFromQuery<AuthenticationRequestParameters>()
-            }
-            val malignResponse = it.holderOid4vp.createAuthorizationResponse(
-                joseCompliantSerializer.encodeToString(
-                    authnRequest.copy(
-                        transactionData = malignTransactionData(authnRequest.dcqlQuery!!.credentials.first().id.string)
-                    )
-                )
-            ).getOrThrow()
-                .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-
-            lenientVerifier.validateAuthnResponse(malignResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatten()
-                .shouldBeSingleton().first()
-                .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "transaction data"
+                .shouldBeInstanceOf<AuthnResponseResult.Success>()
+                .presentationValidations.values.shouldBeSingleton().first().first().presentation.shouldBeNull()
         }
     }
 }

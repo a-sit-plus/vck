@@ -96,34 +96,4 @@ sealed interface SessionTranscript {
         val handover: OpenId4VpHandover,
     ) : SessionTranscript
 
-    companion object {
-        @Deprecated(
-            "Use the constructor of the subtype",
-            ReplaceWith("SessionTranscript.Nfc(deviceEngagementBytes, eReaderKeyBytes, nfcHandover)")
-        )
-        fun forNfc(
-            deviceEngagementBytes: ByteArray,
-            eReaderKeyBytes: ByteArray,
-            nfcHandover: NFCHandover,
-        ): SessionTranscript = Nfc(deviceEngagementBytes, eReaderKeyBytes, nfcHandover)
-
-        @Deprecated("Use the constructor of the subtype", ReplaceWith("SessionTranscript.OpenId4Vp(handover)"))
-        fun forOpenId(
-            handover: OpenId4VpHandover,
-        ): SessionTranscript = OpenId4Vp(handover)
-
-        @Deprecated("Use the constructor of the subtype", ReplaceWith("SessionTranscript.DcApi(handover)"))
-        fun forDcApi(
-            handover: DCAPIHandover,
-        ): SessionTranscript = DcApi(handover)
-
-        @Deprecated(
-            "Use the constructor of the subtype",
-            ReplaceWith("SessionTranscript.Qr(deviceEngagementBytes, eReaderKeyBytes)")
-        )
-        fun forQr(
-            deviceEngagementBytes: ByteArray,
-            eReaderKeyBytes: ByteArray,
-        ): SessionTranscript = Qr(deviceEngagementBytes, eReaderKeyBytes)
-    }
 }

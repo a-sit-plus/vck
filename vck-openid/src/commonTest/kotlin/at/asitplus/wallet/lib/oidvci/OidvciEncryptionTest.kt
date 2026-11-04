@@ -57,8 +57,8 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.json.JsonElement
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.serialization.json.JsonElement
 
 val OidvciEncryptionTest by matrixSuite {
 
@@ -404,9 +404,6 @@ val OidvciEncryptionTest by matrixSuite {
 
             // the wallet that made the request holds the matching key, identified by the JWE `kid`
             response.response.header.keyId.shouldNotBeNull()
-            @Suppress("DEPRECATION")
-            it.client.parseCredentialResponse(response, PLAIN_JWT, ConstantIndex.AtomicAttribute2023)
-                .isFailure shouldBe true
             it.client.decodeCredentialResponse(response, request, PLAIN_JWT).getOrThrow()
             // another wallet, which never announced that key, must not be able to read the credential
             OpenId4VciClient(

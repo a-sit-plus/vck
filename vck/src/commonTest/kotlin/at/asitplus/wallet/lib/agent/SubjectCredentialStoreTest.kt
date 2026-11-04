@@ -97,34 +97,6 @@ val SubjectCredentialStoreTest by matrixSuite {
                     parsed.getOrThrow() shouldBe stored
                 }
             }
-
-        "the deprecated methods store through storeCredential(StoreEntry)" {
-            val issuance = issuance()
-            val store = EntryOnlyStore()
-            val sdJwt = issuance.issue(CredentialRepresentation.SD_JWT)
-                .shouldBeInstanceOf<Issuer.IssuedCredential.VcSdJwt>()
-            val iso = issuance.issue(CredentialRepresentation.ISO_MDOC)
-                .shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
-            val vc = issuance.issue(CredentialRepresentation.PLAIN_JWT)
-                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-
-            @Suppress("DEPRECATION")
-            val stored = listOf(
-                store.storeCredential(vc.signedVcJws.payload, vc.signedVcJws.toString(), scheme, renewalInfo),
-                store.storeCredential(
-                    sdJwt.signedSdJwtVc.jws.getPayload<VerifiableCredentialSdJwt>().getOrThrow(),
-                    sdJwt.signedSdJwtVc.serialize(),
-                    mapOf(),
-                    scheme,
-                ),
-                store.storeCredential(iso.issuerSigned, scheme),
-            )
-
-            store.entries shouldBe stored
-            stored[0].shouldBeInstanceOf<StoreEntry.Vc>().renewalInfo shouldBe renewalInfo
-            stored[1].shouldBeInstanceOf<StoreEntry.SdJwt>().schemeIdentifier shouldBe scheme.sdJwtType
-            stored[2].shouldBeInstanceOf<StoreEntry.Iso>().schemeIdentifier shouldBe scheme.isoDocType
-        }
     }
 }
 

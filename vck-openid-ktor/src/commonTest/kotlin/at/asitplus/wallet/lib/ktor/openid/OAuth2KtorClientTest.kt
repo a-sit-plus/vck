@@ -43,10 +43,10 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlinx.serialization.json.buildJsonObject
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import kotlinx.serialization.json.buildJsonObject
 
 val OAuth2KtorClientTest by matrixSuite {
 
@@ -247,10 +247,8 @@ val OAuth2KtorClientTest by matrixSuite {
 
     test("errors of the protocol client are thrown as HttpErrorResponseException") {
         with(setup(strategy, setOf(JwsAlgorithm.Signature.ES256), requirePAR = false)) {
-            // Also covers the deprecated constructor, which builds its own HTTP client
-            @Suppress("DEPRECATION")
             val client = OAuth2KtorClient(
-                engine = MockEngine { respondOAuth2Error(OAuth2Exception.InvalidGrant("nope")) },
+                httpClient = HttpClient(MockEngine { respondOAuth2Error(OAuth2Exception.InvalidGrant("nope")) }),
                 oAuth2Client = OAuth2Client(),
             )
 

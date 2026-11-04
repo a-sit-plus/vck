@@ -49,13 +49,6 @@ object OpenIdConstants {
     /** `DPoP` */
     const val TOKEN_TYPE_DPOP = "DPoP"
 
-    /** `urn:ietf:params:oauth:jwk-thumbprint` */
-    @Deprecated(
-        "Not a cryptographic binding method, OpenID4VCI 1.0, 12.2.4 defines only `jwk`, `cose_key`, and DID methods",
-        ReplaceWith("BINDING_METHOD_JWK")
-    )
-    const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
-
     /** `cose_key` */
     const val BINDING_METHOD_COSE_KEY = "cose_key"
 

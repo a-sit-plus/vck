@@ -1,105 +1,18 @@
-@file:Suppress("DEPRECATION")
-
 package at.asitplus.wallet.lib.agent.validation
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.iso.IssuerSigned
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
-import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
-import at.asitplus.wallet.lib.cbor.VerifyCoseSignatureFun
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.extensions.toView
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import kotlin.io.encoding.Base64
-import kotlin.jvm.JvmOverloads
-import kotlin.time.Clock
-
-/**
- * Checks the status mechanisms in a given status claim to extract the token status.
- */
-@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
-fun interface TokenStatusResolver {
-    suspend operator fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus>
-}
-
-@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
-class TokenStatusResolverImpl @JvmOverloads constructor(
-    private val resolveStatusListToken: StatusListTokenResolver,
-    private val clock: Clock = Clock.System,
-    private val zlibService: ZlibService = DefaultZlibService(),
-    private val verifyJwsObjectIntegrity: VerifyJwsObjectFun = VerifyJwsObject(),
-    private val verifyCoseSignature: VerifyCoseSignatureFun<ByteArray> = VerifyCoseSignature(),
-) : TokenStatusResolver {
-    override suspend fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus> = catching {
-        val token = resolveStatusListToken(revocationListInfo.uri)
-
-        val payload = token.validate(
-            verifyJwsObject = verifyJwsObjectIntegrity,
-            verifyCoseSignature = verifyCoseSignature,
-            revocationListInfo = revocationListInfo,
-            isInstantInThePast = { it < clock.now() },
-        ).getOrThrow()
-
-        extractTokenStatus(
-            revocationList = payload.revocationList,
-            revocationListInfo = revocationListInfo,
-            zlibService = zlibService,
-        ).getOrThrow()
-    }
-}
-
-/** Fallback implementation: Token status is always valid. */
-@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
-object TokenStatusResolverNoop : TokenStatusResolver {
-    override suspend fun invoke(revocationListInfo: RevocationListInfo): KmmResult<TokenStatus> =
-        catching { TokenStatus.Valid }
-}
-
-@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
-fun StatusListTokenResolver.toTokenStatusResolver(
-    clock: Clock = Clock.System,
-    zlibService: ZlibService = DefaultZlibService(),
-    verifyJwsObjectIntegrity: VerifyJwsObjectFun = VerifyJwsObject(),
-    verifyCoseSignature: VerifyCoseSignatureFun<ByteArray> = VerifyCoseSignature(),
-) = TokenStatusResolver { revocationListInfo ->
-    catching {
-        val token = this(revocationListInfo.uri)
-
-        val payload = token.validate(
-            verifyJwsObject = verifyJwsObjectIntegrity,
-            verifyCoseSignature = verifyCoseSignature,
-            revocationListInfo = revocationListInfo,
-            isInstantInThePast = { it < clock.now() },
-        ).getOrThrow()
-
-        extractTokenStatus(
-            revocationList = payload.revocationList,
-            revocationListInfo = revocationListInfo,
-            zlibService = zlibService,
-        ).getOrThrow()
-    }
-}
-
-/** Resolves every advertised status mechanism and requires them to agree. */
-@Deprecated("Status is validated by at.asitplus.wallet.lib.validation.CredentialValidator with a StatusValidator and a StatusListTokenResolver. To be removed in the next major release.")
-suspend fun TokenStatusResolver.resolve(status: TokenStatusInfo): KmmResult<TokenStatus> = catching {
-    val resolved = status.mechanisms.map { invoke(it).getOrThrow() }.distinct()
-    require(resolved.size == 1) { "Token status mechanisms returned conflicting results" }
-    resolved.single()
-}
 
 /**
  * Decompress the Status List with a decompressor that is compatible with DEFLATE
@@ -136,32 +49,5 @@ internal class RevocationListLookup(
             if (Base64.encode(revocationListInfo.identifier) in identifiers) TokenStatus.Invalid
             else TokenStatus.Valid
         } else throw IllegalArgumentException("RevocationList / RevocationListInfo mismatch")
-    }
-}
-
-suspend operator fun TokenStatusResolver.invoke(issuerSigned: IssuerSigned) =
-    invoke(CredentialWrapper.Mdoc(issuerSigned))
-
-suspend operator fun TokenStatusResolver.invoke(sdJwt: VerifiableCredentialSdJwt) =
-    invoke(CredentialWrapper.SdJwt(sdJwt))
-
-suspend operator fun TokenStatusResolver.invoke(vcJws: VerifiableCredentialJws) = invoke(CredentialWrapper.VcJws(vcJws))
-
-suspend operator fun TokenStatusResolver.invoke(storeEntry: SubjectCredentialStore.StoreEntry) = when (storeEntry) {
-    is SubjectCredentialStore.StoreEntry.Iso -> invoke(CredentialWrapper.Mdoc(storeEntry.issuerSigned))
-    is SubjectCredentialStore.StoreEntry.SdJwt -> invoke(CredentialWrapper.SdJwt(storeEntry.sdJwt))
-    is SubjectCredentialStore.StoreEntry.Vc -> invoke(CredentialWrapper.VcJws(storeEntry.vc))
-}
-
-suspend operator fun TokenStatusResolver.invoke(credentialWrapper: CredentialWrapper) = when (credentialWrapper) {
-    is CredentialWrapper.Mdoc -> credentialWrapper.issuerSigned.issuerAuth.payload?.status
-    is CredentialWrapper.SdJwt -> credentialWrapper.sdJwt.statusElement
-    is CredentialWrapper.VcJws -> credentialWrapper.verifiableCredentialJws.vc.credentialStatus
-}?.let {
-    val statusInfo = TokenStatusInfo.from(it)
-    if (statusInfo.mechanisms.size > 1) {
-        resolve(statusInfo)
-    } else {
-        invoke(it)
     }
 }

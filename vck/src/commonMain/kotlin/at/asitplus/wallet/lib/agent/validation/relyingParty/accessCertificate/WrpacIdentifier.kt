@@ -2,10 +2,13 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate
 
 import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator.Constants.OID_ORGANIZATION_IDENTIFIER
-import at.asitplus.wallet.lib.agent.validation.relyingParty.accessCertificate.WrpacValidator.Constants.OID_SERIAL_NUMBER
 import kotlinx.serialization.Serializable
+
+
+private val OID_ORGANIZATION_IDENTIFIER = ObjectIdentifier("2.5.4.97")
+private val OID_SERIAL_NUMBER = ObjectIdentifier("2.5.4.5")
 
 /**
  * Helper interface for the access certificate identifier

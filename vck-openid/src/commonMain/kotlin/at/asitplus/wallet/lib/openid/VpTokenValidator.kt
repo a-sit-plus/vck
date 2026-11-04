@@ -46,8 +46,7 @@ import kotlin.time.Duration.Companion.seconds
  * The only transport-specific step, calculation of the ISO session transcript, is delegated to
  * the injected [SessionTranscriptCalculator].
  *
- * Every presentation is validated once with [credentialValidator]; the legacy [VpTokenValidationResultDCQL] is
- * projected from these validations, see [legacyPresentationResult].
+ * Every presentation is validated once with [credentialValidator].
  */
 internal class VpTokenValidator(
     /** Calculates the ISO session transcript for the transport the response was received over. */
@@ -134,10 +133,6 @@ internal class VpTokenValidator(
         val reports = presentationValidations.values.flatten().map { it.report }
         val result = catching {
             VpTokenValidationResultDCQL(
-                credentialQueryResponseValidations = validated.mapValues { (_, entries) ->
-                    entries.map { legacyPresentationResult(it.compact, it.validations) }
-                },
-                submissionRequirementsValidationResult = submissionRequirements,
                 presentationValidations = presentationValidations,
             )
         }

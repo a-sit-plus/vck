@@ -9,20 +9,21 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
+import at.asitplus.wallet.lib.validation.CheckOutcome
+import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialTrustScope
 import at.asitplus.wallet.lib.validation.CredentialTrustScopes
 import at.asitplus.wallet.lib.validation.CredentialValidator
 import at.asitplus.wallet.lib.validation.TrustPolicy
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeSingleton
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
@@ -36,17 +37,18 @@ val OpenId4VpTrustedIssuerTest by matrixSuite {
         val holder = holderWithSdJwtFrom(ca)
 
         present(holder, verifierTrusting { setOf(ca.certificate) })
-            .getOrThrow()
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+            .acceptedOrThrow().sdJwtVc
             .reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
     }
 
     "SD-JWT presented by the holder is not verified for an untrusted issuer" {
         val holder = holderWithSdJwtFrom(TestCertificateAuthority())
 
-        present(holder, verifierTrusting { setOf(TestCertificateAuthority().certificate) })
-            .exceptionOrNull().shouldNotBeNull()
-            .message.shouldNotBeNull() shouldContain "trust anchor"
+        present(holder, verifierTrusting { setOf(TestCertificateAuthority().certificate) }).apply {
+            presentation.shouldBeNull()
+            report.children.shouldBeSingleton().first().checks.shouldBeInstanceOf<CredentialChecks>()
+                .issuerTrust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+        }
     }
 }
 
@@ -100,8 +102,6 @@ private suspend fun present(holder: HolderAgent, verifierOid4vp: OpenId4VpVerifi
             .createAuthorizationResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-            .vpTokenOrThrow()
-            .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-            .credentialQueryResponseValidations.values
-            .shouldBeSingleton().first().shouldBeSingleton().first()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
+            .presentationValidations.values.shouldBeSingleton().first().shouldBeSingleton().first()
     }

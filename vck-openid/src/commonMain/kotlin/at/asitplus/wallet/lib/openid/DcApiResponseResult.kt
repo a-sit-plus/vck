@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.validation.CredentialValidator
 import at.asitplus.wallet.lib.validation.PresentationValidationResult
 import at.asitplus.wallet.lib.validation.ProtocolResponseChecks
@@ -20,12 +19,6 @@ sealed interface Iso180137AnnexCResult : DcApiResponseResult
  * and [DcApiCreationOptions.Iso180137AnnexC]
  */
 data class Iso180137AnnexCWrapper(
-    /** The accepted documents of [presentationValidations]. */
-    @Deprecated(
-        "Projected from presentationValidations, use them and validationReport. " +
-                "To be removed in the next major release."
-    )
-    val documents: Collection<IsoDocumentParsed>,
     /** Every document of the device response, validated with a [CredentialValidator]. */
     val presentationValidations: List<PresentationValidationResult>,
     /**

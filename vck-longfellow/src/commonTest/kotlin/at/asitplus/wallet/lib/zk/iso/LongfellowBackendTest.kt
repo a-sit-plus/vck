@@ -11,7 +11,8 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.ZkRequest
 import at.asitplus.iso.ZkSystemSpec
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
@@ -23,8 +24,7 @@ import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemSpec
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemType
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.truncateToSeconds
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
@@ -43,6 +43,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.VerifiablePresentationFactory
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
@@ -63,14 +64,14 @@ import io.kotest.matchers.collections.shouldBeUnique
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.serializer
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
 
 private const val LONGFELLOW_SYSTEM = "longfellow-libzk-v1"
 private const val SINGLE_ATTRIBUTE_SPEC_ID = "my-custom-id-5"
@@ -111,7 +112,10 @@ val LongfellowBackendTest by matrixSuite {
             val zkEngine = IsoMdocZkEngine(backendRegistry)
             val holder = HolderAgent(
                 keyMaterial = holderKey,
-                mdocZkEngine = zkEngine,
+                verifiablePresentationFactory = VerifiablePresentationFactory(
+                    keyMaterial = holderKey,
+                    mdocZkEngine = zkEngine,
+                ),
             )
             val givenName = "Susanne"
             val requestedPath = DCQLClaimsPathPointer(EU_PID_DOCTYPE, EuPidDataElements.GIVEN_NAME)

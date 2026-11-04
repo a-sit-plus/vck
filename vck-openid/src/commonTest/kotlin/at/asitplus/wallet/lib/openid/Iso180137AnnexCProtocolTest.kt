@@ -68,10 +68,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToByteArray
-import kotlin.time.Duration.Companion.minutes
 
 /**
  * Tests [DcApiVerifier] against a simulated wallet performing an ISO/IEC 18013-7 Annex C
@@ -203,12 +203,13 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 expectedOrigin = callingOrigin,
             ).getOrThrow()
 
-            result.shouldBeInstanceOf<Iso180137AnnexCWrapper>().documents.shouldBeSingleton().first().apply {
-                validItems.firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
-                    .shouldNotBeNull().elementValue shouldBe "Susanne"
-                validItems.firstOrNull { it.elementIdentifier == CLAIM_DATE_OF_BIRTH }
-                    .shouldNotBeNull().elementValue shouldBe LocalDate(1990, 1, 1)
-            }
+            result.shouldBeInstanceOf<Iso180137AnnexCWrapper>().acceptedDocuments().shouldBeSingleton().first()
+                .issuerSignedItems.apply {
+                    firstOrNull { it.elementIdentifier == CLAIM_GIVEN_NAME }
+                        .shouldNotBeNull().elementValue shouldBe "Susanne"
+                    firstOrNull { it.elementIdentifier == CLAIM_DATE_OF_BIRTH }
+                        .shouldNotBeNull().elementValue shouldBe LocalDate(1990, 1, 1)
+                }
             result.validationReport.decision shouldBe ValidationDecision.ACCEPTED
             result.presentationValidations.shouldBeSingleton().first().presentation
                 .shouldBeInstanceOf<ValidatedPresentation.MdocDocument>()
@@ -243,7 +244,7 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 receivedData = dcApiResponse,
                 externalId = transactionId,
                 expectedOrigin = callingOrigin,
-            ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>().documents.shouldBeSingleton()
+            ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>().acceptedDocuments().shouldBeSingleton()
 
             // there is no nonce to consume in this flow, so the stored request is what makes it single-use:
             // resubmitting the very same encrypted device response must not validate again
@@ -484,9 +485,11 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 callingOrigin = origin,
             )
         )
-        ReaderAuthenticationVerifier()(isoMdocRequest.deviceRequest, transcriptFor(callingOrigin)).getOrThrow()
-            .first().encodeToDer() shouldBe wrpac.getCertificate()!!.encodeToDer()
-        ReaderAuthenticationVerifier()(isoMdocRequest.deviceRequest, transcriptFor("https://other.example.com"))
+        ReaderAuthenticationVerifier().authenticate(isoMdocRequest.deviceRequest, transcriptFor(callingOrigin))
+            .getOrThrow().chains.shouldBeSingleton().first().first().encodeToDer() shouldBe
+                wrpac.getCertificate()!!.encodeToDer()
+        ReaderAuthenticationVerifier()
+            .authenticate(isoMdocRequest.deviceRequest, transcriptFor("https://other.example.com"))
             .isFailure shouldBe true
     }
 }

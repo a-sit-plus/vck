@@ -208,7 +208,7 @@ val OpenId4VpVerifierErrorResponseTest by matrixSuite {
             val (url, _) = it.createRequest(state)
 
             it.verifier.validateAuthnResponse(it.presentationFor(url).formUrlEncode()).getOrThrow()
-                .vpTokenOrThrow()
+                .shouldBeInstanceOf<AuthnResponseResult.Success>()
 
             it.verifier.validateAuthnResponse("error=access_denied&state=$state")
                 .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "No authn request found"

@@ -16,12 +16,12 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
+import at.asitplus.signum.supreme.sign.Verifier.Success
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueIsoMdoc
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider.timePeriod
-import at.asitplus.signum.supreme.sign.Verifier.Success
 import at.asitplus.wallet.lib.cbor.VerifyCoseSignature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -30,10 +30,9 @@ import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList.Kind
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -47,11 +46,11 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 
 val AgentRevocationTest by matrixSuite {
 
@@ -139,9 +138,7 @@ val AgentRevocationTest by matrixSuite {
             val result = issuePlainJwt(it.issuer, it.verifierKeyMaterial)
                 .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            ValidatorVcJws().verifyVcJws(result.signedVcJws, it.verifierKeyMaterial.publicKey).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
-                .jws.vc.credentialStatus
+            result.signedVcJws.payload.vc.credentialStatus
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<StatusListInfo>()
                 .index.shouldNotBeNull()

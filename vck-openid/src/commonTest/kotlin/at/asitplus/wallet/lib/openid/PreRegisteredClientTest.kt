@@ -16,9 +16,12 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.decodeFromFormUrlEncoded
+import at.asitplus.openid.decodeFromQuery
+import at.asitplus.openid.encodeToParameters
+import at.asitplus.openid.formUrlEncode
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
@@ -26,17 +29,13 @@ import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.openid.decodeFromQuery
-import at.asitplus.openid.decodeFromFormUrlEncoded
-import at.asitplus.openid.encodeToParameters
-import at.asitplus.openid.formUrlEncode
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.utils.MapStore
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
@@ -111,12 +110,10 @@ val PreRegisteredClientTest by matrixSuite {
             authnResponse.url.shouldStartWith(it.redirectUrl)
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .acceptedPresentations().values.flatten()
                 .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                .credentials.shouldNotBeEmpty()
 
             it.verifierOid4vp.createAuthnRequest(
                 it.defaultRequestOptions, CreationOptions.Query(it.walletUrl)
@@ -148,12 +145,10 @@ val PreRegisteredClientTest by matrixSuite {
             authnResponse.url.shouldStartWith(it.redirectUrl)
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
+                .acceptedPresentations().values.flatten()
                 .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>().apply {
-                    vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>().apply {
+                    credentials.shouldNotBeEmpty()
                 }
         }
 
@@ -192,11 +187,8 @@ val PreRegisteredClientTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+                .acceptedPresentations().values.flatten().shouldBeSingleton().first()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
         }
 
         "test with direct_post" {
@@ -216,12 +208,9 @@ val PreRegisteredClientTest by matrixSuite {
             authnResponse.url.shouldBe(it.redirectUrl)
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                .acceptedPresentations().values.flatten().shouldBeSingleton().first()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                .credentials.shouldNotBeEmpty()
         }
 
         "test with direct_post.jwt" {
@@ -243,12 +232,9 @@ val PreRegisteredClientTest by matrixSuite {
                 }
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                .acceptedPresentations().values.flatten().shouldBeSingleton().first()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                .credentials.shouldNotBeEmpty()
         }
 
         "test with direct_post.jwt, no key for client, leads to error" {
@@ -292,12 +278,9 @@ val PreRegisteredClientTest by matrixSuite {
             val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponseParams).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
+                .acceptedPresentations().values.flatten().shouldBeSingleton().first()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                .credentials.shouldNotBeEmpty()
         }
 
         "test specific credential" {
@@ -310,13 +293,10 @@ val PreRegisteredClientTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-                .map { it.vcJws }.forEach {
+                .acceptedPresentations().values.flatten().shouldBeSingleton().first()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                .credentials.shouldNotBeEmpty()
+                .map { it.credential }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
                             AtomicAttribute2023.fromJsonElement(credentialSubject)
@@ -334,13 +314,10 @@ val PreRegisteredClientTest by matrixSuite {
                 .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-                .map { it.vcJws }.forEach {
+                .acceptedPresentations().values.flatten().shouldBeSingleton().first()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                .credentials.shouldNotBeEmpty()
+                .map { it.credential }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
                             AtomicAttribute2023.fromJsonElement(credentialSubject)
@@ -367,13 +344,10 @@ val PreRegisteredClientTest by matrixSuite {
                 .getOrThrow().shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-                .vpTokenOrThrow()
-                .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-                .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-                .shouldBeSingleton().first()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .vp.freshVerifiableCredentials.shouldNotBeEmpty()
-                .map { it.vcJws }.forEach {
+                .acceptedPresentations().values.flatten().shouldBeSingleton().first()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                .credentials.shouldNotBeEmpty()
+                .map { it.credential }.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<JsonElement>().also { credentialSubject ->
                         shouldNotThrowAny {
                             AtomicAttribute2023.fromJsonElement(credentialSubject)
@@ -463,9 +437,6 @@ private suspend fun verifySecondProtocolRun(
         .getOrThrow()
         .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
     verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
-        .vpTokenOrThrow()
-        .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
-        .credentialQueryResponseValidations.values.flatMap { it.map { it.getOrThrow() } }
-        .shouldBeSingleton().first()
-        .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+        .acceptedPresentations().values.flatten().shouldBeSingleton().first()
+        .shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
 }

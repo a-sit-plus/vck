@@ -45,18 +45,17 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElementOrNull
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
-import kotlin.jvm.JvmInline
-import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlin.jvm.JvmInline
+import kotlin.time.Instant
 
 @JvmInline
 value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
@@ -66,15 +65,6 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         availableCredentials = credentials.map {
             it.toDCQLCredential()
         }
-    )
-
-    fun checkSubmissionRequirements(
-        queryResponse: DCQLQueryResponse<VerifyPresentationResult>,
-    ) = dcqlQuery.checkSubmissionRequirements(
-        dcqlQueryResponse = queryResponse,
-        parseSdJwtCredential = { it.toDCQLSdJwtCredential() },
-        parseVcJwsCredential = { it.toDCQLVcJwsCredential() },
-        parseIsoMdocCredential = { it.toDCQLIsoMdocCredential() },
     )
 
     /**
@@ -147,94 +137,6 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
 
         else -> throw IllegalArgumentException("Presentation is no mdoc document")
     }
-
-    private fun VerifyPresentationResult.toDCQLSdJwtCredential(): DCQLSdJwtCredential = when (this) {
-        is VerifyPresentationResult.SuccessSdJwt -> toDCQLCredential()
-        else -> throw IllegalArgumentException("Cannot create DCQLSdJwtCredential from validation result $this")
-    }
-
-    private fun VerifyPresentationResult.toDCQLVcJwsCredential(): DCQLVcJwsCredential = when (this) {
-        is VerifyPresentationResult.Success -> toDCQLCredential()
-        is VerifyPresentationResult.SuccessUnsigned -> toDCQLCredential()
-        else -> throw IllegalArgumentException("Cannot create DCQLVcJwsCredential from validation result $this")
-    }
-
-    private fun VerifyPresentationResult.toDCQLIsoMdocCredential(): DCQLIsoMdocCredential = when (this) {
-        is VerifyPresentationResult.SuccessIso -> toDCQLCredential()
-        else -> throw IllegalArgumentException("Cannot create DCQLIsoMdocCredential from validation result $this")
-    }
-
-    private fun VerifyPresentationResult.SuccessUnsigned.toDCQLCredential(): DCQLVcJwsCredential {
-        require(vc.freshnessSummary.isFresh) {
-            "Expected credential to be fresh, but was ${vc.freshnessSummary}"
-        }
-        return DCQLVcJwsCredential(
-            satisfiesCryptographicHolderBinding = false,
-            types = this.vc.vcJws.vc.type,
-            authorityKeyIdentifiers = listOf(),
-            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
-                CredentialToJsonConverter.toJsonElement(vc.vcJws)
-            )
-        )
-    }
-
-    private fun VerifyPresentationResult.Success.toDCQLCredential(): DCQLVcJwsCredential {
-        require(vp.invalidVerifiableCredentials.isEmpty()) {
-            "Expected only valid verifiable credentials, but got invalid credentials ${vp.invalidVerifiableCredentials}"
-        }
-        require(vp.notVerifiablyFreshVerifiableCredentials.isEmpty()) {
-            "Unable to check freshness of credentials ${vp.notVerifiablyFreshVerifiableCredentials}"
-        }
-        require(vp.freshVerifiableCredentials.size == 1) {
-            "Expected only 1 valid verifiable credential per presentation, but got ${vp.freshVerifiableCredentials}"
-        }
-        val credential = vp.freshVerifiableCredentials.first()
-
-        return DCQLVcJwsCredential(
-            satisfiesCryptographicHolderBinding = !credential.vcJws.subject.isNullOrEmpty(),
-            types = credential.vcJws.vc.type,
-            authorityKeyIdentifiers = vp.jws.jws.jwsHeader.certificateChain?.flatMap {
-                it.getAuthorityKeyIdentifier()
-            } ?: listOf(),
-            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
-                CredentialToJsonConverter.toJsonElement(credential.vcJws)
-            )
-        )
-    }
-
-    private fun VerifyPresentationResult.SuccessIso.toDCQLCredential(): DCQLIsoMdocCredential {
-        require(documents.size == 1) {
-            "Expected only one document per credential, but received ${documents.size}: $documents"
-        }
-        with(documents.first()) {
-            return DCQLIsoMdocCredential(
-                DCQLCredentialClaimStructure.IsoMdocStructure(
-                    document.issuerSigned.namespaces?.mapValues { namespace ->
-                        namespace.value.entries
-                            .filter { it.value in validItems }
-                            .associate {
-                                it.value.elementIdentifier to it.value.toDcqlClaimValue(namespace.key)
-                            }
-                    } ?: mapOf()
-                ),
-                documentType = document.docType,
-                satisfiesCryptographicHolderBinding = document.issuerSigned.issuerAuth.payload?.deviceKeyInfo != null,
-                authorityKeyIdentifiers = document.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
-                    X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
-                } ?: listOf(),
-            )
-        }
-    }
-
-    private fun VerifyPresentationResult.SuccessSdJwt.toDCQLCredential() = DCQLSdJwtCredential(
-        claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(reconstructedJsonObject),
-        satisfiesCryptographicHolderBinding = verifiableCredentialSdJwt.confirmationClaim != null,
-        authorityKeyIdentifiers = sdJwtSigned.jws.jwsHeader.certificateChain?.flatMap {
-            it.getAuthorityKeyIdentifier()
-        } ?: listOf(),
-        type = verifiableCredentialSdJwt.verifiableCredentialType,
-    )
-
 
     private suspend fun SubjectCredentialStore.StoreEntry.toDCQLCredential() = when (this) {
         is SubjectCredentialStore.StoreEntry.Iso -> toDCQLCredential()

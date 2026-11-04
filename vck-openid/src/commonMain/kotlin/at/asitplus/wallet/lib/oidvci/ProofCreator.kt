@@ -135,7 +135,6 @@ class JwtProofCreator(
                     credentialIssuer = credentialIssuer,
                     clientNonce = clientNonce,
                     supportedAlgorithms = supportedAlgorithms,
-                    preferredKeyStorageStatusPeriod = keyAttestationRequired.preferredTtl,
                     requirements = keyAttestationRequired
                 )
             )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
@@ -237,7 +236,6 @@ class AttestationProofCreator(
                     credentialIssuer = credentialIssuer,
                     clientNonce = clientNonce,
                     supportedAlgorithms = supportedAlgorithms,
-                    preferredKeyStorageStatusPeriod = keyAttestationRequired?.preferredTtl,
                     requirements = keyAttestationRequired
                 )
             ).getOrThrow().jws

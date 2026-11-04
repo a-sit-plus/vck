@@ -98,38 +98,6 @@ class VerifiablePresentationFactory(
         )
     }
 
-    @Deprecated("Internal function, used previously for Presentation Exchange presentations")
-    suspend fun createVerifiablePresentation(
-        request: PresentationRequestParameters,
-        credential: StoreEntry,
-        disclosedAttributes: Collection<NormalizedJsonPath>,
-        zkMetadata: ZkMetadata? = null
-    ): KmmResult<CreatePresentationResult> = catching {
-        when (credential) {
-            is StoreEntry.Vc -> createVcPresentation(
-                request = request,
-                validCredentials = listOf(credential),
-            )
-
-            is StoreEntry.SdJwt -> createSdJwtPresentation(
-                request = request,
-                validSdJwtCredential = credential,
-                disclosures = credential.loadDisclosures(disclosedAttributes),
-            )
-
-            is StoreEntry.Iso -> createIsoPresentation(
-                request = request,
-                isoPresentationParameters = listOf(
-                    IsoPresentationParameters.create(
-                        credential = credential,
-                        claims = disclosedAttributes,
-                        zkMetadata = zkMetadata
-                    ).getOrThrow()
-                ),
-            )
-        }
-    }
-
     suspend fun createVerifiablePresentation(
         request: PresentationRequestParameters,
         credential: StoreEntry,

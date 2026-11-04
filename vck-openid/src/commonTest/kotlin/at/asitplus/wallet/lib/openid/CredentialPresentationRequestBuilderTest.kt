@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer

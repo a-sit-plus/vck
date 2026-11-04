@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent.relyingParty
 
 import at.asitplus.etsi.relyingParty.WrpClaim
 import at.asitplus.etsi.relyingParty.WrpClaimPathSegment
-import at.asitplus.etsi.relyingParty.WrpClaimValue
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.DocRequestInfo
 import at.asitplus.signum.indispensable.CryptoSignature
@@ -11,110 +10,13 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyWithFixedCert
-import at.asitplus.wallet.lib.agent.TestCertificateAuthority
-import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertificate.isValid
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
-@OptIn(ExperimentalUuidApi::class)
 val WrprcCwtTest by matrixSuite {
-
-    "Issuance and validation round-trip" {
-        val fixture = buildWrpFixture()
-
-        val result =
-            fixture.validateWrprcCose(payload = buildWrpPayload(fixture.wrpIdentifier)).getOrThrow()
-
-        result.certificateValidationResults.values.all { it.getOrNull()?.isValid() == true } shouldBe true
-        result.requestDataValidationResults.toMap().values.all { it.getOrThrow().isValid() } shouldBe true
-    }
-
-    "CWT registration certificate with x5chain in the protected header also validates" {
-        val fixture = buildWrpFixture()
-
-        val result = fixture.validateWrprcCose(
-            payload = buildWrpPayload(fixture.wrpIdentifier),
-            certificateChainPlacement = CertificateChainPlacement.PROTECTED,
-        ).getOrThrow()
-
-        result.certificateValidationResults.values.all { it.getOrNull()?.isValid() == true } shouldBe true
-    }
-
-    "Wrong CWT header type fails" {
-        val fixture = buildWrpFixture()
-
-        val result = fixture.validateWrprcCose(
-            payload = buildWrpPayload(fixture.wrpIdentifier),
-            type = "not-rc-wrp+cwt",
-            parsePayload = false,
-        )
-
-        result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validHeader shouldBe false
-    }
-
-    "CWT signed under an untrusted CA fails chain validation" {
-        val fixture = buildWrpFixture()
-        val untrustedSigner = TestCertificateAuthority(name = "Untrusted CA").issue(subjectName = WRPRC_PROVIDER_NAME)
-
-        val result = fixture.validateWrprcCose(
-            payload = buildWrpPayload(fixture.wrpIdentifier),
-            signingKeyMaterial = untrustedSigner,
-        ).getOrThrow()
-
-        val validation = result.certificateValidationResults.values.single().getOrThrow()
-        validation.validChain shouldBe false
-        validation.validSignature shouldBe true
-    }
-
-    "CWT signature from a non-matching key fails" {
-        val fixture = buildWrpFixture()
-        val realCertificate = fixture.wrprcSigningKeyMaterial.getCertificate().shouldNotBeNull()
-        val mismatchedSigner = KeyWithFixedCert(EphemeralKeyWithoutCert(), realCertificate)
-
-        val result = fixture.validateWrprcCose(
-            payload = buildWrpPayload(fixture.wrpIdentifier),
-            signingKeyMaterial = mismatchedSigner,
-        )
-
-        result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validSignature shouldBe false
-    }
-
-    "sub not matching the WRPAC identifier fails linkage validation" {
-        val fixture = buildWrpFixture(wrpIdentifier = "WRP-${Uuid.generateV4()}")
-        val payload = buildWrpPayload(wrpIdentifier = "WRP-${Uuid.generateV4()}")
-
-        val result = fixture.validateWrprcCose(payload = payload).getOrThrow()
-
-        result.certificateValidationResults.values.all { it.getOrNull()?.validLinkage == false }.shouldBe(true)
-    }
-
-    "Revoked status list entry fails status validation" {
-        val fixture = buildWrpFixture()
-        val payload = buildWrpPayload(fixture.wrpIdentifier, statusListIdx = 0)
-
-        val result = fixture.validateWrprcCose(payload = payload, revokedStatusIndex = 0).getOrThrow()
-        result.certificateValidationResults.values.all { it.getOrNull()?.validStatusList == false }.shouldBe(true)
-    }
-
-    "Requesting more attributes than the WRPRC declares fails request validation via DocRequest" {
-        val fixture = buildWrpFixture()
-
-        val result = fixture.validateWrprcCose(
-            payload = buildWrpPayload(fixture.wrpIdentifier),
-            request = mdocDocRequest(claimNames = listOf("given_name", "family_name", "birth_date", "portrait")),
-        ).getOrNull().shouldNotBeNull()
-
-        result.certificateValidationResults.values.all { it.getOrNull()?.isValid() == true } shouldBe true
-        result.requestDataValidationResults.toMap().values.single().getOrThrow().isValid() shouldBe false
-    }
 
     "claim paths of a CWT WRPRC are encoded as CBOR text strings and null" {
         val claim = WrpClaim(listOf(WrpClaimPathSegment.Name(DEFAULT_DOCTYPE), WrpClaimPathSegment.AllElements))
@@ -122,54 +24,6 @@ val WrprcCwtTest by matrixSuite {
         val encoded = coseCompliantSerializer.encodeToByteArray(WrpClaim.serializer(), claim)
 
         coseCompliantSerializer.decodeFromByteArray(WrpClaim.serializer(), encoded) shouldBe claim
-    }
-
-    "a signed CWT with an additional numeric path still authorizes its named claims" {
-        val fixture = buildWrpFixture()
-        val credential = defaultMdocCredential().let {
-            it.copy(claim = it.claim.orEmpty() + WrpClaim(
-                listOf(WrpClaimPathSegment.Name(DEFAULT_DOCTYPE), WrpClaimPathSegment.Index(0u))
-            ))
-        }
-        val result = fixture.validateWrprcCose(
-            payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential)),
-        ).getOrThrow()
-
-        result.certificateValidationResults.values.single().getOrThrow().isValid() shouldBe true
-        result.requestDataValidationResults.single().second.getOrThrow().isValid() shouldBe true
-    }
-
-    "CWT WRPRC with unsupported claim values does not authorize a path-only request" - {
-        listOf(WrpClaimValue.Text("Alice"), WrpClaimValue.Integer(18), WrpClaimValue.Bool(true)).asData() test { value ->
-            val fixture = buildWrpFixture()
-            val credential = defaultMdocCredential().copy(
-                claim = listOf(
-                    WrpClaim.named(DEFAULT_DOCTYPE, "given_name").copy(values = listOf(value))
-                )
-            )
-
-            val result = fixture.validateWrprcCose(
-                payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential)),
-                request = mdocDocRequest(claimNames = listOf("given_name")),
-            )
-
-            result.getOrThrow().certificateValidationResults.values.single().getOrThrow().validPayload shouldBe false
-        }
-    }
-
-    "CWT without a certificate chain is invalid and carries the cause" {
-        val fixture = buildWrpFixture()
-
-        val result = fixture.validateWrprcCose(
-            payload = buildWrpPayload(fixture.wrpIdentifier),
-            certificateChainPlacement = CertificateChainPlacement.NONE,
-        ).getOrThrow()
-
-        result.certificateValidationResults.values.single().exceptionOrNull().shouldNotBeNull()
-            .message.shouldContain("no certificate chain")
-        result.requestDataValidationResults.toMap().values.single().getOrThrow().isValid() shouldBe true
-        @Suppress("DEPRECATION")
-        result.certificateValidation.values.single() shouldBe null
     }
 
     "eUWrprc round-trips as a CBOR byte string" {

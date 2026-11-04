@@ -1,9 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.csc.bindings.QesApprovalBinding
+import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.dcql.DCQLClaimsQueryResult.JsonResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllMandatoryClaimsMatchingResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -14,20 +18,23 @@ import at.asitplus.wallet.lib.agent.QesApprovalTestData.approvalJson
 import at.asitplus.wallet.lib.agent.QesApprovalTestData.encodeTransactionData
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.PresentationContext
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
 
 val VerifiablePresentationFactorySdJwtTest by matrixSuite {
 
@@ -81,8 +88,8 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
     } - {
 
         "disclosed SD-JWT contains only one disclosure for one plain disclosed attribute" {
-            val disclosedAttributes = listOf(
-                NormalizedJsonPath() + "name"
+            val disclosedAttributes = ClaimsQueryResults(
+                listOf(JsonResult(listOf(NodeListEntry(NormalizedJsonPath() + "name", JsonPrimitive("Winston Smith")))))
             )
             val request = PresentationRequestParameters(
                 nonce = uuid4().toString(),
@@ -94,7 +101,8 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
                 disclosedAttributes = disclosedAttributes,
             ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>().apply {
                 sdJwt.keyBindingJws.shouldNotBeNull().payload.sdHash.size shouldBe 48
-                ValidatorSdJwt().verifyVpSdJwt(sdJwt, request.nonce, request.audience, null).getOrThrow()
+                CredentialValidator().validatePresentation(this, PresentationContext(request.nonce, request.audience))
+                    .shouldBeSingleton().first().acceptedOrThrow()
                 SdJwtDecoded(sdJwt).apply {
                     validDisclosures.shouldHaveSize(1)
                     reconstructedJsonObject.shouldNotBeNull().keys shouldBe setOf("name") + setOfDefaultSdJwtClaims
@@ -102,8 +110,10 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
             }
         }
         "disclosed SD-JWT contains only two disclosures for one disclosed nested attribute" {
-            val disclosedAttributes = listOf(
-                NormalizedJsonPath() + "address" + "city",
+            val disclosedAttributes = ClaimsQueryResults(
+                listOf(
+                    JsonResult(listOf(NodeListEntry(NormalizedJsonPath() + "address" + "city", JsonPrimitive("London"))))
+                )
             )
             it.verifiablePresentationFactory.createVerifiablePresentation(
                 request = PresentationRequestParameters(
@@ -141,7 +151,7 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
                         transactionData = listOf(JsonPrimitive(encoded)),
                     ),
                     credential = fixture.sdJwtCredential,
-                    disclosedAttributes = emptyList(),
+                    disclosedAttributes = AllMandatoryClaimsMatchingResult,
                 ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
                 result.sdJwt.keyBindingJws.shouldNotBeNull().payload.qesApproval.shouldNotBeNull()
                     .contentEquals(Digest.SHA256.digest(encoded.encodeToByteArray())) shouldBe true
@@ -160,7 +170,7 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
                 val result = fixture.verifiablePresentationFactory.createVerifiablePresentation(
                     request = request,
                     credential = fixture.sdJwtCredential,
-                    disclosedAttributes = emptyList(),
+                    disclosedAttributes = AllMandatoryClaimsMatchingResult,
                 ).getOrThrow().shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
                 val expectedDigest = digest.digest(encodedTransactionData.encodeToByteArray())
@@ -188,7 +198,7 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
                     fixture.verifiablePresentationFactory.createVerifiablePresentation(
                         request = request,
                         credential = fixture.sdJwtCredential,
-                        disclosedAttributes = emptyList(),
+                        disclosedAttributes = AllMandatoryClaimsMatchingResult,
                     ).getOrThrow()
                 }.message shouldBe "Unsupported qesApproval hash algorithm $unsupportedOid"
             }

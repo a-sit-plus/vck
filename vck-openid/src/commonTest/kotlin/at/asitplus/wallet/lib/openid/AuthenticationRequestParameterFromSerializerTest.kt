@@ -4,6 +4,7 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.RequestObjectParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.decodeFromQuery
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
@@ -18,7 +19,6 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.openid.decodeFromQuery
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -62,15 +62,14 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
                 .shouldBe(params)
         }
 
-        @Suppress("DEPRECATION")
-        "Json test $representation" {
+"Json test $representation" {
             val authnRequest = joseCompliantSerializer.encodeToString(
                 verifierOid4vp.createAuthnRequest(reqOptions, byReference).getOrThrow()
                     .loadRequestObject.shouldNotBeNull().invoke(RequestObjectParameters()).getOrThrow().run {
                         JwsCompactTyped<AuthenticationRequestParameters>(this).payload
                     }
             )
-            val params = holderOid4vp.startAuthorizationResponsePreparation(authnRequest).getOrThrow().request
+            val params = holderOid4vp.prepareAuthorizationResponse(authnRequest).getOrThrow().request
                 .shouldBeInstanceOf<RequestParametersFrom.Json<AuthenticationRequestParameters>>()
 
             val serialized =

@@ -24,7 +24,6 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.jsonWebKeyBytes
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.signum.indispensable.symmetric.AuthCapability
 import at.asitplus.signum.indispensable.symmetric.KeyType
@@ -55,7 +54,6 @@ import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
 import at.asitplus.wallet.lib.agent.requireTrustedSigningCertificate
-import at.asitplus.wallet.lib.etsi.isIssuerOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -608,34 +606,6 @@ class VerifyJwsSignatureWithCnf @JvmOverloads constructor(
             (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
         }?.toCryptoPublicKey()?.getOrNull()
 
-}
-
-/**
- * The public key used to validate the signature on the Status List Token
- * defined in [I-D.ietf-oauth-status-list] MUST be included in the x5c JOSE header of the Token.
- * The X.509 certificate of the trust anchor MUST NOT be included in the x5c JOSE header of the Status List Token.
- * The X.509 certificate signing the request MUST NOT be self-signed.
- */
-@Deprecated("Status list tokens are validated by at.asitplus.wallet.lib.validation.StatusValidator, which also accepts signers listed on a LoTE themselves (ETSI TS 119 602 V1.1.1, 6.6.3). To be removed in the next major release.")
-class VerifyStatusListTokenHAIP @JvmOverloads constructor(
-    val verifyJwsSignature: VerifyJwsSignatureFun = VerifyJwsSignature(),
-    /** Certificates of trusted issuers of status list tokens, if trust in the issuer shall be evaluated */
-    val trustedIssuers: TrustedCertificates? = null,
-) : VerifyJwsObjectFun {
-
-    override suspend operator fun invoke(jwsObject: JwsCompact) = catching {
-        val certChain: CertificateChain = jwsObject.jwsHeader.certificateChain
-            ?: throw IllegalArgumentException("Certificate Chain MUST not be empty")
-        // HAIP requires the signing certificate to be issued by a trust anchor, so direct trust is not an option
-        val signingCert = trustedIssuers
-            ?.let { certChain.requireTrustedSigningCertificate(it, allowDirectTrust = false) }
-            ?: certChain.leaf.also {
-                require(it.isIssuerOf(it).isFailure) {
-                    "The certificate signing the request MUST NOT be self-signed"
-                }
-            }
-        verifyJwsSignature(jwsObject, signingCert.decodedPublicKey.getOrThrow()).getOrThrow()
-    }
 }
 
 /**

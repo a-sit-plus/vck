@@ -8,22 +8,13 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
-import at.asitplus.wallet.lib.cbor.CoseHeaderNone
-import at.asitplus.wallet.lib.cbor.SignCoseDetached
-import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
-import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
-import at.asitplus.wallet.lib.jws.JwsHeaderNone
-import at.asitplus.wallet.lib.jws.SignJwt
-import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure
 import at.asitplus.wallet.lib.validation.CheckOutcome
@@ -41,7 +32,6 @@ import at.asitplus.wallet.lib.validation.ValidatedCredential
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.firstRejection
 import at.asitplus.wallet.lib.validation.sameForAllTypes
-import at.asitplus.wallet.lib.zk.iso.IsoMdocZkEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -73,42 +63,6 @@ class HolderAgent @JvmOverloads constructor(
      */
     private val orderingValidator: CredentialValidator = credentialValidator,
 ) : Holder {
-
-    @Deprecated(
-        "The validator parameters no longer take effect, and trustedIssuers trusts every issuer for every credential" +
-                " type: pass a credentialValidator with trust anchors per credential type instead"
-    )
-    @Suppress("DEPRECATION")
-    constructor(
-        keyMaterial: KeyMaterial,
-        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-        @Suppress("UNUSED_PARAMETER") validator: Validator? = null,
-        trustedIssuers: TrustedCertificates? = null,
-        @Suppress("UNUSED_PARAMETER") validatorVcJws: ValidatorVcJws? = null,
-        @Suppress("UNUSED_PARAMETER") validatorSdJwt: ValidatorSdJwt? = null,
-        @Suppress("UNUSED_PARAMETER") validatorMdoc: ValidatorMdoc? = null,
-        signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> = SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-        signKeyBinding: SignJwtFun<KeyBindingJws> = SignJwt(keyMaterial, JwsHeaderNone()),
-        signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
-            keyMaterial = keyMaterial,
-            protectedHeaderModifier = CoseHeaderNone(),
-            unprotectedHeaderModifier = CoseHeaderNone()
-        ),
-        mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
-        verifiablePresentationFactory: VerifiablePresentationFactory = VerifiablePresentationFactory(
-            keyMaterial = keyMaterial,
-            signVerifiablePresentation = signVerifiablePresentation,
-            signKeyBinding = signKeyBinding,
-            mdocZkEngine = mdocZkEngine,
-            signDeviceAuthDetached = signDeviceAuthDetached
-        ),
-        credentialValidator: CredentialValidator? = null,
-    ) : this(
-        keyMaterial = keyMaterial,
-        subjectCredentialStore = subjectCredentialStore,
-        verifiablePresentationFactory = verifiablePresentationFactory,
-        credentialValidator = credentialValidator(trustedIssuers, credentialValidator),
-    )
 
     private val presentationResponseCreator = PresentationResponseCreator(verifiablePresentationFactory)
 

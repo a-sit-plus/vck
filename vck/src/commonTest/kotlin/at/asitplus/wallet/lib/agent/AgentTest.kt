@@ -28,13 +28,14 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.randomCwtOrJwtResolver
+import at.asitplus.wallet.lib.validation.PresentationContext
+import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import com.benasher44.uuid.uuid4
-import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -54,22 +55,15 @@ val AgentTest by matrixSuite {
                 randomSource = RandomSource.Default
             )
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val validator = Validator(
-                tokenStatusResolver = randomCwtOrJwtResolver(statusListIssuer)
-            )
+            val validator = statusCheckingValidator(statusListIssuer)
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val verifierId = "urn:${uuid4()}"
             val holder = HolderAgent(
                 keyMaterial = holderKeyMaterial,
                 subjectCredentialStore = holderCredentialStore,
             )
-            val verifier = VerifierAgent(
-                identifier = verifierId,
-                validatorVcJws = ValidatorVcJws(validator = validator),
-                validatorSdJwt = ValidatorSdJwt(validator = validator),
-                validatorMdoc = ValidatorMdoc(validator = validator),
-            )
             val challenge = uuid4().toString()
+            val context = PresentationContext(challenge = challenge, audience = verifierId)
         }
     } - {
         test("getting credentials when there are no credentials stored") {
@@ -95,37 +89,6 @@ val AgentTest by matrixSuite {
             it.holder.getCredentials()
                 .shouldNotBeNull()
                 .shouldHaveSize(1)
-                .forEach { storeEntry ->
-                    it.validator.checkRevocationStatus(storeEntry)
-                        .shouldBeInstanceOf<TokenStatusValidationResult.Valid>()
-                }
-        }
-
-        test("getting credentials when the issuer has revoked them") {
-            val credential = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
-                ).getOrThrow()
-            ).getOrThrow()
-                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-
-            it.holder.storeCredential(credential.toStoreCredentialInput())
-                .getOrThrow()
-                .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
-
-            it.statusListIssuer.revokeCredentialByIndex(
-                FixedTimePeriodProvider.timePeriod,
-                credential.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
-            ) shouldBe true
-
-            it.holder.getCredentials()
-                .shouldNotBeNull()
-                .forEach { storeEntry ->
-                    it.validator.checkRevocationStatus(storeEntry)
-                        .shouldBeInstanceOf<TokenStatusValidationResult.Invalid>()
-                }
         }
 
         val singularDCQLRequest = DCQLQuery(
@@ -160,8 +123,8 @@ val AgentTest by matrixSuite {
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.flatten().first()
                 .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+            it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
+                .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
         }
 
         test("dcql: wrong keyId in presentation leads to error") {
@@ -178,9 +141,8 @@ val AgentTest by matrixSuite {
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.flatten().first()
                 .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-            shouldThrowAny {
-                it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
-            }
+            it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
+                .presentation.shouldBeNull()
         }
 
         test("dcql: building presentation without necessary credentials") {
@@ -211,12 +173,9 @@ val AgentTest by matrixSuite {
                 .shouldNotBeNull()
                 .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
 
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-                .also {
-                    it.vp.notVerifiablyFreshVerifiableCredentials.shouldBeEmpty()
-                    it.vp.freshVerifiableCredentials shouldHaveSize 1
-                }
+            it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
+                .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                .credentials shouldHaveSize 1
         }
 
         test("dcql: valid presentation is valid -- some other attributes revoked") {
@@ -243,8 +202,8 @@ val AgentTest by matrixSuite {
                 credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
             ) shouldBe true
 
-            it.verifier.verifyPresentationVcJwt(vp.jwsSigned.shouldNotBeNull(), it.challenge).getOrThrow()
-                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+            it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
+                .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
         }
 
         test("dcql: present raw vcjws when requiring no cryptographic holder binding") {

@@ -30,17 +30,6 @@ value class JsonClaimReference(
         }.toNonEmptyList())
     )
 
-    /** A concrete path; throws if [path] selects all elements of an array. */
-    @Deprecated("Use path, which also supports array wildcards", ReplaceWith("path"))
-    val normalizedJsonPath: NormalizedJsonPath
-        get() = NormalizedJsonPath(path.map { segment ->
-            when (segment) {
-                is DCQLClaimsPathPointerSegment.NameSegment -> NormalizedJsonPathSegment.NameSegment(segment.name)
-                is DCQLClaimsPathPointerSegment.IndexSegment -> NormalizedJsonPathSegment.IndexSegment(segment.index)
-                DCQLClaimsPathPointerSegment.NullSegment -> error("An array wildcard is not a concrete path")
-            }
-        })
-
     /** Keeps the existing object and member name when serialized as a [SingleClaimReference]. */
     object Serializer : KSerializer<JsonClaimReference> by TransformingSerializerTemplate(
         parent = Surrogate.serializer(),

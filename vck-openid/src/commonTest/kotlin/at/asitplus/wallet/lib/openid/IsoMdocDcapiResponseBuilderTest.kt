@@ -58,10 +58,10 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.serialization.encodeToByteArray
 
 @OptIn(SecretExposure::class)
 val IsoMdocDcapiResponseBuilderTest by matrixSuite {
@@ -179,7 +179,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             externalId = STATE,
             expectedOrigin = ORIGIN,
         ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>()
-            .documents.shouldNotBeEmpty()
+            .acceptedDocuments().shouldNotBeEmpty()
     }
 
     test("encrypted Annex C response contains all requested documents") {
@@ -230,7 +230,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             input = IsoMdocResponse(DCAPIResponse(encryptedResponse)),
             externalId = STATE,
             expectedOrigin = ORIGIN,
-        ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>().documents.shouldHaveSize(2)
+        ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>().acceptedDocuments().shouldHaveSize(2)
     }
 
     test("Annex C holder creates presentation request") {
@@ -271,7 +271,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             externalId = STATE,
             expectedOrigin = ORIGIN,
         ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>()
-            .documents.shouldNotBeEmpty()
+            .acceptedDocuments().shouldNotBeEmpty()
     }
 
     test("DC API holder dispatches and finalizes Annex C requests") {
@@ -308,7 +308,7 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
             externalId = STATE,
             expectedOrigin = ORIGIN,
         ).getOrThrow().shouldBeInstanceOf<Iso180137AnnexCWrapper>()
-            .documents.shouldNotBeEmpty()
+            .acceptedDocuments().shouldNotBeEmpty()
     }
 
     test("DC API holder reports the reader of an Annex C request with reader authentication only") {
