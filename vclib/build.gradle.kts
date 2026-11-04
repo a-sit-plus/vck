@@ -51,7 +51,6 @@ kotlin {
         commonMain {
             dependencies {
                 commonImplementationAndApiDependencies()
-                api(libs.okio)
                 api(libs.encoding.base16)
                 api(libs.encoding.base64)
             }

@@ -8,7 +8,6 @@ androidTestRunner = "1.7.0"
 asp = "20260918"
 agp = "9.5.0"
 encoding = "2.6.0"
-okio = "3.18.2"
 nimbus-jose-jwt = "10.10"
 json = "20260814"
 
@@ -17,7 +16,6 @@ asp = { module = "at.asitplus.gradle:k2", version.ref = "asp" }
 agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 encoding-base16 = { module = "io.matthewnelson.encoding:base16", version.ref = "encoding" }
 encoding-base64 = { module = "io.matthewnelson.encoding:base64", version.ref = "encoding" }
-okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
 json = { module = "org.json:json", version.ref = "json" }
 

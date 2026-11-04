@@ -3,10 +3,11 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
+import io.ktor.util.sha256
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import okio.ByteString.Companion.toByteString
+import kotlin.io.encoding.Base64 as Base64Encoding
 
 @Serializable
 data class JsonWebKey(
@@ -123,7 +124,7 @@ data class JsonWebKey(
         return KmmResult.failure(IllegalArgumentException())
     }
 
-    fun toJwkThumbprint() = Json.encodeToString(this).encodeToByteArray().toByteString().sha256().base64Url()
+    fun toJwkThumbprint() = Base64Encoding.UrlSafe.encode(sha256(Json.encodeToString(this).encodeToByteArray()))
 
     override fun toString(): String {
         return "JsonWebKey(type=$type, curve=$curve, keyId=$keyId, x=${x?.encodeBase64()}, y=${y?.encodeBase64()})"

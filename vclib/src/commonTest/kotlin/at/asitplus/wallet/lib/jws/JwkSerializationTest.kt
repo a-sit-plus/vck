@@ -10,6 +10,10 @@ import kotlin.uuid.ExperimentalUuidApi
 
 val JwkSerializationTest by matrixSuite {
 
+    "Thumbprint preserves SHA-256 and padded Base64url encoding" {
+        JsonWebKey().toJwkThumbprint() shouldBe "RBNvo1WzZ4oRRq0W9-hknpT7T8If536DEMBg9hyq_4o="
+    }
+
     "Serialization contains P-256 as curve name" {
         val curve = EcCurve.SECP_256_R_1
         val kid = uuid4()
