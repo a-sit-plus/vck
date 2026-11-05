@@ -5,16 +5,10 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.encodeToParameters
-import at.asitplus.openid.formUrlEncode
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
-import at.asitplus.wallet.lib.HttpBody
-import at.asitplus.wallet.lib.HttpErrorResponseException
-import at.asitplus.wallet.lib.PreparedHttpRequest
-import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -37,8 +31,6 @@ import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
 
 /**
  * Implements the wallet side of
@@ -109,8 +101,6 @@ class OpenId4VpKtorHolder(
         supportedAlgorithms = supportedAlgorithms,
         clientId = clientId,
         authorizationEndpoint = authorizationEndpoint,
-        // only used by the deprecated methods of OpenId4VpHolder, this class sends the exchanges of protocolClient
-        remoteResourceRetriever = { client.fetch(it) },
         walletNonceMapStore = walletNonceMapStore,
         randomSource = randomSource,
         lookupJsonWebKeysForClient = lookupJsonWebKeysForClient,
@@ -301,29 +291,6 @@ class OpenId4VpKtorHolder(
             state = state,
             credentialPresentation = credentialPresentation,
         ).getOrThrow()
-    }
-
-
-    /**
-     * Fetches a request object for the deprecated methods of [openId4VpHolder], i.e. sends the request as
-     * [OpenId4VpProtocolClient.prepareAuthorizationResponse] does, and fails for a non-success response.
-     */
-    private suspend fun HttpClient.fetch(input: RemoteResourceRetrieverInput): String {
-        val isPost = input.method == HttpMethod.Post
-        val response = send(
-            PreparedHttpRequest(
-                url = input.url,
-                method = input.method,
-                headers = Headers.build { input.headers.forEach { (name, value) -> append(name, value) } },
-                body = if (isPost) HttpBody(
-                    ContentType.Application.FormUrlEncoded,
-                    input.requestObjectParameters?.encodeToParameters()?.formUrlEncode().orEmpty(),
-                ) else null,
-            )
-        )
-        val body = response.bodyAsText()
-        if (!response.status.isSuccess()) throw HttpErrorResponseException(response.status, response.headers, body)
-        return body
     }
 
     private fun redirectResponse(it: AuthenticationResponseResult.Redirect) = run {

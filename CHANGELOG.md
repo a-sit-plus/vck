@@ -4,10 +4,18 @@ Release 10.0.0 (unreleased):
 
 - Removals:
     - Remove code elements deprecated in 9.0.0: `Verifier` and its legacy validation classes
+    - Remove `RemoteResourceRetrieverFunction` and `RemoteResourceRetrieverInput` as types and parameter values, e.g. in
+     `RequestParser` and `OpenId4VciClient`
 - Status lists:
     - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status
       List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still
       emitted as stored blocks.
+- OAuth 2.0 authorization server:
+    - BREAKING: Remove the constructor parameter `supportedSigningAlgorithms` of `SimpleAuthorizationService`
+- OpenID for Verifiable Presentations client:
+    - BREAKING: `RequestParser` no longer fetches request objects passed by reference in `request_uri`:
+      `parseRequestParameters` fails with `InvalidRequest` for a request referencing its request object only in
+      `request_uri`. Wallets fetch such request objects with `OpenId4VpProtocolClient.prepareAuthorizationResponse`.
 
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and

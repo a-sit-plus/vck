@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.OpenIdConstants
@@ -8,12 +9,10 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -64,10 +63,15 @@ val OpenIdRequestParserTests by matrixSuite {
         parameters.append("request_uri", requestUri)
     }.buildString()
 
-    /** A parser that fetches [content] from [requestUri], and nothing from anywhere else. */
-    fun parserServing(content: String) = RequestParser(
-        remoteResourceRetriever = { if (it.url == requestUri) content else null }
-    )
+    /**
+     * Parses [input] as the wallet does, i.e. [content] is what it fetched from the `request_uri` it references,
+     * which has to be [requestUri].
+     */
+    suspend fun RequestParser.parseServing(input: String, content: String): Result<RequestParametersFrom<*>> {
+        val reference = parseWithoutFetching(input).shouldBeInstanceOf<RequestParser.ParsedRequest.ByReference>()
+        reference.uri shouldBe requestUri
+        return catchingUnwrapped { resolveFetchedRequestObject(reference, content) }
+    }
 
     testSuite("parameters in the URL") {
         "are parsed from the query" {
@@ -131,25 +135,24 @@ val OpenIdRequestParserTests by matrixSuite {
                 }
         }
 
-        "by reference in `request_uri` is fetched with GET and parsed" {
-            // OpenID4VP 1.0, 5.10: `request_uri_method` defaults to `get`, and the wallet asks for a request object
+        "by reference in `request_uri` is to be fetched with GET, and parsed once fetched" {
+            // OpenID4VP 1.0, 5.10: `request_uri_method` defaults to `get`; the `Accept` header the wallet asks for a
+            // request object with is set by OpenId4VpProtocolClient, see OpenId4VpProtocolClientTest
             val requestObject = signRequestObject(authnRequest)
-            var fetched: RemoteResourceRetrieverInput? = null
-            val parser = RequestParser(
-                remoteResourceRetriever = { fetched = it; requestObject }
-            )
+            val parser = RequestParser()
 
-            parser.parseRequestParameters(byReference).getOrThrow()
+            val reference = parser.parseWithoutFetching(byReference)
+                .shouldBeInstanceOf<RequestParser.ParsedRequest.ByReference>().apply {
+                    uri shouldBe requestUri
+                    method shouldBe HttpMethod.Get
+                    requestObjectParameters shouldBe null
+                }
+            parser.resolveFetchedRequestObject(reference, requestObject)
                 .shouldBeInstanceOf<RequestParametersFrom.Jws<*>>().apply {
                     jws.toString() shouldBe requestObject
                     parent.toString() shouldBe byReference
                     shouldCarry(authnRequest)
                 }
-            fetched.shouldNotBeNull().apply {
-                url shouldBe requestUri
-                method shouldBe HttpMethod.Get
-                headers[HttpHeaders.Accept] shouldBe MediaTypes.Application.AUTHZ_REQ_JWT
-            }
         }
     }
 
@@ -174,13 +177,12 @@ val OpenIdRequestParserTests by matrixSuite {
 
         // OpenID4VP 1.0, 5.10.1: the request URI response is "a signed, optionally encrypted, request object"
         "when plain at `request_uri`" {
-            parserServing(joseCompliantSerializer.encodeToString(authnRequest))
-                .parseRequestParameters(byReference)
+            RequestParser().parseServing(byReference, joseCompliantSerializer.encodeToString(authnRequest))
                 .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
         }
 
         // an unresolved JAR request must not pass for a parsed authorization request without any parameters
-        "when it can not be retrieved from `request_uri`" {
+        "when only passed by reference in `request_uri`, which parseRequestParameters does not fetch" {
             RequestParser().parseRequestParameters(byReference)
                 .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
                 .message.shouldNotBeNull() shouldContain requestUri
@@ -193,8 +195,8 @@ val OpenIdRequestParserTests by matrixSuite {
                 requestUri = "https://verifier.example.com/request/nested",
             )
 
-            parserServing(signRequestObject<RequestParameters>(nested, RequestParameters.serializer()))
-                .parseRequestParameters(byReference)
+            RequestParser()
+                .parseServing(byReference, signRequestObject<RequestParameters>(nested, RequestParameters.serializer()))
                 .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
                 .message.shouldNotBeNull() shouldContain "request_uri"
         }
@@ -232,25 +234,13 @@ val OpenIdRequestParserTests by matrixSuite {
             }
 
             "by reference in `request_uri`" {
-                parserServing(signRequestObject(authnRequest))
-                    .parseRequestParameters(launchedByReference(otherClientId))
+                RequestParser().parseServing(launchedByReference(otherClientId), signRequestObject(authnRequest))
                     .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
                     .message.shouldNotBeNull() shouldContain otherClientId
             }
 
-            "by reference in `request_uri`, when fetched by the wallet" {
-                val parser = RequestParser()
-                val reference = parser.parseWithoutFetching(launchedByReference(otherClientId))
-                    .shouldBeInstanceOf<RequestParser.ParsedRequest.ByReference>()
-
-                shouldThrow<InvalidRequest> {
-                    parser.resolveFetchedRequestObject(reference, signRequestObject(authnRequest))
-                }.message.shouldNotBeNull() shouldContain otherClientId
-            }
-
             "missing in the request object" {
-                parserServing(signRequestObject(withoutClientId))
-                    .parseRequestParameters(byReference)
+                RequestParser().parseServing(byReference, signRequestObject(withoutClientId))
                     .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
             }
         }
@@ -258,8 +248,7 @@ val OpenIdRequestParserTests by matrixSuite {
         "when its payload is not a request, keeping the serialization error as cause" {
             val invalid = JsonObject(mapOf("response_type" to JsonArray(emptyList())))
 
-            parserServing(signRequestObject(invalid, JsonObject.serializer()))
-                .parseRequestParameters(byReference)
+            RequestParser().parseServing(byReference, signRequestObject(invalid, JsonObject.serializer()))
                 .exceptionOrNull().shouldBeInstanceOf<InvalidRequest>()
                 .cause.shouldBeInstanceOf<SerializationException>()
                 .message.shouldNotBeNull() shouldContain "response_type"

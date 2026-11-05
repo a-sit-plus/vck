@@ -24,7 +24,6 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
-import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.ClientNonceResponse
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.CredentialOfferUrlParameters
@@ -42,22 +41,12 @@ import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.decodeFromQuery
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
-import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
-import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
-import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer.CredentialResponse
@@ -65,7 +54,6 @@ import at.asitplus.wallet.lib.validation.CredentialValidationInput
 import com.benasher44.uuid.uuid4
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
@@ -83,11 +71,6 @@ class OpenId4VciClient @JvmOverloads constructor(
      * belongs to the OAuth 2.0 client: [OpenId4VciProtocolClient.createCredential] passes the one of its [OAuth2Client].
      */
     clientId: String = "https://wallet.a-sit.at/app",
-    /**
-     * Only used by the deprecated [parseCredentialOffer], to retrieve the resource referenced by
-     * `credential_offer_uri`; use [OpenId4VciProtocolClient.loadCredentialOffer] instead.
-     */
-    private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Handles credential request encryption and credential response decryption. */
     private val encryptionService: WalletEncryptionService = WalletEncryptionService(),
     /** First one to create a proof for a given credential is selected for the [CredentialRequestParameters]. */
@@ -638,31 +621,4 @@ class OpenId4VciClient @JvmOverloads constructor(
             ISO_MDOC -> CredentialValidationInput.IsoMdoc(decodeToByteArray(Base64UrlStrict))
         }
 
-    /** An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4). */
-    @Throws(Exception::class)
-    private fun String.toStoreCredentialInput(
-        credentialRepresentation: CredentialRepresentation,
-        credentialScheme: CredentialScheme,
-    ): Holder.StoreCredentialInput = when (credentialRepresentation) {
-        PLAIN_JWT -> Vc(
-            signedVcJws = JwsCompactTyped<VerifiableCredentialJws>(this),
-            vcJws = this,
-            scheme = credentialScheme as VcJwtCredentialScheme
-        )
-
-        SD_JWT -> SdJwt(
-            signedSdJwtVc = SdJwtSigned.parseCatching(this).getOrThrow(),
-            vcSdJwt = this,
-            scheme = credentialScheme as SdJwtCredentialScheme
-        )
-
-        ISO_MDOC -> catchingUnwrapped {
-            Iso(
-                issuerSigned = coseCompliantSerializer.decodeFromByteArray<IssuerSigned>(
-                    decodeToByteArray(Base64UrlStrict)
-                ),
-                scheme = credentialScheme as IsoMdocCredentialScheme
-            )
-        }.getOrElse { throw Exception("Invalid credential format: $this", it) }
-    }
 }
