@@ -28,7 +28,6 @@ import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.supreme.UserInitiatedCancellationReason
-import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -77,13 +76,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private val clientId: String = "https://wallet.a-sit.at/",
     /** Advertised as `authorization_endpoint` in [metadata]. */
     private val authorizationEndpoint: String = "openid4vp:",
-    /**
-     * Fetches a request object passed by reference in `request_uri`, for the deprecated methods taking the
-     * request as `String`; [OpenId4VpProtocolClient.prepareAuthorizationResponse] does not use it.
-     * Implementations need to fetch the url passed in, and return either the body, if there is one,
-     * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
-     */
-    private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Stores our nonce used when fetching authn requests using POST. */
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     /** Source for random bytes, i.e., nonces for encrypted responses. */
@@ -191,7 +183,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
         } ?: metadata
 
     private val requestParser = RequestParser(
-        remoteResourceRetriever = remoteResourceRetriever,
         ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
         requireEncryptedRequests = requireEncryptedRequests,
     ) {
@@ -199,11 +190,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
             metadata = metadataForRequestObject(),
             nonce = uuid4().toString().also { walletNonceMapStore.put(it, it) })
     }
-
-    private suspend fun parse(
-        input: String,
-    ) = requestParser.parseRequestParameters(input)
-        .getOrThrow().requireAuthenticationRequest()
 
     /**
      * Parses [input] like [startAuthorizationResponsePreparation], but returns where to fetch a request object passed
@@ -303,7 +289,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
         )
     }
 
-    private suspend fun prepare(
+    private fun prepare(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): AuthorizationResponsePreparationState {
         val loadedKeys = (params.parameters.clientMetadata?.jsonWebKeySet?.keys
@@ -424,7 +410,7 @@ class OpenId4VpHolder @JvmOverloads constructor(
     private fun RequestParametersFrom<AuthenticationRequestParameters>.credentialIds() =
         (this as? RequestParametersFrom.DcApiRequest)?.credentialIds
 
-    private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
+    private fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
             dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null

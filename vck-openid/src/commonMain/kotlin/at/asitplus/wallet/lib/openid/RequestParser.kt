@@ -10,30 +10,20 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
-import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.DecryptJweFun
 import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidRequest
-import at.asitplus.openid.toFormParameters
 import io.ktor.http.*
 
 class RequestParser(
-    /**
-     * Fetches a request object passed by reference in `request_uri`, see [extractRequest].
-     * Implementations need to fetch the url passed in, and return either the body, if there is one,
-     * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
-     * Wallets fetch request objects with [OpenId4VpProtocolClient] instead.
-     */
-    private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /** Holds the ephemeral encryption keys advertised in `wallet_metadata` when fetching a request object with POST. */
     private val ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
     /** Decrypts request objects sent by the verifier, keyed by the `kid` of the JWE. */
@@ -55,7 +45,9 @@ class RequestParser(
     /** Result of [parseWithoutFetching]. */
     internal sealed interface ParsedRequest {
         /** The request, including its request object, if that was passed by value in `request`. */
-        data class Resolved(val request: RequestParametersFrom<*>) : ParsedRequest
+        data class Resolved(
+            val request: RequestParametersFrom<*>
+        ) : ParsedRequest
 
         /**
          * The request object is passed by reference: fetch it from [uri] with [method], sending
@@ -80,8 +72,11 @@ class RequestParser(
      * or the POST body (e.g. the form-serialized values of the authorization request),
      * or a serialized JWS (which may have been extracted from a `request` parameter),
      * to parse the [AuthenticationRequestParameters], wrapped in [RequestParametersFrom].
+     *
+     * Does not fetch a request object passed by reference in `request_uri`, but fails with [InvalidRequest] for it:
+     * wallets fetch it with [OpenId4VpProtocolClient] instead.
      */
-    suspend fun parseRequestParameters(
+    fun parseRequestParameters(
         input: String,
     ): KmmResult<RequestParametersFrom<*>> = catching {
         input.parseParameters().extractRequest()
@@ -89,7 +84,7 @@ class RequestParser(
 
     /**
      * Parses [input] like [parseRequestParameters], but returns where to fetch a request object passed by reference
-     * instead of fetching it with [remoteResourceRetriever].
+     * in `request_uri`, to be passed to [resolveFetchedRequestObject] once fetched, instead of failing for it.
      */
     internal suspend fun parseWithoutFetching(
         input: String,
@@ -97,37 +92,36 @@ class RequestParser(
         val parsed = input.parseParameters()
         val jar = parsed.parameters as? JarRequestParameters
             ?: return ParsedRequest.Resolved(parsed)
-        jar.request?.let {
-            return ParsedRequest.Resolved(it.parseRequestObjectByValue(parsed, jar.clientId).requireNotNested())
-        }
-        val uri = jar.requestUri
-            ?: throw InvalidRequest("request contains neither `request` nor `request_uri`")
+        // `request` takes precedence, as in extractDirectRequest, which also reports a JAR request carrying neither
+        val uri = jar.requestUri?.takeIf { jar.request == null }
+            ?: return ParsedRequest.Resolved(parsed.extractRequest())
         return jar.toReference(uri, parsed)
     }
 
     /**
-     * Resolves the request object fetched for [reference] from its [content], i.e. decrypts and parses it, as
-     * [parseRequestParameters] does after fetching it.
+     * Resolves the request object fetched for [reference] from its [content], i.e. decrypts and parses it, checking
+     * that it matches what we have sent when fetching it.
      */
     internal suspend fun resolveFetchedRequestObject(
         reference: ParsedRequest.ByReference,
         content: String,
     ): RequestParametersFrom<*> = reference.resolve(content).requireNotNested()
 
-    private suspend fun String.parseParameters(): RequestParametersFrom<out RequestParameters> =
+    private fun String.parseParameters(): RequestParametersFrom<out RequestParameters> =
         parseAsJwsRequest(null)
             ?: parseFromParameters()
             ?: parseFromJson(null)
             ?: throw InvalidRequest("parse error: $this")
 
     /**
-     * Resolves a JAR request, i.e. the request object referenced in `request_uri` or carried in `request`, into the
-     * request parameters it holds. A JAR request we can not resolve is an error: passing it on unresolved would look
-     * like a successfully parsed request, but carry none of the parameters it is supposed to transport.
+     * Resolves a JAR request, i.e. the request object carried in `request`, into the request parameters it holds.
+     * A JAR request we can not resolve, including one referencing its request object in `request_uri`, is an error:
+     * passing it on unresolved would look like a successfully parsed request, but carry none of the parameters it is
+     * supposed to transport.
      */
-    private suspend fun RequestParametersFrom<out RequestParameters>.extractRequest(): RequestParametersFrom<*> =
+    private fun RequestParametersFrom<out RequestParameters>.extractRequest(): RequestParametersFrom<*> =
         (this.parameters as? JarRequestParameters)?.let { jar ->
-            (extractRequest(jar, this)
+            (extractDirectRequest(jar, this)
                 ?: throw InvalidRequest("request contains neither `request` nor `request_uri`"))
                 .requireNotNested()
         } ?: this
@@ -156,29 +150,26 @@ class RequestParser(
     }.getOrNull()
 
     /**
-     * Resolves the request object of the JAR request in [parameters], either from `request`, or by fetching the
-     * `request_uri` with [remoteResourceRetriever].
+     * Resolves the request object of the JAR request in [parameters] passed by value in `request`.
      *
-     * Returns `null` only if the request carries neither of the two, and throws if the request object can not be
-     * retrieved, or is not a valid request object.
+     * Returns `null` only if the request carries neither `request` nor `request_uri`, and throws if the request
+     * object is passed by reference in `request_uri` only, as it is not fetched here, or is not a valid request object.
      */
-    suspend fun extractRequest(
+    fun extractDirectRequest(
         parameters: JarRequestParameters,
         parent: RequestParametersFrom<out RequestParameters>?,
-    ): RequestParametersFrom<*>? = parameters.request?.parseRequestObjectByValue(parent, parameters.clientId)
-        ?: parameters.requestUri?.let { uri ->
-            val reference = parameters.toReference(uri, parent)
-            val content = remoteResourceRetriever(reference.toResourceRetrieverInput())
-                ?: throw InvalidRequest("could not retrieve request object from request_uri: $uri")
-            reference.resolve(content)
-        }
+    ): RequestParametersFrom<*>? =
+        parameters.request?.parseRequestObjectByValue(parent, parameters.clientId)
+            ?: parameters.requestUri?.let {
+                throw InvalidRequest("could not retrieve request object from request_uri: $it")
+            }
 
     /**
      * No JSON fallback: RFC 9101, 4 admits only a signed, or a signed and encrypted, request object. Throwing rather
      * than returning null keeps this parallel to [resolve] for `request_uri`, and reports the actual problem instead
      * of letting the elvis fall through to a request that is missing every parameter.
      */
-    private suspend fun String.parseRequestObjectByValue(
+    private fun String.parseRequestObjectByValue(
         parent: RequestParametersFrom<out RequestParameters>?,
         clientId: String,
     ): RequestParametersFrom<*> = (parseAsJwsRequest(parent)
@@ -218,7 +209,7 @@ class RequestParser(
      * "The client ID values in the `client_id` request parameter and in the Request Object `client_id` claim MUST be
      * identical."
      *
-     * Otherwise the client the request was launched with could differ from the one that signed the request object.
+     * Otherwise, the client the request was launched with could differ from the one that signed the request object.
      */
     private fun RequestParametersFrom<*>.requireClientId(expected: String) {
         val received = when (val params = parameters) {
@@ -247,14 +238,7 @@ class RequestParser(
             throw InvalidRequest("wallet_nonce we sent is missing from the request object, got: $received")
     }
 
-    private fun ParsedRequest.ByReference.toResourceRetrieverInput() = RemoteResourceRetrieverInput(
-        url = uri,
-        method = method,
-        headers = mapOf(HttpHeaders.Accept to MediaTypes.Application.AUTHZ_REQ_JWT),
-        requestObjectParameters = requestObjectParameters
-    )
-
-    private suspend fun String.parseAsJwsRequest(
+    private fun String.parseAsJwsRequest(
         parent: RequestParametersFrom<out RequestParameters>?,
         decryptedFrom: JweHeader? = null,
         invalidRequestDescription: String = "request content not a valid request object",
