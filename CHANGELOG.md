@@ -48,6 +48,9 @@ Release 10.0.0 (unreleased):
     - BREAKING: `RequestParser` no longer fetches request objects passed by reference in `request_uri`:
       `parseRequestParameters` fails with `InvalidRequest` for a request referencing its request object only in
       `request_uri`. Wallets fetch such request objects with `OpenId4VpProtocolClient.prepareAuthorizationResponse`.
+- Trust List filtering:
+    - In `LoteProfile` deprecate members `statusDeterminationApproach`, `schemeCommunityRules` and `schemeCountryCode`,
+      and don't validate their values as it has never been required by the specification.
 
 Release 9.0.0:
 

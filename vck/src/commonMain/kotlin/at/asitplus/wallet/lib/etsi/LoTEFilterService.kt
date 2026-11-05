@@ -26,7 +26,11 @@ class LoTEFilterService {
     fun extractIssuanceCertificates(
         lote: ListOfTrustedEntities,
         profile: LoteProfile
-    ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.ISSUANCE)
+    ): List<TrustedCertificate> = extractTrustedCertificates(
+        lote = lote,
+        profile = profile,
+        kind = ServiceKind.ISSUANCE
+    )
 
     /**
      * Extracts certificates matching the requested service type identifier for Revocation.
@@ -34,11 +38,15 @@ class LoTEFilterService {
     fun extractRevocationCertificates(
         lote: ListOfTrustedEntities,
         profile: LoteProfile
-    ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.REVOCATION)
+    ): List<TrustedCertificate> = extractTrustedCertificates(
+        lote = lote,
+        profile = profile,
+        kind = ServiceKind.REVOCATION
+    )
 
     /** The [LoteProfile] whose List and Scheme Information matches [lote] */
     fun profileOf(lote: ListOfTrustedEntities): LoteProfile? =
-        LoteProfile.entries.firstOrNull { checkListAndSchemeInformation(lote.listAndSchemeInformation, it) }
+        LoteProfile.entries.firstOrNull { it.matches(lote.listAndSchemeInformation) }
 
     /**
      * Extracts issuance certificates of [lote], for the profile detected from its own metadata.
@@ -62,7 +70,7 @@ class LoTEFilterService {
         profile: LoteProfile,
         kind: ServiceKind = ServiceKind.ISSUANCE
     ): List<TrustedCertificate> {
-        if (!checkListAndSchemeInformation(lote.listAndSchemeInformation, profile)) {
+        if (!profile.matches(lote.listAndSchemeInformation)) {
             return emptyList()
         }
 
@@ -73,8 +81,8 @@ class LoTEFilterService {
 
         val entities = lote.trustedEntitiesList ?: return emptyList()
         return entities.flatMap { entity ->
-            val providerNames = entity.trustedEntityInformation.teName + entity.trustedEntityInformation.teTradeName.orEmpty()
-
+            val providerNames =
+                entity.trustedEntityInformation.teName + entity.trustedEntityInformation.teTradeName.orEmpty()
 
             entity.trustedEntityServices
                 .filter { service ->
@@ -87,24 +95,12 @@ class LoTEFilterService {
     }
 
     /**
-     * Validates that the List and Scheme Information metadata aligns with the expected [LoteProfile].
+     * Validates that the List and Scheme Information metadata aligns with the expected [LoteProfile.loteType].
      */
-    private fun checkListAndSchemeInformation(
-        listAndSchemeInformation: ListAndSchemeInformation?,
-        profile: LoteProfile
-    ): Boolean {
-        if (listAndSchemeInformation == null) return false
-
-        val matchesLoteType = profile.matchesLoteType(listAndSchemeInformation.loteType?.toString())
-        val matchesStatus =
-            profile.matchesStatusDeterminationApproach(listAndSchemeInformation.statusDeterminationApproach?.toString())
-        val matchesRules = profile.matchesSchemeCommunityRules(
-            listAndSchemeInformation.schemeTypeCommunityRules?.map { it.uniformResourceIdentifier }
-        )
-        val matchesTerritory = profile.matchesSchemeTerritory(listAndSchemeInformation.schemeTerritory)
-
-        return matchesLoteType && matchesStatus && matchesRules && matchesTerritory
-    }
+    private fun LoteProfile.matches(
+        listAndSchemeInformation: ListAndSchemeInformation?
+    ): Boolean =
+        listAndSchemeInformation != null && matchesLoteType(listAndSchemeInformation.loteType?.toString())
 
     /**
      * Checks if the Organization (O) attribute within the certificate's Subject Name matches any of
@@ -156,26 +152,18 @@ sealed class LoteProfile(
     /** Name of the file this list is published as, relative to the base URL of a [LoTEStage]. */
     val fileName: String,
     val loteType: String,
-    val statusDeterminationApproach: String,
-    val schemeCommunityRules: List<Rfc3986UniformResourceIdentifier>,
+    @Deprecated("This field is not used anymore.")
+    val statusDeterminationApproach: String = "",
+    @Deprecated("This field is not used anymore.")
+    val schemeCommunityRules: List<Rfc3986UniformResourceIdentifier> = listOf(),
     val serviceTypeIdentifierIssuance: String,
     val serviceTypeIdentifierRevocation: String,
+    @Deprecated("This field is not used anymore.")
     val schemeCountryCode: EtsiCountryCode = EtsiCountryCode("EU")
 ) {
     fun matchesLoteType(loteTypeUri: String?): Boolean {
         if (loteTypeUri.isNullOrBlank()) return false
         return loteTypeUri.equals(loteType, ignoreCase = true)
-    }
-
-    fun matchesStatusDeterminationApproach(approachUri: String?): Boolean {
-        if (approachUri.isNullOrBlank()) return false
-        return approachUri.equals(statusDeterminationApproach, ignoreCase = true)
-    }
-
-    fun matchesSchemeCommunityRules(rulesUri: List<Rfc3986UniformResourceIdentifier>?): Boolean {
-        if (rulesUri.isNullOrEmpty()) return false
-        if (rulesUri.size != schemeCommunityRules.size) return false
-        return rulesUri.toSet() == schemeCommunityRules.toSet()
     }
 
     open fun matchesServiceTypeIssuance(serviceTypeUri: String?): Boolean {
@@ -188,11 +176,6 @@ sealed class LoteProfile(
         return serviceTypeUri.equals(serviceTypeIdentifierRevocation, ignoreCase = true)
     }
 
-    fun matchesSchemeTerritory(countryCode: EtsiCountryCode?): Boolean {
-        if (countryCode == null) return false
-        return countryCode.string.equals(schemeCountryCode.string, ignoreCase = true)
-    }
-
     /** URL to fetch this list from, below [baseUrl], e.g. [LoTEStage.baseUrl]. */
     fun fetchUrl(baseUrl: String): String = "${baseUrl.trimEnd('/')}/$fileName"
 
@@ -202,8 +185,6 @@ sealed class LoteProfile(
     data object PID : LoteProfile(
         fileName = "pid-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUPIDProvidersList",
-        statusDeterminationApproach = "http://uri.etsi.org/19602/PIDProvidersList/StatusDetn/EU",
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/PIDProviders/schemerules/EU")),
         serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/PID/Issuance",
         serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/PID/Revocation"
     )
@@ -211,8 +192,6 @@ sealed class LoteProfile(
     data object mDL : LoteProfile(
         fileName = "mdl-providers.json",
         loteType = "http://trust.ec.europa.eu/lists/mDL/mDLProvidersListType",
-        statusDeterminationApproach = "http://trust.ec.europa.eu/lists/mDL/mDLProvidersListStatusDetn",
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://trust.ec.europa.eu/lists/mDL/schemerules")),
         serviceTypeIdentifierIssuance = "http://trust.ec.europa.eu/lists/mDL/SvcType/Issuance",
         serviceTypeIdentifierRevocation = "http://trust.ec.europa.eu/lists/mDL/SvcType/Revocation"
     ) {
@@ -227,8 +206,6 @@ sealed class LoteProfile(
     data object WRPAC : LoteProfile(
         fileName = "wrpac-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUWRPACProvidersList",
-        statusDeterminationApproach = "http://uri.etsi.org/19602/WRPACProvidersList/StatusDetn/EU",
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WRPACProvidersList/schemerules/EU")),
         serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance",
         serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WRPAC/Revocation"
     )
@@ -236,8 +213,6 @@ sealed class LoteProfile(
     data object WRPRC : LoteProfile(
         fileName = "wrprc-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUWRPRCProvidersList",
-        statusDeterminationApproach = "http://uri.etsi.org/19602/WalletProvidersList/StatusDetn/EU",
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WalletProvidersList/schemerules/EU")),
         serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WRPRC/Issuance",
         serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WRPRC/Revocation"
     )
@@ -245,8 +220,6 @@ sealed class LoteProfile(
     data object WALLET : LoteProfile(
         fileName = "wallet-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUWalletProvidersList",
-        statusDeterminationApproach = "http://uri.etsi.org/19602/WalletProvidersList/StatusDetn/EU",
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/WalletProvidersList/schemerules/EU")),
         serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/WalletSolution/Issuance",
         serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/WalletSolution/Revocation"
     )
@@ -254,8 +227,6 @@ sealed class LoteProfile(
     data object EAA : LoteProfile(
         fileName = "pub-eaa-providers.json",
         loteType = "http://uri.etsi.org/19602/LoTEType/EUPubEAAProvidersList",
-        statusDeterminationApproach = "http://uri.etsi.org/19602/PubEAAProvidersList/StatusDetn/EU",
-        schemeCommunityRules = listOf(Rfc3986UniformResourceIdentifier("http://uri.etsi.org/19602/PubEAAProvidersList/schemerules/EU")),
         serviceTypeIdentifierIssuance = "http://uri.etsi.org/19602/SvcType/PubEAA/Issuance",
         serviceTypeIdentifierRevocation = "http://uri.etsi.org/19602/SvcType/PubEAA/Revocation"
     )

@@ -7,22 +7,15 @@ interface TrustAnchorProvider {
     /** Issuer anchors for a credential type (vct / doctype), e.g. "urn:eudi:pid:1". */
     suspend fun issuanceAnchors(credentialIdentifier: String): List<X509Certificate>
 
-
-
     /** Issuer anchors for a fixed list type, e.g. LoteProfile.WRPAC. */
     suspend fun issuanceAnchors(profile: LoteProfile): List<X509Certificate>
-
-
 
     /** Status list signer anchors for a credential type, JWT and CWT alike (PID -> PID revocation only). */
     suspend fun revocationAnchors(credentialIdentifier: String): List<X509Certificate>
 
-
-
     /** Status list signer anchors for a fixed list type, e.g. LoteProfile.WRPAC. */
     suspend fun revocationAnchors(profile: LoteProfile): List<X509Certificate>
 }
-
 
 
 /**
@@ -42,27 +35,17 @@ class LoTETrustAnchorProvider(
     private val filter: LoTEFilterService = LoTEFilterService(),
 ) : TrustAnchorProvider {
 
-
-
     override suspend fun issuanceAnchors(credentialIdentifier: String) =
         trustListsFor(credentialIdentifier).flatMap { filter.extractIssuanceCertificates(it) }.anchors()
-
-
 
     override suspend fun issuanceAnchors(profile: LoteProfile) =
         trustLists().flatMap { filter.extractIssuanceCertificates(it, profile) }.anchors()
 
-
-
     override suspend fun revocationAnchors(credentialIdentifier: String) =
         trustListsFor(credentialIdentifier).flatMap { filter.extractRevocationCertificates(it) }.anchors()
 
-
-
     override suspend fun revocationAnchors(profile: LoteProfile) =
         trustLists().flatMap { filter.extractRevocationCertificates(it, profile) }.anchors()
-
-
 
     private fun List<TrustedCertificate>.anchors() = mapNotNull { it.certificate }
 }
