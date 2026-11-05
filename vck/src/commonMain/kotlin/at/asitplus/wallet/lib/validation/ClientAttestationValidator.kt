@@ -140,9 +140,9 @@ class ClientAttestationValidator @JvmOverloads constructor(
         val statusExpiration = clientStatus?.expiration
         fun failed(message: String) =
             Failed(TimelinessException(message, now, notBefore = issuedAt, notAfter = expiration))
+        val validity = ValidityPeriod(notBefore = issuedAt, notAfter = expiration).check(timeScope, "client attestation")
         when {
-            issuedAt != null && issuedAt.isTooLate() -> failed("client attestation iat in future: $issuedAt")
-            expiration.isTooEarly() -> failed("client attestation expired: $expiration")
+            validity != Passed -> validity
             issuedAt != null && expiration - issuedAt >= 24.hours ->
                 failed("client attestation lifetime must be less than 24 hours")
 

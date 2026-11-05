@@ -396,7 +396,7 @@ val ArtifactValidationRulesTest by matrixSuite {
                 disclosedItems = emptyList(),
                 requiredClaims = RequiredClaimsValidation(NotApplicable),
                 holderBinding = NotApplicable,
-                timeliness = TimelinessValidation(Passed, details = null),
+                timeliness = TimelinessValidation(Passed, validity = null),
                 status = validStatus,
             ),
             policy = strictPolicy,

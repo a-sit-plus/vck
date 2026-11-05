@@ -28,8 +28,6 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import at.asitplus.wallet.lib.etsi.isExpired
-import at.asitplus.wallet.lib.etsi.isValidAt
 import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -102,20 +100,12 @@ internal suspend fun evaluateAccessCertificate(
     )
 }
 
+/** Every certificate of the chain is valid at [now], without leeway, as for the trust in the chain. */
 private fun CertificateChain.timeliness(now: Instant): CheckOutcome =
-    firstOrNull { !it.isValidAt(now) }?.let {
-        Failed(
-            TimelinessException(
-                message = if (it.isExpired(now))
-                    "A certificate of the chain is expired"
-                else
-                    "A certificate of the chain is not yet valid",
-                evaluatedAt = now,
-                notBefore = it.tbsCertificate.validFrom.instant,
-                notAfter = it.tbsCertificate.validUntil.instant,
-            )
-        )
-    } ?: Passed
+    map { ValidityPeriod(it.tbsCertificate.validFrom.instant, it.tbsCertificate.validUntil.instant) }
+        .firstNotNullOfOrNull { validity ->
+            validity.check(TimeScope(now, Duration.ZERO), "certificate of the chain").takeIf { it != Passed }
+        } ?: Passed
 
 private fun X509Certificate.x509HashBinding(clientId: String): CheckOutcome = catchingUnwrapped {
     require(clientId.startsWith(X509_HASH)) { "The client identifier does not use the prefix x509_hash" }
@@ -313,13 +303,15 @@ private fun WrpPayload.requireClaims(purpose: RegistrationPurpose) {
     }
 }
 
-private fun WrpPayload.timeliness(maxValidity: Duration, timeScope: TimeScope): CheckOutcome = with(timeScope) {
-    fun failed(message: String) = Failed(TimelinessException(message, now, notBefore = iat, notAfter = exp))
+private fun WrpPayload.timeliness(maxValidity: Duration, timeScope: TimeScope): CheckOutcome {
     val expires = exp
-    when {
-        iat.isTooLate() -> failed("The WRPRC is issued in the future")
-        expires != null && expires.isTooEarly() -> failed("The WRPRC is expired")
-        expires != null && expires - iat > maxValidity -> failed("The WRPRC is valid for longer than $maxValidity")
+    val validity = ValidityPeriod(notBefore = iat, notAfter = expires).check(timeScope, "WRPRC")
+    return when {
+        validity != Passed -> validity
+        expires != null && expires - iat > maxValidity -> Failed(
+            TimelinessException("The WRPRC is valid for longer than $maxValidity", timeScope.now, iat, expires)
+        )
+
         else -> Passed
     }
 }

@@ -114,9 +114,9 @@ class KeyAttestationValidator @JvmOverloads constructor(
         val statusExpiration = keyStorageStatus?.expiration
         fun failed(message: String) =
             Failed(TimelinessException(message, now, notBefore = issuedAt, notAfter = expiration))
+        val validity = ValidityPeriod(notBefore = issuedAt, notAfter = expiration).check(timeScope, "key attestation")
         when {
-            issuedAt.isTooLate() -> failed("issuedAt in future: $issuedAt")
-            expiration != null && expiration.isTooEarly() -> failed("expiration in past: $expiration")
+            validity != Passed -> validity
             statusExpiration != null && statusExpiration.isTooEarly() ->
                 failed("key_storage_status expiration in past: $statusExpiration")
 
