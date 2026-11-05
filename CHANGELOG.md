@@ -20,6 +20,11 @@ Release 10.0.0 (unreleased):
       WRPRCs, WRPAC chains, and status list tokens is checked with a `ValidityPeriod` too: their `TimelinessException`
       says "The <artifact> is expired" or "is not yet valid", and carries the whole validity period, as does the one
       of a credential, which carried only the violated bound
+    - The validity of certificates in trust checks tolerates the `timeLeeway` of the `ValidationPolicy`, as the
+      timeliness checks of the artifacts they sign do: the signers of credentials, status list tokens, key and client
+      attestations, and verifier attestations, and the chains of WRPACs and WRPRCs, whose `timeliness` check used no
+      leeway either. Add the parameter `leeway` (`Duration.ZERO` by default) to `isTrustedBy`, `isValidAt`,
+      `isExpired`, and `isNotYetValid` of `X509Certificate`, and `timeLeeway` to `RelyingPartyValidator.clientTrust`
 - Status lists:
     - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status
       List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still

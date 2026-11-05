@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.TrustedCertificates
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
@@ -27,7 +28,7 @@ private const val WALLET_PROVIDER_STATUS = "status list signers of wallet provid
 internal suspend fun walletProviderTrust(
     chain: CertificateChain?,
     anchors: TrustedCertificates?,
-    at: Instant,
+    at: TimeScope,
 ): TrustValidation = TrustValidation(
     outcome = checkTrust(chain, anchors?.invoke(), at, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED),
     source = WALLET_PROVIDERS,

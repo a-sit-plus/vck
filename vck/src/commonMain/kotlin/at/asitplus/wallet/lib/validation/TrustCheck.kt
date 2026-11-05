@@ -4,12 +4,12 @@ import at.asitplus.catchingUnwrapped
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.relyingParty.requireChainToAnchor
 import at.asitplus.wallet.lib.etsi.isIssuerOf
 import at.asitplus.wallet.lib.etsi.isValidAt
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
-import kotlin.time.Instant
 
 /**
  * How the certificate chain transported with a signed artifact has to lead to a trust anchor.
@@ -49,8 +49,9 @@ internal enum class TrustRule {
 }
 
 /**
- * Whether [chain] leads to one of [anchors] at [at], following [rule]. Only evaluates: whether the outcome rejects is
- * up to the [TrustPolicy].
+ * Whether [chain] leads to one of [anchors] at [TimeScope.now] of [at], following [rule]. The validity of every
+ * certificate tolerates the [TimeScope.timeLeeway] of the policy, as do the timeliness checks of the artifacts they
+ * sign. Only evaluates: whether the outcome rejects is up to the [TrustPolicy].
  *
  * Blocked if no anchors are configured at all (`null`), failed if there are none, as the configured trust source
  * then authorizes no signer, and failed if the chain does not lead to an anchor.
@@ -60,7 +61,7 @@ internal enum class TrustRule {
 internal suspend fun checkTrust(
     chain: CertificateChain?,
     anchors: Set<X509Certificate>?,
-    at: Instant,
+    at: TimeScope,
     rule: TrustRule,
 ): CheckOutcome {
     if (anchors == null) return Blocked(IllegalStateException("No trust anchors configured"))
@@ -76,13 +77,13 @@ internal suspend fun checkTrust(
 }
 
 /**
- * Requires the signing certificate of [chain] to be one of [anchors], valid at [at], or [chain] to lead to one of them,
- * see [requireChainToAnchor]: every certificate certifies the previous one (RFC 7515, 4.1.6) and is valid at [at], and
- * the last one is issued by one of [anchors]. Then the signing certificate must not be self-signed (OpenID4VC HAIP 1.0,
- * 4.5.1, 6.1, 6.1.1), and no anchor may be transported, as its certificate must be known out-of-band, except as the
- * last certificate of [chain], which is then ignored.
+ * Requires the signing certificate of [chain] to be one of [anchors], valid within [at], or [chain] to lead to one of
+ * them, see [requireChainToAnchor]: every certificate certifies the previous one (RFC 7515, 4.1.6) and is valid within
+ * [at], and the last one is issued by one of [anchors]. Then the signing certificate must not be self-signed
+ * (OpenID4VC HAIP 1.0, 4.5.1, 6.1, 6.1.1), and no anchor may be transported, as its certificate must be known
+ * out-of-band, except as the last certificate of [chain], which is then ignored.
  */
-private fun requireListedOrIssuedByAnchor(chain: CertificateChain, anchors: Set<X509Certificate>, at: Instant) {
+private fun requireListedOrIssuedByAnchor(chain: CertificateChain, anchors: Set<X509Certificate>, at: TimeScope) {
     // Compare the full certificate, not just its key: a listed signer does not confer trust on other certificates
     // sharing that key
     fun isListed(certificate: X509Certificate) = anchors.any {
@@ -92,7 +93,7 @@ private fun requireListedOrIssuedByAnchor(chain: CertificateChain, anchors: Set<
     // A listed signer is trusted itself, so the certificates transported with it, e.g. its issuer, confer nothing
     val signer = chain.leaf
     if (isListed(signer)) {
-        require(signer.isValidAt(at)) { "Signing certificate is not valid at $at" }
+        require(signer.isValidAt(at.now, at.timeLeeway)) { "Signing certificate is not valid at ${at.now}" }
         return
     }
     // A transported anchor confers no trust, as it is compared to the configured ones anyway, so tolerate it at the
@@ -116,7 +117,7 @@ internal suspend fun CredentialTrustAnchors?.checkCredentialTrust(
     credentialIdentifier: String,
     purpose: TrustPurpose,
     chain: CertificateChain?,
-    at: Instant,
+    at: TimeScope,
 ): TrustValidation {
     if (this == null) {
         return TrustValidation(

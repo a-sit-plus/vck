@@ -147,7 +147,7 @@ class StatusValidator @JvmOverloads constructor(
             parsing = verified.parsing,
             signature = signature.outcome,
             signerTrust = if (signature.outcome == Passed) {
-                signerAnchors.authorize(signature.certificateChain, evaluatedAt)
+                signerAnchors.authorize(signature.certificateChain, TimeScope(evaluatedAt, timeLeeway))
             } else TrustValidation(Blocked(), signerAnchors.credentialIdentifier),
             subject = claims?.let { subject(it, reference) } ?: Blocked(),
             timeliness = claims?.let { timeliness(it, token.resolvedAt, timeLeeway, evaluatedAt) } ?: Blocked(),
@@ -240,7 +240,7 @@ class StatusValidator @JvmOverloads constructor(
 
     private suspend fun StatusSignerAnchors.authorize(
         chain: CertificateChain?,
-        at: Instant
+        at: TimeScope,
     ): TrustValidation = when (this) {
         is StatusSignerAnchors.OfCredentialType -> credentialIdentifier
             ?.let { anchors.checkCredentialTrust(it, TrustPurpose.STATUS, chain, at) }
