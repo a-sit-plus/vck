@@ -122,7 +122,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      */
     private val introspectionEndpointPath: String = "/introspect",
     /**
-     * Used to build [OAuth2AuthorizationServerMetadata.challengeEndpointUrl], i.e. implementers need to forward requests
+     * Used to build [OAuth2AuthorizationServerMetadata.challengeEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [attestationChallenge].
      */
     private val challengeEndpointPath: String = "/challenge",
@@ -141,8 +141,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     private val clientAuthenticationService: ClientAuthenticationService = NoopClientAuthenticationService,
     /** Used to parse requests from clients, e.g., when using JWT-Secured Authorization Requests (RFC 9101) */
     private val requestParser: RequestParser = RequestParser(
-        /** By default, do not retrieve authn requests referenced by `request_uri`. */
-        remoteResourceRetriever = { null },
         /** Not necessary to load the authn request referenced by `request_uri`. */
         buildRequestObjectParameters = { null }
     ),
@@ -155,8 +153,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
      * - this is the default behaviour of `OAuth2KtorClient`
      */
     private val requestObjectSigningAlgorithms: Set<JwsAlgorithm.Signature>? = setOf(JwsAlgorithm.Signature.ES256),
-    /** Used for [OAuth2AuthorizationServerMetadata.clientAttestationSigningAlgValuesSupportedStrings] */
-    private val supportedSigningAlgorithms: Set<JwsAlgorithm.Signature> = DEFAULT_WALLET_ATTESTATION_ALGORITHMS,
     /**
      * Used to sign JWT introspection responses (RFC 9701), which resource servers verify with the key of this
      * authorization server, i.e. the default ephemeral key is only good for tests.
@@ -355,10 +351,17 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     override suspend fun par(
         input: String,
         httpRequest: RequestInfo?,
-    ) = par(
-        request = requestParser.parseRequestParameters(input).getOrThrow().parameters,
-        httpRequest = httpRequest
-    )
+    ): KmmResult<PushedAuthenticationResponseParameters> = catching {
+        when (val parsed = requestParser.parseWithoutFetching(input)) {
+            is RequestParser.ParsedRequest.Resolved -> par(
+                request = parsed.request.parameters,
+                httpRequest = httpRequest
+            ).getOrThrow()
+
+            is RequestParser.ParsedRequest.ByReference ->
+                throw InvalidRequest("PAR has to contain authn request byvalue")
+        }
+    }
 
     /**
      * Pushed authorization request endpoint as defined in [RFC 9126](https://datatracker.ietf.org/doc/html/rfc9126).
@@ -374,7 +377,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     override suspend fun par(
         request: RequestParameters,
         httpRequest: RequestInfo?,
-    ) = catching {
+    ): KmmResult<PushedAuthenticationResponseParameters> = catching {
         val actualRequest = request.extractPushedRequestParams()
         Napier.i("par called with $actualRequest")
         val validatedClientKey = httpRequest?.validatedClientKey()
@@ -413,13 +416,12 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         ResponseWithDpopNonce(response, tokenService.dpopNonce(), clientAuthenticationService.getAttestationChallenge())
     }
 
-    private suspend fun RequestParameters.extractPushedRequestParams() = when (this) {
+    private fun RequestParameters.extractPushedRequestParams() = when (this) {
         is JarRequestParameters -> {
-            require(requestUri == null) { "request_uri must not be set for PAR" }
-            requestParser.extractRequest(this, null)?.parameters as? AuthenticationRequestParameters
+            if (requestUri != null) throw InvalidRequest("request_uri must not be set for PAR")
+            requestParser.extractDirectRequest(this, null)?.parameters as? AuthenticationRequestParameters
                 ?: throw InvalidRequest("request must contain valid authorization request parameters")
         }
-
         is AuthenticationRequestParameters -> this
         else -> throw InvalidRequest("Request is neither plain nor JAR")
     }
@@ -432,15 +434,13 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     override suspend fun authorize(
         input: RequestParameters,
         loadUserFun: OAuth2LoadUserFun,
-    ) = catching {
+    ): KmmResult<AuthenticationResponseResult.Redirect> = catching {
         val (actualRequest, authenticatedClient) = extractRequestForAuthorize(input)
             .let { it.first.validate() to it.second }
         val userInfo = loadUserFun(OAuth2LoadUserFunInput(actualRequest)).getOrElse {
             throw InvalidRequest("Could not load user info for request $input", it)
         }
-        with(actualRequest) {
-            issueCodeForUserInfo(userInfo, actualRequest, authenticatedClient)
-        }
+        issueCodeForUserInfo(userInfo, actualRequest, authenticatedClient)
     }
 
     internal suspend fun issueCodeForUserInfo(
@@ -497,8 +497,9 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         } ?: run {
             if (requirePushedAuthorizationRequests)
                 throw InvalidRequest("pushed authorization request required, but got request object by value")
-            val request = requestParser.extractRequest(input, null)?.parameters as? AuthenticationRequestParameters
-                ?: throw InvalidRequest("could not parse request object from request")
+            val request =
+                requestParser.extractDirectRequest(input, null)?.parameters as? AuthenticationRequestParameters
+                    ?: throw InvalidRequest("could not parse request object from request")
             if (input.clientId != request.clientId)
                 throw InvalidRequest("client_id not matching from par: ${input.clientId} vs ${request.clientId}")
             request to null
@@ -825,7 +826,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     ): KmmResult<JsonObject> = userInfo(authorizationHeader, httpRequest)
 
     /**
-     * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter],
+     * Obtains information about the token, since we're in-memory here (as an [OAuth2AuthorizationServerAdapter]),
      * we can directly access our [tokenService].
      */
     override suspend fun getTokenInfo(
