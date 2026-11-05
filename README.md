@@ -443,8 +443,7 @@ val policy = ValidationPolicy(
 
 Each `ValidationReport` lists its `namedChecks` with the `Requirement` the policy put on each, so that a report can be
 displayed as it has been decided, including the checks a relaxed policy tolerates; `firstRejection()` tells why a
-report has been rejected. The validators and agents that predate this API, e.g. `Validator`, `VerifierAgent`,
-`WrprcValidator`, and `TokenStatusValidator`, are deprecated, see [CHANGELOG.md](CHANGELOG.md).
+report has been rejected.
 
 ### Registering credential schemes
 

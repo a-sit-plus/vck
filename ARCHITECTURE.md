@@ -54,13 +54,11 @@ Important areas:
 
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent`
   Core application-facing abstractions and implementations: `Holder`, `HolderAgent`, `Issuer`, `IssuerAgent`,
-  `KeyMaterial`, credential stores, nonce/status helpers, and credential issuance inputs/results. `VerifierAgent` and
-  `Validator` are deprecated, see *Validation*.
+  `KeyMaterial`, credential stores, nonce/status helpers, and credential issuance inputs/results.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/validation`
   Validation of credentials, presentations, and the other artifacts with reports, see *Validation*.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/agent/validation`
-  The format-specific timeliness validators and VC-JWS content semantics that `CredentialValidator` uses, and the
-  deprecated legacy validators.
+  The format-specific timeliness validators and VC-JWS content semantics that `CredentialValidator` uses.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`
   DCQL matching and submission logic over stored credentials.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/iso`
@@ -232,8 +230,7 @@ is used instead of Kotlin's inline `Result` for Swift-friendly public APIs, and
 [Signum](https://github.com/a-sit-plus/signum) provides crypto, ASN.1, JOSE, and COSE types.
 
 The primary application entry points are `HolderAgent` and `IssuerAgent`, following the
-[W3C VC Data Model](https://w3c.github.io/vc-data-model/) nomenclature. Verifiers validate with `CredentialValidator`;
-the deprecated `VerifierAgent` only remains for migration.
+[W3C VC Data Model](https://w3c.github.io/vc-data-model/) nomenclature. Verifiers validate with `CredentialValidator`.
 
 ### Credential Formats
 
