@@ -9,6 +9,15 @@ Release 10.0.0 (unreleased):
       List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still
       emitted as stored blocks.
 
+- OpenID for Verifiable Presentations verifier
+    - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
+      returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
+      longer `registration`. WRPRCs that all link, but have different subjects, still fail `registration`, now
+      reported as having different subjects rather than identifying different relying parties, as one relying party
+      can be registered with several identifiers (ETSI TS 119 475 V1.2.1, B.2.2). The shared subject stands in for
+      the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
+      amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
+
 Release 9.0.0:
 
 The new validation API (`CredentialValidator`, `RelyingPartyValidator`, `IssuerMetadataValidator`) reports every check
