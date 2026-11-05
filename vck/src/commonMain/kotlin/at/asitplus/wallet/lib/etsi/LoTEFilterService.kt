@@ -26,7 +26,11 @@ class LoTEFilterService {
     fun extractIssuanceCertificates(
         lote: ListOfTrustedEntities,
         profile: LoteProfile
-    ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.ISSUANCE)
+    ): List<TrustedCertificate> = extractTrustedCertificates(
+        lote = lote,
+        profile = profile,
+        kind = ServiceKind.ISSUANCE
+    )
 
     /**
      * Extracts certificates matching the requested service type identifier for Revocation.
@@ -34,11 +38,15 @@ class LoTEFilterService {
     fun extractRevocationCertificates(
         lote: ListOfTrustedEntities,
         profile: LoteProfile
-    ): List<TrustedCertificate> = extractTrustedCertificates(lote, profile, ServiceKind.REVOCATION)
+    ): List<TrustedCertificate> = extractTrustedCertificates(
+        lote = lote,
+        profile = profile,
+        kind = ServiceKind.REVOCATION
+    )
 
     /** The [LoteProfile] whose List and Scheme Information matches [lote] */
     fun profileOf(lote: ListOfTrustedEntities): LoteProfile? =
-        LoteProfile.entries.firstOrNull { checkListAndSchemeInformation(lote.listAndSchemeInformation, it) }
+        LoteProfile.entries.firstOrNull { it.matches(lote.listAndSchemeInformation) }
 
     /**
      * Extracts issuance certificates of [lote], for the profile detected from its own metadata.
@@ -62,7 +70,7 @@ class LoTEFilterService {
         profile: LoteProfile,
         kind: ServiceKind = ServiceKind.ISSUANCE
     ): List<TrustedCertificate> {
-        if (!checkListAndSchemeInformation(lote.listAndSchemeInformation, profile)) {
+        if (!profile.matches(lote.listAndSchemeInformation)) {
             return emptyList()
         }
 
@@ -73,8 +81,8 @@ class LoTEFilterService {
 
         val entities = lote.trustedEntitiesList ?: return emptyList()
         return entities.flatMap { entity ->
-            val providerNames = entity.trustedEntityInformation.teName + entity.trustedEntityInformation.teTradeName.orEmpty()
-
+            val providerNames =
+                entity.trustedEntityInformation.teName + entity.trustedEntityInformation.teTradeName.orEmpty()
 
             entity.trustedEntityServices
                 .filter { service ->
@@ -87,24 +95,12 @@ class LoTEFilterService {
     }
 
     /**
-     * Validates that the List and Scheme Information metadata aligns with the expected [LoteProfile].
+     * Validates that the List and Scheme Information metadata aligns with the expected [LoteProfile.loteType].
      */
-    private fun checkListAndSchemeInformation(
-        listAndSchemeInformation: ListAndSchemeInformation?,
-        profile: LoteProfile
-    ): Boolean {
-        if (listAndSchemeInformation == null) return false
-
-        val matchesLoteType = profile.matchesLoteType(listAndSchemeInformation.loteType?.toString())
-        val matchesStatus =
-            profile.matchesStatusDeterminationApproach(listAndSchemeInformation.statusDeterminationApproach?.toString())
-        val matchesRules = profile.matchesSchemeCommunityRules(
-            listAndSchemeInformation.schemeTypeCommunityRules?.map { it.uniformResourceIdentifier }
-        )
-        val matchesTerritory = profile.matchesSchemeTerritory(listAndSchemeInformation.schemeTerritory)
-
-        return matchesLoteType && matchesStatus && matchesRules && matchesTerritory
-    }
+    private fun LoteProfile.matches(
+        listAndSchemeInformation: ListAndSchemeInformation?
+    ): Boolean =
+        listAndSchemeInformation != null && matchesLoteType(listAndSchemeInformation.loteType?.toString())
 
     /**
      * Checks if the Organization (O) attribute within the certificate's Subject Name matches any of
@@ -162,36 +158,14 @@ sealed class LoteProfile(
     val serviceTypeIdentifierRevocation: String,
     val schemeCountryCode: EtsiCountryCode = EtsiCountryCode("EU")
 ) {
-    fun matchesLoteType(loteTypeUri: String?): Boolean {
-        if (loteTypeUri.isNullOrBlank()) return false
-        return loteTypeUri.equals(loteType, ignoreCase = true)
-    }
+    fun matchesLoteType(loteTypeUri: String?): Boolean =
+        !loteTypeUri.isNullOrBlank() && loteTypeUri.equals(loteType, ignoreCase = true)
 
-    fun matchesStatusDeterminationApproach(approachUri: String?): Boolean {
-        if (approachUri.isNullOrBlank()) return false
-        return approachUri.equals(statusDeterminationApproach, ignoreCase = true)
-    }
+    open fun matchesServiceTypeIssuance(serviceTypeUri: String?): Boolean =
+        !serviceTypeUri.isNullOrBlank() && serviceTypeUri.equals(serviceTypeIdentifierIssuance, ignoreCase = true)
 
-    fun matchesSchemeCommunityRules(rulesUri: List<Rfc3986UniformResourceIdentifier>?): Boolean {
-        if (rulesUri.isNullOrEmpty()) return false
-        if (rulesUri.size != schemeCommunityRules.size) return false
-        return rulesUri.toSet() == schemeCommunityRules.toSet()
-    }
-
-    open fun matchesServiceTypeIssuance(serviceTypeUri: String?): Boolean {
-        if (serviceTypeUri.isNullOrBlank()) return false
-        return serviceTypeUri.equals(serviceTypeIdentifierIssuance, ignoreCase = true)
-    }
-
-    fun matchesServiceTypeRevocation(serviceTypeUri: String?): Boolean {
-        if (serviceTypeUri.isNullOrBlank()) return false
-        return serviceTypeUri.equals(serviceTypeIdentifierRevocation, ignoreCase = true)
-    }
-
-    fun matchesSchemeTerritory(countryCode: EtsiCountryCode?): Boolean {
-        if (countryCode == null) return false
-        return countryCode.string.equals(schemeCountryCode.string, ignoreCase = true)
-    }
+    fun matchesServiceTypeRevocation(serviceTypeUri: String?): Boolean =
+        !serviceTypeUri.isNullOrBlank() && serviceTypeUri.equals(serviceTypeIdentifierRevocation, ignoreCase = true)
 
     /** URL to fetch this list from, below [baseUrl], e.g. [LoTEStage.baseUrl]. */
     fun fetchUrl(baseUrl: String): String = "${baseUrl.trimEnd('/')}/$fileName"
