@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.supreme.sign.verifierFor
 import at.asitplus.signum.supreme.sign.verify
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Instant
 
 /**
@@ -17,7 +18,8 @@ data object Success
 
 /**
  * Verifies if this certificate is directly signed and trusted by any anchor in the [trustStore].
- * Enforces time validity, that the anchor may issue certificates at all, and cryptographic integrity.
+ * Enforces time validity at [date], tolerating [leeway], that the anchor may issue certificates at all, and
+ * cryptographic integrity.
  *
  * An anchor that does not assert `BasicConstraints` with `cA` set is skipped, per
  * [RFC 5280, Section 4.2.1.9](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.9): its public key
@@ -27,11 +29,12 @@ data object Success
  */
 fun X509Certificate.isTrustedBy(
     trustStore: CertificateChain,
-    date: Instant = Clock.System.now()
+    date: Instant = Clock.System.now(),
+    leeway: Duration = Duration.ZERO,
 ): KmmResult<Success> = catching {
-    if (!this.isValidAt(date)) throw Exception("Certificate is not valid at $date")
+    if (!this.isValidAt(date, leeway)) throw Exception("Certificate is not valid at $date")
 
-    val valid = trustStore.filter { it.isValidAt(date) }
+    val valid = trustStore.filter { it.isValidAt(date, leeway) }
     val authorities = valid.filter { it.isCertificateAuthority }
     authorities
         .asSequence()
@@ -47,24 +50,25 @@ fun X509Certificate.isTrustedBy(
 }
 
 /**
- * Checks whether this certificate has expired at the specified [date].
+ * Checks whether this certificate has expired at the specified [date], tolerating [leeway].
  * @return `true` if the certificate is expired, `false` otherwise.
  */
-fun X509Certificate.isExpired(date: Instant = Clock.System.now()): Boolean =
-    date > tbsCertificate.validUntil.instant
+fun X509Certificate.isExpired(date: Instant = Clock.System.now(), leeway: Duration = Duration.ZERO): Boolean =
+    date - leeway > tbsCertificate.validUntil.instant
 
 /**
- * Checks whether this certificate is not yet valid at the specified [date].
+ * Checks whether this certificate is not yet valid at the specified [date], tolerating [leeway].
  * @return `true` if the certificate is not yet valid, `false` otherwise.
  */
-fun X509Certificate.isNotYetValid(date: Instant = Clock.System.now()): Boolean =
-    date < tbsCertificate.validFrom.instant
+fun X509Certificate.isNotYetValid(date: Instant = Clock.System.now(), leeway: Duration = Duration.ZERO): Boolean =
+    date + leeway < tbsCertificate.validFrom.instant
 
 
 /**
- * Checks whether this certificate is valid at the specified [date].
+ * Checks whether this certificate is valid at the specified [date], tolerating [leeway].
  */
-fun X509Certificate.isValidAt(date: Instant = Clock.System.now()): Boolean = !(isExpired(date) || isNotYetValid(date))
+fun X509Certificate.isValidAt(date: Instant = Clock.System.now(), leeway: Duration = Duration.ZERO): Boolean =
+    !(isExpired(date, leeway) || isNotYetValid(date, leeway))
 
 /**
  * Verifies that this certificate is the issuer of the given [cert].

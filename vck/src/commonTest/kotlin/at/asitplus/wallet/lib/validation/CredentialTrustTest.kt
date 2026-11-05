@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.TestCertificateAuthority
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.selfSignedKey
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.etsi.LoTEFilterService
 import at.asitplus.wallet.lib.etsi.LoTETestData
 import at.asitplus.wallet.lib.etsi.LoteProfile
@@ -20,7 +21,9 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 
 private const val PID_VCT = "urn:eudi:pid:1"
 private const val PID_DOCTYPE = "eu.europa.ec.eudi.pid.1"
@@ -28,8 +31,12 @@ private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
 
 private val json = Json { ignoreUnknownKeys = true }
 
-/** Read when a check runs, i.e. after the certificates of the test have been issued. */
-private fun now() = Clock.System.now()
+/**
+ * Read when a check runs, i.e. after the certificates of the test have been issued, moved by [offset], tolerating
+ * [leeway].
+ */
+private fun now(offset: Duration = Duration.ZERO, leeway: Duration = Duration.ZERO) =
+    TimeScope(Clock.System.now() + offset, leeway)
 
 private fun lote(payload: String) = json.decodeFromString<ListOfTrustedEntities>(payload)
 
@@ -214,8 +221,20 @@ val CredentialTrustTest by matrixSuite {
             val chain = ca.signerChain()
 
             checkTrust(chain, setOf(ca.certificate), now(), rule) shouldBe Passed
-            checkTrust(chain, setOf(ca.certificate), now() + 1.days, rule)
+            checkTrust(chain, setOf(ca.certificate), now(1.days), rule)
                 .shouldBeInstanceOf<Failed>()
+        }
+
+        listOf(TrustRule.ISSUED_BY_ANCHOR_OR_LISTED, TrustRule.CHAIN_TO_ANCHOR)
+            .asData(nameFn = { "$it tolerates the leeway for the validity of the signer and the anchor" }) test { rule ->
+            // the certificates of the test are valid for five minutes from now
+            val ca = TestCertificateAuthority()
+            val chain = ca.signerChain()
+
+            listOf((-2).minutes, 6.minutes).forEach { offset ->
+                checkTrust(chain, setOf(ca.certificate), now(offset), rule).shouldBeInstanceOf<Failed>()
+                checkTrust(chain, setOf(ca.certificate), now(offset, leeway = 5.minutes), rule) shouldBe Passed
+            }
         }
 
         listOf(TrustRule.ISSUED_BY_ANCHOR_OR_LISTED, TrustRule.CHAIN_TO_ANCHOR)
@@ -253,7 +272,7 @@ val CredentialTrustTest by matrixSuite {
 
             listOf(issued, selfSigned).forEach { chain ->
                 checkTrust(chain, chain.toSet(), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED) shouldBe Passed
-                checkTrust(chain, chain.toSet(), now() + 1.days, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
+                checkTrust(chain, chain.toSet(), now(1.days), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
                     .shouldBeInstanceOf<Failed>()
             }
         }
@@ -264,7 +283,7 @@ val CredentialTrustTest by matrixSuite {
             val chain = listOf(signer, ca.certificate)
 
             checkTrust(chain, setOf(signer), now(), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED) shouldBe Passed
-            checkTrust(chain, setOf(signer), now() + 1.days, TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
+            checkTrust(chain, setOf(signer), now(1.days), TrustRule.ISSUED_BY_ANCHOR_OR_LISTED)
                 .shouldBeInstanceOf<Failed>()
         }
 

@@ -28,8 +28,6 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertific
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import at.asitplus.wallet.lib.etsi.isExpired
-import at.asitplus.wallet.lib.etsi.isValidAt
 import at.asitplus.wallet.lib.validation.CheckOutcome.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -53,7 +51,7 @@ internal class AccessCertificateEvaluation(
  *    party without WRPRCs, accepted with [RegistrationPolicy.ValidateIfPresent], need not be a WRPAC;
  *  - `trust`: every certificate is valid and issued by the next one, and the last one is or is issued by one of
  *    [anchors], see [TrustRule.CHAIN_TO_ANCHOR];
- *  - `timeliness`: every certificate is valid at [now];
+ *  - `timeliness`: every certificate is valid at [TimeScope.now], tolerating [TimeScope.timeLeeway], as for `trust`;
  *  - `clientId`: for a JAR, the client identifier uses the prefix `x509_hash` (ETSI TS 119 472-2 V1.1.1, 6.3.1.2,
  *    OIDFVP-HAIP_COMMON_GEN_REQ-02) with the hash of the leaf (OpenID4VP 1.0, 5.9.3); not applicable without one,
  *    i.e. for mdoc reader authentication.
@@ -64,7 +62,7 @@ internal suspend fun evaluateAccessCertificate(
     clientId: String?,
     anchors: TrustedCertificates?,
     source: String,
-    now: Instant,
+    timeScope: TimeScope,
     requireIdentifier: Boolean = true,
 ): AccessCertificateEvaluation {
     if (chain.isNullOrEmpty()) {
@@ -92,30 +90,22 @@ internal suspend fun evaluateAccessCertificate(
             parsing = if (requireIdentifier) identifier.toOutcome() else Passed,
             signature = signature,
             trust = TrustValidation(
-                outcome = checkTrust(chain, anchors?.invoke(), now, TrustRule.CHAIN_TO_ANCHOR),
+                outcome = checkTrust(chain, anchors?.invoke(), timeScope, TrustRule.CHAIN_TO_ANCHOR),
                 source = source,
             ),
-            timeliness = chain.timeliness(now),
+            timeliness = chain.timeliness(timeScope),
             clientId = clientId?.let { chain.leaf.x509HashBinding(it) } ?: NotApplicable,
         ),
         identifier = identifier.getOrNull(),
     )
 }
 
-private fun CertificateChain.timeliness(now: Instant): CheckOutcome =
-    firstOrNull { !it.isValidAt(now) }?.let {
-        Failed(
-            TimelinessException(
-                message = if (it.isExpired(now))
-                    "A certificate of the chain is expired"
-                else
-                    "A certificate of the chain is not yet valid",
-                evaluatedAt = now,
-                notBefore = it.tbsCertificate.validFrom.instant,
-                notAfter = it.tbsCertificate.validUntil.instant,
-            )
-        )
-    } ?: Passed
+/** Every certificate of the chain is valid within [timeScope], as for the trust in the chain. */
+private fun CertificateChain.timeliness(timeScope: TimeScope): CheckOutcome =
+    map { ValidityPeriod(it.tbsCertificate.validFrom.instant, it.tbsCertificate.validUntil.instant) }
+        .firstNotNullOfOrNull { validity ->
+            validity.check(timeScope, "certificate of the chain").takeIf { it != Passed }
+        } ?: Passed
 
 private fun X509Certificate.x509HashBinding(clientId: String): CheckOutcome = catchingUnwrapped {
     require(clientId.startsWith(X509_HASH)) { "The client identifier does not use the prefix x509_hash" }
@@ -212,7 +202,7 @@ internal suspend fun evaluateRegistrationCertificate(
         claims = catchingUnwrapped { payload.requireClaims(purpose) }.toOutcome(),
         signature = verification.outcome,
         trust = TrustValidation(
-            outcome = checkTrust(chain, anchors?.invoke(), timeScope.now, TrustRule.CHAIN_TO_ANCHOR),
+            outcome = checkTrust(chain, anchors?.invoke(), timeScope, TrustRule.CHAIN_TO_ANCHOR),
             source = source,
         ),
         timeliness = payload.timeliness(maxValidity, timeScope),
@@ -313,13 +303,15 @@ private fun WrpPayload.requireClaims(purpose: RegistrationPurpose) {
     }
 }
 
-private fun WrpPayload.timeliness(maxValidity: Duration, timeScope: TimeScope): CheckOutcome = with(timeScope) {
-    fun failed(message: String) = Failed(TimelinessException(message, now, notBefore = iat, notAfter = exp))
+private fun WrpPayload.timeliness(maxValidity: Duration, timeScope: TimeScope): CheckOutcome {
     val expires = exp
-    when {
-        iat.isTooLate() -> failed("The WRPRC is issued in the future")
-        expires != null && expires.isTooEarly() -> failed("The WRPRC is expired")
-        expires != null && expires - iat > maxValidity -> failed("The WRPRC is valid for longer than $maxValidity")
+    val validity = ValidityPeriod(notBefore = iat, notAfter = expires).check(timeScope, "WRPRC")
+    return when {
+        validity != Passed -> validity
+        expires != null && expires - iat > maxValidity -> Failed(
+            TimelinessException("The WRPRC is valid for longer than $maxValidity", timeScope.now, iat, expires)
+        )
+
         else -> Passed
     }
 }

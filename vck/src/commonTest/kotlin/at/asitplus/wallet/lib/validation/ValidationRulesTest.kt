@@ -29,7 +29,7 @@ private val passingChecks = CredentialChecks(
     ),
     requiredClaims = RequiredClaimsValidation(NotApplicable),
     holderBinding = Passed,
-    timeliness = TimelinessValidation(Passed, details = null),
+    timeliness = TimelinessValidation(Passed, validity = null),
     status = validStatus,
 )
 
@@ -189,7 +189,7 @@ val ValidationRulesTest by matrixSuite {
                 Case("missing time evidence under required timeliness", Blocked(), true, REJECTED),
                 Case("expired credential when timeliness is not required", Failed(failure), false, ACCEPTED),
             ).asData(nameFn = { it.name }) test { case ->
-                val checks = passingChecks.copy(timeliness = TimelinessValidation(case.outcome, details = null))
+                val checks = passingChecks.copy(timeliness = TimelinessValidation(case.outcome, validity = null))
                 val report = ValidationReport.credential(
                     checks = checks,
                     policy = strictPolicy.copy(

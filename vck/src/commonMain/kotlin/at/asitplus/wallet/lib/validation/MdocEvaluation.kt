@@ -3,9 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.agent.validation.TimeScope
-import at.asitplus.wallet.lib.agent.validation.mdoc.MdocTimelinessValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
@@ -55,13 +53,7 @@ internal suspend fun evaluateIssuerSigned(
         holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
             mso.deviceKeyInfo.deviceKey.toCryptoPublicKey().getOrNull() == key
         },
-        timeliness = MdocTimelinessValidator(issuerSigned, timeScope).let { details ->
-            CredentialTimelinessValidationSummary.Mdoc(details).toValidation(
-                evaluatedAt = timeScope.now,
-                notYetValid = listOf(details.msoTimelinessValidationSummary?.mdocNotYetValidError),
-                expired = listOf(details.msoTimelinessValidationSummary?.mdocExpiredError),
-            )
-        },
+        timeliness = mso.validityPeriod.timeliness(timeScope),
         status = mso.status?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.IsoMdoc(issuerSigned),
     )

@@ -24,7 +24,7 @@ private val credentialChecks = CredentialChecks(
     ),
     requiredClaims = RequiredClaimsValidation(NotApplicable),
     holderBinding = NotApplicable,
-    timeliness = TimelinessValidation(Passed, details = null),
+    timeliness = TimelinessValidation(Passed, validity = null),
     status = validStatus,
 )
 
@@ -154,7 +154,7 @@ val NamedChecksTest by matrixSuite {
 
     "a failed check tolerated by the policy is satisfied, and does not reject" {
         val expired = TimelinessException("expired", evaluatedAt, notBefore = null, notAfter = evaluatedAt)
-        val checks = credentialChecks.copy(timeliness = TimelinessValidation(Failed(expired), details = null))
+        val checks = credentialChecks.copy(timeliness = TimelinessValidation(Failed(expired), validity = null))
 
         val relaxed = ValidationReport.credential(checks, relaxedPolicy, evaluatedAt)
         relaxed.namedChecks.single { it.name == "timeliness" }.satisfied shouldBe true

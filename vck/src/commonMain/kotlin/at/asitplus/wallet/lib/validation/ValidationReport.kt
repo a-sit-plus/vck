@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.validation
 
 import at.asitplus.KmmResult
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import kotlin.time.Instant
@@ -61,8 +60,8 @@ data class DisclosedItemValidation(
 
 data class TimelinessValidation(
     val outcome: CheckOutcome,
-    /** Details of the format-specific timeliness validators, if they could run. */
-    val details: CredentialTimelinessValidationSummary?,
+    /** The validity period [outcome] has been decided on, `null` if it could not be determined, e.g. before parsing. */
+    val validity: ValidityPeriod?,
 )
 
 /**

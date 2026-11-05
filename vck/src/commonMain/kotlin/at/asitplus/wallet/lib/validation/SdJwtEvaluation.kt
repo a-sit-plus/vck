@@ -3,9 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.agent.validation.TimeScope
-import at.asitplus.wallet.lib.agent.validation.sdJwt.SdJwtTimelinessValidator
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
@@ -56,13 +54,7 @@ internal suspend fun evaluateSdJwtVc(
         holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
             parsed.credential.confirmationClaim?.jsonWebKey?.toCryptoPublicKey()?.getOrNull() == key
         },
-        timeliness = SdJwtTimelinessValidator(parsed.credential, timeScope).let { details ->
-            CredentialTimelinessValidationSummary.SdJwt(details).toValidation(
-                evaluatedAt = timeScope.now,
-                notYetValid = listOf(details.jwsNotYetValidError),
-                expired = listOf(details.jwsExpiredError),
-            )
-        },
+        timeliness = parsed.credential.validityPeriod.timeliness(timeScope),
         status = parsed.credential.statusElement?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.SdJwtVc(
             sdJwtSigned = parsed.sdJwtSigned,

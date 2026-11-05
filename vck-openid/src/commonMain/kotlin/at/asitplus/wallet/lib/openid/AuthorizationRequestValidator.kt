@@ -35,12 +35,12 @@ import at.asitplus.wallet.lib.validation.RelyingPartyValidator
 import at.asitplus.wallet.lib.validation.RequestObjectChecks
 import at.asitplus.wallet.lib.validation.SignatureCheck
 import at.asitplus.wallet.lib.validation.StatusPolicy
-import at.asitplus.wallet.lib.validation.TimelinessException
 import at.asitplus.wallet.lib.validation.TrustPolicy
 import at.asitplus.wallet.lib.validation.TrustValidation
 import at.asitplus.wallet.lib.validation.ValidationDecision
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.ValidationReport
+import at.asitplus.wallet.lib.validation.ValidityPeriod
 import at.asitplus.wallet.lib.validation.VerifierAttestationChecks
 import at.asitplus.wallet.lib.validation.toOutcome
 import io.ktor.http.*
@@ -206,7 +206,7 @@ internal class AuthorizationRequestValidator(
         policy: ValidationPolicy,
         timeScope: TimeScope,
     ): PrefixEvaluation {
-        val clientTrust = relyingPartyValidator.clientTrust(this, timeScope.now)
+        val clientTrust = relyingPartyValidator.clientTrust(this, timeScope.now, timeScope.timeLeeway)
         return when (val prefix = parameters.clientIdSchemeExtracted) {
             ClientIdScheme.X509SanDns, ClientIdScheme.X509Hash -> evaluateX509(prefix, clientTrust.trust)
             is ClientIdScheme.RedirectUri -> PrefixEvaluation(
@@ -325,7 +325,8 @@ internal class AuthorizationRequestValidator(
             signature = attestationSignature,
             trust = trust,
             timeliness = payload.getOrNull()
-                ?.let { timeliness(it.expiration, it.notBefore, "verifier attestation", timeScope) } ?: Blocked(),
+                ?.let { ValidityPeriod(it.notBefore, it.expiration).check(timeScope, "verifier attestation") }
+                ?: Blocked(),
             clientId = clientId,
         )
         // ponytail: `redirect_uris` in the attestation is not checked, JsonWebToken does not model that claim
@@ -344,21 +345,9 @@ internal class AuthorizationRequestValidator(
         val payload = (this as? Signed)?.jwsTyped?.jws?.plainPayload ?: return Passed
         val claims = catchingUnwrapped { Json.parseToJsonElement(payload.decodeToString()).jsonObject }
             .getOrElse { return Failed(InvalidRequest("Request object payload is not a JSON object", it)) }
-        return timeliness(claims.instant("exp"), claims.instant("nbf"), "request object", timeScope)
+        return ValidityPeriod(notBefore = claims.instant("nbf"), notAfter = claims.instant("exp"))
+            .check(timeScope, "request object")
     }
-
-    private fun timeliness(expiration: Instant?, notBefore: Instant?, name: String, timeScope: TimeScope) =
-        with(timeScope) {
-            when {
-                expiration != null && expiration.isTooEarly() ->
-                    Failed(TimelinessException("The $name is expired", now, notBefore, expiration))
-
-                notBefore != null && notBefore.isTooLate() ->
-                    Failed(TimelinessException("The $name is not yet valid", now, notBefore, expiration))
-
-                else -> Passed
-            }
-        }
 
     private fun JsonObject.instant(claim: String): Instant? =
         get(claim)?.jsonPrimitive?.longOrNull?.let { Instant.fromEpochSeconds(it) }

@@ -117,7 +117,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
         get() = trust.coversClientIdentifiers
 
     /**
-     * Whether the relying party of [request] is trusted for its client identifier prefix at [at], as a wallet must
+     * Whether the relying party of [request] is trusted for its client identifier prefix at [at], tolerating
+     * [timeLeeway] for the validity of certificates, as a wallet must
      * establish before answering (OpenID4VP 1.0, 5.9.3), from the source in [RelyingPartyTrustAnchors] that covers
      * the prefix. Only trust, the signature of the request and the binding of the client identifier are validated
      * by the caller, e.g. with the [ClientTrust.keys].
@@ -125,7 +126,9 @@ class RelyingPartyValidator @JvmOverloads constructor(
     suspend fun clientTrust(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         at: Instant,
+        timeLeeway: Duration = Duration.ZERO,
     ): ClientTrust {
+        val timeScope = TimeScope(at, timeLeeway)
         val signed = request as? RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>
         return when (val prefix = request.parameters.clientIdSchemeExtracted) {
             ClientIdScheme.X509SanDns, ClientIdScheme.X509Hash -> ClientTrust(
@@ -133,14 +136,14 @@ class RelyingPartyValidator @JvmOverloads constructor(
                     outcome = checkTrust(
                         chain = signed?.firstHeader()?.certificateChain,
                         anchors = trust.accessCertificates?.invoke(),
-                        at = at,
+                        at = timeScope,
                         rule = TrustRule.CHAIN_TO_ANCHOR,
                     ),
                     source = ACCESS_CERTIFICATE_PROVIDERS,
                 )
             )
 
-            is ClientIdScheme.VerifierAttestation -> ClientTrust(verifierAttesterTrust(signed, at))
+            is ClientIdScheme.VerifierAttestation -> ClientTrust(verifierAttesterTrust(signed, timeScope))
             // The wallet authenticates an unsigned DC API client through the platform-provided calling origin, and any
             // client_id it carries is ignored (OpenID4VP 1.0, A.3.1)
             is ClientIdScheme.PreRegistered if request is RequestParametersFrom.OpenId4VpDcApiUnsigned ->
@@ -167,7 +170,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
      */
     private suspend fun verifierAttesterTrust(
         signed: RequestParametersFrom.RequestParametersSigned<AuthenticationRequestParameters>?,
-        at: Instant,
+        at: TimeScope,
     ): TrustValidation {
         val attestation = (signed?.jwsTyped?.jws as? JwsCompact)?.jwsHeader?.attestationJwt
             ?: return TrustValidation(Blocked(IllegalArgumentException("The request has no verifier attestation")))
@@ -293,6 +296,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
         policy: ValidationPolicy,
         now: Instant,
     ): AccessCertificateCandidate {
+        val timeScope = TimeScope(now, policy.timeLeeway)
         val registrations = request.registrationCertificates.keys.map { it.payload }
         val candidates = request.accessCertificateChains.ifEmpty { listOf(null) }.map { chain ->
             val evaluation = evaluateAccessCertificate(
@@ -301,7 +305,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
                 clientId = request.clientId,
                 anchors = trust.accessCertificates,
                 source = ACCESS_CERTIFICATE_PROVIDERS,
-                now = now,
+                timeScope = timeScope,
                 requireIdentifier = requireIdentifier,
             )
             AccessCertificateCandidate(chain, evaluation, ValidationReport.accessCertificate(evaluation.checks, policy, now))

@@ -97,6 +97,7 @@ class IssuerMetadataValidator @JvmOverloads constructor(
         val metadata = parsed.payload
         val verification = signatureCheck.verify(parsed.jws)
         val chain = verification.certificateChain
+        val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
         // Without x5c, there is no access certificate whose parsing and timeliness could be checked
         val accessCertificate = chain?.let {
             evaluateAccessCertificate(
@@ -105,10 +106,9 @@ class IssuerMetadataValidator @JvmOverloads constructor(
                 clientId = null,
                 anchors = accessCertificates,
                 source = ACCESS_CERTIFICATE_PROVIDERS,
-                now = evaluatedAt,
+                timeScope = timeScope,
             )
         }
-        val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
         val registration = catchingUnwrapped { metadata.registrationCertificate() }
         val certificate = registration.getOrNull()
         val registrationCertificate = certificate?.let {
@@ -211,16 +211,9 @@ class IssuerMetadataValidator @JvmOverloads constructor(
         requireNotNull(payload.issuedAt) { "The signed metadata contains no iat" }
     }
 
-    private fun IssuerMetadata.timeliness(timeScope: TimeScope): CheckOutcome = with(timeScope) {
+    private fun IssuerMetadata.timeliness(timeScope: TimeScope): CheckOutcome {
         val issuedAt = issuedAt ?: return Blocked()
-        val expiration = expiration
-        fun failed(message: String) =
-            Failed(TimelinessException(message, now, notBefore = issuedAt, notAfter = expiration))
-        when {
-            issuedAt.isTooLate() -> failed("issuedAt in future: $issuedAt")
-            expiration != null && expiration.isTooEarly() -> failed("expiration in past: $expiration")
-            else -> Passed
-        }
+        return ValidityPeriod(notBefore = issuedAt, notAfter = expiration).check(timeScope, "issuer metadata")
     }
 
     private companion object {

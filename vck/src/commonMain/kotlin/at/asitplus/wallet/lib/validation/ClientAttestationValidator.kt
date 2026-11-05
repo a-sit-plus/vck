@@ -70,6 +70,7 @@ class ClientAttestationValidator @JvmOverloads constructor(
         evaluatedAt: Instant,
         supportedAlgorithms: Collection<JwsAlgorithm.Signature>,
     ): ClientAttestationValidationResult {
+        val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
         val payload = attestation.payload
         val verification = signatureCheck.verify(attestation.jws)
         val withoutStatus = ClientAttestationChecks(
@@ -78,8 +79,8 @@ class ClientAttestationValidator @JvmOverloads constructor(
             signature = if (verification.certificateChain == null) {
                 Failed(IllegalArgumentException("client attestation has no x5c"))
             } else verification.outcome,
-            trust = walletProviderTrust(verification.certificateChain, walletProviderAnchors, evaluatedAt),
-            timeliness = payload.timeliness(TimeScope(evaluatedAt, policy.timeLeeway)),
+            trust = walletProviderTrust(verification.certificateChain, walletProviderAnchors, timeScope),
+            timeliness = payload.timeliness(timeScope),
             status = StatusValidation(NotApplicable, emptyList(), NotApplicable),
             clientId = when {
                 clientId == null -> NotApplicable
@@ -140,9 +141,9 @@ class ClientAttestationValidator @JvmOverloads constructor(
         val statusExpiration = clientStatus?.expiration
         fun failed(message: String) =
             Failed(TimelinessException(message, now, notBefore = issuedAt, notAfter = expiration))
+        val validity = ValidityPeriod(notBefore = issuedAt, notAfter = expiration).check(timeScope, "client attestation")
         when {
-            issuedAt != null && issuedAt.isTooLate() -> failed("client attestation iat in future: $issuedAt")
-            expiration.isTooEarly() -> failed("client attestation expired: $expiration")
+            validity != Passed -> validity
             issuedAt != null && expiration - issuedAt >= 24.hours ->
                 failed("client attestation lifetime must be less than 24 hours")
 
