@@ -97,6 +97,7 @@ class IssuerMetadataValidator @JvmOverloads constructor(
         val metadata = parsed.payload
         val verification = signatureCheck.verify(parsed.jws)
         val chain = verification.certificateChain
+        val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
         // Without x5c, there is no access certificate whose parsing and timeliness could be checked
         val accessCertificate = chain?.let {
             evaluateAccessCertificate(
@@ -105,10 +106,9 @@ class IssuerMetadataValidator @JvmOverloads constructor(
                 clientId = null,
                 anchors = accessCertificates,
                 source = ACCESS_CERTIFICATE_PROVIDERS,
-                now = evaluatedAt,
+                timeScope = timeScope,
             )
         }
-        val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
         val registration = catchingUnwrapped { metadata.registrationCertificate() }
         val certificate = registration.getOrNull()
         val registrationCertificate = certificate?.let {

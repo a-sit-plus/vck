@@ -70,6 +70,7 @@ class ClientAttestationValidator @JvmOverloads constructor(
         evaluatedAt: Instant,
         supportedAlgorithms: Collection<JwsAlgorithm.Signature>,
     ): ClientAttestationValidationResult {
+        val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
         val payload = attestation.payload
         val verification = signatureCheck.verify(attestation.jws)
         val withoutStatus = ClientAttestationChecks(
@@ -78,8 +79,8 @@ class ClientAttestationValidator @JvmOverloads constructor(
             signature = if (verification.certificateChain == null) {
                 Failed(IllegalArgumentException("client attestation has no x5c"))
             } else verification.outcome,
-            trust = walletProviderTrust(verification.certificateChain, walletProviderAnchors, evaluatedAt),
-            timeliness = payload.timeliness(TimeScope(evaluatedAt, policy.timeLeeway)),
+            trust = walletProviderTrust(verification.certificateChain, walletProviderAnchors, timeScope),
+            timeliness = payload.timeliness(timeScope),
             status = StatusValidation(NotApplicable, emptyList(), NotApplicable),
             clientId = when {
                 clientId == null -> NotApplicable

@@ -162,7 +162,7 @@ class CredentialValidator @JvmOverloads constructor(
         val issuerTrust = when (policy.trust) {
             IntegrityOnly -> TrustValidation(NotApplicable, identifier)
             RequireAuthorizedSigner -> identifier?.let {
-                trustAnchors.checkCredentialTrust(it, TrustPurpose.ISSUANCE, evaluation.certificateChain, timeScope.now)
+                trustAnchors.checkCredentialTrust(it, TrustPurpose.ISSUANCE, evaluation.certificateChain, timeScope)
             } ?: TrustValidation(Blocked(IllegalArgumentException("The credential type is ambiguous")))
         }
         val withoutStatus = CredentialChecks(

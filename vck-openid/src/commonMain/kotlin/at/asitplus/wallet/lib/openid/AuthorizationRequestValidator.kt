@@ -206,7 +206,7 @@ internal class AuthorizationRequestValidator(
         policy: ValidationPolicy,
         timeScope: TimeScope,
     ): PrefixEvaluation {
-        val clientTrust = relyingPartyValidator.clientTrust(this, timeScope.now)
+        val clientTrust = relyingPartyValidator.clientTrust(this, timeScope.now, timeScope.timeLeeway)
         return when (val prefix = parameters.clientIdSchemeExtracted) {
             ClientIdScheme.X509SanDns, ClientIdScheme.X509Hash -> evaluateX509(prefix, clientTrust.trust)
             is ClientIdScheme.RedirectUri -> PrefixEvaluation(

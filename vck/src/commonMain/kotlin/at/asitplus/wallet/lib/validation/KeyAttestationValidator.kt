@@ -70,7 +70,7 @@ class KeyAttestationValidator @JvmOverloads constructor(
             signature = if (verification.certificateChain == null) {
                 Failed(IllegalArgumentException("The key attestation transports no certificate in x5c"))
             } else verification.outcome,
-            trust = walletProviderTrust(verification.certificateChain, walletProviderAnchors, evaluatedAt),
+            trust = walletProviderTrust(verification.certificateChain, walletProviderAnchors, timeScope),
             timeliness = payload.timeliness(timeScope),
             status = StatusValidation(NotApplicable, emptyList(), NotApplicable),
             nonce = nonce,

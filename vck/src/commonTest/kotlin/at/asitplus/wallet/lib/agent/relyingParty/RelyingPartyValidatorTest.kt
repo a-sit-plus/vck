@@ -89,6 +89,7 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
@@ -408,6 +409,23 @@ val RelyingPartyValidatorTest by matrixSuite {
             status.claim.shouldBeInstanceOf<CheckOutcome.Blocked>()
         }
         result.report.decision shouldBe REJECTED
+    }
+
+    "certificates expired within the leeway of the policy are accepted, beyond it they fail trust and timeliness" {
+        val fixture = buildWrpFixture(validity = 1.days)
+        val request = fixture.request(buildWrpPayload(fixture.wrpIdentifier))
+        fun after(duration: Duration) = object : Clock {
+            override fun now(): Instant = Clock.System.now() + duration
+        }
+
+        // the policy tolerates five minutes
+        fixture.validator(after(1.days + 1.minutes)).validate(request, policy).report.decision shouldBe ACCEPTED
+        fixture.validator(after(1.days + 10.minutes)).validate(request, policy).apply {
+            report.decision shouldBe REJECTED
+            accessChecks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>()
+            accessChecks().timeliness.shouldBeInstanceOf<CheckOutcome.Failed>()
+                .throwable.shouldBeInstanceOf<TimelinessException>()
+        }
     }
 
     "an mdoc request of a registered relying party is accepted, authenticated over the session transcript" {

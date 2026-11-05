@@ -51,7 +51,7 @@ internal class AccessCertificateEvaluation(
  *    party without WRPRCs, accepted with [RegistrationPolicy.ValidateIfPresent], need not be a WRPAC;
  *  - `trust`: every certificate is valid and issued by the next one, and the last one is or is issued by one of
  *    [anchors], see [TrustRule.CHAIN_TO_ANCHOR];
- *  - `timeliness`: every certificate is valid at [now];
+ *  - `timeliness`: every certificate is valid at [TimeScope.now], tolerating [TimeScope.timeLeeway], as for `trust`;
  *  - `clientId`: for a JAR, the client identifier uses the prefix `x509_hash` (ETSI TS 119 472-2 V1.1.1, 6.3.1.2,
  *    OIDFVP-HAIP_COMMON_GEN_REQ-02) with the hash of the leaf (OpenID4VP 1.0, 5.9.3); not applicable without one,
  *    i.e. for mdoc reader authentication.
@@ -62,7 +62,7 @@ internal suspend fun evaluateAccessCertificate(
     clientId: String?,
     anchors: TrustedCertificates?,
     source: String,
-    now: Instant,
+    timeScope: TimeScope,
     requireIdentifier: Boolean = true,
 ): AccessCertificateEvaluation {
     if (chain.isNullOrEmpty()) {
@@ -90,21 +90,21 @@ internal suspend fun evaluateAccessCertificate(
             parsing = if (requireIdentifier) identifier.toOutcome() else Passed,
             signature = signature,
             trust = TrustValidation(
-                outcome = checkTrust(chain, anchors?.invoke(), now, TrustRule.CHAIN_TO_ANCHOR),
+                outcome = checkTrust(chain, anchors?.invoke(), timeScope, TrustRule.CHAIN_TO_ANCHOR),
                 source = source,
             ),
-            timeliness = chain.timeliness(now),
+            timeliness = chain.timeliness(timeScope),
             clientId = clientId?.let { chain.leaf.x509HashBinding(it) } ?: NotApplicable,
         ),
         identifier = identifier.getOrNull(),
     )
 }
 
-/** Every certificate of the chain is valid at [now], without leeway, as for the trust in the chain. */
-private fun CertificateChain.timeliness(now: Instant): CheckOutcome =
+/** Every certificate of the chain is valid within [timeScope], as for the trust in the chain. */
+private fun CertificateChain.timeliness(timeScope: TimeScope): CheckOutcome =
     map { ValidityPeriod(it.tbsCertificate.validFrom.instant, it.tbsCertificate.validUntil.instant) }
         .firstNotNullOfOrNull { validity ->
-            validity.check(TimeScope(now, Duration.ZERO), "certificate of the chain").takeIf { it != Passed }
+            validity.check(timeScope, "certificate of the chain").takeIf { it != Passed }
         } ?: Passed
 
 private fun X509Certificate.x509HashBinding(clientId: String): CheckOutcome = catchingUnwrapped {
@@ -202,7 +202,7 @@ internal suspend fun evaluateRegistrationCertificate(
         claims = catchingUnwrapped { payload.requireClaims(purpose) }.toOutcome(),
         signature = verification.outcome,
         trust = TrustValidation(
-            outcome = checkTrust(chain, anchors?.invoke(), timeScope.now, TrustRule.CHAIN_TO_ANCHOR),
+            outcome = checkTrust(chain, anchors?.invoke(), timeScope, TrustRule.CHAIN_TO_ANCHOR),
             source = source,
         ),
         timeliness = payload.timeliness(maxValidity, timeScope),
