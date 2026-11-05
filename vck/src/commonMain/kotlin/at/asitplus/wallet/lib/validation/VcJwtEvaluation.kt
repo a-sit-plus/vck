@@ -3,10 +3,8 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.matchesIdentifier
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsContentSemanticsValidator
-import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsTimelinessValidator
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
@@ -44,13 +42,7 @@ internal suspend fun evaluateVcJwt(
         holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
             vcJws.subject?.let { key.matchesIdentifier(it) } == true
         },
-        timeliness = VcJwsTimelinessValidator(vcJws, timeScope).let { details ->
-            CredentialTimelinessValidationSummary.VcJws(details).toValidation(
-                evaluatedAt = timeScope.now,
-                notYetValid = listOf(details.jwsNotYetValidError, details.credentialNotYetValidError),
-                expired = listOf(details.jwsExpiredError, details.credentialExpiredError),
-            )
-        },
+        timeliness = vcJws.validityPeriod.timeliness(timeScope),
         status = vcJws.vc.credentialStatus?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.VcJwt(vcJws),
     )

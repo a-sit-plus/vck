@@ -110,7 +110,7 @@ internal fun credentialChecksWithoutPrerequisites(
         disclosedItems = emptyList(),
         requiredClaims = RequiredClaimsValidation(Blocked()),
         holderBinding = Blocked(),
-        timeliness = TimelinessValidation(Blocked(), details = null),
+        timeliness = TimelinessValidation(Blocked(), validity = null),
         status = StatusValidation(claim = Blocked(), agreement = Blocked()),
     )
 }

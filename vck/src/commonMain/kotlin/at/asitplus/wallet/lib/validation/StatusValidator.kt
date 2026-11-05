@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.RevocationListLookup
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
@@ -228,29 +229,14 @@ class StatusValidator @JvmOverloads constructor(
         resolvedAt: Instant?,
         timeLeeway: Duration,
         evaluatedAt: Instant,
-    ): CheckOutcome = payload.expirationTime
-        ?.takeIf { it + timeLeeway < evaluatedAt }?.let { expiration ->
-            Failed(
-                TimelinessException(
-                    message = "The status list token is expired",
-                    evaluatedAt = evaluatedAt,
-                    notBefore = null,
-                    notAfter = expiration
-                )
-            )
-        }
-        ?: payload.timeToLive?.let { resolvedAt?.plus(it.duration) }
-            ?.takeIf { it + timeLeeway < evaluatedAt }?.let { staleAt ->
-                Failed(
-                    TimelinessException(
-                        message = "The ttl of the status list token elapsed",
-                        evaluatedAt = evaluatedAt,
-                        notBefore = null,
-                        notAfter = staleAt
-                    )
-                )
-            }
-        ?: Passed
+    ): CheckOutcome {
+        val timeScope = TimeScope(evaluatedAt, timeLeeway)
+        val validity = ValidityPeriod(notBefore = null, notAfter = payload.expirationTime)
+            .check(timeScope, "status list token")
+        val staleAt = payload.timeToLive?.let { resolvedAt?.plus(it.duration) }
+        return validity.takeIf { it != Passed }
+            ?: ValidityPeriod(notBefore = null, notAfter = staleAt).check(timeScope, "ttl of the status list token")
+    }
 
     private suspend fun StatusSignerAnchors.authorize(
         chain: CertificateChain?,

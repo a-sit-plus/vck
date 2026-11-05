@@ -2,15 +2,12 @@ package at.asitplus.wallet.lib.validation
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
-import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
-import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
+import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import at.asitplus.wallet.lib.validation.CheckOutcome.NotApplicable
 import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
-import kotlin.time.Instant
 
 /**
  * What the format-specific part of credential validation found, before trust and status are evaluated.
@@ -66,22 +63,6 @@ internal fun expectedIdentifier(expected: String?, identifiers: Collection<Strin
 internal fun semanticsOf(vararg outcomes: CheckOutcome): CheckOutcome =
     outcomes.firstOrNull { it != Passed } ?: Passed
 
-/**
- * The outcome of the format's timeliness validators: failed with a [TimelinessException] carrying the first violated
- * bound if the credential is expired or not yet valid.
- */
-internal fun CredentialTimelinessValidationSummary.toValidation(
-    evaluatedAt: Instant,
-    notYetValid: List<EntityNotYetValidError?>,
-    expired: List<EntityExpiredError?>,
-): TimelinessValidation {
-    val notBefore = notYetValid.firstNotNullOfOrNull { it?.notBeforeTime }
-    val notAfter = expired.firstNotNullOfOrNull { it?.expirationTime }
-    val outcome = when {
-        isTimely -> Passed
-        notBefore != null ->
-            Failed(TimelinessException("The credential is not yet valid", evaluatedAt, notBefore, notAfter = null))
-        else -> Failed(TimelinessException("The credential is expired", evaluatedAt, null, notAfter))
-    }
-    return TimelinessValidation(outcome, this)
-}
+/** The timeliness of a credential with this validity period, see [ValidityPeriod.check]. */
+internal fun ValidityPeriod.timeliness(timeScope: TimeScope) =
+    TimelinessValidation(check(timeScope, "credential"), this)

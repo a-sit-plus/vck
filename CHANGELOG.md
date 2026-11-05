@@ -6,6 +6,20 @@ Release 10.0.0 (unreleased):
     - Remove code elements deprecated in 9.0.0: `Verifier` and its legacy validation classes
     - Remove `RemoteResourceRetrieverFunction` and `RemoteResourceRetrieverInput` as types and parameter values, e.g. in
      `RequestParser` and `OpenId4VciClient`
+- Validation:
+    - BREAKING: Replace the timeliness validators of credentials and their results (`VcJwsTimelinessValidator`,
+      `SdJwtTimelinessValidator`, `MdocTimelinessValidator`, `MobileSecurityObjectTimelinessValidator`,
+      `VcJwsTimelinessValidationDetails`, `SdJwtTimelinessValidationDetails`, `MdocTimelinessValidationDetails`,
+      `MobileSecurityObjectTimelinessValidationSummary`, `CredentialTimelinessValidationSummary`, `TimelinessIndicator`,
+      `EntityExpiredError`, `EntityNotYetValidError`) with `ValidityPeriod`: use the `validityPeriod` of a
+      `VerifiableCredentialJws`, `VerifiableCredentialSdJwt`, or `MobileSecurityObject`, and check it with
+      `ValidityPeriod.check(timeScope, artifact)`. `TimelinessValidation.details` is replaced by `validity`, the period
+      the `timeliness` check of a credential has been decided on. A VC-JWT is valid within the JWT's `nbf` and `exp`
+      and the credential's `issuanceDate` and `expirationDate`, which its semantics require to agree
+    - The timeliness of key and client attestations, signed issuer metadata, request objects, verifier attestations,
+      WRPRCs, WRPAC chains, and status list tokens is checked with a `ValidityPeriod` too: their `TimelinessException`
+      says "The <artifact> is expired" or "is not yet valid", and carries the whole validity period, as does the one
+      of a credential, which carried only the violated bound
 - Status lists:
     - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status
       List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still
