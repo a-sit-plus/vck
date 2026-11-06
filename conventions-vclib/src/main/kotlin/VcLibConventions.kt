@@ -66,12 +66,18 @@ class VcLibConventions : K2Conventions() {
             target.pluginManager.apply("signing")
             target.pluginManager.apply("org.jetbrains.dokka")
             target.pluginManager.apply("de.infix.testBalloon")
+            // Reads test resources (`src/*Test/resources`) on every target, see DEVELOPMENT.md
+            target.pluginManager.apply("com.goncalossilva.resources")
             super.apply(target)
             //if we do this properly, cinterop (swift-klib) blows up, so we hack!
             target.afterEvaluate {
-                (project.kotlinExtension as KotlinMultiplatformExtension).sourceSets
+                val sourceSets = (project.kotlinExtension as KotlinMultiplatformExtension).sourceSets
+                sourceSets
                     .filter { it.name.endsWith("Test") }
                     .forEach { it.dependencies { addTestExtensions() } }
+                sourceSets.findByName("commonTest")?.dependencies {
+                    implementation("com.goncalossilva:resources:${project.VcLibVersions.kotlinxResources}")
+                }
 
                 tasks.withType<Test>().configureEach {
                     maxHeapSize = "8G"
