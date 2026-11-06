@@ -11,6 +11,8 @@ import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.toFormParameters
@@ -38,7 +40,6 @@ import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
-import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondResourceServerError
@@ -67,6 +68,7 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.random.Random
 import kotlin.time.Clock
@@ -103,6 +105,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             catching {
                 require(it.credentialScheme == scheme)
                 require(it.credentialRepresentation == representation)
+                require(it.userInfo == externalUser)
                 var digestId = 0u
                 when (representation) {
                     PLAIN_JWT -> TODO()
@@ -186,7 +189,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                     val authnRequest: RequestParameters =
                         if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
                         else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
-                    externalAuthorizationServer.authorize(authnRequest) { catching { dummyUser() } }.fold(
+                    externalAuthorizationServer.authorize(authnRequest) { catching { externalUser } }.fold(
                         onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
@@ -213,7 +216,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params = requestBody.decodeFromFormUrlEncoded<TokenIntrospectionRequest>()
                     externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it.toHttpResponse()) },
+                        onSuccess = { respond(it.withUserClaims(externalUser).toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -405,7 +408,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                 }
 
             val offer = externalAuthorizationServer.offerWithPreAuthnForUserForSchemes(
-                user = dummyUser(),
+                user = externalUser,
                 credentialIssuer = openId4VciServer.metadata.credentialIssuer,
                 schemes = setOf(euPidScheme to ISO_MDOC),
             )
@@ -423,3 +426,18 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
     }
 
 }
+
+/** The user the external authorization server authenticates, with a claim besides `sub`. */
+private val externalUser = OidcUserInfoExtended.deserialize("""{"sub":"foo","given_name":"Susan"}""").getOrThrow()
+
+/**
+ * Adds the claims of [user] to an active token introspection response as top-level members
+ * ([RFC 7662 2.2](https://datatracker.ietf.org/doc/html/rfc7662#section-2.2)), as an external authorization server
+ * does for [RemoteOAuth2AuthorizationServerAdapter]. [SimpleAuthorizationService] does not, since it is wired directly
+ * to an [OpenId4VciServer] in production.
+ */
+private fun TokenIntrospectionResult.withUserClaims(user: OidcUserInfoExtended): TokenIntrospectionResult =
+    if (this is TokenIntrospectionResponse && active) copy(
+        subject = user.userInfo.subject,
+        additionalClaims = JsonObject(user.jsonObject - "sub"),
+    ) else this
