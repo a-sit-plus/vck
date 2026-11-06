@@ -81,6 +81,10 @@ class LoTEFilterService {
 
         val entities = lote.trustedEntitiesList ?: return emptyList()
         return entities.flatMap { entity ->
+            // Besides a registration identifier, the TETradeName "may additionally include any name under which the
+            // legal entity [...] responsible for the TE operates, in the specific context of the delivery of those of
+            // its services which are to be found in this LoTE" (ETSI TS 119 602 V1.1.1, 6.5.2), e.g. the
+            // "EUDI Wallet Reference Implementation" its certificates name as their Organization
             val providerNames =
                 entity.trustedEntityInformation.teName + entity.trustedEntityInformation.teTradeName.orEmpty()
 
@@ -103,26 +107,30 @@ class LoTEFilterService {
         listAndSchemeInformation != null && matchesLoteType(listAndSchemeInformation.loteType?.toString())
 
     /**
-     * Checks if the Organization (O) attribute within the certificate's Subject Name matches any of
-     * the localized names the provider declares, i.e. its [TEName] or its [TETradeName].
+     * Checks if the Organization (O) attribute within the certificate's Subject Name equals the value of any of
+     * [names], ignoring case.
      */
     private fun X509Certificate.hasMatchingOrganization(names: List<MultilingualCharacterString>): Boolean {
-        val orgName = tbsCertificate.subjectName
-            .flatMap { it.attrsAndValues }
-            .filterIsInstance<AttributeTypeAndValue.Organization>()
-            .firstOrNull()
-            ?.asStringOrNull() ?: return false
-
+        val orgName = organizationName
+            ?: return false
         return names.any { it.value.equals(orgName, ignoreCase = true) }
     }
+}
 
-    /**
-     * Unwraps the Organization value wrapper into a standard String,
-     */
-    private fun AttributeTypeAndValue.Organization.asStringOrNull(): String? = when (val element = value) {
-        is Asn1Primitive -> runCatching { Asn1String.decodeFromTlv(element).value }.getOrNull()
-        else -> element.toString()
-    }
+/** The first Organization (O) attribute of the Subject Name of this certificate, or `null` if it has none. */
+internal val X509Certificate.organizationName: String?
+    get() = tbsCertificate.subjectName
+        .flatMap { it.attrsAndValues }
+        .filterIsInstance<AttributeTypeAndValue.Organization>()
+        .firstOrNull()
+        ?.asStringOrNull()
+
+/**
+ * Unwraps the Organization value wrapper into a standard String,
+ */
+private fun AttributeTypeAndValue.Organization.asStringOrNull(): String? = when (val element = value) {
+    is Asn1Primitive -> runCatching { Asn1String.decodeFromTlv(element).value }.getOrNull()
+    else -> element.toString()
 }
 
 /** `serviceType` property should be removed in future */

@@ -38,6 +38,11 @@ Release 10.0.0 (unreleased):
 - Trust List filtering:
     - In `LoteProfile` deprecate members `statusDeterminationApproach`, `schemeCommunityRules` and `schemeCountryCode`,
       and don't validate their values as it has never been required by the specification.
+    - Add `VerifyLoTE` (`VerifyLoTEFun`), verifying a List of Trusted Entities as published, i.e. a compact JAdES
+      baseline B signed JWS, against the pinned certificates the scheme operator publishes for its lists, before
+      returning the `ListOfTrustedEntities` for `LoTEFilterService` or `LoTETrustAnchorProvider`. It requires the
+      Organization of the signing certificate to be a `SchemeOperatorName` of the list, rejects a list whose
+      `NextUpdate` is in the past, and optionally one with a lower `LoTESequenceNumber` than the list in force
 
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
