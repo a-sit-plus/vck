@@ -85,7 +85,6 @@ import kotlin.time.Duration.Companion.minutes
  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
  * [OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
  * [JWT Response for OAuth Token Introspection](https://www.rfc-editor.org/rfc/rfc9701)
- * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
  */
 class SimpleAuthorizationService @JvmOverloads constructor(
     /** Used to filter authorization details and scopes. */
@@ -163,11 +162,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
     private val issuerStateService: CodeService = DefaultCodeService(),
     /** Used to create and verify pre-authorized codes, see [providePreAuthorizedCode]. */
     private val preAuthorizedCodeService: CodeService = DefaultCodeService(),
-    /**
-     * Whether to support Token Exchange, i.e. issuing a fresh access token for a token presented as `subject_token`.
-     * Requires [tokenService] with support for it.
-     */
-    private val supportTokenExchange: Boolean = false,
     /** Clock to use for timestamps in the tokens generated. */
     private val clock: Clock = Clock.System,
 ) : OAuth2AuthorizationServerAdapter, AuthorizationService {
@@ -178,11 +172,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             && tokenService.dpopSigningAlgValuesSupportedStrings.orEmpty().isEmpty()
         ) {
             throw IllegalArgumentException("Client authn DPoP combined mode requires Token Service with DPoP support")
-        }
-        if (supportTokenExchange && !tokenService.supportsTokenExchange) {
-            throw IllegalArgumentException(
-                "Token exchange requires a Token Service that binds the subject token to the presenting client"
-            )
         }
     }
 
@@ -218,7 +207,6 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             grantTypesSupported = setOfNotNull(
                 OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
                 OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE,
-                if (supportTokenExchange) OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE else null,
                 if (tokenService.supportsRefreshTokens) OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN else null,
             )
         )
@@ -422,6 +410,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             requestParser.extractDirectRequest(this, null)?.parameters as? AuthenticationRequestParameters
                 ?: throw InvalidRequest("request must contain valid authorization request parameters")
         }
+
         is AuthenticationRequestParameters -> this
         else -> throw InvalidRequest("Request is neither plain nor JAR")
     }
@@ -578,20 +567,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             clientId = request.clientId,
             validatedClientKey = validatedClientKey
         ).getOrThrow()
-            ?: throw InvalidGrant("client_id not set")
-
-        if (request.grantType == OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE) {
-            if (!supportTokenExchange)
-                throw UnsupportedGrantType("token exchange not supported")
-            val userInfoEndpoint = metadata().userInfoEndpoint
-                ?: throw InvalidGrant("token_exchange requires userInfoEndpoint")
-            return@catching tokenService.tokenExchange(
-                request = request,
-                expectedResource = userInfoEndpoint,
-                httpRequest = httpRequest,
-                validatedClientKey = validatedClientKey
-            ).getOrThrow()
-        }
+            ?: throw InvalidClient("Can't authenticated client")
 
         val clientAuthRequest = request.loadClientAuthnRequest(httpRequest, validatedClientKey)
             ?: throw InvalidGrant("could not load user info for $request")
@@ -603,35 +579,41 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                 throw InvalidGrant("client_id does not match authorization code")
         }
 
-        if (request.grantType == OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE) {
-            when {
-                clientAuthRequest.transactionCode == null && request.transactionCode != null ->
-                    throw InvalidRequest("tx_code was not expected")
+        when (request.grantType) {
+            OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE -> throw InvalidGrant("Token Exchange is not supported")
+            OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
+                when {
+                    clientAuthRequest.transactionCode == null && request.transactionCode != null ->
+                        throw InvalidRequest("tx_code was not expected")
 
-                clientAuthRequest.transactionCode != null && request.transactionCode == null ->
-                    throw InvalidRequest("tx_code required by the credential offer")
+                    clientAuthRequest.transactionCode != null && request.transactionCode == null ->
+                        throw InvalidRequest("tx_code required by the credential offer")
 
-                clientAuthRequest.transactionCode != request.transactionCode ->
-                    throw InvalidGrant("tx_code not matching the one from the credential offer")
+                    clientAuthRequest.transactionCode != request.transactionCode ->
+                        throw InvalidGrant("tx_code not matching the one from the credential offer")
+                }
+
+                val preAuthorizedCode = request.preAuthorizedCode
+                    ?: throw InvalidGrant("pre-authorized code not valid: ${request.preAuthorizedCode}")
+                if (!preAuthorizedCodeService.verifyAndRemove(preAuthorizedCode))
+                    throw InvalidGrant("pre-authorized code not valid: $preAuthorizedCode")
+                codeToClientAuthRequest.remove(preAuthorizedCode)
             }
 
-            val preAuthorizedCode = request.preAuthorizedCode
-                ?: throw InvalidGrant("pre-authorized code not valid: ${request.preAuthorizedCode}")
-            if (!preAuthorizedCodeService.verifyAndRemove(preAuthorizedCode))
-                throw InvalidGrant("pre-authorized code not valid: $preAuthorizedCode")
-            codeToClientAuthRequest.remove(preAuthorizedCode)
+            OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
+                validateCodeChallenge(
+                    code = request.code
+                        ?: throw InvalidGrant("code not set"),
+                    codeVerifier = request.codeVerifier,
+                    // Authorization requests are rejected without one, so a code that has none was not issued by us
+                    codeChallenge = clientAuthRequest.codeChallenge
+                        ?: throw InvalidGrant("no code_challenge stored for this code")
+                )
+            }
+
+            else -> throw InvalidGrant("grant_type ${request.grantType} not supported")
         }
 
-        if (request.grantType == OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE) {
-            validateCodeChallenge(
-                code = request.code
-                    ?: throw InvalidGrant("code not set"),
-                codeVerifier = request.codeVerifier,
-                // Authorization requests are rejected without one, so a code that has none was not issued by us
-                codeChallenge = clientAuthRequest.codeChallenge
-                    ?: throw InvalidGrant("no code_challenge stored for this code")
-            )
-        }
         val token = if (request.authorizationDetails != null) {
             tokenService.generation.buildToken(
                 httpRequest = httpRequest,
@@ -671,6 +653,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         } else {
             throw InvalidRequest("neither authorization details nor scope in request")
         }
+
         token.refreshToken?.let {
             refreshTokenToAuthRequest.put(
                 key = it,
@@ -679,7 +662,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
                 )
             )
         }
-        Napier.i("token returns $token")
+        Napier.i("token returns with type ${token.tokenType}")
         token
     }
 

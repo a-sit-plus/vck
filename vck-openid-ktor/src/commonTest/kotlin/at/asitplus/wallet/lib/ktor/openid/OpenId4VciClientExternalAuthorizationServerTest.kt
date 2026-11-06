@@ -71,7 +71,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
 
 /**
  * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] that uses [RemoteOAuth2AuthorizationServerAdapter]
@@ -138,9 +137,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
         val challengeEndpointPath = "/challenge"
         val issuerPublicContext = "https://issuer.example.com"
         val authServerPublicContext = "https://auth.example.com"
-        // TODO Re-test with JWT tokens (Problem when using token exchange: Validate DPoP for subject token on backend)
-        // val tokenService = TokenService.jwt(issueRefreshTokens = true)
-        val tokenService = TokenService.bearer(issueRefreshTokens = true)
+        val tokenService = TokenService.jwt(issueRefreshTokens = true)
         val externalAuthorizationServer = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet),
             publicContext = authServerPublicContext,

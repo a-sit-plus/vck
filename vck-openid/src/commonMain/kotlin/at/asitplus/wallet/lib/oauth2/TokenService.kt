@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.OpenIdConstants.TokenTypes
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -11,30 +10,17 @@ import at.asitplus.wallet.lib.DefaultNonceService
 import at.asitplus.wallet.lib.NonceService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidGrant
-import io.github.aakira.napier.Napier
 import kotlin.time.Duration.Companion.days
 
 /**
  * Access token service that combines generation and verification,
  * i.e., it is suitable to be used in an implementation of an OAuth 2.0 Authorization Server.
- *
- * Also implements [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693).
  */
 interface TokenService {
     val generation: TokenGenerationService
     val verification: TokenVerificationService
     val dpopSigningAlgValuesSupportedStrings: Set<String>?
     val supportsRefreshTokens: Boolean
-
-    /**
-     * Whether this service can bind a token presented as [TokenRequestParameters.subjectToken] to the client
-     * presenting it, i.e. whether [validateAccessToken] proves possession of the key that token is bound to.
-     *
-     * Implementations that can not (e.g. bearer tokens) must leave this `false`: exchanging such a token would let
-     * anyone who captured it obtain a fresh access token, and repeat that indefinitely.
-     */
-    val supportsTokenExchange: Boolean get() = false
 
     /**
      * Validates the access token from [authorizationHeader] and returns what it authorizes.
@@ -50,47 +36,17 @@ interface TokenService {
         validatedClientKey = validatedClientKey
     )
 
-    /**
-     * [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693):
-     * Validate the received token from [TokenRequestParameters.subjectToken] and issue a fresh access token.
-     * Callers need to make sure that the client has been authenticated before calling this method.
-     */
+    suspend fun dpopNonce() = generation.dpopNonce()
+
+    @Deprecated("Token Exchange is not supported")
     suspend fun tokenExchange(
         request: TokenRequestParameters,
         expectedResource: String,
         httpRequest: RequestInfo?,
         validatedClientKey: JsonWebKey?,
     ): KmmResult<TokenResponseParameters> = catching {
-        Napier.i("tokenExchange: called")
-        Napier.d("tokenExchange: called with $request")
-        // Client wants to exchange Wallet's access token (probably DPoP-constrained) with a fresh one for userInfo
-        if (request.subjectTokenType == null || request.subjectToken == null) {
-            throw InvalidGrant("subject_token or subject_token_type is null")
-        }
-        if (request.resource != expectedResource) {
-            throw InvalidGrant("resource is not valid, is not for $expectedResource")
-        }
-        if (request.requestedTokenType != TokenTypes.ACCESS_TOKEN) {
-            throw InvalidGrant("requested_token_type is not valid, must be ${TokenTypes.ACCESS_TOKEN}")
-        }
-        val validated = validateAccessToken(
-            authorizationHeader = request.subjectToken!!,
-            httpRequest = httpRequest,
-            validatedClientKey = validatedClientKey,
-        ).getOrThrow().apply {
-            if (userInfoExtended == null)
-                throw InvalidGrant("subject_token is not valid, no stored user")
-        }
-        generation.buildToken(
-            userInfo = validated.userInfoExtended!!,
-            httpRequest = httpRequest,
-            authorizationDetails = validated.authorizationDetails,
-            scope = validated.scope,
-            validatedClientKey = validatedClientKey,
-        )
+        throw NotImplementedError()
     }
-
-    suspend fun dpopNonce() = generation.dpopNonce()
 
     companion object {
         /** Build a [TokenService] combining [JwtTokenGenerationService] and [JwtTokenVerificationService]. */
