@@ -24,7 +24,7 @@ interface TrustAnchorProvider {
  * [at.asitplus.wallet.lib.validation.CredentialTrustScope].
  */
 class LoTETrustAnchorProvider(
-    /** Every list the app has fetched and verified, from whichever stages it enabled. */
+    /** Every list the app has fetched and verified with [VerifyLoTE], from whichever stages it enabled. */
     private val trustLists: suspend () -> Collection<ListOfTrustedEntities>,
     /** Lists for a credential type. Default: the list of [LoteProfile.fromSchemeIdentifier], or none. */
     private val trustListsFor: suspend (credentialIdentifier: String) -> Collection<ListOfTrustedEntities> = { id ->
