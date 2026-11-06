@@ -119,10 +119,10 @@ fun LoTEFilterService.credentialTrustScope(
 ) = CredentialTrustScope(
     credentialIdentifiers = credentialIdentifiers,
     source = source,
-    issuance = TrustedCertificates {
+    issuance = {
         lists().flatMap { extractIssuanceCertificates(it, profile) }.mapNotNull { it.certificate }.toSet()
     },
-    status = TrustedCertificates {
+    status = {
         lists().flatMap { extractRevocationCertificates(it, profile) }.mapNotNull { it.certificate }.toSet()
     },
 )
