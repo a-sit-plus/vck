@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.catching
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
@@ -56,6 +57,20 @@ val OAuth2ClientTest by matrixSuite {
             )
             it.server.token(tokenRequest, null).isSuccess shouldBe true
             it.server.token(tokenRequest, null).isFailure shouldBe true
+        }
+        test("token request with an unsupported grant type") {
+            val preAuth = it.server.providePreAuthorizedCode(user)
+                .shouldNotBeNull()
+            val tokenRequest = it.client.createTokenRequestParameters(
+                state = uuid4().toString(),
+                authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+                scope = it.scope
+            )
+            listOf(OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE, "urn:example:unknown").forEach { grantType ->
+                shouldThrow<OAuth2Exception.UnsupportedGrantType> {
+                    it.server.token(tokenRequest.copy(grantType = grantType), null).getOrThrow()
+                }
+            }
         }
         test("token request with a scope that is only a substring of the granted scope") {
             val preAuth = it.server.providePreAuthorizedCode(user)
