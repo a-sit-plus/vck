@@ -570,48 +570,12 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             ?: throw InvalidClient("Can't authenticate client")
 
         val clientAuthRequest = request.loadClientAuthnRequest(httpRequest, validatedClientKey)
-            ?: throw InvalidGrant("could not load user info for $request")
 
         clientAuthRequest.clientBinding?.let { expectedClient ->
             if (!expectedClient.accepts(presentedClient))
                 throw InvalidGrant("code was issued to a different client")
             if (request.clientId != null && request.clientId != expectedClient.clientId)
                 throw InvalidGrant("client_id does not match authorization code")
-        }
-
-        when (request.grantType) {
-            OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE -> throw InvalidGrant("Token Exchange is not supported")
-            OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
-                when {
-                    clientAuthRequest.transactionCode == null && request.transactionCode != null ->
-                        throw InvalidRequest("tx_code was not expected")
-
-                    clientAuthRequest.transactionCode != null && request.transactionCode == null ->
-                        throw InvalidRequest("tx_code required by the credential offer")
-
-                    clientAuthRequest.transactionCode != request.transactionCode ->
-                        throw InvalidGrant("tx_code not matching the one from the credential offer")
-                }
-
-                val preAuthorizedCode = request.preAuthorizedCode
-                    ?: throw InvalidGrant("pre-authorized code not valid: ${request.preAuthorizedCode}")
-                if (!preAuthorizedCodeService.verifyAndRemove(preAuthorizedCode))
-                    throw InvalidGrant("pre-authorized code not valid: $preAuthorizedCode")
-                codeToClientAuthRequest.remove(preAuthorizedCode)
-            }
-
-            OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
-                validateCodeChallenge(
-                    code = request.code
-                        ?: throw InvalidGrant("code not set"),
-                    codeVerifier = request.codeVerifier,
-                    // Authorization requests are rejected without one, so a code that has none was not issued by us
-                    codeChallenge = clientAuthRequest.codeChallenge
-                        ?: throw InvalidGrant("no code_challenge stored for this code")
-                )
-            }
-
-            else -> throw InvalidGrant("grant_type ${request.grantType} not supported")
         }
 
         val token = if (request.authorizationDetails != null) {
@@ -704,33 +668,62 @@ class SimpleAuthorizationService @JvmOverloads constructor(
         return scope
     }
 
+    /**
+     * Validates the grant of this token request, and loads the authorization request it has been issued for.
+     * Consumes the authorization code, pre-authorized code, or refresh token, so it can not be used again.
+     */
     internal suspend fun TokenRequestParameters.loadClientAuthnRequest(
         httpRequest: RequestInfo?,
         validatedClientKey: JsonWebKey?,
-    ): ClientAuthRequest? = when (grantType) {
+    ): ClientAuthRequest = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
-            if (code == null || !codeService.verifyAndRemove(code!!)) {
-                throw InvalidCode("code not valid: $code")
+            val authorizationCode = code
+            if (authorizationCode == null || !codeService.verifyAndRemove(authorizationCode)) {
+                throw InvalidCode("code not valid: $authorizationCode")
             }
-            code?.let { codeToClientAuthRequest.remove(it) }
+            val clientAuthRequest = codeToClientAuthRequest.remove(authorizationCode)
+                ?: throw InvalidGrant("could not load user info for $this")
+            validateCodeChallenge(
+                code = authorizationCode,
+                codeVerifier = codeVerifier,
+                // Authorization requests are rejected without one, so a code that has none was not issued by us
+                codeChallenge = clientAuthRequest.codeChallenge
+                    ?: throw InvalidGrant("no code_challenge stored for this code")
+            )
+            clientAuthRequest
         }
 
         OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
-            if (preAuthorizedCode == null) {
-                throw InvalidGrant("pre-authorized code not valid: $preAuthorizedCode")
+            val preAuthCode = preAuthorizedCode
+                ?: throw InvalidGrant("pre-authorized code not valid: $preAuthorizedCode")
+            val clientAuthRequest = codeToClientAuthRequest.get(preAuthCode)
+                ?: throw InvalidGrant("could not load user info for $this")
+            when {
+                clientAuthRequest.transactionCode == null && transactionCode != null ->
+                    throw InvalidRequest("tx_code was not expected")
+
+                clientAuthRequest.transactionCode != null && transactionCode == null ->
+                    throw InvalidRequest("tx_code required by the credential offer")
+
+                clientAuthRequest.transactionCode != transactionCode ->
+                    throw InvalidGrant("tx_code not matching the one from the credential offer")
             }
-            preAuthorizedCode?.let { codeToClientAuthRequest.get(it) }
+            if (!preAuthorizedCodeService.verifyAndRemove(preAuthCode))
+                throw InvalidGrant("pre-authorized code not valid: $preAuthCode")
+            codeToClientAuthRequest.remove(preAuthCode)
+            clientAuthRequest
         }
 
         OpenIdConstants.GRANT_TYPE_REFRESH_TOKEN -> {
-            if (refreshToken == null) {
-                throw InvalidGrant("refresh_token is null")
-            }
-            tokenService.verification.validateRefreshToken(refreshToken!!, httpRequest, validatedClientKey)
-            refreshToken?.let { refreshTokenToAuthRequest.remove(it) }
+            val presentedRefreshToken = refreshToken
+                ?: throw InvalidGrant("refresh_token is null")
+            tokenService.verification.validateRefreshToken(presentedRefreshToken, httpRequest, validatedClientKey)
+            refreshTokenToAuthRequest.remove(presentedRefreshToken)
+                ?: throw InvalidGrant("could not load user info for $this")
         }
 
-        else -> throw InvalidRequest("grant_type invalid")
+        // RFC 6749 5.2: "The authorization grant type is not supported by the authorization server."
+        else -> throw UnsupportedGrantType("grant_type $grantType not supported")
     }
 
     /**
