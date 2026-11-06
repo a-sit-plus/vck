@@ -40,6 +40,7 @@ import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.ktor.openid.TestUtils.dummyUser
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondOAuth2Error
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respondResourceServerError
@@ -135,7 +136,6 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
         val credentialEndpointPath = "/credential"
         val nonceEndpointPath = "/nonce"
         val parEndpointPath = "/par"
-        val userInfoEndpointPath = "/userinfo"
         val introspectionEndpointPath = "/introspection"
         val challengeEndpointPath = "/challenge"
         val issuerPublicContext = "https://issuer.example.com"
@@ -147,7 +147,6 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
-            userInfoEndpointPath = userInfoEndpointPath,
             introspectionEndpointPath = introspectionEndpointPath,
             challengeEndpointPath = challengeEndpointPath,
             clientAuthenticationService = AttestationBasedClientAuthenticationService(
@@ -189,7 +188,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                     val authnRequest: RequestParameters =
                         if (requestBody.isEmpty()) RequestParametersSerializer.decodeFormParameters(queryParameters)
                         else RequestParametersSerializer.decodeFormParameters(requestBody.toFormParameters())
-                    externalAuthorizationServer.authorize(authnRequest) { catching { externalUser } }.fold(
+                    externalAuthorizationServer.authorize(authnRequest) { catching { dummyUser() } }.fold(
                         onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
@@ -201,14 +200,6 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                     externalAuthorizationServer.tokenWithDpopNonce(params, request.toRequestInfo()).fold(
                         onSuccess = { respond(it.toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
-                    )
-                }
-
-                request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
-                    val authn = request.headers[HttpHeaders.Authorization]
-                    externalAuthorizationServer.userInfoWithDpopNonce(authn!!, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it.toHttpResponse()) },
-                        onFailure = { respondResourceServerError(it, authn) }
                     )
                 }
 
@@ -408,7 +399,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                 }
 
             val offer = externalAuthorizationServer.offerWithPreAuthnForUserForSchemes(
-                user = externalUser,
+                user = dummyUser(),
                 credentialIssuer = openId4VciServer.metadata.credentialIssuer,
                 schemes = setOf(euPidScheme to ISO_MDOC),
             )
@@ -427,7 +418,11 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
 
 }
 
-/** The user the external authorization server authenticates, with a claim besides `sub`. */
+/**
+ * The user claims the external authorization server releases in token introspection responses. It authenticates the
+ * user as [dummyUser], with the same `sub` but no other claim, so the credential issuer gets `given_name` only by
+ * token introspection.
+ */
 private val externalUser = OidcUserInfoExtended.deserialize("""{"sub":"foo","given_name":"Susan"}""").getOrThrow()
 
 /**
