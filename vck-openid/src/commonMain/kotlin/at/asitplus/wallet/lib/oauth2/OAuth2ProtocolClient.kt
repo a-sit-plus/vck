@@ -320,12 +320,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         )
     }
 
-    /**
-     * Uses an access token from another client to request a new access token,
-     * see [RFC8693 OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693).
-     *
-     * Sends `([AttestationChallenge] Token){1,3}`.
-     */
+    @Deprecated("Token Exchange is not supported")
     @JvmOverloads
     fun requestTokenWithTokenExchange(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
@@ -333,20 +328,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         subjectToken: String,
         resource: String?,
         issuerMetadata: IssuerMetadata? = null,
-    ): HttpExchange<TokenResponseWithDpopNonce> = tokenRequest(
-        oauthMetadata = oauthMetadata,
-        popAudience = authorizationServer,
-        issuerMetadata = issuerMetadata,
-    ) {
-        Napier.i("requestTokenWithTokenExchange")
-        Napier.d("requestTokenWithTokenExchange: $subjectToken")
-        oAuth2Client.createTokenRequestParameters(
-            authorization = AuthorizationForToken.TokenExchange(subjectToken),
-            state = null,
-            scope = "${OpenIdConstants.SCOPE_OPENID} ${OpenIdConstants.SCOPE_PROFILE}",
-            authorizationDetails = null,
-            resource = resource,
-        )
+    ): HttpExchange<TokenResponseWithDpopNonce> {
+        throw NotImplementedError()
     }
 
     /** Builds the token request once with [createRequest], and posts it with client authentication. */

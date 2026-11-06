@@ -17,9 +17,6 @@ class JwtTokenService(
     override val supportsRefreshTokens: Boolean,
 ) : TokenService {
 
-    /** Tokens are DPoP bound, and [validateAccessToken] rejects a subject token bound to another key. */
-    override val supportsTokenExchange: Boolean = true
-
     /**
      * Validates the access token, and — since [generation] issued it — resolves the user info stored back then,
      * so callers do not need a second lookup with [readUserInfo].
