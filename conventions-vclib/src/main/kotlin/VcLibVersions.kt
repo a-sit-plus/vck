@@ -25,6 +25,7 @@ class VcLibVersions(private val project: Project) {
     val obor get() = versionOf("obor")
     val semver get() = versionOf("semver")
     val multipaz get() = versionOf("multipaz")
+    val kotlinxResources get() = versionOf("kotlinxResources")
 
     val Jvm = JvmVersions()
 
