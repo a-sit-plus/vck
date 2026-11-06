@@ -177,6 +177,7 @@ class OAuth2Client(
         ) : AuthorizationForToken()
 
         /** Use a [subjectToken] provided by another entity to perform Token Exchange. */
+        @Deprecated("Token Exchange is not supported")
         data class TokenExchange(
             val subjectToken: String,
         ) : AuthorizationForToken()
@@ -228,6 +229,7 @@ class OAuth2Client(
      * @param resource from RFC 8707 Resource Indicators for OAuth 2.0, in OID4VCI flows the value
      * of [IssuerMetadata.credentialIssuer]
      */
+    @Suppress("DEPRECATION")
     suspend fun createTokenRequestParameters(
         authorization: AuthorizationForToken,
         state: String? = null,

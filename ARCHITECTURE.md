@@ -122,7 +122,9 @@ Important areas:
   each flow in order; they contain no protocol logic and no DPoP handling. Received credentials are only decoded
   (`OpenId4VciClient.decodeCredentialResponse`), and are validated and stored by the wallet's `HolderAgent`, not by
   the Ktor client: `CredentialIssuanceResult.Success.prepareCredentialStorage` hands each `ReceivedCredential` to
-  `HolderAgent.prepareCredentialStorage`, see *Validation*.
+  `HolderAgent.prepareCredentialStorage`, see *Validation*. `RemoteOAuth2AuthorizationServerAdapter` loads the user
+  info for `OpenId4VciServer` by token introspection at the remote authorization server, or with a deployer-supplied
+  `LoadOidcUserInfoFun`.
 
 Put Ktor engine selection, request execution, response body handling, cache policy, and Ktor-specific test doubles
 here. Non-success responses are `HttpErrorResponseException` instances (defined in `vck-openid`, so that exchanges

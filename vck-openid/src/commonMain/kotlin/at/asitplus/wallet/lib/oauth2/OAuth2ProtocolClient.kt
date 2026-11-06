@@ -52,7 +52,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlinx.serialization.json.JsonObject
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.update
@@ -320,12 +319,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         )
     }
 
-    /**
-     * Uses an access token from another client to request a new access token,
-     * see [RFC8693 OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693).
-     *
-     * Sends `([AttestationChallenge] Token){1,3}`.
-     */
+    @Deprecated("Token Exchange is not supported")
     @JvmOverloads
     fun requestTokenWithTokenExchange(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
@@ -333,20 +327,8 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
         subjectToken: String,
         resource: String?,
         issuerMetadata: IssuerMetadata? = null,
-    ): HttpExchange<TokenResponseWithDpopNonce> = tokenRequest(
-        oauthMetadata = oauthMetadata,
-        popAudience = authorizationServer,
-        issuerMetadata = issuerMetadata,
-    ) {
-        Napier.i("requestTokenWithTokenExchange")
-        Napier.d("requestTokenWithTokenExchange: $subjectToken")
-        oAuth2Client.createTokenRequestParameters(
-            authorization = AuthorizationForToken.TokenExchange(subjectToken),
-            state = null,
-            scope = "${OpenIdConstants.SCOPE_OPENID} ${OpenIdConstants.SCOPE_PROFILE}",
-            authorizationDetails = null,
-            resource = resource,
-        )
+    ): HttpExchange<TokenResponseWithDpopNonce> {
+        throw NotImplementedError()
     }
 
     /** Builds the token request once with [createRequest], and posts it with client authentication. */
@@ -523,21 +505,6 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             },
         )
     }
-
-    /**
-     * Loads the user info from [userInfoEndpoint] with the access token from [tokenResponse].
-     *
-     * Sends `UserInfo{1,2}`.
-     */
-    fun userInfoRequest(
-        userInfoEndpoint: String,
-        tokenResponse: TokenResponseParameters,
-    ): HttpExchange<JsonObject> = accessTokenRequest(
-        unauthenticatedRequest = get(userInfoEndpoint),
-        tokenResponse = tokenResponse,
-        toProtocolRequest = ProtocolRequest::UserInfo,
-        parse = { joseCompliantSerializer.decodeFromString<JsonObject>(it.body) },
-    )
 
     /**
      * Sends [unauthenticatedRequest] with the access token from [tokenResponse], retrying once if the server asks for a
