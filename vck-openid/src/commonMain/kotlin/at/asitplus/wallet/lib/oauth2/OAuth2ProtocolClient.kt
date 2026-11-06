@@ -52,7 +52,6 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlinx.serialization.json.JsonObject
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.update
@@ -506,21 +505,6 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
             },
         )
     }
-
-    /**
-     * Loads the user info from [userInfoEndpoint] with the access token from [tokenResponse].
-     *
-     * Sends `UserInfo{1,2}`.
-     */
-    fun userInfoRequest(
-        userInfoEndpoint: String,
-        tokenResponse: TokenResponseParameters,
-    ): HttpExchange<JsonObject> = accessTokenRequest(
-        unauthenticatedRequest = get(userInfoEndpoint),
-        tokenResponse = tokenResponse,
-        toProtocolRequest = ProtocolRequest::UserInfo,
-        parse = { joseCompliantSerializer.decodeFromString<JsonObject>(it.body) },
-    )
 
     /**
      * Sends [unauthenticatedRequest] with the access token from [tokenResponse], retrying once if the server asks for a
