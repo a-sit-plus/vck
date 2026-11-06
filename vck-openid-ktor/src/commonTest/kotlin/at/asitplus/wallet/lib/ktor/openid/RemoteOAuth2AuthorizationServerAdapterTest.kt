@@ -306,6 +306,32 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
         form shouldBe mapOf("token" to "wallet-token", "token_type_hint" to "access_token")
     }
 
+    test("getUserInfo accepts aud as array in the token introspection response") {
+        val adapter = userInfoAdapter(
+            TokenIntrospectionResponse(
+                active = true,
+                subject = "user",
+                audience = setOf(issuer, "https://other.example.com"),
+                additionalClaims = JsonObject(mapOf("given_name" to JsonPrimitive("Susan"))),
+            )
+        )
+
+        adapter.getUserInfo("DPoP wallet-token", null).getOrThrow() shouldBe JsonObject(
+            mapOf("sub" to JsonPrimitive("user"), "given_name" to JsonPrimitive("Susan"))
+        )
+    }
+
+    test("getUserInfo fails if the response contains user claims without sub") {
+        shouldThrow<CredentialRequestDenied> {
+            userInfoAdapter(
+                TokenIntrospectionResponse(
+                    active = true,
+                    additionalClaims = JsonObject(mapOf("given_name" to JsonPrimitive("Susan"))),
+                )
+            ).getUserInfo("DPoP wallet-token", null).getOrThrow()
+        }
+    }
+
     test("getUserInfo loads the user info with loadOidcUserInfo instead of reading it from the response") {
         val introspectionResponse = TokenIntrospectionResponse(
             active = true,

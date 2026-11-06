@@ -32,7 +32,11 @@ Release 10.0.0 (unreleased):
 - OAuth 2.0:
     - BREAKING: Remove the constructor parameter `supportedSigningAlgorithms` of `SimpleAuthorizationService`
     - Remove support for [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693) in `TokenService`,
-      `SimpleAuthorizationService`, `OAuth2KtorClient` and `OAuth2ProtocolClient`.
+      `SimpleAuthorizationService`, `OAuth2KtorClient` and `OAuth2ProtocolClient`. Deprecate what remains of its API:
+      `TokenService.tokenExchange`, `OAuth2ProtocolClient.requestTokenWithTokenExchange`,
+      `OAuth2KtorClient.requestTokenWithTokenExchange` and `OAuth2Client.AuthorizationForToken.TokenExchange`
+    - `SimpleAuthorizationService` answers unknown grant types, Token Exchange included, with `unsupported_grant_type`
+      instead of `invalid_request`
     - Add `TokenIntrospectionResponse.additionalClaims`: members that RFC 7662 does not define, e.g. user claims,
       (de)serialized as top-level members of the response, which were dropped on parsing before.
     - Remove support for calling user info endpoints in `OAuth2ProtocolClient`, `OAuth2KtorClient` and `HttpExchange`,
