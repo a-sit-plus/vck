@@ -15,12 +15,14 @@ semver = "3.1.0"
 #testballoonAddons = "0.15.0"
 asp = "20260918"
 multipaz = "0.101.0"
+kotlinxResources = "0.16.2"
 
 [libraries]
 asp = { module = "at.asitplus.gradle:k2", version.ref = "asp" }
 #for build logic conventions plugin, as it needs the artefact, not the plugin ID
 agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 tomlj = { module = "org.tomlj:tomlj", version.ref = "tomlj" }
+kotlinxResourcesPlugin = { module = "com.goncalossilva:resources-plugin", version.ref = "kotlinxResources" }
 
 [plugins]
 asp = { id = "at.asitplus.gradle.conventions", version.ref = "asp" }
