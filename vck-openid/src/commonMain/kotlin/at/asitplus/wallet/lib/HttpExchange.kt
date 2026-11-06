@@ -78,9 +78,6 @@ sealed class ProtocolRequest {
     /** POST a credential request to the `credential_endpoint`, with the access token. */
     data class Credential(override val http: PreparedHttpRequest, override val attempt: Int) : Retryable()
 
-    /** GET the `userinfo_endpoint`, with the access token. */
-    data class UserInfo(override val http: PreparedHttpRequest, override val attempt: Int) : Retryable()
-
     /**
      * GET the request object from the `request_uri` of an OpenID4VP authorization request, or POST `wallet_metadata`
      * and `wallet_nonce` to it as form, for `request_uri_method=post`.

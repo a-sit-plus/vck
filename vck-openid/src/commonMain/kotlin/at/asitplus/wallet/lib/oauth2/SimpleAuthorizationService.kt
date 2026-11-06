@@ -567,7 +567,7 @@ class SimpleAuthorizationService @JvmOverloads constructor(
             clientId = request.clientId,
             validatedClientKey = validatedClientKey
         ).getOrThrow()
-            ?: throw InvalidClient("Can't authenticated client")
+            ?: throw InvalidClient("Can't authenticate client")
 
         val clientAuthRequest = request.loadClientAuthnRequest(httpRequest, validatedClientKey)
             ?: throw InvalidGrant("could not load user info for $request")

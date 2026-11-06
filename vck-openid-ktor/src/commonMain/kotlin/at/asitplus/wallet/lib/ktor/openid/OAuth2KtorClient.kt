@@ -24,7 +24,6 @@ import com.benasher44.uuid.uuid4
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.json.JsonObject
 
 /**
  * Implements the client side of OAuth2 with ktor, by sending the requests of [OAuth2ProtocolClient], which implements
@@ -105,10 +104,6 @@ class OAuth2KtorClient private constructor(
     /** Loads the metadata of [authorizationServer], see [OAuth2ProtocolClient.loadAuthorizationServerMetadata]. */
     internal suspend fun loadAuthorizationServerMetadata(authorizationServer: String): OAuth2AuthorizationServerMetadata =
         execute(protocolClient.loadAuthorizationServerMetadata(authorizationServer))
-
-    /** Loads the user info with the access token from [tokenResponse], see [OAuth2ProtocolClient.userInfoRequest]. */
-    internal suspend fun requestUserInfo(userInfoEndpoint: String, tokenResponse: TokenResponseParameters): JsonObject =
-        execute(protocolClient.userInfoRequest(userInfoEndpoint, tokenResponse))
 
     /**
      * Uses a pre-authorized code from the authorization server to request an access token.

@@ -29,12 +29,15 @@ Release 10.0.0 (unreleased):
     - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status
       List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still
       emitted as stored blocks.
-- OAuth 2.0 authorization server:
+- OAuth 2.0:
     - BREAKING: Remove the constructor parameter `supportedSigningAlgorithms` of `SimpleAuthorizationService`
     - Remove support for [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693) in `TokenService`,
       `SimpleAuthorizationService`, `OAuth2KtorClient` and `OAuth2ProtocolClient`.
     - Add `TokenIntrospectionResponse.additionalClaims`: members that RFC 7662 does not define, e.g. user claims,
-      (de)serialized as top-level members of the response, which were dropped on parsing before
+      (de)serialized as top-level members of the response, which were dropped on parsing before.
+    - Remove support for calling user info endpoints in `OAuth2ProtocolClient`, `OAuth2KtorClient` and `HttpExchange`,
+      as this functionality for using a remote authorization server for the OpenID4VciServer has been migrated to
+      call token introspection instead.
 - OpenID for Verifiable Presentations client:
     - BREAKING: `RequestParser` no longer fetches request objects passed by reference in `request_uri`:
       `parseRequestParameters` fails with `InvalidRequest` for a request referencing its request object only in
