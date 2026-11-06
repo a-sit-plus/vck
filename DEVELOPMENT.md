@@ -26,6 +26,13 @@ Tests run on **TestBalloon** (`val Name by testSuite { "..." { ... } }`) with **
 testing (`shouldBe`, `Arb`, `checkAll`). Put credential/serialization tests in `commonTest` so they exercise all
 platforms; use `jvmTest` for fast local feedback and JVM-only dependencies.
 
+Keep captured artifacts — published trust lists, signed objects, certificates, spec examples — as files in
+`src/commonTest/resources/<topic>/` and read them with `Resource("<topic>/<file>").readText()` (or `readBytes()`) from
+[kotlinx-resources](https://github.com/goncalossilva/kotlinx-resources), which the conventions plugin applies to every
+module. It works on JVM, Android device tests, and the iOS simulator. To share files between modules, add the owning
+module's directory with `resources.srcDir(...)` (see `vck/build.gradle.kts`, which reads the LoTE lists of
+`etsi-data-classes`). Keep small JSON written for a single test inline, next to its assertions.
+
 Prefer module-scoped tasks — the root `compileKotlin` task is **ambiguous** in this multiplatform build (candidates
 `compileKotlinJvm`, `compileKotlinIosArm64`, …) and fails on name resolution before showing any source error.
 Start narrow, then widen to `:module:check` or `build` once the focused surface is clean.

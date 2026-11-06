@@ -1,0 +1,532 @@
+{
+  "ListAndSchemeInformation": {
+    "LoTEVersionIdentifier": 1,
+    "LoTESequenceNumber": 2,
+    "LoTEType": "http://uri.etsi.org/19602/LoTEType/EUWRPACProvidersList",
+    "SchemeOperatorName": [
+      {
+        "lang": "en",
+        "value": "European Commission"
+      },
+      {
+        "lang": "bg",
+        "value": "Европейска комисия"
+      },
+      {
+        "lang": "es",
+        "value": "Comisión Europea"
+      },
+      {
+        "lang": "cs",
+        "value": "Evropská komise"
+      },
+      {
+        "lang": "da",
+        "value": "Europa-Kommissionen"
+      },
+      {
+        "lang": "de",
+        "value": "Europäische Kommission"
+      },
+      {
+        "lang": "et",
+        "value": "Euroopa Komisjon"
+      },
+      {
+        "lang": "el",
+        "value": "Ευρωπαϊκή Επιτροπή"
+      },
+      {
+        "lang": "fr",
+        "value": "Commission européenne"
+      },
+      {
+        "lang": "it",
+        "value": "Commissione europea"
+      },
+      {
+        "lang": "lv",
+        "value": "Eiropas Komisija"
+      },
+      {
+        "lang": "lt",
+        "value": "Europos Komisija"
+      },
+      {
+        "lang": "hu",
+        "value": "Európai Bizottság"
+      },
+      {
+        "lang": "mt",
+        "value": "Il-Kummissjoni Ewropea"
+      },
+      {
+        "lang": "nl",
+        "value": "Europese Commissie"
+      },
+      {
+        "lang": "pl",
+        "value": "Komisja Europejska"
+      },
+      {
+        "lang": "pt",
+        "value": "Comissão Europeia"
+      },
+      {
+        "lang": "ro",
+        "value": "Comisia Europeană"
+      },
+      {
+        "lang": "sk",
+        "value": "Európska komisia"
+      },
+      {
+        "lang": "sl",
+        "value": "Evropska komisija"
+      },
+      {
+        "lang": "fi",
+        "value": "Euroopan komissio"
+      },
+      {
+        "lang": "sv",
+        "value": "Europeiska kommissionen"
+      },
+      {
+        "lang": "hr",
+        "value": "Europska komisija"
+      }
+    ],
+    "SchemeOperatorAddress": {
+      "SchemeOperatorPostalAddress": [
+        {
+          "lang": "fr",
+          "StreetAddress": "Rue de la Loi 200",
+          "Locality": "Bruxelles",
+          "PostalCode": "1049",
+          "Country": "BE"
+        },
+        {
+          "lang": "nl",
+          "StreetAddress": "Wetstraat 200",
+          "Locality": "Brussel",
+          "PostalCode": "1049",
+          "Country": "BE"
+        },
+        {
+          "lang": "en",
+          "StreetAddress": "Rue de la Loi/Wetstraat 200",
+          "Locality": "Brussels",
+          "PostalCode": "1049",
+          "Country": "BE"
+        }
+      ],
+      "SchemeOperatorElectronicAddress": [
+        {
+          "lang": "en",
+          "uriValue": "mailto:DIGIT-EU-TRUST-NON-PROD@ec.europa.eu"
+        },
+        {
+          "lang": "en",
+          "uriValue": "https://digital-strategy.ec.europa.eu/en/policies/eu-trusted-lists"
+        }
+      ]
+    },
+    "SchemeName": [
+      {
+        "lang": "en",
+        "value": "The present list is a list of person identifier providers of EUDI Wallet issued in accordance with CIR 2024/2980"
+      }
+    ],
+    "SchemeInformationURI": [
+      {
+        "lang": "en",
+        "uriValue": "https://trust.tech.ec.europa.eu/lists/eudiw/wrpac-providers-list-scheme-information"
+      }
+    ],
+    "StatusDeterminationApproach": "http://uri.etsi.org/19602/WRPACProvidersList/StatusDetn/EU",
+    "SchemeTypeCommunityRules": [
+      {
+        "lang": "en",
+        "uriValue": "http://uri.etsi.org/19602/WRPACProvidersList/schemerules/EU"
+      }
+    ],
+    "SchemeTerritory": "EU",
+    "PolicyOrLegalNotice": [
+      {
+        "LoTEPolicy": {
+          "lang": "en",
+          "uriValue": "http://trust.tech.ec.europa.eu/lists/eudiw/legal-notice#EN"
+        }
+      }
+    ],
+    "ListIssueDateTime": "2026-04-02T09:21:34Z",
+    "NextUpdate": "2026-10-01T09:21:34Z"
+  },
+  "TrustedEntitiesList": [
+    {
+      "TrustedEntityInformation": {
+        "TEName": [
+          {
+            "lang": "en",
+            "value": "eidas2sandkasse RP Access CA test"
+          }
+        ],
+        "TETradeName": [
+          {
+            "lang": "en",
+            "value": "NTRNO-991825827"
+          }
+        ],
+        "TEAddress": {
+          "TEPostalAddress": [
+            {
+              "lang": "en",
+              "StreetAddress": "Rue test",
+              "Locality": "test",
+              "StateOrProvince": "test",
+              "PostalCode": "1234",
+              "Country": "NO"
+            }
+          ],
+          "TEElectronicAddress": [
+            {
+              "lang": "en",
+              "uriValue": "mailto:test@domain.no"
+            },
+            {
+              "lang": "en",
+              "uriValue": "tel:+47987654"
+            }
+          ]
+        },
+        "TEInformationURI": [
+          {
+            "lang": "en",
+            "uriValue": "https://test.no"
+          },
+          {
+            "lang": "en",
+            "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/WRPACProvider/NO"
+          }
+        ]
+      },
+      "TrustedEntityServices": [
+        {
+          "ServiceInformation": {
+            "ServiceName": [
+              {
+                "lang": "en",
+                "value": "name_wrpac_solution_no"
+              }
+            ],
+            "ServiceDigitalIdentity": {
+              "X509Certificates": [
+                {
+                  "val": "MIICuzCCAmGgAwIBAgIJAKcp7ByPxFNUMAoGCCqGSM49BAMDMGMxGDAWBgNVBGETD05UUk5PLTk5MTgyNTgyNzELMAkGA1UEBhMCbm8xDzANBgNVBAsTBkRpZ2RpcjEpMCcGA1UEAxMgZWlkYXMyc2FuZGthc3NlLm5ldCByb290IENBIHRlc3QwHhcNMjUwNTA5MDc1NjU0WhcNMzAwNDI5MDc1NjU0WjBkMRgwFgYDVQRhEw9OVFJOTy05OTE4MjU4MjcxCzAJBgNVBAYTAm5vMQ8wDQYDVQQLEwZEaWdkaXIxKjAoBgNVBAMTIWVpZGFzMnNhbmRrYXNzZSBSUCBBY2Nlc3MgQ0EgdGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABE4OQr5vpRMvcYZs46LkpdDgVQ9V+9E/Gx3Io2jqm+g/43/0b2Ns9oSRv1VpY/vYSI/O6JWylRQ+MNk6V3DfQv2jgfwwgfkwUQYIKwYBBQUHAQEERTBDMEEGCCsGAQUFBzAChjVodHRwczovL2NhLnRlc3QuZWlkYXMyc2FuZGthc3NlLm5ldC92MS9jZXJ0cy9yb290LmNlcjAdBgNVHQ4EFgQUUcgCJYAwgpE7JCLUm9xeoainXcwwDgYDVR0PAQH/BAQDAgEGMAwGA1UdEwQFMAMBAf8wRgYDVR0fBD8wPTA7oDmgN4Y1aHR0cHM6Ly9jYS50ZXN0LmVpZGFzMnNhbmRrYXNzZS5uZXQvdjEvY2VydHMvcm9vdC5jcmwwHwYDVR0jBBgwFoAUCi/G/x9Z1uJAVlFqD3onNXclrPEwCgYIKoZIzj0EAwMDSAAwRQIgfuk68h7gRHYXzBuddxFEUGl1eYtQgMCMKcw6D1kVjzgCIQC91xg+yGdocsoPmIGACivfYZAftiQXGEjHdid9RZOX1g=="
+                }
+              ]
+            },
+            "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance"
+          }
+        }
+      ]
+    },
+    {
+      "TrustedEntityInformation": {
+        "TEName": [
+          {
+            "lang": "en",
+            "value": "Idakto"
+          }
+        ],
+        "TETradeName": [
+          {
+            "lang": "en",
+            "value": "VATFR-12345"
+          }
+        ],
+        "TEAddress": {
+          "TEPostalAddress": [
+            {
+              "lang": "en",
+              "StreetAddress": "Rue test",
+              "Locality": "test",
+              "StateOrProvince": "test",
+              "PostalCode": "1234",
+              "Country": "FR"
+            }
+          ],
+          "TEElectronicAddress": [
+            {
+              "lang": "en",
+              "uriValue": "mailto:test@domain.fr"
+            },
+            {
+              "lang": "en",
+              "uriValue": "tel:+33234567"
+            }
+          ]
+        },
+        "TEInformationURI": [
+          {
+            "lang": "en",
+            "uriValue": "https://test.fr"
+          },
+          {
+            "lang": "en",
+            "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/WRPACProvider/FR"
+          }
+        ]
+      },
+      "TrustedEntityServices": [
+        {
+          "ServiceInformation": {
+            "ServiceName": [
+              {
+                "lang": "en",
+                "value": "name_wrpac_solution_fr"
+              }
+            ],
+            "ServiceDigitalIdentity": {
+              "X509Certificates": [
+                {
+                  "val": "MIICgjCCAiegAwIBAgIUafRAIleaQOm9jZLiIML9FeOWd9cwCgYIKoZIzj0EAwIwczELMAkGA1UEBhMCRlIxDzANBgNVBAgMBkZSQU5DRTEPMA0GA1UEBwwGQW5nZXJzMQ8wDQYDVQQKDAZJZGFrdG8xDjAMBgNVBAsMBVN0ZWFtMSEwHwYDVQQDDBhyZWFkZXItaXNzdWVyQGlkYWt0by5jb20wHhcNMjUwNzI1MTQ0NzI1WhcNMzAwNzI0MTQ0NzI1WjBzMQswCQYDVQQGEwJGUjEPMA0GA1UECAwGRlJBTkNFMQ8wDQYDVQQHDAZBbmdlcnMxDzANBgNVBAoMBklkYWt0bzEOMAwGA1UECwwFU3RlYW0xITAfBgNVBAMMGHJlYWRlci1pc3N1ZXJAaWRha3RvLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABCq6dkUsfqjCByvS+UM/FDOgjO5fbB6aEesAgWmiMrSJQybQnAGSOySr0V+E0puM3eMaLy4DzsGLW0LX6J+vRLOjgZgwgZUwEgYDVR0TAQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFJ57lkHy09w59xHQDk4y9ubmup5VMCsGA1UdEQQkMCKCIG9wZW5pZDR2cC5kcnVrcXMuYXNnYXJkLmlkZW52LmZyMCMGA1UdEgQcMBqBGHJlYWRlci1pc3N1ZXJAaWRha3RvLmNvbTAKBggqhkjOPQQDAgNJADBGAiEA9hIBNw8GI7E5z/NZI/3CUMZjndoKGg+2o0lh8/6gY30CIQCiUgMnIib46Ypi4IryQOn282zPWrTWQFwIebwASeG9+w=="
+                }
+              ]
+            },
+            "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance"
+          }
+        }
+      ]
+    },
+    {
+      "TrustedEntityInformation": {
+        "TEName": [
+          {
+            "lang": "en",
+            "value": "Microsec Ltd."
+          }
+        ],
+        "TETradeName": [
+          {
+            "lang": "en",
+            "value": "VATHU-23584497"
+          }
+        ],
+        "TEAddress": {
+          "TEPostalAddress": [
+            {
+              "lang": "en",
+              "StreetAddress": "Rue test",
+              "Locality": "test",
+              "StateOrProvince": "test",
+              "PostalCode": "2345",
+              "Country": "HU"
+            }
+          ],
+          "TEElectronicAddress": [
+            {
+              "lang": "en",
+              "uriValue": "mailto:test@domain.hu"
+            },
+            {
+              "lang": "en",
+              "uriValue": "tel:+36567890"
+            }
+          ]
+        },
+        "TEInformationURI": [
+          {
+            "lang": "en",
+            "uriValue": "https://test.hu"
+          },
+          {
+            "lang": "en",
+            "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/WRPACProvider/HU"
+          }
+        ]
+      },
+      "TrustedEntityServices": [
+        {
+          "ServiceInformation": {
+            "ServiceName": [
+              {
+                "lang": "en",
+                "value": "name_wrpac_solution_hu"
+              }
+            ],
+            "ServiceDigitalIdentity": {
+              "X509Certificates": [
+                {
+                  "val": "MIIDQzCCAuigAwIBAgIMBcKMJXgy2272WHQKMAoGCCqGSM49BAMCMHYxCzAJBgNVBAYTAkhVMREwDwYDVQQHDAhCdWRhcGVzdDEWMBQGA1UECgwNTWljcm9zZWMgTHRkLjEXMBUGA1UEYQwOVkFUSFUtMjM1ODQ0OTcxIzAhBgNVBAMMGlRlc3QgZS1Temlnbm8gUm9vdCBDQSAyMDE3MB4XDTE3MDkyMjIwMDAwMFoXDTQyMDkyMjA2MDAwMFowcTELMAkGA1UEBhMCSFUxETAPBgNVBAcMCEJ1ZGFwZXN0MRYwFAYDVQQKDA1NaWNyb3NlYyBMdGQuMRcwFQYDVQRhDA5WQVRIVS0yMzU4NDQ5NzEeMBwGA1UEAwwVVGVzdCBlLVN6aWdubyBDQSAyMDE3MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElKYzOPtAdd2ohSfwEgX2A+Zr2jXWrEqAwJYRs9aBjxT67VwuD10R+TEY0aRwzbrAAPfR2hsOr9DcvZlh4AXRraOCAV8wggFbMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMD4GA1UdIAQ3MDUwMwYEVR0gADArMCkGCCsGAQUFBwIBFh1odHRwOi8vdGVzenQuZS1zemlnbm8uaHUvcWNwczAdBgNVHQ4EFgQUeptoh454hhbzt/k2HvgamLNkHIkwHwYDVR0jBBgwFoAUklDZBPHkz7JSHyQKgYTiOO2dO44wOQYDVR0fBDIwMDAuoCygKoYoaHR0cDovL3Rlc3p0LmUtc3ppZ25vLmh1L3Ryb290Y2EyMDE3LmNybDB9BggrBgEFBQcBAQRxMG8wNwYIKwYBBQUHMAGGK2h0dHA6Ly90ZXN6dC5lLXN6aWduby5odS90ZXN0cm9vdGNhMjAxN29jc3AwNAYIKwYBBQUHMAKGKGh0dHA6Ly90ZXN6dC5lLXN6aWduby5odS90cm9vdGNhMjAxNy5jcnQwCgYIKoZIzj0EAwIDSQAwRgIhAL+F7BHEDUvV/weTnf4TwzwDIssl0hMF/0oKo0c9CaXXAiEAvNpfSAJjlU9kCqsRVUYVQqVffJCuBPIKdFvfcejwfbY="
+                }
+              ]
+            },
+            "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance"
+          }
+        }
+      ]
+    },
+    {
+      "TrustedEntityInformation": {
+        "TEName": [
+          {
+            "lang": "en",
+            "value": "A-SIT"
+          }
+        ],
+        "TETradeName": [
+          {
+            "lang": "en",
+            "value": "VATAT-45678"
+          }
+        ],
+        "TEAddress": {
+          "TEPostalAddress": [
+            {
+              "lang": "en",
+              "StreetAddress": "Rue test",
+              "Locality": "test",
+              "StateOrProvince": "test",
+              "PostalCode": "2345",
+              "Country": "AT"
+            }
+          ],
+          "TEElectronicAddress": [
+            {
+              "lang": "en",
+              "uriValue": "mailto:test@domain.at"
+            },
+            {
+              "lang": "en",
+              "uriValue": "tel:+43789012"
+            }
+          ]
+        },
+        "TEInformationURI": [
+          {
+            "lang": "en",
+            "uriValue": "https://test.at"
+          },
+          {
+            "lang": "en",
+            "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/WRPACProvider/AT"
+          }
+        ]
+      },
+      "TrustedEntityServices": [
+        {
+          "ServiceInformation": {
+            "ServiceName": [
+              {
+                "lang": "en",
+                "value": "name_wrpac_solution_at"
+              }
+            ],
+            "ServiceDigitalIdentity": {
+              "X509Certificates": [
+                {
+                  "val": "MIICJzCCAc6gAwIBAgIUSvMftn/oM3etHjE7hdIBl6tWMV8wCgYIKoZIzj0EAwIwMzELMAkGA1UEBhMCQVQxDjAMBgNVBAoMBUEtU0lUMRQwEgYDVQQDDAtWYWxlcmEgSUFDQTAeFw0yNTA2MjYwODI0MDJaFw0yNjA2MjYwODI0MDJaMDMxCzAJBgNVBAYTAkFUMQ4wDAYDVQQKDAVBLVNJVDEUMBIGA1UEAwwLVmFsZXJhIElBQ0EwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQmm+pmyUxx/x2eD131E8HhvNkhsfYQXzefZlxgLXQPqCOxO+VPOXVOKL0dUy+kHyT5IP/NOAh038coAVOgGPT4o4G/MIG8MBIGA1UdEwEB/wQIMAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMCIGA1UdEgQbMBmGF2h0dHBzOi8vd2FsbGV0LmEtc2l0LmF0MDIGA1UdHwQrMCkwJ6AloCOGIWh0dHBzOi8vd2FsbGV0LmEtc2l0LmF0L2NybC8xLmNybDAfBgNVHSMEGDAWgBSDGoj0XuXE3qEVTmPvKSvIvR36ijAdBgNVHQ4EFgQUgxqI9F7lxN6hFU5j7ykryL0d+oowCgYIKoZIzj0EAwIDRwAwRAIgS9XcYA4Be5gDIdHmMOgJ3AeS44gT4bgVgsg/D5+WXS8CIAxJgi3nhGrVMj9SszehLorR2rR5FO5RZgITAaOIGSNP"
+                }
+              ]
+            },
+            "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance"
+          }
+        }
+      ]
+    },
+    {
+      "TrustedEntityInformation": {
+        "TEName": [
+          {
+            "lang": "en",
+            "value": "WRPAC Provider - failing conformance checks"
+          }
+        ],
+        "TETradeName": [
+          {
+            "lang": "en",
+            "value": "WRPAC Provider1"
+          },
+          {
+            "lang": "en",
+            "value": "VATLI-2345678"
+          }
+        ],
+        "TEAddress": {
+          "TEPostalAddress": [
+            {
+              "lang": "en",
+              "StreetAddress": "Platz 2",
+              "Locality": "Vaduz",
+              "StateOrProvince": "Liechtenstein",
+              "PostalCode": "Fl-001",
+              "Country": "PL"
+            }
+          ],
+          "TEElectronicAddress": [
+            {
+              "lang": "en",
+              "uriValue": "mailto:office-wrpac@test.li"
+            },
+            {
+              "lang": "en",
+              "uriValue": "tel:+423887744"
+            },
+            {
+              "lang": "en",
+              "uriValue": "https://www.llv.li/en/wrpac"
+            }
+          ]
+        },
+        "TEInformationURI": [
+          {
+            "lang": "en",
+            "uriValue": "https://www.llv.li/en/wrpac/policies"
+          },
+          {
+            "lang": "en",
+            "uriValue": "https://www.llv.li/en/wrpac/information"
+          },
+          {
+            "lang": "en",
+            "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/WRPACProvider/PL"
+          }
+        ]
+      },
+      "TrustedEntityServices": [
+        {
+          "ServiceInformation": {
+            "ServiceName": [
+              {
+                "lang": "en",
+                "value": "WRPAC Service 1"
+              }
+            ],
+            "ServiceDigitalIdentity": {
+              "X509Certificates": [
+                {
+                  "val": "MIIDWjCCAkKgAwIBAgIQFNp7JHkUrblEFMsg3Z6PoDANBgkqhkiG9w0BAQsFADAxMRgwFgYDVQQKDA9XUlBBQyBQcm92aWRlcjExFTATBgNVBAMMDE5hbWVUZXN0Q2VydDAeFw0yNTA5MjUxNDMxMzhaFw0yNjA5MjUxNDQxMzhaMDExGDAWBgNVBAoMD1dSUEFDIFByb3ZpZGVyMTEVMBMGA1UEAwwMTmFtZVRlc3RDZXJ0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsfg1O1Eq5tt92WJRylnFc75amIjPybG3yyATDg28rF1rBOcoGFXw/Za029VlewkYCGIznE3SyoaFTcO0e14MLW4sjvSAYYIwTfKFBo7X7VwbhI+ItVrb3bgNXUeLiq5eOerfZWthjtjB5p3SjOtOmIoHpRwRvegGrlFKFK7SFGt7iGMIxKEu0FDQOi7eJnPIhaMflE7qHDfgrX8YFrc8dgi8g062nk1JWM+g+eFcj/eCyHs3adWQ/P5yEVn/A5sOeO8W3tbxA98xRkHgZbikYPaYy1tQGWzdCxZ3kehyucBysaAOuoXunWjX/v4Tx0omEkVq5Dh+lt7iH2nyU03R+QIDAQABo24wbDAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMBwGA1UdEQQVMBOCEU5hbWVUZXN0Q2VydFdSUEFDMB0GA1UdDgQWBBToGtzqikCk196F3aaeq6HPxLfR3TANBgkqhkiG9w0BAQsFAAOCAQEAbqhUoauW+PRFiOO5O1QjF9pl7ncsCTL/13d4vnEmIicVOOHJjKnZ50/jGkVnPe34BaJ+iEVomNkEHg5XTaj005kTQ1Nimo9NCVJudl9v135dCPdSItGY2FRUfdesD0lYYwSEa0RUT57NeKA6ZTQNIlpE5HFywvKiktZ05GAFQuqn5UYMvaf2unEvXf6HO92yQcJ7H5A5zmJv5RBp6wFs2DznOTKdJMhjKOIybumDoXKCLQYqR9zDG042s369/UB/2FXcNfL3mi/VdayH2BwCu/OlyaxWy0pX+hhZuGEBbyrVTdJvsLSItsg7WpjxeU/GyViz227qh9xKCI/wCZmdzw=="
+                }
+              ]
+            },
+            "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/WRPAC/Issuance",
+            "ServiceSupplyPoints": [
+              {
+                "uriValue": "http://supply.points",
+                "ServiceType": "http://supply.pointstype"
+              }
+            ],
+            "ServiceDefinitionURI": [
+              {
+                "lang": "en",
+                "uriValue": "https://www.llv.li/en/wrpac/service/information"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
