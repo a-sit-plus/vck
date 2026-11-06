@@ -3,12 +3,10 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants.Errors.USE_DPOP_NONCE
 import at.asitplus.openid.OpenIdConstants.WellKnownPaths
 import at.asitplus.openid.TokenIntrospectionJwtPayload
 import at.asitplus.openid.TokenIntrospectionJwtResponse
 import at.asitplus.openid.TokenIntrospectionResponse
-import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -23,13 +21,12 @@ import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.ktor.openid.TestUtils.respond
-import at.asitplus.wallet.lib.oauth2.DPoPNonce
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.toHttpResponse
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
-import at.asitplus.wallet.lib.oidvci.OAuth2Error
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.CredentialRequestDenied
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import io.kotest.assertions.throwables.shouldThrow
@@ -60,7 +57,7 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
         override suspend fun validateRefreshToken(
             refreshToken: String,
             httpRequest: RequestInfo?,
-            validatedClientKey: at.asitplus.signum.indispensable.josef.JsonWebKey?,
+            validatedClientKey: at.asitplus.signum.indispensable.josef.JsonWebKey?
         ) = refreshToken
 
         override suspend fun getTokenInfo(tokenOrAuthHeader: String): TokenInfo = TokenInfo(
@@ -264,10 +261,13 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
         accept shouldBe MediaTypes.Application.TOKEN_INTROSPECTION_JWT
     }
 
-    test("getUserInfo retries after dpop nonce challenge") {
-        var userInfoCalls = 0
-        val userInfoResponse = JsonObject(mapOf("sub" to JsonPrimitive("user")))
-        val mockEngine = MockEngine { request ->
+    fun userInfoAdapter(
+        introspectionResponse: TokenIntrospectionResponse,
+        loadOidcUserInfo: LoadOidcUserInfoFun? = null,
+        onIntrospection: (form: Map<String, String>) -> Unit = {},
+    ) = RemoteOAuth2AuthorizationServerAdapter(
+        publicContext = issuer,
+        httpClient = HttpClient(MockEngine { request ->
             when {
                 request.url.rawSegments.drop(1) == WellKnownPaths.OauthAuthorizationServer -> respond(
                     joseCompliantSerializer.encodeToString(
@@ -277,47 +277,69 @@ val RemoteOAuth2AuthorizationServerAdapterTest by matrixSuite {
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
 
-                request.url.toString() == tokenEndpoint -> respond(
-                    joseCompliantSerializer.encodeToString(
-                        TokenResponseParameters(
-                            accessToken = "access-token",
-                            tokenType = "DPoP",
-                            scope = "openid profile",
-                        )
-                    ),
-                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                )
-
-                request.url.toString() == userInfoEndpoint -> {
-                    userInfoCalls += 1
-                    if (userInfoCalls == 1) {
-                        respond(
-                            joseCompliantSerializer.encodeToString(OAuth2Error(error = USE_DPOP_NONCE)),
-                            status = HttpStatusCode.BadRequest,
-                            headers = headers {
-                                append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                                append(HttpHeaders.DPoPNonce, "nonce-1")
-                            }
-                        )
-                    } else {
-                        respond(
-                            joseCompliantSerializer.encodeToString(userInfoResponse),
-                            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                        )
-                    }
+                request.url.toString() == introspectionEndpoint -> {
+                    onIntrospection(request.body.toByteArray().decodeToString().toFormParameters())
+                    respond(introspectionResponse.toHttpResponse())
                 }
 
                 else -> respondError(HttpStatusCode.NotFound)
             }
-        }
+        }),
+        internalTokenVerificationService = tokenVerificationService,
+        loadOidcUserInfo = loadOidcUserInfo,
+    )
 
-        val adapter = RemoteOAuth2AuthorizationServerAdapter(
-            publicContext = issuer,
-            httpClient = HttpClient(mockEngine),
-            internalTokenVerificationService = tokenVerificationService,
+    test("getUserInfo returns the user claims of the token introspection response") {
+        var form: Map<String, String>? = null
+        val adapter = userInfoAdapter(
+            introspectionResponse = TokenIntrospectionResponse(
+                active = true,
+                subject = "user",
+                additionalClaims = JsonObject(mapOf("given_name" to JsonPrimitive("Susan"))),
+            ),
+            onIntrospection = { form = it },
         )
 
-        adapter.getUserInfo("Bearer wallet-token", null).getOrThrow() shouldBe userInfoResponse
-        userInfoCalls shouldBe 2
+        adapter.getUserInfo("DPoP wallet-token", null).getOrThrow() shouldBe JsonObject(
+            mapOf("sub" to JsonPrimitive("user"), "given_name" to JsonPrimitive("Susan"))
+        )
+        form shouldBe mapOf("token" to "wallet-token", "token_type_hint" to "access_token")
+    }
+
+    test("getUserInfo loads the user info with loadOidcUserInfo instead of reading it from the response") {
+        val introspectionResponse = TokenIntrospectionResponse(
+            active = true,
+            subject = "user",
+            additionalClaims = JsonObject(mapOf("given_name" to JsonPrimitive("Remote"))),
+        )
+        val userInfo = JsonObject(mapOf("sub" to JsonPrimitive("user"), "given_name" to JsonPrimitive("Susan")))
+        var input: LoadOidcUserInfoFunInput? = null
+        val adapter = userInfoAdapter(
+            introspectionResponse = introspectionResponse,
+            loadOidcUserInfo = { input = it; KmmResult.success(userInfo) },
+        )
+
+        adapter.getUserInfo("DPoP wallet-token", null).getOrThrow() shouldBe userInfo
+        input shouldBe LoadOidcUserInfoFunInput(token = "wallet-token", response = introspectionResponse)
+    }
+
+    test("getUserInfo fails if the response contains no user claims and loadOidcUserInfo is not set") {
+        shouldThrow<CredentialRequestDenied> {
+            userInfoAdapter(TokenIntrospectionResponse(active = true, subject = "user"))
+                .getUserInfo("DPoP wallet-token", null).getOrThrow()
+        }
+    }
+
+    test("getUserInfo fails for an inactive token") {
+        var loadOidcUserInfoCalled = false
+        val adapter = userInfoAdapter(
+            introspectionResponse = TokenIntrospectionResponse(active = false),
+            loadOidcUserInfo = { loadOidcUserInfoCalled = true; KmmResult.success(JsonObject(emptyMap())) },
+        )
+
+        shouldThrow<InvalidToken> {
+            adapter.getUserInfo("DPoP wallet-token", null).getOrThrow()
+        }
+        loadOidcUserInfoCalled shouldBe false
     }
 }
