@@ -33,6 +33,8 @@ Release 10.0.0 (unreleased):
     - BREAKING: Remove the constructor parameter `supportedSigningAlgorithms` of `SimpleAuthorizationService`
     - Remove support for [OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693) in `TokenService`,
       `SimpleAuthorizationService`, `OAuth2KtorClient` and `OAuth2ProtocolClient`.
+    - Add `TokenIntrospectionResponse.additionalClaims`: members that RFC 7662 does not define, e.g. user claims,
+      (de)serialized as top-level members of the response, which were dropped on parsing before
 - OpenID for Verifiable Presentations client:
     - BREAKING: `RequestParser` no longer fetches request objects passed by reference in `request_uri`:
       `parseRequestParameters` fails with `InvalidRequest` for a request referencing its request object only in

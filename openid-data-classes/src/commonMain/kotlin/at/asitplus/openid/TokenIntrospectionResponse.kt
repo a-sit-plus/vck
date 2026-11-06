@@ -7,8 +7,10 @@ import at.asitplus.signum.indispensable.josef.JwsCompactStringSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.JwsTyped
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 import kotlin.jvm.JvmInline
 import kotlin.time.Instant
 
@@ -17,7 +19,8 @@ import kotlin.time.Instant
  */
 sealed interface TokenIntrospectionResult
 
-@Serializable
+@KeepGeneratedSerializer
+@Serializable(with = TokenIntrospectionResponseSerializer::class)
 data class TokenIntrospectionResponse(
     /**
      * REQUIRED.  Boolean indicator of whether or not the presented token
@@ -131,6 +134,17 @@ data class TokenIntrospectionResponse(
      */
     @SerialName("cnf")
     val confirmationClaim: ConfirmationClaim? = null,
+
+    /**
+     * Service-specific members of the response, e.g. user claims such as `given_name`, as "implementations MAY extend
+     * this structure with their own service-specific response names as top-level members of this JSON object"
+     * ([RFC 7662 2.2](https://datatracker.ietf.org/doc/html/rfc7662#section-2.2)).
+     * Serialized as top-level members of the response by [TokenIntrospectionResponseSerializer], not under a name of
+     * their own. A member that has the name of one of the properties above is not serialized; that property wins.
+     * On parsing, every member that does not map to a property above ends up here; `null` if there are none.
+     */
+    @SerialName(TokenIntrospectionResponseSerializer.ADDITIONAL_CLAIMS)
+    val additionalClaims: JsonObject? = null,
 
     ) : TokenIntrospectionResult
 
