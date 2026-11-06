@@ -38,6 +38,8 @@ Release 10.0.0 (unreleased):
     - Remove support for calling user info endpoints in `OAuth2ProtocolClient`, `OAuth2KtorClient` and `HttpExchange`,
       as this functionality for using a remote authorization server for the OpenID4VciServer has been migrated to
       call token introspection instead.
+    - `RemoteOAuth2AuthorizationServerAdapter.getUserInfo` reads the user claims from the token introspection response,
+      or loads them with the new constructor parameter `loadOidcUserInfo` (`LoadOidcUserInfoFun`)
 - OpenID for Verifiable Presentations client:
     - BREAKING: `RequestParser` no longer fetches request objects passed by reference in `request_uri`:
       `parseRequestParameters` fails with `InvalidRequest` for a request referencing its request object only in

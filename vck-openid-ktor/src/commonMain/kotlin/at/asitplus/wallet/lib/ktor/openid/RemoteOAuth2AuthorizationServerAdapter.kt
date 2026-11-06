@@ -15,7 +15,7 @@ import at.asitplus.wallet.lib.oauth2.RequestInfo
 import at.asitplus.wallet.lib.oauth2.TokenVerificationService
 import at.asitplus.wallet.lib.oauth2.ValidatedAccessToken
 import at.asitplus.wallet.lib.oidvci.OAuth2AuthorizationServerAdapter
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidToken
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.CredentialRequestDenied
 import at.asitplus.wallet.lib.oidvci.TokenInfo
 import io.ktor.client.*
 import kotlinx.coroutines.CoroutineScope
@@ -23,17 +23,18 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Uses an external OAuth 2.0 Authorization Server with a [at.asitplus.wallet.lib.oidvci.OpenId4VciServer],
  * i.e., delegate authorization to the external AS, and load user info from there
- * (after performing token exchange with the Wallet's access token to get a fresh one).
+ * by token introspection with the Wallet's access token.
  * Authenticates with the `clientAttestation` the remote authorization server expects, if any.
  */
 class RemoteOAuth2AuthorizationServerAdapter private constructor(
     /** Base URL of the remote Authorization Server. */
     override val publicContext: String,
-    /** OAuth 2.0 client to use when exchanging Wallet's token for a fresh access token. */
+    /** OAuth 2.0 client to load the metadata of the remote authorization server and to call token introspection. */
     private val oauth2Client: OAuth2KtorClient,
     /** Validates access tokens received in [validateAccessToken]. */
     val internalTokenVerificationService: TokenVerificationService,
@@ -41,6 +42,8 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
     val dpopNonceService: NonceService,
     /** [CoroutineScope] to fetch the authorization server's metadata. */
     private val scope: CoroutineScope,
+    /** Loads the user info in [getUserInfo] instead of reading it from the token introspection response. */
+    private val loadOidcUserInfo: LoadOidcUserInfoFun?,
 ) : OAuth2AuthorizationServerAdapter {
 
     /**
@@ -48,7 +51,7 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
      * @param httpClient the app's ktor client, i.e. with its engine and logging. The requests are sent with a copy that
      * does not follow redirects, see [OAuth2KtorClient] for the plugins it must not have.
      * @param internalTokenVerificationService validates access tokens received in [validateAccessToken]
-     * @param oauth2Client implements OAuth 2.0 when exchanging Wallet's token for a fresh access token
+     * @param oauth2Client implements OAuth 2.0 when calling token introspection at the remote Authorization Server
      * @param clientAttestation authenticates with
      * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-10.html)
      * at the remote Authorization Server, or `null` to not use it
@@ -58,6 +61,8 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
      * @param dpopNonceService used to provide DPoP nonces for credential requests, which will be verified by
      * [internalTokenVerificationService]
      * @param scope [CoroutineScope] to fetch the authorization server's metadata
+     * @param loadOidcUserInfo loads the user info in [getUserInfo] instead of reading it from the token introspection
+     * response, e.g. for an authorization server that does not release user claims in token introspection responses
      */
     constructor(
         publicContext: String,
@@ -68,6 +73,7 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
         verifyTokenIntrospectionJwt: VerifyJwsObjectFun? = null,
         dpopNonceService: NonceService = DefaultNonceService(),
         scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+        loadOidcUserInfo: LoadOidcUserInfoFun? = null,
     ) : this(
         publicContext = publicContext,
         oauth2Client = OAuth2KtorClient(
@@ -79,6 +85,7 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
         internalTokenVerificationService = internalTokenVerificationService,
         dpopNonceService = dpopNonceService,
         scope = scope,
+        loadOidcUserInfo = loadOidcUserInfo,
     )
 
     private val _metadata: Deferred<OAuth2AuthorizationServerMetadata> by scope.lazyDeferred {
@@ -104,22 +111,26 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
 
     /**
      * Obtains a JSON object representing [at.asitplus.openid.OidcUserInfo] from the Authorization Server,
-     * where we need to exchange the the wallet's access token in [authorizationHeader] first
-     * to get a valid access token to call the user info endpoint.
+     * by calling token introspection with the token received from the Wallet in [authorizationHeader]: passes the
+     * response to [loadOidcUserInfo] if set, else reads the user claims from the response
+     * ([RFC 7662 2.2](https://datatracker.ietf.org/doc/html/rfc7662#section-2.2)).
+     * Fails with [CredentialRequestDenied] (OpenID4VCI 1.0, 8.3.1.2) if the response contains no user claims.
      */
     override suspend fun getUserInfo(
         authorizationHeader: String,
         httpRequest: RequestInfo?,
     ): KmmResult<JsonObject> = catching {
-        val userInfoEndpoint = _metadata.await().userInfoEndpoint
-            ?: throw InvalidToken("No UserInfo Endpoint found in Authorization Server metadata")
-        val tokenResponse = oauth2Client.requestTokenWithTokenExchange(
-            oauthMetadata = _metadata.await(),
-            authorizationServer = publicContext,
-            subjectToken = authorizationHeader.split(" ").last(),
-            resource = userInfoEndpoint,
-        ).getOrThrow()
-        oauth2Client.requestUserInfo(userInfoEndpoint, tokenResponse.params)
+        val oauthMetadata = _metadata.await()
+        val token = authorizationHeader.substringAfterLast(" ")
+        val request = TokenIntrospectionRequest(token = token, tokenTypeHint = TOKEN_TYPE_HINT_ACCESS_TOKEN)
+        val response = oauth2Client.callTokenIntrospection(
+            oauthMetadata = oauthMetadata,
+            request = request,
+            popAudience = publicContext
+        )
+        loadOidcUserInfo?.invoke(LoadOidcUserInfoFunInput(token, response))?.getOrThrow()
+            ?: response.userInfoClaims()
+            ?: throw CredentialRequestDenied("No user claims in token introspection response")
     }
 
     override suspend fun validateAccessToken(
@@ -135,6 +146,17 @@ class RemoteOAuth2AuthorizationServerAdapter private constructor(
     }
 
     override suspend fun getDpopNonce() = dpopNonceService.provideNonce()
+}
+
+/**
+ * The user claims in [TokenIntrospectionResponse.additionalClaims], with `sub` from
+ * [TokenIntrospectionResponse.subject], which is not part of [TokenIntrospectionResponse.additionalClaims];
+ * `null` if either is missing.
+ */
+private fun TokenIntrospectionResponse.userInfoClaims(): JsonObject? {
+    val claims = additionalClaims ?: return null
+    val subject = subject ?: return null
+    return JsonObject(claims + ("sub" to JsonPrimitive(subject)))
 }
 
 private fun TokenIntrospectionResponse.toTokenInfo(token: String) = TokenInfo(
