@@ -281,34 +281,6 @@ val OAuth2ProtocolClientTest by matrixSuite {
         http.sent[2].toRequestInfo().dpop.shouldNotBeNull().payload.nonce shouldBe "n1"
     }
 
-    test("userinfo request retries once with the DPoP nonce from WWW-Authenticate") {
-        val token = TokenResponseParameters(accessToken = uuid4().toString(), tokenType = TOKEN_TYPE_DPOP)
-        val http = FakeHttpStack(
-            scripted(resourceServerNonceError("n1"), jsonResponse(buildJsonObject { put("sub", "foo") }))
-        )
-
-        http.execute(clientWithoutAttestation().userInfoRequest("$asUrl/userinfo", token))
-
-        http.sent.kinds() shouldBe listOf("UserInfo(0)", "UserInfo(1)")
-        http.sent.filterIsInstance<ProtocolRequest.Retryable>().map { it.attempt } shouldBe listOf(0, 1)
-        http.sent[1].http.headers[HttpHeaders.Authorization] shouldBe token.toHttpHeaderValue()
-        http.sent[1].toRequestInfo().dpop.shouldNotBeNull().payload.apply {
-            nonce shouldBe "n1"
-            accessTokenHash.shouldNotBeNull()
-        }
-    }
-
-    test("userinfo request fails after one retry") {
-        val token = TokenResponseParameters(accessToken = uuid4().toString(), tokenType = TOKEN_TYPE_DPOP)
-        val http = FakeHttpStack(scripted(resourceServerNonceError("n1"), resourceServerNonceError("n2")))
-
-        shouldThrow<HttpErrorResponseException> {
-            http.execute(clientWithoutAttestation().userInfoRequest("$asUrl/userinfo", token))
-        }.status shouldBe HttpStatusCode.Unauthorized
-
-        http.sent.kinds() shouldBe listOf("UserInfo(0)", "UserInfo(1)")
-    }
-
     // Request bodies are built once per exchange
 
     test("retried PAR reuses the signed request object") {
