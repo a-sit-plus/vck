@@ -193,10 +193,7 @@ class OAuth2KtorClient private constructor(
         )
     }
 
-    /**
-     * Uses an access token from another client to request a new access token,
-     * see [RFC8693 OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693).
-     */
+    @Deprecated("Token Exchange is not supported")
     suspend fun requestTokenWithTokenExchange(
         oauthMetadata: OAuth2AuthorizationServerMetadata,
         authorizationServer: String,
@@ -204,15 +201,7 @@ class OAuth2KtorClient private constructor(
         resource: String?,
         issuerMetadata: IssuerMetadata? = null,
     ): KmmResult<TokenResponseWithDpopNonce> = catching {
-        execute(
-            protocolClient.requestTokenWithTokenExchange(
-                oauthMetadata = oauthMetadata,
-                authorizationServer = authorizationServer,
-                subjectToken = subjectToken,
-                resource = resource,
-                issuerMetadata = issuerMetadata,
-            )
-        )
+        throw NotImplementedError()
     }
 
     /**

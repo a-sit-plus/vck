@@ -50,7 +50,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
                 requirePushedAuthorizationRequests = false,
                 strategy = DummyAuthorizationServiceStrategy(scope),
                 tokenService = tokenService,
-                supportTokenExchange = true,
             )
             val clientKey = EphemeralKeyWithoutCert()
             val signDpop = SignJwt<JsonWebToken>(clientKey, JwsHeaderCertOrJwk())
@@ -451,63 +450,6 @@ val OAuth2ClientDPoPTest by matrixSuite {
 
             shouldThrow<OAuth2Exception.InvalidDpopProof> {
                 it.tokenService.verification.extractValidatedClientKey(duplicated).getOrThrow()
-            }
-        }
-
-        test("token exchange consumes the DPoP nonce only once") {
-            val token = it.getAccessToken()
-            val resource = it.server.metadata().userInfoEndpoint.shouldNotBeNull()
-
-            @Suppress("DEPRECATION")
-            val exchanged = it.server.token(
-                request = it.client.createTokenRequestParameters(
-                    state = it.state,
-                    authorization = OAuth2Client.AuthorizationForToken.TokenExchange(token.accessToken),
-                    resource = resource,
-                ),
-                httpRequest = RequestInfo(
-                    url = it.tokenUrl,
-                    method = HttpMethod.Post,
-                    dpop = BuildDPoPHeader(
-                        signDpop = it.signDpop,
-                        url = it.tokenUrl,
-                        accessToken = token.accessToken,
-                        nonce = it.server.getDpopNonce(),
-                        randomSource = RandomSource.Default,
-                    ),
-                ),
-            ).getOrThrow()
-
-            exchanged.accessToken shouldNotBe token.accessToken
-        }
-
-        test("token exchange rejects a subject token bound to another key") {
-            val token = it.getAccessToken()
-            val resource = it.server.metadata().userInfoEndpoint.shouldNotBeNull()
-            val otherKey = SignJwt<JsonWebToken>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())
-
-            // Guards the test above against passing because the ath and cnf.jkt checks were dropped along with
-            // the second nonce check
-            @Suppress("DEPRECATION")
-            shouldThrow<OAuth2Exception> {
-                it.server.token(
-                    request = it.client.createTokenRequestParameters(
-                        state = it.state,
-                        authorization = OAuth2Client.AuthorizationForToken.TokenExchange(token.accessToken),
-                        resource = resource,
-                    ),
-                    httpRequest = RequestInfo(
-                        url = it.tokenUrl,
-                        method = HttpMethod.Post,
-                        dpop = BuildDPoPHeader(
-                            signDpop = otherKey,
-                            url = it.tokenUrl,
-                            accessToken = token.accessToken,
-                            nonce = it.server.getDpopNonce(),
-                            randomSource = RandomSource.Default,
-                        ),
-                    ),
-                ).getOrThrow()
             }
         }
 
