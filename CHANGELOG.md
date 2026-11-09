@@ -8,6 +8,14 @@ Release 10.0.0 (unreleased):
     - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status
       List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still
       emitted as stored blocks.
+- `vck-longfellow`:
+    - Upgrade to Multipaz 0.102.0, which moves its Longfellow ZK backend to the more efficient Rust port (accessed
+      through JNA). This also fixes Android x86_64 builds of `vck-longfellow`, which previously bundled an incorrect
+      32-bit binary for x86_64.
+    - Re-enable the Android tests of `vck-longfellow` in the CI test matrix.
+- Build:
+    - Raise the JVM target to Java 21, because Multipaz 0.102.0 now builds its JVM artifacts for Java 21. Android
+      targets stay on Java 17.
 
 Release 9.0.0:
 
