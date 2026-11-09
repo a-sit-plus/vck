@@ -331,8 +331,7 @@ class VerifiablePresentationFactory(
                     .firstOrNull { it.value?.claimName == firstSegment.memberName }
                     ?.let { disclosure ->
                         setOf(disclosure.key) + disclosure.nested(segments, disclosuresByDigest)
-                    }
-                ?: emptySet()
+                    }.orEmpty()
         }
 
         is NormalizedJsonPathSegment.IndexSegment -> emptySet()
@@ -343,25 +342,32 @@ class VerifiablePresentationFactory(
         disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
     ): Set<String> = when (val firstSegment = segments.first()) {
         is NormalizedJsonPathSegment.IndexSegment ->
-            getOrNull(firstSegment.index.toInt())?.let { element ->
+            withoutDecoys(disclosuresByDigest).getOrNull(firstSegment.index.toInt())?.let { element ->
                 element.asArrayDisclosureDigest()
                     ?.let(disclosuresByDigest::get)
                     ?.let { disclosure ->
                         setOf(disclosure.key) + disclosure.nested(segments, disclosuresByDigest)
                     }
                     ?: element.loadDisclosuresForPath(segments.drop(1), disclosuresByDigest)
-            } ?: emptySet()
+            }.orEmpty()
 
         is NormalizedJsonPathSegment.NameSegment -> emptySet()
     }
+
+    /**
+     * The elements as issued, which indices count like the reconstructed claims the path was selected from, i.e.
+     * without decoy digests, which have no disclosure (RFC 9901, 4.2.5).
+     */
+    private fun JsonArray.withoutDecoys(disclosuresByDigest: Map<String, *>) =
+        filterNot { element -> element.asArrayDisclosureDigest()?.let { it !in disclosuresByDigest } == true }
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.nested(
         segments: List<NormalizedJsonPathSegment>,
         disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>
     ): Iterable<String> = value?.claimValue?.loadDisclosuresForPath(
-        segments.drop(1),
-        disclosuresByDigest,
-    ) ?: emptySet()
+        segments = segments.drop(1),
+        disclosuresByDigest = disclosuresByDigest,
+    ).orEmpty()
 
     private fun JsonElement.collectNestedDisclosures(
         disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
@@ -372,9 +378,8 @@ class VerifiablePresentationFactory(
                 .filterNot { it.key == NAME_SD }
                 .flatMapTo(mutableSetOf()) { it.value.collectNestedDisclosures(disclosuresByDigest) }
             val nestedReferencedDisclosures = referencedDisclosures.flatMapTo(mutableSetOf()) { disclosure ->
-                setOf(disclosure.key) + (
-                        disclosure.value?.claimValue?.collectNestedDisclosures(disclosuresByDigest) ?: emptySet()
-                        )
+                setOf(disclosure.key) +
+                        disclosure.value?.claimValue?.collectNestedDisclosures(disclosuresByDigest).orEmpty()
             }
             nestedCleartextDisclosures + nestedReferencedDisclosures
         }
@@ -383,9 +388,8 @@ class VerifiablePresentationFactory(
             element.asArrayDisclosureDigest()
                 ?.let(disclosuresByDigest::get)
                 ?.let { disclosure ->
-                    setOf(disclosure.key) + (
-                            disclosure.value?.claimValue?.collectNestedDisclosures(disclosuresByDigest) ?: emptySet()
-                            )
+                    setOf(disclosure.key) +
+                            disclosure.value?.claimValue?.collectNestedDisclosures(disclosuresByDigest).orEmpty()
                 }
                 ?: element.collectNestedDisclosures(disclosuresByDigest)
         }

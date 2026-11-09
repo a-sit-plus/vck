@@ -58,7 +58,13 @@ Release 10.0.0 (unreleased):
       returning the `ListOfTrustedEntities` for `LoTEFilterService` or `LoTETrustAnchorProvider`. It requires the
       Organization of the signing certificate to be a `SchemeOperatorName` of the list, rejects a list whose
       `NextUpdate` is in the past, and optionally one with a lower `LoTESequenceNumber` than the list in force
-
+- DCQL:
+    - Fix: A holder discloses the requested element of an SD-JWT VC array claim whose issuer added decoy digests to it,
+      instead of the element at the requested position counting the decoys
+    - Fix: `DCQLQueryAdapter.checkAcceptedSubmissions` accepts SD-JWT VC claims requested by array index, checking
+      the index as a wildcard, as the position of a disclosed element in the issued array can not be determined
+    - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
+      the credential query, with the failure of each combination, instead of a `NoSuchElementException`
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
