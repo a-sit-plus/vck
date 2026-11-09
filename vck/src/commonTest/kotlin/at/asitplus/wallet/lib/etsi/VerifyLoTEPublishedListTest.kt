@@ -6,16 +6,16 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.FixedTimeClock
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.validation.TimelinessException
+import com.goncalossilva.resources.Resource
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
-import java.security.cert.CertificateFactory
 import kotlin.time.Instant
 
 /**
- * [VerifyLoTE] with a list as the Commission publishes it, from the resources of this test:
+ * [VerifyLoTE] with a list as the Commission publishes it, from `src/commonTest/resources/lote`:
  * - `pid-providers-development.jws`: the list of PID providers on [LoTEStage.DEVELOPMENT], fetched from
  *   `https://development.trust.tech.ec.europa.eu/lists/eudiw/pid-providers.json` on 2026-11-06:
  *   `LoTESequenceNumber` 18, issued 2026-10-30T09:00:38Z, `NextUpdate` 2027-04-29T09:00:38Z.
@@ -26,12 +26,10 @@ import kotlin.time.Instant
  */
 val VerifyLoTEPublishedListTest by matrixSuite {
 
-    val signedLote = resource("/pid-providers-development.jws").decodeToString().trim()
-    val sealCertificate = X509Certificate.decodeFromByteArray(
-        CertificateFactory.getInstance("X.509")
-            .generateCertificate(resource("/TEST_SEAL_EC_DIGIT_25A_20251031-01.cer").inputStream())
-            .encoded
-    ).shouldNotBeNull()
+    val signedLote = Resource("lote/pid-providers-development.jws").readText().trim()
+    val sealCertificate = X509Certificate.decodeFromPem(
+        Resource("lote/TEST_SEAL_EC_DIGIT_25A_20251031-01.cer").readText()
+    ).getOrThrow()
 
     fun verifier(
         at: Instant,
@@ -65,7 +63,3 @@ val VerifyLoTEPublishedListTest by matrixSuite {
             .isFailure shouldBe true
     }
 }
-
-private fun resource(name: String): ByteArray =
-    checkNotNull(VerifyLoTE::class.java.getResourceAsStream(name)) { "Missing test resource $name" }
-        .use { it.readBytes() }

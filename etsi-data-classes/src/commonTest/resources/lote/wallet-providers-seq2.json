@@ -1,0 +1,467 @@
+{
+  "ListAndSchemeInformation": {
+    "LoTEVersionIdentifier": 1,
+    "LoTESequenceNumber": 2,
+    "LoTEType": "http://uri.etsi.org/19602/LoTEType/EUWalletProvidersList",
+    "SchemeOperatorName": [
+      {
+        "lang": "en",
+        "value": "European Commission"
+      },
+      {
+        "lang": "bg",
+        "value": "Европейска комисия"
+      },
+      {
+        "lang": "es",
+        "value": "Comisión Europea"
+      },
+      {
+        "lang": "cs",
+        "value": "Evropská komise"
+      },
+      {
+        "lang": "da",
+        "value": "Europa-Kommissionen"
+      },
+      {
+        "lang": "de",
+        "value": "Europäische Kommission"
+      },
+      {
+        "lang": "et",
+        "value": "Euroopa Komisjon"
+      },
+      {
+        "lang": "el",
+        "value": "Ευρωπαϊκή Επιτροπή"
+      },
+      {
+        "lang": "fr",
+        "value": "Commission européenne"
+      },
+      {
+        "lang": "it",
+        "value": "Commissione europea"
+      },
+      {
+        "lang": "lv",
+        "value": "Eiropas Komisija"
+      },
+      {
+        "lang": "lt",
+        "value": "Europos Komisija"
+      },
+      {
+        "lang": "hu",
+        "value": "Európai Bizottság"
+      },
+      {
+        "lang": "mt",
+        "value": "Il-Kummissjoni Ewropea"
+      },
+      {
+        "lang": "nl",
+        "value": "Europese Commissie"
+      },
+      {
+        "lang": "pl",
+        "value": "Komisja Europejska"
+      },
+      {
+        "lang": "pt",
+        "value": "Comissão Europeia"
+      },
+      {
+        "lang": "ro",
+        "value": "Comisia Europeană"
+      },
+      {
+        "lang": "sk",
+        "value": "Európska komisia"
+      },
+      {
+        "lang": "sl",
+        "value": "Evropska komisija"
+      },
+      {
+        "lang": "fi",
+        "value": "Euroopan komissio"
+      },
+      {
+        "lang": "sv",
+        "value": "Europeiska kommissionen"
+      },
+      {
+        "lang": "hr",
+        "value": "Europska komisija"
+      }
+    ],
+    "SchemeOperatorAddress": {
+      "SchemeOperatorPostalAddress": [
+        {
+          "lang": "fr",
+          "StreetAddress": "Rue de la Loi 200",
+          "Locality": "Bruxelles",
+          "PostalCode": "1049",
+          "Country": "BE"
+        },
+        {
+          "lang": "nl",
+          "StreetAddress": "Wetstraat 200",
+          "Locality": "Brussel",
+          "PostalCode": "1049",
+          "Country": "BE"
+        },
+        {
+          "lang": "en",
+          "StreetAddress": "Rue de la Loi/Wetstraat 200",
+          "Locality": "Brussels",
+          "PostalCode": "1049",
+          "Country": "BE"
+        }
+      ],
+      "SchemeOperatorElectronicAddress": [
+        {
+          "lang": "en",
+          "uriValue": "mailto:DIGIT-EU-TRUST-NON-PROD@ec.europa.eu"
+        },
+        {
+          "lang": "en",
+          "uriValue": "https://digital-strategy.ec.europa.eu/en/policies/eu-trusted-lists"
+        }
+      ]
+    },
+    "SchemeName": [
+      {
+        "lang": "en",
+        "value": "The present list is a list of person identifier providers of EUDI Wallet issued in accordance with CIR 2024/2980"
+      }
+    ],
+    "SchemeInformationURI": [
+      {
+        "lang": "en",
+        "uriValue": "https://trust.tech.ec.europa.eu/lists/eudiw/wallet-providers-list-scheme-information"
+      }
+    ],
+    "StatusDeterminationApproach": "http://uri.etsi.org/19602/WalletProvidersList/StatusDetn/EU",
+    "SchemeTypeCommunityRules": [
+      {
+        "lang": "en",
+        "uriValue": "http://uri.etsi.org/19602/WalletProvidersList/schemerules/EU"
+      }
+    ],
+    "SchemeTerritory": "EU",
+    "PolicyOrLegalNotice": [
+      {
+        "LoTEPolicy": {
+          "lang": "en",
+          "uriValue": "http://trust.tech.ec.europa.eu/lists/eudiw/legal-notice#EN"
+        }
+      }
+    ],
+    "ListIssueDateTime": "2026-04-02T11:23:10Z",
+    "NextUpdate": "2026-10-02T11:23:10Z"
+  },
+  "TrustedEntitiesList": [
+    {
+      "TrustedEntityInformation": {
+        "TEName": [
+          {
+            "lang": "en",
+            "value": "PagoPA Wallet Provider Root CA"
+          }
+        ],
+        "TETradeName": [
+          {
+            "lang": "en",
+            "value": "VATIT-123456789"
+          }
+        ],
+        "TEAddress": {
+          "TEPostalAddress": [
+            {
+              "lang": "en",
+              "StreetAddress": "Test street",
+              "Locality": "Test locality",
+              "StateOrProvince": "Test province",
+              "PostalCode": "12345",
+              "Country": "IT"
+            }
+          ],
+          "TEElectronicAddress": [
+            {
+              "lang": "en",
+              "uriValue": "mailto:test@test.it"
+            },
+            {
+              "lang": "en",
+              "uriValue": "tel:+39123456789"
+            }
+          ]
+        },
+        "TEInformationURI": [
+          {
+            "lang": "en",
+            "uriValue": "https://test.it"
+          },
+          {
+            "lang": "en",
+            "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/WalletProvider/IT"
+          }
+        ]
+      },
+      "TrustedEntityServices": [
+        {
+          "ServiceInformation": {
+            "ServiceName": [
+              {
+                "lang": "en",
+                "value": "name_eudiw_solution_it"
+              }
+            ],
+            "ServiceDigitalIdentity": {
+              "X509Certificates": [
+                {
+                  "val": "MIICUDCCAfWgAwIBAgIUONlIPSqyFQVjT6+yy1zAFLS+fOUwCgYIKoZIzj0EAwIwfTELMAkGA1UEBhMCSVQxCzAJBgNVBAgMAlJNMQ0wCwYDVQQHDARSb21lMRYwFAYDVQQKDA1QYWdvUEEgUy5wLkEuMREwDwYDVQQLDAhTZWN1cml0eTEnMCUGA1UEAwweUGFnb1BBIFdhbGxldCBQcm92aWRlciBSb290IENBMB4XDTI1MTEyMTE2MDcxOFoXDTM1MTExOTE2MDcxOFowfTELMAkGA1UEBhMCSVQxCzAJBgNVBAgMAlJNMQ0wCwYDVQQHDARSb21lMRYwFAYDVQQKDA1QYWdvUEEgUy5wLkEuMREwDwYDVQQLDAhTZWN1cml0eTEnMCUGA1UEAwweUGFnb1BBIFdhbGxldCBQcm92aWRlciBSb290IENBMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsOCKDPMrqG3DKLHAEqkutBKCBHlSmuyeQGkLL95EW4oAzqVd+1aVPfXGNKSE6dgGb2wbrcqNz/wLyoTdBh3pkaNTMFEwHQYDVR0OBBYEFFdzfeaqb/ETC5YoB4Od5h4jVD7VMB8GA1UdIwQYMBaAFFdzfeaqb/ETC5YoB4Od5h4jVD7VMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAP8LhOOEB8HPNx0sobIBQgS3Ej1rtzXcx4hggAfyFFTJAiEAmJMJA1tgB/kl2gmH5TKH2R4QaWeHmgAZSFQcdZ7yEFM="
+                }
+              ]
+            },
+            "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/WalletSolution/Issuance",
+            "ServiceInformationExtensions": [
+              {
+                "ServiceUniqueIdentifier": "ojeu:eudiw:ref_eudiw_solution_it"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "TrustedEntityInformation": {
+        "TEName": [
+          {
+            "lang": "en",
+            "value": "Microsec Ltd."
+          }
+        ],
+        "TETradeName": [
+          {
+            "lang": "en",
+            "value": "VATHU-23584497"
+          }
+        ],
+        "TEAddress": {
+          "TEPostalAddress": [
+            {
+              "lang": "en",
+              "StreetAddress": "Test street",
+              "Locality": "Test locality",
+              "StateOrProvince": "Test province",
+              "PostalCode": "123456",
+              "Country": "HU"
+            }
+          ],
+          "TEElectronicAddress": [
+            {
+              "lang": "en",
+              "uriValue": "mailto:test@test.hu"
+            },
+            {
+              "lang": "en",
+              "uriValue": "tel:+36123456"
+            }
+          ]
+        },
+        "TEInformationURI": [
+          {
+            "lang": "en",
+            "uriValue": "https://test.hu"
+          },
+          {
+            "lang": "en",
+            "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/WalletProvider/HU"
+          }
+        ]
+      },
+      "TrustedEntityServices": [
+        {
+          "ServiceInformation": {
+            "ServiceName": [
+              {
+                "lang": "en",
+                "value": "name_wallet_solution_ojeu_hu"
+              }
+            ],
+            "ServiceDigitalIdentity": {
+              "X509Certificates": [
+                {
+                  "val": "MIIDQzCCAuigAwIBAgIMBcKMJXgy2272WHQKMAoGCCqGSM49BAMCMHYxCzAJBgNVBAYTAkhVMREwDwYDVQQHDAhCdWRhcGVzdDEWMBQGA1UECgwNTWljcm9zZWMgTHRkLjEXMBUGA1UEYQwOVkFUSFUtMjM1ODQ0OTcxIzAhBgNVBAMMGlRlc3QgZS1Temlnbm8gUm9vdCBDQSAyMDE3MB4XDTE3MDkyMjIwMDAwMFoXDTQyMDkyMjA2MDAwMFowcTELMAkGA1UEBhMCSFUxETAPBgNVBAcMCEJ1ZGFwZXN0MRYwFAYDVQQKDA1NaWNyb3NlYyBMdGQuMRcwFQYDVQRhDA5WQVRIVS0yMzU4NDQ5NzEeMBwGA1UEAwwVVGVzdCBlLVN6aWdubyBDQSAyMDE3MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElKYzOPtAdd2ohSfwEgX2A+Zr2jXWrEqAwJYRs9aBjxT67VwuD10R+TEY0aRwzbrAAPfR2hsOr9DcvZlh4AXRraOCAV8wggFbMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMD4GA1UdIAQ3MDUwMwYEVR0gADArMCkGCCsGAQUFBwIBFh1odHRwOi8vdGVzenQuZS1zemlnbm8uaHUvcWNwczAdBgNVHQ4EFgQUeptoh454hhbzt/k2HvgamLNkHIkwHwYDVR0jBBgwFoAUklDZBPHkz7JSHyQKgYTiOO2dO44wOQYDVR0fBDIwMDAuoCygKoYoaHR0cDovL3Rlc3p0LmUtc3ppZ25vLmh1L3Ryb290Y2EyMDE3LmNybDB9BggrBgEFBQcBAQRxMG8wNwYIKwYBBQUHMAGGK2h0dHA6Ly90ZXN6dC5lLXN6aWduby5odS90ZXN0cm9vdGNhMjAxN29jc3AwNAYIKwYBBQUHMAKGKGh0dHA6Ly90ZXN6dC5lLXN6aWduby5odS90cm9vdGNhMjAxNy5jcnQwCgYIKoZIzj0EAwIDSQAwRgIhAL+F7BHEDUvV/weTnf4TwzwDIssl0hMF/0oKo0c9CaXXAiEAvNpfSAJjlU9kCqsRVUYVQqVffJCuBPIKdFvfcejwfbY="
+                }
+              ]
+            },
+            "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/WalletSolution/Issuance",
+            "ServiceInformationExtensions": [
+              {
+                "ServiceUniqueIdentifier": "ojeu:eudiw:ref_wallet_solution_hu"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "TrustedEntityInformation": {
+        "TEName": [
+          {
+            "lang": "en",
+            "value": "Wallet Notification"
+          }
+        ],
+        "TETradeName": [
+          {
+            "lang": "en",
+            "value": "Liechtenstein National Administration"
+          },
+          {
+            "lang": "en",
+            "value": "VATLI-2345678"
+          }
+        ],
+        "TEAddress": {
+          "TEPostalAddress": [
+            {
+              "lang": "en",
+              "StreetAddress": "Platz 2",
+              "Locality": "Vaduz",
+              "StateOrProvince": "Liechtenstein",
+              "PostalCode": "Fl-001",
+              "Country": "PL"
+            }
+          ],
+          "TEElectronicAddress": [
+            {
+              "lang": "en",
+              "uriValue": "mailto:office-wallet@test.li"
+            },
+            {
+              "lang": "en",
+              "uriValue": "tel:+4235002211"
+            },
+            {
+              "lang": "en",
+              "uriValue": "https://www.llv.li/en/wallet"
+            }
+          ]
+        },
+        "TEInformationURI": [
+          {
+            "lang": "en",
+            "uriValue": "https://www.llv.li/en/wallet/policies"
+          },
+          {
+            "lang": "en",
+            "uriValue": "https://www.llv.li/en/wallet/information"
+          },
+          {
+            "lang": "en",
+            "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/WalletProvider/PL"
+          }
+        ],
+        "TEInformationExtensions": [
+          {
+            "OtherAssociatedBodies": [
+              {
+                "AssociatedBodyName": [
+                  {
+                    "lang": "en",
+                    "value": "Wallet Notification Body"
+                  }
+                ],
+                "AssociatedBodyTradeName": [
+                  {
+                    "lang": "en",
+                    "value": "Liechtenstein National Administration Wallet Body"
+                  },
+                  {
+                    "lang": "en",
+                    "value": "VATLI-3333"
+                  }
+                ],
+                "AssociatedBodyAddress": {
+                  "AssociatedBodyPostalAddress": [
+                    {
+                      "lang": "en",
+                      "StreetAddress": "Platz 2A",
+                      "Locality": "Vaduz",
+                      "StateOrProvince": "Liechtenstein",
+                      "PostalCode": "Fl-001",
+                      "Country": "PL"
+                    }
+                  ],
+                  "AssociatedBodyElectronicAddress": [
+                    {
+                      "lang": "en",
+                      "uriValue": "mailto:office-wallet-body@test.li"
+                    },
+                    {
+                      "lang": "en",
+                      "uriValue": "tel:+42350022112"
+                    },
+                    {
+                      "lang": "en",
+                      "uriValue": "https://www.llv.li/en/wallet/body"
+                    }
+                  ]
+                },
+                "AssociatedBodyInformationURI": [
+                  {
+                    "lang": "en",
+                    "uriValue": "https://www.llv.li/en/wallet/body/information"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "TrustedEntityServices": [
+        {
+          "ServiceInformation": {
+            "ServiceName": [
+              {
+                "lang": "en",
+                "value": "Wallet Service 1"
+              }
+            ],
+            "ServiceDigitalIdentity": {
+              "X509Certificates": [
+                {
+                  "val": "MIIDsjCCApqgAwIBAgIQa5/PTwD9epxBQHrl6XObezANBgkqhkiG9w0BAQsFADBsMQswCQYDVQQGEwJMSTEOMAwGA1UEBwwFVmFkdXoxDDAKBgNVBAsMA0xMVjEuMCwGA1UECgwlTGllY2h0ZW5zdGVpbiBOYXRpb25hbCBBZG1pbmlzdHJhdGlvbjEPMA0GA1UEAwwGbGx2LmxpMB4XDTI2MDEwNTEzMTkyMFoXDTI3MDEwNTEzMTk1MFowbDELMAkGA1UEBhMCTEkxDjAMBgNVBAcMBVZhZHV6MQwwCgYDVQQLDANMTFYxLjAsBgNVBAoMJUxpZWNodGVuc3RlaW4gTmF0aW9uYWwgQWRtaW5pc3RyYXRpb24xDzANBgNVBAMMBmxsdi5saTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJtDK/L1QEAj7QNtAgA5SNVXXahMtwayCAHtimJEGMRXeiI9KSE+BBfQ8c989Wbw9KqLsIUWGNuleGQCRFWArZmWXXezHn3fJecpeb06t+OZiPaLgq4iBp8EZ0czGFIxNxXOtSSgVcL1FCsDnIW9yzRt/xFPUn/59F6oGky/KPQXg0sW3UOkTW/k795QqIvLaMPFKn1kKkBSGh4TWmp6zQ0c7lEWGLKlCV0l0XHQAwl0bmoebEsA7QBG320i31n4Gr5y0zCbWjxEv3IU6RWZ2QARlybj4lVXyTyiezJ91v2tEhWlE/xK6AV7y9N5IcB5e+sxKDmjCp4gb1idBJYM9W0CAwEAAaNQME4wDgYDVR0PAQH/BAQDAgWgMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDATAdBgNVHQ4EFgQU0RI/MTHeLnYjg8CQlPsrBXvWZLkwDQYJKoZIhvcNAQELBQADggEBAHlLN3fEK8q9mk5Uy6Y0Bnq7clLKAlajbUcPc2/SAiYsmioNv5k6p6dAiNXng4gaSe1gGQz9o15raYz2EK3nfmw1ooFjXjmZOfiY2EBsBd9X3EJCu2aYBDeOaX3Xqw1s0ZXdfmDnvqEEmVvVr+VubzX8JLS2AM2glyRvBb7w27gBBvptggS54P9Re16yGxiQbqV17k8h/0idYbGH31Y8lUYRyOHkFtlL4pqJmCQ38laej0L73GiUtCg0hdrGcrEf2oziO55pBpsJTAiiCkv/Pz7Ri4o8l3ALQKrByloO2mpwlPmVmxxNi/o79XFGelTIBrWIVYgBbTwfDzvQIIKjY6I="
+                }
+              ]
+            },
+            "ServiceTypeIdentifier": "http://uri.etsi.org/19602/SvcType/WalletSolution/Issuance",
+            "ServiceSupplyPoints": [
+              {
+                "uriValue": "http://supply.points",
+                "ServiceType": "http://supply.pointstype"
+              }
+            ],
+            "ServiceDefinitionURI": [
+              {
+                "lang": "en",
+                "uriValue": "https://www.llv.li/en/wallet/"
+              }
+            ],
+            "ServiceInformationExtensions": [
+              {
+                "ServiceUniqueIdentifier": "REF:1234"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
