@@ -33,3 +33,6 @@ Agent-only operating notes:
   is already known. Keep tests for already implemented behavior enabled.
 - Use `catchingUnwrapped` instead of `catching` when we don't need the `KmmResult` as a return type
 - Every `@Throws` annotation on a suspending function needs to include `CancellationException` for iOS builds
+- Do not call `removeFirst()`/`removeLast()` on a `MutableList`: with `android.compileSdk` 36 they crash below Android
+  15 ([KT-71375](https://youtrack.jetbrains.com/issue/KT-71375)). Use `removeAt(0)`/`removeAt(lastIndex)` or
+  `kotlin.collections.ArrayDeque`.
