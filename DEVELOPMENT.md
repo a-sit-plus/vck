@@ -5,7 +5,7 @@ organized and where to make changes see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Prerequisites
 
-* JDK 17.
+* JDK 21 (the JVM target; Android targets stay on Java 17).
 * Set the path to an Android SDK in `local.properties`, or the project will fail to load.
 
 Build conventions (source sets, targets, publishing) come from the composite build under `conventions-vclib/`

@@ -36,6 +36,16 @@ kotlin {
     }
 }
 
+/*
+ * multipaz-longfellow accesses its Rust backend through the JNA .aar on Android. Kotest's engine pulls in JVM-only
+ * terminal (mordant) and coroutines-debug dependencies, which bring the plain JNA .jar and cause duplicate classes
+ * in the Android device test.
+ */
+configurations.matching { it.name.contains("AndroidDeviceTest", ignoreCase = true) }.configureEach {
+    exclude(group = "com.github.ajalt.mordant")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-debug")
+}
+
 if ("true" != disableAppleTargets) exportXCFramework(
     "VckLongfellowKmm",
     transitiveExports = true,
