@@ -11,6 +11,8 @@ import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.SupportedCredentialFormatIsoMdoc
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
 import at.asitplus.openid.TokenIntrospectionRequest
+import at.asitplus.openid.TokenIntrospectionResponse
+import at.asitplus.openid.TokenIntrospectionResult
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.toFormParameters
@@ -67,11 +69,11 @@ import io.ktor.client.engine.mock.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.util.*
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
 
 /**
  * Tests [OpenId4VciKtorClient] against [OpenId4VciServer] that uses [RemoteOAuth2AuthorizationServerAdapter]
@@ -104,6 +106,7 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
             catching {
                 require(it.credentialScheme == scheme)
                 require(it.credentialRepresentation == representation)
+                require(it.userInfo == externalUser)
                 var digestId = 0u
                 when (representation) {
                     PLAIN_JWT -> TODO()
@@ -133,21 +136,17 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
         val credentialEndpointPath = "/credential"
         val nonceEndpointPath = "/nonce"
         val parEndpointPath = "/par"
-        val userInfoEndpointPath = "/userinfo"
         val introspectionEndpointPath = "/introspection"
         val challengeEndpointPath = "/challenge"
         val issuerPublicContext = "https://issuer.example.com"
         val authServerPublicContext = "https://auth.example.com"
-        // TODO Re-test with JWT tokens (Problem when using token exchange: Validate DPoP for subject token on backend)
-        // val tokenService = TokenService.jwt(issueRefreshTokens = true)
-        val tokenService = TokenService.bearer(issueRefreshTokens = true)
+        val tokenService = TokenService.jwt(issueRefreshTokens = true)
         val externalAuthorizationServer = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(AttributeIndex.schemeSet),
             publicContext = authServerPublicContext,
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
             pushedAuthorizationRequestEndpointPath = parEndpointPath,
-            userInfoEndpointPath = userInfoEndpointPath,
             introspectionEndpointPath = introspectionEndpointPath,
             challengeEndpointPath = challengeEndpointPath,
             clientAuthenticationService = AttestationBasedClientAuthenticationService(
@@ -204,19 +203,11 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
                     )
                 }
 
-                request.url.toString() == "$authServerPublicContext$userInfoEndpointPath" -> {
-                    val authn = request.headers[HttpHeaders.Authorization]
-                    externalAuthorizationServer.userInfoWithDpopNonce(authn!!, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it.toHttpResponse()) },
-                        onFailure = { respondResourceServerError(it, authn) }
-                    )
-                }
-
                 request.url.toString() == "$authServerPublicContext$introspectionEndpointPath" -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params = requestBody.decodeFromFormUrlEncoded<TokenIntrospectionRequest>()
                     externalAuthorizationServer.tokenIntrospection(params, request.toRequestInfo()).fold(
-                        onSuccess = { respond(it.toHttpResponse()) },
+                        onSuccess = { respond(it.withUserClaims(externalUser).toHttpResponse()) },
                         onFailure = { respondOAuth2Error(it) }
                     )
                 }
@@ -426,3 +417,22 @@ val OpenId4VciKtorClientExternalAuthorizationServerTest by matrixSuite {
     }
 
 }
+
+/**
+ * The user claims the external authorization server releases in token introspection responses. It authenticates the
+ * user as [dummyUser], with the same `sub` but no other claim, so the credential issuer gets `given_name` only by
+ * token introspection.
+ */
+private val externalUser = OidcUserInfoExtended.deserialize("""{"sub":"foo","given_name":"Susan"}""").getOrThrow()
+
+/**
+ * Adds the claims of [user] to an active token introspection response as top-level members
+ * ([RFC 7662 2.2](https://datatracker.ietf.org/doc/html/rfc7662#section-2.2)), as an external authorization server
+ * does for [RemoteOAuth2AuthorizationServerAdapter]. [SimpleAuthorizationService] does not, since it is wired directly
+ * to an [OpenId4VciServer] in production.
+ */
+private fun TokenIntrospectionResult.withUserClaims(user: OidcUserInfoExtended): TokenIntrospectionResult =
+    if (this is TokenIntrospectionResponse && active) copy(
+        subject = user.userInfo.subject,
+        additionalClaims = JsonObject(user.jsonObject - "sub"),
+    ) else this

@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.catching
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.PushedAuthenticationResponseParameters
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.TokenIntrospectionRequest
@@ -56,6 +57,20 @@ val OAuth2ClientTest by matrixSuite {
             )
             it.server.token(tokenRequest, null).isSuccess shouldBe true
             it.server.token(tokenRequest, null).isFailure shouldBe true
+        }
+        test("token request with an unsupported grant type") {
+            val preAuth = it.server.providePreAuthorizedCode(user)
+                .shouldNotBeNull()
+            val tokenRequest = it.client.createTokenRequestParameters(
+                state = uuid4().toString(),
+                authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+                scope = it.scope
+            )
+            listOf(OpenIdConstants.GRANT_TYPE_TOKEN_EXCHANGE, "urn:example:unknown").forEach { grantType ->
+                shouldThrow<OAuth2Exception.UnsupportedGrantType> {
+                    it.server.token(tokenRequest.copy(grantType = grantType), null).getOrThrow()
+                }
+            }
         }
         test("token request with a scope that is only a substring of the granted scope") {
             val preAuth = it.server.providePreAuthorizedCode(user)
@@ -259,49 +274,6 @@ val OAuth2ClientTest by matrixSuite {
             ).getOrThrow()
                 .shouldBeInstanceOf<TokenIntrospectionResponse>()
                 .apply { active shouldBe true }
-        }
-
-        /**
-         * RFC 8693 token exchange issues a fresh access token for the subject token's user. With bearer tokens the
-         * presenting client can not be bound to that token, so anyone who captured it could renew it indefinitely.
-         */
-        test("token exchange is not supported by default") {
-            val token = it.server.token(
-                it.client.createTokenRequestParameters(
-                    state = uuid4().toString(),
-                    authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(
-                        it.server.providePreAuthorizedCode(user)
-                    ),
-                    scope = it.scope,
-                ),
-                null,
-            ).getOrThrow()
-
-            shouldThrow<OAuth2Exception.UnsupportedGrantType> {
-                it.server.token(
-                    it.client.createTokenRequestParameters(
-                        state = uuid4().toString(),
-                        authorization = OAuth2Client.AuthorizationForToken.TokenExchange(token.accessToken),
-                        resource = it.server.metadata().userInfoEndpoint,
-                    ),
-                    null,
-                ).getOrThrow()
-            }
-        }
-
-        test("token exchange is not advertised when it is not supported") {
-            it.server.metadata().grantTypesSupported.shouldNotBeNull()
-                .shouldNotContain("urn:ietf:params:oauth:grant-type:token-exchange")
-        }
-
-        test("token exchange can not be enabled for bearer tokens") {
-            shouldThrow<IllegalArgumentException> {
-                SimpleAuthorizationService(
-                    strategy = DummyAuthorizationServiceStrategy(it.scope),
-                    tokenService = TokenService.bearer(),
-                    supportTokenExchange = true,
-                )
-            }
         }
     }
 }
