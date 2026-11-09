@@ -62,6 +62,8 @@ class VcLibConventions : K2Conventions() {
             target.pluginManager.apply("org.jetbrains.kotlin.plugin.serialization")
             if (target.hasAndroidSdk()) {
                 target.pluginManager.apply("com.android.kotlin.multiplatform.library")
+                // Adds lintAndroidMain, configured in vckAndroid()
+                target.pluginManager.apply("com.android.lint")
             }
             target.pluginManager.apply("signing")
             target.pluginManager.apply("org.jetbrains.dokka")
@@ -111,6 +113,11 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
             minSdk = it
         }
         compileSdk = project.androidCompileSdk
+        lint {
+            // Fails on calls that need a newer API than minSdk, also in commonMain, e.g. MutableList.removeFirst()
+            // since compileSdk 35: https://youtrack.jetbrains.com/issue/KT-71375
+            checkOnly += "NewApi"
+        }
 
         withDeviceTestBuilder {
             sourceSetTreeName = "test"

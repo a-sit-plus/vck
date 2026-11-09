@@ -42,6 +42,7 @@ Start narrow, then widen to `:module:check` or `build` once the focused surface 
 ./gradlew :vck:compileKotlinJvm              # quick JVM compile for one module
 ./gradlew :vck-openid:jvmTest --tests '*OpenId4VpSdJwtProtocolTest*'   # --tests filtering works with TestBalloon
 ./gradlew :csc-data-classes:check            # full checks for a single module
+./gradlew lintAndroidMain                    # Android Lint, NewApi only (also run by CI on Android)
 ./gradlew build                              # build everything
 ```
 

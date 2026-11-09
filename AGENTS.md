@@ -35,4 +35,4 @@ Agent-only operating notes:
 - Every `@Throws` annotation on a suspending function needs to include `CancellationException` for iOS builds
 - Do not call `removeFirst()`/`removeLast()` on a `MutableList`: with `android.compileSdk` 36 they crash below Android
   15 ([KT-71375](https://youtrack.jetbrains.com/issue/KT-71375)). Use `removeAt(0)`/`removeAt(lastIndex)` or
-  `kotlin.collections.ArrayDeque`.
+  `kotlin.collections.ArrayDeque`. `./gradlew lintAndroidMain` (Android Lint `NewApi`) reports such calls.
