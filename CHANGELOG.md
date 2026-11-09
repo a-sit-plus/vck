@@ -35,7 +35,13 @@ Release 10.0.0 (unreleased):
     - BREAKING: `RequestParser` no longer fetches request objects passed by reference in `request_uri`:
       `parseRequestParameters` fails with `InvalidRequest` for a request referencing its request object only in
       `request_uri`. Wallets fetch such request objects with `OpenId4VpProtocolClient.prepareAuthorizationResponse`.
-
+- DCQL:
+    - Fix: A holder discloses the requested element of an SD-JWT VC array claim whose issuer added decoy digests to it,
+      instead of the element at the requested position counting the decoys
+    - Fix: `DCQLQueryAdapter.checkAcceptedSubmissions` accepts SD-JWT VC claims requested by array index, checking
+      the index as a wildcard, as the position of a disclosed element in the issued array can not be determined
+    - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
+      the credential query, with the failure of each combination, instead of a `NoSuchElementException`
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
