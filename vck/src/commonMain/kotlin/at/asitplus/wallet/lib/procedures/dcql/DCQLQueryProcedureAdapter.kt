@@ -18,16 +18,24 @@ package at.asitplus.wallet.lib.procedures.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catchingUnwrapped
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
+import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLIsoMdocCredential
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLQueryResponse
 import at.asitplus.openid.dcql.DCQLSdJwtCredential
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.openid.dcql.DCQLVcJwsCredential
 import at.asitplus.signum.indispensable.asn1.Asn1Decodable
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -75,12 +83,37 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
      */
     fun checkAcceptedSubmissions(
         accepted: Map<DCQLCredentialQueryIdentifier, List<ValidatedPresentation>>,
-    ): KmmResult<Unit> = dcqlQuery.checkSubmissionRequirements(
+    ): KmmResult<Unit> = dcqlQuery.withoutArrayPositions().checkSubmissionRequirements(
         dcqlQueryResponse = DCQLQueryResponse(accepted.filterValues { it.isNotEmpty() }),
         parseSdJwtCredential = { it.toDCQLSdJwtCredential() },
         parseVcJwsCredential = { it.toDCQLVcJwsCredential() },
         parseIsoMdocCredential = { it.toDCQLIsoMdocCredential() },
     )
+
+    /**
+     * Replaces the indices in the claims of SD-JWT VC queries by `null`: an index addresses the array as issued,
+     * counting elements that are not disclosed (draft-ietf-oauth-sd-jwt-vc-19, 5.6), but the presentation only contains
+     * the disclosed elements (RFC 9901, 7.1 step 3.d), and a digest without disclosure may also be a decoy (4.2.5), so
+     * the position of a disclosed element in the issued array can not be determined.
+     */
+    private fun DCQLQuery.withoutArrayPositions() = copy(
+        credentials = DCQLCredentialQueryList(credentials.map { it.withoutArrayPositions() }.toNonEmptyList())
+    )
+
+    private fun DCQLCredentialQuery.withoutArrayPositions(): DCQLCredentialQuery = when (this) {
+        is DCQLSdJwtCredentialQuery -> copy(claims = claims?.withoutArrayPositions())
+        else -> this
+    }
+
+    private fun DCQLClaimsQueryList<DCQLJsonClaimsQuery>.withoutArrayPositions() =
+        DCQLClaimsQueryList(map { it.copy(path = it.path.withoutArrayPositions()) }.toNonEmptyList())
+
+    private fun DCQLClaimsPathPointer.withoutArrayPositions() = DCQLClaimsPathPointer(
+        map { it.indexSegmentToNullSegment() }.toNonEmptyList()
+    )
+
+    private fun DCQLClaimsPathPointerSegment.indexSegmentToNullSegment(): DCQLClaimsPathPointerSegment =
+        if (this is DCQLClaimsPathPointerSegment.IndexSegment) DCQLClaimsPathPointerSegment.NullSegment else this
 
     private fun ValidatedPresentation.toDCQLSdJwtCredential(): DCQLSdJwtCredential = when (this) {
         is ValidatedPresentation.SdJwt -> DCQLSdJwtCredential(
@@ -105,6 +138,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
 
         is ValidatedPresentation.VcJwt ->
             credential.credential.toDCQLCredential(satisfiesCryptographicHolderBinding = false)
+
         else -> throw IllegalArgumentException("Presentation is no VC-JWT")
     }
 
@@ -124,7 +158,9 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             DCQLIsoMdocCredential(
                 claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
                     namespaces?.mapValues { namespace ->
-                        namespace.value.entries.associate { it.value.elementIdentifier to it.value.toDcqlClaimValue(namespace.key) }
+                        namespace.value.entries.associate {
+                            it.value.elementIdentifier to it.value.toDcqlClaimValue(namespace.key)
+                        }
                     } ?: mapOf()
                 ),
                 documentType = document.docType,
