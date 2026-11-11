@@ -14,6 +14,8 @@ processing.
       `JsonClaimReference(DCQLClaimsPathPointer(...))`
     - BREAKING: Remove `SdJwtTypeMetadataClaimInformationPath.process`, which no code in VC-K used;
       `sd-jwt-type-metadata` no longer depends on `at.asitplus:jsonpath4k`
+    - BREAKING: No module depends on `at.asitplus:jsonpath4k` and its transitive `antlr-kotlin-runtime` any more, and
+      no XCFramework exports them. Applications that used them through VC-K must declare them
 - Validation:
     - BREAKING: Replace the timeliness validators of credentials and their results (`VcJwsTimelinessValidator`,
       `SdJwtTimelinessValidator`, `MdocTimelinessValidator`, `MobileSecurityObjectTimelinessValidator`,

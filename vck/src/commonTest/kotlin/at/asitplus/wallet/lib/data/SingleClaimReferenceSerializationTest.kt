@@ -47,7 +47,7 @@ val SingleClaimReferenceSerializationTest by matrixSuite {
 
         val serialized = joseCompliantSerializer.encodeToString(serializer, disclosure)
 
-        // The form of a two-segment NormalizedJsonPath, which disclosedAttributes held before
+        // The form disclosedAttributes had as JSONPaths of two names, kept for compatibility
         serialized shouldBe """{"docRequestIndex":0,"credential":"credential","disclosedAttributes":""" +
                 """[["org.iso.18013.5.1","family_name"],["org.iso.18013.5.1","age_over_18"]]}"""
         joseCompliantSerializer.decodeFromString(serializer, serialized) shouldBe disclosure
