@@ -107,7 +107,7 @@ val DCQLJsonClaimsQueryTest by matrixSuite {
         ).executeClaimsQueryAgainstCredential(
             DCQLCredentialClaimStructure.JsonBasedStructure(credential)
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().let {
-            it.nodeList shouldHaveSize 3
+            it.selectedClaims shouldHaveSize 3
         }
     }
 }

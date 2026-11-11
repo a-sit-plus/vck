@@ -2,6 +2,9 @@
 
 Release 10.0.0 (unreleased):
 
+Removes JSONPath as a dependency, because OpenID4VP relies on DCQL paths only. Strengthens implementation of SD-JWT
+processing.
+
 - Removals:
     - Remove code elements deprecated in 9.0.0: `Verifier` and its legacy validation classes
     - Remove `RemoteResourceRetrieverFunction` and `RemoteResourceRetrieverInput` as types and parameter values, e.g. in
@@ -65,6 +68,10 @@ Release 10.0.0 (unreleased):
       into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
+    - BREAKING: `DCQLClaimsPathPointer.query` returns a `List<DCQLSelectedClaim>`, each selected claim with its
+      `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
+      a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
+      `DCQLClaimsPathPointerSegment.query` is removed, as processing a claims path pointer needs the whole selection
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
