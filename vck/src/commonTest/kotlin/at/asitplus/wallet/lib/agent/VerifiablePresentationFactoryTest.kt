@@ -342,7 +342,7 @@ private fun presentationRequest() = PresentationRequestParameters(
 )
 
 private fun CreatePresentationResult.SdJwt.disclosedClaimNames(): Set<String> =
-    SdJwtDecoded(sdJwt).reconstructedJsonObject?.keys.orEmpty()
+    SdJwtDecoded(sdJwt).reconstructedJsonObject.keys
 
 private fun CreatePresentationResult.DeviceResponse.disclosedIsoClaimNames(namespace: String) =
     deviceResponse.documents.shouldNotBeNull().single()

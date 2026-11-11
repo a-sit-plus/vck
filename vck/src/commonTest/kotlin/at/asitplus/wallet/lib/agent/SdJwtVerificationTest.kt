@@ -4,7 +4,6 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.kotest.matchers.maps.shouldNotBeEmpty
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 /**
@@ -42,7 +41,6 @@ val SdJwtVerificationTest by matrixSuite {
 
         val sdJwtSigned = SdJwtSigned.parseCatching(input).getOrThrow()
         val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
-        val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
         sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
         sdJwtSigned.serialize() shouldBe input
 
@@ -57,7 +55,7 @@ val SdJwtVerificationTest by matrixSuite {
               }
             }
         """.trimIndent()
-        reconstructed shouldBe joseCompliantSerializer.parseToJsonElement(expected)
+        sdJwtDecoded.reconstructedJsonObject shouldBe joseCompliantSerializer.parseToJsonElement(expected)
     }
 
     "A.2. Complex Structured SD-JWT" {
@@ -99,7 +97,6 @@ val SdJwtVerificationTest by matrixSuite {
 
         val sdJwtSigned = SdJwtSigned.parseCatching(input).getOrThrow()
         val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
-        val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
         sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
         sdJwtSigned.serialize() shouldBe input
 
@@ -132,7 +129,7 @@ val SdJwtVerificationTest by matrixSuite {
             }
         """.trimIndent()
 
-        reconstructed shouldBe joseCompliantSerializer.parseToJsonElement(expected)
+        sdJwtDecoded.reconstructedJsonObject shouldBe joseCompliantSerializer.parseToJsonElement(expected)
     }
 
     "A.3. SD-JWT-based Verifiable Credentials (SD-JWT VC)" {
@@ -199,7 +196,6 @@ val SdJwtVerificationTest by matrixSuite {
 
         val sdJwtSigned = SdJwtSigned.parseCatching(input).getOrThrow()
         val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
-        val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
         sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
         sdJwtSigned.serialize() shouldBe input
 
@@ -248,7 +244,7 @@ val SdJwtVerificationTest by matrixSuite {
               }
             }
         """.trimIndent()
-        reconstructed shouldBe joseCompliantSerializer.parseToJsonElement(expected)
+        sdJwtDecoded.reconstructedJsonObject shouldBe joseCompliantSerializer.parseToJsonElement(expected)
     }
 
     "A.4. W3C Verifiable Credentials Data Model v2.0" {
@@ -298,7 +294,6 @@ val SdJwtVerificationTest by matrixSuite {
 
         val sdJwtSigned = SdJwtSigned.parseCatching(input).getOrThrow()
         val sdJwtDecoded = SdJwtDecoded(sdJwtSigned)
-        val reconstructed = sdJwtDecoded.reconstructedJsonObject.shouldNotBeNull()
         sdJwtDecoded.validDisclosures.shouldNotBeEmpty()
         sdJwtSigned.serialize() shouldBe input
 
@@ -340,7 +335,7 @@ val SdJwtVerificationTest by matrixSuite {
               }
             }
         """.trimIndent()
-        reconstructed shouldBe joseCompliantSerializer.parseToJsonElement(expected)
+        sdJwtDecoded.reconstructedJsonObject shouldBe joseCompliantSerializer.parseToJsonElement(expected)
     }
 
 }

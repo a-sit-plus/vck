@@ -281,10 +281,10 @@ val SdJwtCreatorTest by matrixSuite {
 
         val serialized = SdJwtSigned.issued(jws.jws, disclosures.toList()).serialize()
         val parsed = SdJwtSigned.parseCatching(serialized).getOrThrow()
-        val reconstructed = SdJwtDecoded(parsed).reconstructedJsonObject.shouldNotBeNull()
-
-        reconstructed["foo"] shouldBe null
-        reconstructed["foo.bar"].shouldBeInstanceOf<JsonPrimitive>().content shouldBe "value"
+        SdJwtDecoded(parsed).reconstructedJsonObject.apply {
+            this["foo"] shouldBe null
+            this["foo.bar"].shouldBeInstanceOf<JsonPrimitive>().content shouldBe "value"
+        }
     }
 
 }
@@ -297,7 +297,7 @@ private suspend fun Pair<JsonObject, Collection<String>>.signDecodeReconstruct()
             serializer = JsonObject.serializer()
         ).getOrThrow().jws, second.toList()
     )
-).reconstructedJsonObject.shouldNotBeNull()
+).reconstructedJsonObject
 
 private fun listOfClaims(vararg claimName: String): List<ClaimToBeIssued> =
     claimName.map { ClaimToBeIssued(it, uuid4(), true) }

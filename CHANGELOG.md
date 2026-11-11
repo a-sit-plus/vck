@@ -52,8 +52,11 @@ Release 10.0.0 (unreleased):
       `parseRequestParameters` fails with `InvalidRequest` for a request referencing its request object only in
       `request_uri`. Wallets fetch such request objects with `OpenId4VpProtocolClient.prepareAuthorizationResponse`.
 - DCQL:
-    - Fix: A holder discloses the requested element of an SD-JWT VC array claim whose issuer added decoy digests to it,
-      instead of the element at the requested position counting the decoys
+    - Fix: A holder matches DCQL claims queries on the claims of an SD-JWT VC as RFC 9901, 7.1 processes them
+      (`SdJwtDecoded.reconstructedJsonObject`), without `_sd` and `_sd_alg` and with empty objects and arrays, and
+      presents the disclosures of exactly the selected claims with their ancestors and sub-claims (RFC 9901, 7.2;
+      OpenID4VP 1.0, 6.4, 7.3). It no longer discloses another element of an array claim whose issuer added decoy
+      digests to it, or that contains an object without disclosed claims, than the one requested
     - Fix: `DCQLQueryAdapter.checkAcceptedSubmissions` accepts SD-JWT VC claims requested by array index, checking
       the index as a wildcard, as the position of a disclosed element in the issued array can not be determined
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming

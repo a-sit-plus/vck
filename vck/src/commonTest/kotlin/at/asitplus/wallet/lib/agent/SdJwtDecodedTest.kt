@@ -34,7 +34,7 @@ val SdJwtDecodedTest by matrixSuite {
 
     "reconstructs the claims as RFC 9901, 7.1 step 3 processes them" {
         // Decoys removed (3.c.i, 3.d), {} kept (3.e), nested arrays processed (3.c.iii.3), _sd and _sd_alg removed
-        example().decoded.reconstructedJsonObject shouldBe Json.parseToJsonElement(
+        sdJwtDecodedExample().decoded.reconstructedJsonObject shouldBe Json.parseToJsonElement(
             """
             {
               "vct": "https://example.com/unknown",
@@ -52,7 +52,7 @@ val SdJwtDecodedTest by matrixSuite {
     }
 
     "indexes each disclosure by the position of its claim, counting no decoys" {
-        val example = example()
+        val example = sdJwtDecodedExample()
         example.decoded.disclosuresByPath shouldBe mapOf(
             pointer("nationalities") to example["nat"],
             pointer("nationalities", 0) to example["de"],
@@ -68,7 +68,7 @@ val SdJwtDecodedTest by matrixSuite {
     }
 
     "marks the arrays that contain array element digests as issued" {
-        example().decoded.arraysWithElementDigests shouldBe
+        sdJwtDecodedExample().decoded.arraysWithElementDigests shouldBe
                 setOf(pointer("nationalities"), pointer("degrees"), pointer("m", 0), pointer("e"))
     }
 
@@ -85,26 +85,30 @@ val SdJwtDecodedTest by matrixSuite {
         SelectionCase("a missing claim", pointer("missing")),
     ).forEach { case ->
         "disclosuresFor selects ${case.name}" {
-            val example = example()
+            val example = sdJwtDecodedExample()
             example.decoded.disclosuresFor(listOf(case.pointer)) shouldBe case.expected.map { example[it] }.toSet()
         }
     }
 
     "is equal for the same SD-JWT" {
-        val sdJwtSigned = example().decoded.sdJwtSigned
+        val sdJwtSigned = sdJwtDecodedExample().decoded.sdJwtSigned
         SdJwtDecoded(sdJwtSigned) shouldBe SdJwtDecoded(sdJwtSigned)
     }
 }
 
 private class SelectionCase(val name: String, val pointer: DCQLClaimsPathPointer, vararg val expected: String)
 
-/** An SD-JWT and its serialized disclosures by name. */
-private class Example(val decoded: SdJwtDecoded, private val disclosures: Map<String, String>) {
+/** A serialized SD-JWT, its [decoded] view, and its serialized disclosures by name. */
+internal class SdJwtDecodedExample(
+    val serialized: String,
+    val decoded: SdJwtDecoded,
+    private val disclosures: Map<String, String>,
+) {
     operator fun get(name: String) = disclosures.getValue(name)
 }
 
 /** A claims path pointer of names, indices (as [Int]) and `null`. */
-private fun pointer(vararg segments: Any?) = DCQLClaimsPathPointer(
+internal fun pointer(vararg segments: Any?) = DCQLClaimsPathPointer(
     segments.map {
         when (it) {
             is String -> NameSegment(it)
@@ -119,7 +123,7 @@ private fun pointer(vararg segments: Any?) = DCQLClaimsPathPointer(
  * The example credential of OpenID4VP 1.0, 7.3, with decoy digests (RFC 9901, 4.2.5) in `_sd` and in arrays, an object
  * and an array element without disclosed members, and an array nested in an array.
  */
-private suspend fun example(): Example {
+internal suspend fun sdJwtDecodedExample(): SdJwtDecodedExample {
     val disclosures = linkedMapOf<String, String>()
     fun disclose(name: String, content: JsonArray): String =
         content.toString().encodeToByteArray().encodeToString(Base64UrlStrict)
@@ -168,5 +172,6 @@ private suspend fun example(): Example {
         JsonObject.serializer(),
     ).getOrThrow()
     val serialized = (listOf(jws.jws.toString()) + disclosures.values).joinToString("~", postfix = "~")
-    return Example(SdJwtDecoded(SdJwtSigned.parseCatching(serialized).getOrThrow()), disclosures)
+    val decoded = SdJwtDecoded(SdJwtSigned.parseCatching(serialized).getOrThrow())
+    return SdJwtDecodedExample(serialized, decoded, disclosures)
 }
