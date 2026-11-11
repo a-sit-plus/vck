@@ -75,8 +75,13 @@ Release 10.0.0 (unreleased):
       Organization of the signing certificate to be a `SchemeOperatorName` of the list, rejects a list whose
       `NextUpdate` is in the past, and optionally one with a lower `LoTESequenceNumber` than the list in force
 - DCQL:
-    - Fix: A holder discloses the requested element of an SD-JWT VC array claim whose issuer added decoy digests to it,
-      instead of the element at the requested position counting the decoys
+    - Fix: A holder matches DCQL claims queries on the claims of an SD-JWT VC as RFC 9901, 7.1 processes them
+      (`SdJwtDecoded.reconstructedJsonObject`), without `_sd` and `_sd_alg` and with empty objects and arrays, and
+      presents the disclosures of exactly the selected claims with their ancestors and sub-claims (RFC 9901, 7.2;
+      OpenID4VP 1.0, 6.4, 7.3). It no longer discloses another element of an array claim whose issuer added decoy
+      digests to it, or that contains an object without disclosed claims, than the one requested. A stored SD-JWT
+      that can not be processed matches no credential query, instead of one without claims, and no longer keeps the
+      other credentials from being matched: `CredentialToJsonConverter.toJsonElement` throws for it
     - Fix: `DCQLQueryAdapter.checkAcceptedSubmissions` accepts SD-JWT VC claims requested by array index, checking
       the index as a wildcard, as the position of a disclosed element in the issued array can not be determined
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming

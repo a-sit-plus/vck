@@ -29,6 +29,7 @@ import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
 import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLIsoMdocCredential
 import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLQuery
@@ -67,13 +68,24 @@ import kotlin.time.Instant
 
 @JvmInline
 value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
+    /**
+     * Matches every credential query against each of [credentials], see [DCQLQuery.findCredentialQueryMatches]. A
+     * credential whose claims can not be read, e.g. an SD-JWT that can not be processed, matches no query, with the
+     * failure as its result, while the other credentials are still matched.
+     */
     suspend fun select(
         credentials: List<SubjectCredentialStore.StoreEntry>
-    ): DCQLQueryMatchingResult = dcqlQuery.findCredentialQueryMatches(
-        availableCredentials = credentials.map {
-            it.toDCQLCredential()
-        }
-    )
+    ): DCQLQueryMatchingResult {
+        val dcqlCredentials = credentials.map { catchingUnwrapped { it.toDCQLCredential() } }
+        return DCQLQueryMatchingResult(dcqlQuery.credentials.associate { credentialQuery ->
+            credentialQuery.id to dcqlCredentials.map { credential ->
+                credential.fold(
+                    onSuccess = { credentialQuery.match(it) },
+                    onFailure = { KmmResult.failure<DCQLCredentialQueryMatchingResult>(it) },
+                )
+            }
+        })
+    }
 
     /**
      * Checks the submission requirements of the query, i.e. its credential sets and every credential query, over the
