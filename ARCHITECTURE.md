@@ -245,6 +245,13 @@ VC-K supports three main credential families:
   `MobileSecurityObject`. ISO version and digest fields use typed values while serializers preserve the specified
   CBOR representation.
 
+Claim paths are OpenID4VP claims path pointers (`DCQLClaimsPathPointer`, OpenID4VP 1.0 §7), and processing one yields
+`DCQLSelectedClaim`s at concrete paths. `OpenId4VciClaimsPathPointer`, `SdJwtTypeMetadataClaimInformationPath`, and
+`WrpClaimPathSegment` are the wire types of their modules. ISO mDoc data elements are `MdocClaimReference`s (name space
+and data element identifier), never paths. Read the claims and disclosures of an SD-JWT through `SdJwtDecoded`. Do not
+add JSONPath: no implemented specification uses it, and draft-ietf-oauth-sd-jwt-vc-19 §5.6.1.2 rejects it for its
+complexity and security concerns.
+
 Feature work often needs tests across at least one core agent flow and one protocol flow. For example, a disclosure
 selection change may touch `vck` DCQL matching and `vck-openid` OpenID4VP response validation.
 
