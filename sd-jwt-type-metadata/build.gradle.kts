@@ -32,7 +32,6 @@ kotlin {
                 api(project(":rfc3986-uri-syntax"))
                 api("at.asitplus.signum:supreme:${VcLibVersions.supreme}")
                 api("at.asitplus.signum:indispensable:${VcLibVersions.signum}")
-                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
             }
         }
     }
@@ -44,7 +43,6 @@ if ("true" != disableAppleTargets) exportXCFramework(
     static = false,
     "at.asitplus.signum:supreme:${VcLibVersions.supreme}",
     "at.asitplus.signum:indispensable:${VcLibVersions.signum}",
-    "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
 )
 
 val javadocJar = setupDokka(    baseUrl = "https://github.com/a-sit-plus/vck/tree/main/")
