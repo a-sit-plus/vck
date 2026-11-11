@@ -65,7 +65,7 @@ val DCQLRequestValidationTest by matrixSuite {
 
         result.shouldBeInstanceOf<DCQLCredentialQueryMatchingResult.ClaimsQueryResults>()
             .claimsQueryResults.map {
-                it.shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().nodeList.single().value
+                it.shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().selectedClaims.single().value
             } shouldBe listOf(JsonPrimitive("Erika"), JsonPrimitive("Musterfrau"))
     }
 }

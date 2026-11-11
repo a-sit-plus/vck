@@ -2,13 +2,13 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.csc.bindings.QesApprovalBinding
 import at.asitplus.iso.SessionTranscript
-import at.asitplus.jsonpath.core.NodeListEntry
-import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.IsoMdocResult
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.JsonResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemSpec
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemType
+import at.asitplus.openid.dcql.DCQLSelectedClaim
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.supreme.hash.digest
@@ -120,7 +120,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 disclosedAttributes = ClaimsQueryResults(
                     listOf(
                         JsonResult(
-                            listOf(NodeListEntry(NormalizedJsonPath() + "family_name", JsonPrimitive("Musterfrau")))
+                            listOf(DCQLSelectedClaim(DCQLClaimsPathPointer("family_name"), JsonPrimitive("Musterfrau")))
                         )
                     )
                 ),
@@ -156,10 +156,10 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 disclosedAttributes = ClaimsQueryResults(
                     listOf(
                         JsonResult(
-                            listOf(NodeListEntry(NormalizedJsonPath() + CLAIM_GIVEN_NAME, JsonPrimitive("x")))
+                            listOf(DCQLSelectedClaim(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME), JsonPrimitive("x")))
                         ),
                         JsonResult(
-                            listOf(NodeListEntry(NormalizedJsonPath() + CLAIM_DATE_OF_BIRTH, JsonPrimitive("y")))
+                            listOf(DCQLSelectedClaim(DCQLClaimsPathPointer(CLAIM_DATE_OF_BIRTH), JsonPrimitive("y")))
                         ),
                     )
                 ),

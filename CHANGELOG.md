@@ -2,10 +2,20 @@
 
 Release 10.0.0 (unreleased):
 
+Removes JSONPath as a dependency, because OpenID4VP relies on DCQL paths only. Strengthens implementation of SD-JWT
+processing.
+
 - Removals:
     - Remove code elements deprecated in 9.0.0: `Verifier` and its legacy validation classes
     - Remove `RemoteResourceRetrieverFunction` and `RemoteResourceRetrieverInput` as types and parameter values, e.g. in
      `RequestParser` and `OpenId4VciClient`
+    - BREAKING: `csc-data-classes` no longer depends on `at.asitplus:jsonpath4k`
+    - BREAKING: Remove the constructor `JsonClaimReference(normalizedJsonPath: NormalizedJsonPath)`, use
+      `JsonClaimReference(DCQLClaimsPathPointer(...))`
+    - BREAKING: Remove `SdJwtTypeMetadataClaimInformationPath.process`, which no code in VC-K used;
+      `sd-jwt-type-metadata` no longer depends on `at.asitplus:jsonpath4k`
+    - BREAKING: No module depends on `at.asitplus:jsonpath4k` and its transitive `antlr-kotlin-runtime` any more, and
+      no XCFramework exports them. Applications that used them through VC-K must declare them
 - Validation:
     - BREAKING: Replace the timeliness validators of credentials and their results (`VcJwsTimelinessValidator`,
       `SdJwtTimelinessValidator`, `MdocTimelinessValidator`, `MobileSecurityObjectTimelinessValidator`,
@@ -64,6 +74,18 @@ Release 10.0.0 (unreleased):
       into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
+    - BREAKING: `DCQLClaimsPathPointer.query` returns a `List<DCQLSelectedClaim>`, each selected claim with its
+      `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
+      a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
+      `DCQLClaimsPathPointerSegment.query` is removed, as processing a claims path pointer needs the whole selection
+- ISO mdoc:
+    - BREAKING: Data elements to present are `MdocClaimReference`s (name space and data element identifier,
+      ISO/IEC 18013-5:2021, 8.3.2.1.2.1) instead of JSONPath `NormalizedJsonPath`s of two names, in
+      `IsoPresentationParameters.claims`, `DeviceRequestCredentialDisclosure.disclosedAttributes`, and
+      `IsoMdocZkBackend.generate(requestedClaims)`. `DeviceRequestCredentialDisclosure` is serialized as before, each
+      data element as a `[namespace, claimName]` array (`MdocClaimReference.ArraySerializer`)
+    - BREAKING: Remove `NormalizedJsonPath.toIsoNamespaceAttribute()`. A requested claim can no longer have another
+      shape than a name space and a data element identifier, so none is ignored with a warning any more
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no

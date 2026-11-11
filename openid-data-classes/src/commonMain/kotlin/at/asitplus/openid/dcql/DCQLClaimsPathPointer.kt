@@ -2,11 +2,11 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.jsonpath.core.NodeList
-import at.asitplus.jsonpath.core.NodeListEntry
-import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * OpenID4VP 1.0, 7. Claims Path Pointer
@@ -32,42 +32,33 @@ import kotlinx.serialization.json.JsonElement
 @Serializable(with = DCQLClaimsPathPointerInlineSerializer::class)
 class DCQLClaimsPathPointer(
     val segments: NonEmptyList<DCQLClaimsPathPointerSegment>,
-): List<DCQLClaimsPathPointerSegment> by segments {
-    constructor(vararg segments: DCQLClaimsPathPointerSegment) : this(segments.toList().toNonEmptyList())
+) : List<DCQLClaimsPathPointerSegment> by segments {
+    constructor(vararg segments: DCQLClaimsPathPointerSegment)
+            : this(segments.toList().toNonEmptyList())
 
-    constructor(startSegment: String) : this(
-        DCQLClaimsPathPointerSegment.NameSegment(startSegment)
-    )
+    constructor(startSegment: String)
+            : this(NameSegment(startSegment))
 
-    constructor(startSegment: String, vararg segments: String) : this(
-        (listOf(startSegment) + segments.toList()).map { DCQLClaimsPathPointerSegment.NameSegment(it) }.toNonEmptyList()
-    )
+    constructor(startSegment: String, vararg segments: String)
+            : this((listOf(startSegment) + segments.toList()).map { NameSegment(it) }.toNonEmptyList())
 
-    constructor(startSegment: UInt) : this(
-        DCQLClaimsPathPointerSegment.IndexSegment(startSegment)
-    )
+    constructor(startSegment: UInt)
+            : this(IndexSegment(startSegment))
 
-    constructor(@Suppress("UNUSED_PARAMETER") nullValue: Nothing?) : this(
-        DCQLClaimsPathPointerSegment.NullSegment
-    )
+    constructor(@Suppress("UNUSED_PARAMETER") nullValue: Nothing?)
+            : this(NullSegment)
 
+    operator fun plus(other: DCQLClaimsPathPointer) =
+        DCQLClaimsPathPointer((segments + other.segments).toNonEmptyList())
 
-    operator fun plus(other: DCQLClaimsPathPointer) = DCQLClaimsPathPointer(
-        (segments + other.segments).toNonEmptyList()
-    )
+    operator fun plus(key: String) =
+        DCQLClaimsPathPointer((segments + NameSegment(key)).toNonEmptyList())
 
-    operator fun plus(key: String) = DCQLClaimsPathPointer(
-        (segments + DCQLClaimsPathPointerSegment.NameSegment(key)).toNonEmptyList()
-    )
+    operator fun plus(index: UInt) =
+        DCQLClaimsPathPointer((segments + IndexSegment(index)).toNonEmptyList())
 
-    operator fun plus(index: UInt) = DCQLClaimsPathPointer(
-        (segments + DCQLClaimsPathPointerSegment.IndexSegment(index)).toNonEmptyList()
-    )
-
-    operator fun plus(@Suppress("UNUSED_PARAMETER") nullValue: Nothing?) = DCQLClaimsPathPointer(
-        (segments + DCQLClaimsPathPointerSegment.NullSegment).toNonEmptyList()
-    )
-
+    operator fun plus(@Suppress("UNUSED_PARAMETER") nullValue: Nothing?) =
+        DCQLClaimsPathPointer((segments + NullSegment).toNonEmptyList())
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -109,6 +100,9 @@ class DCQLClaimsPathPointer(
      *
      * The result of the processing is the set of selected JSON elements.
      *
+     * Each selected element is returned with its [DCQLSelectedClaim.path], the concrete position it was selected at:
+     * a name for each string component, and the index of the element for each null or integer component.
+     *
      * A component of any other type is rejected when the pointer is deserialized, see
      * [DCQLClaimsPathPointerSegmentSerializer].
      *
@@ -117,12 +111,45 @@ class DCQLClaimsPathPointer(
      * an array whose elements are objects and strings. As an error of this claim only, it does not fail other options
      * of `claim_sets` that do not request the claim.
      */
-    fun query(jsonElement: JsonElement): NodeList {
-        var nodeList = listOf(NodeListEntry(NormalizedJsonPath(), jsonElement))
-        segments.forEach {
-            nodeList = it.query(nodeList)
-        }
-        return nodeList
+    fun query(jsonElement: JsonElement): List<DCQLSelectedClaim> = segments
+        .fold(listOf(Selected(listOf(), jsonElement))) { selection, segment -> selection.select(segment) }
+        .map { DCQLSelectedClaim(DCQLClaimsPathPointer(it.path.toNonEmptyList()), it.value) }
+}
+
+/** An element selected while processing a claims path pointer, at the concrete [path] processed so far. */
+private class Selected(val path: List<DCQLClaimsPathPointerSegment>, val value: JsonElement)
+
+/** One step of OpenID4VP 1.0, 7.1.1 for [segment]; an error yields an empty selection. */
+private fun List<Selected>.select(segment: DCQLClaimsPathPointerSegment): List<Selected> = when (segment) {
+    // 2.1: "select the element in the respective key in the currently selected element(s) [...] If the key does not
+    // exist in any element currently selected, remove that element from the selection."
+    is NameSegment -> selectFromEach<JsonObject> { selected, obj ->
+        listOfNotNull(obj[segment.name]?.let { selected.child(segment, it) })
+    }
+
+    // 2.2: "select all elements of the currently selected array(s)"
+    NullSegment -> selectFromEach<JsonArray> { selected, array ->
+        array.mapIndexed { index, element -> selected.child(IndexSegment(index.toUInt()), element) }
+    }
+
+    // 2.3: "select the element at the respective index in the currently selected array(s) [...] If the index does not
+    // exist in a selected array, remove that array from the selection."
+    is IndexSegment -> selectFromEach<JsonArray> { selected, array ->
+        listOfNotNull(array.at(segment.index)?.let { selected.child(segment, it) })
     }
 }
 
+/**
+ * Selects from each element of the selection as a [T]. If any selected element is not a [T], processing aborts with
+ * an error, i.e. an empty selection (OpenID4VP 1.0, 7.1.1, 2.1 to 2.3: "If any of the currently selected element(s)
+ * is not an object/array, abort processing and return an error").
+ */
+private inline fun <reified T : JsonElement> List<Selected>.selectFromEach(
+    select: (selected: Selected, value: T) -> List<Selected>,
+): List<Selected> = if (all { it.value is T })
+    flatMap { select(it, it.value as T) }
+else listOf()
+
+private fun Selected.child(segment: DCQLClaimsPathPointerSegment, value: JsonElement) = Selected(path + segment, value)
+
+private fun JsonArray.at(index: UInt): JsonElement? = if (index < size.toUInt()) get(index.toInt()) else null

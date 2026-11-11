@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.SessionTranscript
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.Digest
@@ -10,6 +9,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -149,14 +149,15 @@ sealed interface CreatePresentationResult {
  * A holder credential selected for an ISO Device Retrieval response and the data elements to disclose.
  *
  * [docRequestIndex] identifies the request being fulfilled, so repeated requests for the same docType remain distinct.
- * ISO namespaces and data-element names are represented as two-segment [NormalizedJsonPath] values because that is
- * the selective-disclosure path type consumed by [VerifiablePresentationFactory].
+ * [disclosedAttributes] are serialized as `[namespace, claimName]` arrays, see [MdocClaimReference.ArraySerializer].
  */
 @Serializable
 data class DeviceRequestCredentialDisclosure<Credential : Any>(
     val docRequestIndex: Int,
     val credential: Credential,
-    val disclosedAttributes: Collection<NormalizedJsonPath>,
+    val disclosedAttributes: Collection<
+        @Serializable(with = MdocClaimReference.ArraySerializer::class) MdocClaimReference
+    >,
 )
 
 open class PresentationException : Exception {

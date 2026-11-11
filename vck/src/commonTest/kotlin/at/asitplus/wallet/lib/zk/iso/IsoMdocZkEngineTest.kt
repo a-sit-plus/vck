@@ -9,8 +9,6 @@ import at.asitplus.iso.ZkRequest
 import at.asitplus.iso.ZkSignedItem
 import at.asitplus.iso.ZkSignedList
 import at.asitplus.iso.ZkSystemSpec
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.testballoon.matrix.fixture
@@ -32,6 +30,7 @@ import at.asitplus.wallet.lib.agent.ZkMetadata
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeIn
@@ -141,14 +140,7 @@ private suspend fun issueAndStoreIsoMdocCredential(
 private fun createIsoMdocZkRequestedClaims(
     credentialScheme: IsoMdocCredentialScheme,
     attributeKey: String
-): List<NormalizedJsonPath> = listOf(
-    NormalizedJsonPath(
-        listOf(
-            NormalizedJsonPathSegment.NameSegment(credentialScheme.isoNamespace),
-            NormalizedJsonPathSegment.NameSegment(attributeKey)
-        )
-    )
-)
+): List<MdocClaimReference> = listOf(MdocClaimReference(credentialScheme.isoNamespace, attributeKey))
 
 private object MockIsoMdocZkBackend: IsoMdocZkBackend {
     override val system: String = "MockZkSystem.${uuid4()}"
@@ -166,7 +158,7 @@ private object MockIsoMdocZkBackend: IsoMdocZkBackend {
     override suspend fun generate(
         request: PresentationRequestParameters,
         credential: StoreEntry.Iso,
-        requestedClaims: Collection<NormalizedJsonPath>,
+        requestedClaims: Collection<MdocClaimReference>,
         requestedZkSystemSpecs: List<ZkSystemSpec>,
         keyMaterial: KeyMaterial,
         timestamp: Instant,
@@ -175,13 +167,7 @@ private object MockIsoMdocZkBackend: IsoMdocZkBackend {
             ?: throw IllegalArgumentException("No ZK system spec available")
 
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
-            .map { claim ->
-                val names = claim.filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
-                require(names.size == 2) { "Expected claim path to have exactly 2 name segments, but got ${names.size} in path: $claim" }
-
-                names[0].memberName to names[1].memberName
-            }
-            .groupBy({ it.first }, { it.second })
+            .groupBy({ it.namespace }, { it.claimName })
 
 
         val issuerSigned = namespaceToAttributesMap.mapValues { (namespace, attributes) ->

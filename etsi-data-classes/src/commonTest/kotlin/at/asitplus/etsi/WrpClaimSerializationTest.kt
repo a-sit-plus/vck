@@ -39,7 +39,7 @@ val WrpClaimSerializationTest by matrixSuite {
         }
     }
 
-    "invalid JSON paths" - {
+    "invalid claim paths" - {
         listOf("[]", "[-1]", "[1.5]", "[true]", "[{}]", "[[]]", "[4294967296]", "[9223372036854775807]")
             .asData() test { path ->
                 shouldThrowAny {

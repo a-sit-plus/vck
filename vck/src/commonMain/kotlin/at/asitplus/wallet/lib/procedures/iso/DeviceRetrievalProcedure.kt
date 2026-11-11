@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.ItemsRequest
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.agent.DeviceRequestCredentialDisclosure
 import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalClaimMatch
 import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalCredentialMatch
@@ -14,6 +13,7 @@ import at.asitplus.wallet.lib.agent.IsoPresentationParameters
 import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.ZkMetadata
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import io.github.aakira.napier.Napier
 
 /** Matching and submission validation for ISO Device Retrieval requests. */
@@ -50,16 +50,11 @@ internal object DeviceRetrievalProcedure {
             val meta = itemsRequest.requestInfo?.zkRequest?.let {
                ZkMetadata.IsoMdocZk(it)
             }
-            val requiredPaths = evaluateItemsRequestAgainstCredential(
+            val requiredClaims = evaluateItemsRequestAgainstCredential(
                 itemsRequest = itemsRequest,
                 issuerSigned = credential.issuerSigned,
-            ).getOrThrow().map {
-                NormalizedJsonPath() + it.namespace + it.claimName
-            }.toSet()
-            require(
-                submission.disclosedAttributes.map { it.toString() }.toSet() ==
-                        requiredPaths.map { it.toString() }.toSet()
-            ) {
+            ).getOrThrow().map { MdocClaimReference(it.namespace, it.claimName) }.toSet()
+            require(submission.disclosedAttributes.toSet() == requiredClaims) {
                 "Disclosed attributes do not exactly match document request at index $index"
             }
             IsoPresentationParameters.create(credential, submission.disclosedAttributes, meta).getOrThrow()
