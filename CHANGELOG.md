@@ -26,6 +26,16 @@ Release 10.0.0 (unreleased):
       leeway either. Add the parameter `leeway` (`Duration.ZERO` by default) to `isTrustedBy`, `isValidAt`,
       `isExpired`, and `isNotYetValid` of `X509Certificate`, and `timeLeeway` to `RelyingPartyValidator.clientTrust`
 - SD-JWT:
+    - Fix: `SdJwtDecoded.reconstructedJsonObject` holds the claims as RFC 9901, 7.1 step 3 processes them: empty
+      objects and arrays are kept, arrays nested in arrays and in array element disclosures are processed, and only
+      the top-level `_sd_alg` is removed. It is no longer nullable. `SdJwtDecoded` and the validation of SD-JWT VCs now
+      share one implementation
+    - Add `SdJwtDecoded.disclosuresByPath` (the position of each disclosed claim as a claims path pointer, counting no
+      decoy digests), `arraysWithElementDigests`, `disclosuresFor(pointers)` (the disclosures of the selected claims
+      with their ancestors and sub-claims), and `sdJwtSigned`. Add `StoreEntry.SdJwt.decoded`, derived from
+      `vcSerialized` on first use and not serialized
+    - BREAKING: `ValidatedCredential.SdJwtVc` is constructed from `credential` and `decoded: SdJwtDecoded`; its
+      `sdJwtSigned`, `reconstructedJsonObject`, and `disclosures` remain as properties
     - BREAKING: `SelectiveDisclosureItem.salt` is a `String`, the salt exactly as in the disclosure, as RFC 9901, 4.2.1
       only requires a string: a disclosure whose salt is not base64url, e.g. contains `+`, `/`, `=`, or `.`, is no
       longer rejected. The constructor taking a `ByteArray` salt base64url-encodes it
