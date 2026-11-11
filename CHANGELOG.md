@@ -72,6 +72,14 @@ processing.
       `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
       a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
       `DCQLClaimsPathPointerSegment.query` is removed, as processing a claims path pointer needs the whole selection
+- ISO mdoc:
+    - BREAKING: Data elements to present are `MdocClaimReference`s (name space and data element identifier,
+      ISO/IEC 18013-5:2021, 8.3.2.1.2.1) instead of JSONPath `NormalizedJsonPath`s of two names, in
+      `IsoPresentationParameters.claims`, `DeviceRequestCredentialDisclosure.disclosedAttributes`, and
+      `IsoMdocZkBackend.generate(requestedClaims)`. `DeviceRequestCredentialDisclosure` is serialized as before, each
+      data element as a `[namespace, claimName]` array (`MdocClaimReference.ArraySerializer`)
+    - BREAKING: Remove `NormalizedJsonPath.toIsoNamespaceAttribute()`. A requested claim can no longer have another
+      shape than a name space and a data element identifier, so none is ignored with a warning any more
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no

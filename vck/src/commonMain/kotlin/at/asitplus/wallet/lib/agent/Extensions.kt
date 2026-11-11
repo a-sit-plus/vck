@@ -6,8 +6,6 @@ import at.asitplus.iso.DeviceAuthentication
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.wrapInCborTag
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.Base64URLTransactionDataSerializer
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.digest
@@ -124,18 +122,3 @@ suspend fun calculateIsoDeviceSignature(
     payload = deviceAuthenticationBytes,
     serializer = ByteArraySerializer()
 )
-
-
-/** Returns map of first element (namespace) to second element (attribute name) */
-fun NormalizedJsonPath.toIsoNamespaceAttribute() = with(firstTwoSegments()) {
-    if (size == 2) {
-        first().memberName to last().memberName
-    } else {
-        // Treating non-namespaced attributes as fields that are inherent to the credential for now
-        //  -> no need for selective disclosure
-        null
-    }
-}
-
-private fun NormalizedJsonPath.firstTwoSegments() = take(2)
-    .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()

@@ -27,7 +27,6 @@ import at.asitplus.iso.Document
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.ZkDocument
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.QesApprovalRequest
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
@@ -44,6 +43,7 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.extensions.sdHashInput
@@ -130,15 +130,13 @@ class VerifiablePresentationFactory(
         AllMandatoryClaimsMatchingResult -> emptyList()
 
         AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
-            namespace.value.entries.map {
-                NormalizedJsonPath() + namespace.key + it.value.elementIdentifier
-            }
+            namespace.value.entries.map { MdocClaimReference(namespace.key, it.value.elementIdentifier) }
         }
 
         is ClaimsQueryResults -> claimsQueryResults.map {
             it as DCQLClaimsQueryResult.IsoMdocResult
         }.map {
-            NormalizedJsonPath() + it.namespace + it.claimName
+            MdocClaimReference(it.namespace, it.claimName)
         }
     }
 
@@ -181,20 +179,11 @@ class VerifiablePresentationFactory(
 
     // allows disclosure of attributes from different namespaces
     private suspend fun StoreEntry.Iso.discloseRequestedClaims(
-        requestedClaims: Collection<NormalizedJsonPath>,
+        requestedClaims: Collection<MdocClaimReference>,
         request: PresentationRequestParameters,
     ): KmmResult<Document> = catching {
-        // grouping by namespace and all requested claims for that namespace
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
-            .mapNotNull { path ->
-                path.toIsoNamespaceAttribute().also {
-                    if (it == null) {
-                        Napier.w { "Ignoring requested claim '$path': does not follow namespaced path format (expected 2 segments)." }
-                    }
-                }
-            }
-            .groupBy { it.first }
-            .mapValues { it.value.map { it.second } }
+            .groupBy({ it.namespace }, { it.claimName })
         val disclosedItems = namespaceToAttributesMap.mapValues { entry ->
             IssuerSignedList(entry.value.map {
                 discloseIssuedItem(entry.key, it)

@@ -5,13 +5,13 @@ import at.asitplus.catching
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.ZkDocument
 import at.asitplus.iso.ZkSystemSpec
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -110,7 +110,7 @@ class LongfellowBackend : IsoMdocZkBackend {
 
     private fun chooseZkSystemSpec(
         credential: StoreEntry.Iso,
-        requestedClaims: Collection<NormalizedJsonPath>,
+        requestedClaims: Collection<MdocClaimReference>,
         requestedZkSystemSpecs: List<ZkSystemSpec>,
     ): MultipazZkSystemSpec? {
         val multipazRequestedClaims = requestedClaims.map {
@@ -149,7 +149,7 @@ class LongfellowBackend : IsoMdocZkBackend {
      *
      * @param request Presentation request parameters containing session context.
      * @param credential The ISO mdoc credential store entry containing attributes to disclose.
-     * @param requestedClaims The set of normalized JSON paths representing requested claims.
+     * @param requestedClaims The requested data elements.
      * @param requestedZkSystemSpecs Acceptable ZK system specifications requested by the verifier.
      * @param keyMaterial The key material used for signing device authentication in the mDoc context.
      * @param timestamp The timestamp to use for the proof.
@@ -159,7 +159,7 @@ class LongfellowBackend : IsoMdocZkBackend {
     override suspend fun generate(
         request: PresentationRequestParameters,
         credential: StoreEntry.Iso,
-        requestedClaims: Collection<NormalizedJsonPath>,
+        requestedClaims: Collection<MdocClaimReference>,
         requestedZkSystemSpecs: List<ZkSystemSpec>,
         keyMaterial: KeyMaterial,
         timestamp: Instant,
