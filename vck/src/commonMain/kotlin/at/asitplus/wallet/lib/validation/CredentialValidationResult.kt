@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.iso.IssuerSigned
+import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -17,13 +18,18 @@ sealed interface ValidatedCredential {
     data class VcJwt(val credential: VerifiableCredentialJws) : ValidatedCredential
 
     data class SdJwtVc(
-        val sdJwtSigned: SdJwtSigned,
         val credential: VerifiableCredentialSdJwt,
+        /** The SD-JWT with every supplied disclosure applied. */
+        val decoded: SdJwtDecoded,
+    ) : ValidatedCredential {
+        val sdJwtSigned: SdJwtSigned get() = decoded.sdJwtSigned
+
         /** Claims of the issuer-signed payload with every supplied disclosure applied. */
-        val reconstructedJsonObject: JsonObject,
+        val reconstructedJsonObject: JsonObject get() = decoded.reconstructedJsonObject
+
         /** Map of serialized disclosure (as [String]) to parsed item, for every supplied disclosure. */
-        val disclosures: Map<String, SelectiveDisclosureItem>,
-    ) : ValidatedCredential
+        val disclosures: Map<String, SelectiveDisclosureItem> get() = decoded.validDisclosures
+    }
 
     data class IsoMdoc(val issuerSigned: IssuerSigned) : ValidatedCredential
 }
