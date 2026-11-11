@@ -446,15 +446,15 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
 
             groupedResult.size shouldBe 2
             groupedResult.forEach { result ->
-                result.reconstructedJsonObject.entries.shouldNotBeEmpty()
+                result.decoded.reconstructedJsonObject.entries.shouldNotBeEmpty()
                 when (result.credential.verifiableCredentialType) {
                     EU_PID_SD_JWT_VCT -> {
-                        result.reconstructedJsonObject[EuPidSdJwtDataElements.FAMILY_NAME].shouldNotBeNull()
-                        result.reconstructedJsonObject[EuPidSdJwtDataElements.GIVEN_NAME].shouldNotBeNull()
+                        result.decoded.reconstructedJsonObject[EuPidSdJwtDataElements.FAMILY_NAME].shouldNotBeNull()
+                        result.decoded.reconstructedJsonObject[EuPidSdJwtDataElements.GIVEN_NAME].shouldNotBeNull()
                     }
 
                     ConstantIndex.AtomicAttribute2023.sdJwtType -> {
-                        result.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
+                        result.decoded.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
                     }
 
                     else -> {

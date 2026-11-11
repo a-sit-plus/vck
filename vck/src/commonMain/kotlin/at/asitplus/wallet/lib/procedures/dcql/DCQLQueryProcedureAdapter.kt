@@ -158,9 +158,11 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
 
     private fun ValidatedPresentation.toDCQLSdJwtCredential(): DCQLSdJwtCredential = when (this) {
         is ValidatedPresentation.SdJwt -> DCQLSdJwtCredential(
-            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(credential.reconstructedJsonObject),
+            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
+                credential.decoded.reconstructedJsonObject
+            ),
             satisfiesCryptographicHolderBinding = credential.credential.confirmationClaim != null,
-            authorityKeyIdentifiers = credential.sdJwtSigned.jws.jwsHeader.certificateChain
+            authorityKeyIdentifiers = credential.decoded.sdJwtSigned.jws.jwsHeader.certificateChain
                 ?.flatMap { it.getAuthorityKeyIdentifier() } ?: listOf(),
             type = credential.credential.verifiableCredentialType,
         )

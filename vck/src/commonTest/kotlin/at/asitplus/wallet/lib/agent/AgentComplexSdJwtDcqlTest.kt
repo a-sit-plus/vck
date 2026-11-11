@@ -79,10 +79,10 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.validate(vp, request).apply {
-                disclosures.size shouldBe 1 // for address only
-                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                decoded.validDisclosures.size shouldBe 1 // for address only
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
                     ?.jsonPrimitive?.content shouldBe "Vienna"
-                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
                     ?.jsonPrimitive?.content shouldBe "AT"
             }
         }
@@ -112,11 +112,11 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.validate(vp, request).apply {
-                disclosures.size shouldBe 2 // for region, country
+                decoded.validDisclosures.size shouldBe 2 // for region, country
 
-                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
                     ?.jsonPrimitive?.content shouldBe "Vienna"
-                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
                     ?.jsonPrimitive?.content shouldBe "AT"
             }
         }
@@ -147,10 +147,10 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.validate(vp, request).apply {
-                disclosures.size shouldBe 3 // for address, region, country
-                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                decoded.validDisclosures.size shouldBe 3 // for address, region, country
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
                     ?.jsonPrimitive?.content shouldBe "Vienna"
-                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
                     ?.jsonPrimitive?.content shouldBe "AT"
             }
         }
@@ -174,10 +174,10 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.validate(vp, request).apply {
-                disclosures.size shouldBe 3 // for address, region, country
-                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+                decoded.validDisclosures.size shouldBe 3 // for address, region, country
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
                     ?.jsonPrimitive?.content shouldBe "Vienna"
-                reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
                     ?.jsonPrimitive?.content shouldBe "AT"
             }
         }
@@ -198,9 +198,9 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.validate(vp, request).apply {
-                disclosures.size shouldBe 1
-                reconstructedJsonObject[CLAIM_ADDRESS] shouldBe null
-                reconstructedJsonObject[dotClaimName]?.jsonPrimitive?.content shouldBe "Vienna"
+                decoded.validDisclosures.size shouldBe 1
+                decoded.reconstructedJsonObject[CLAIM_ADDRESS] shouldBe null
+                decoded.reconstructedJsonObject[dotClaimName]?.jsonPrimitive?.content shouldBe "Vienna"
             }
         }
 
@@ -223,12 +223,12 @@ val AgentComplexSdJwtDcqlTest by matrixSuite {
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             it.validate(vp, request).apply {
-                disclosures.size shouldBe 2 // claim_given_name, claim_family_name
-                reconstructedJsonObject[AtomicAttribute2023.CLAIM_GIVEN_NAME]
+                decoded.validDisclosures.size shouldBe 2 // claim_given_name, claim_family_name
+                decoded.reconstructedJsonObject[AtomicAttribute2023.CLAIM_GIVEN_NAME]
                     ?.jsonPrimitive?.content shouldBe "Susanne"
-                reconstructedJsonObject[AtomicAttribute2023.CLAIM_FAMILY_NAME]
+                decoded.reconstructedJsonObject[AtomicAttribute2023.CLAIM_FAMILY_NAME]
                     ?.jsonPrimitive?.content shouldBe "Meier"
-                reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
+                decoded.reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
                     ?.jsonPrimitive?.content shouldBe "anything"
             }
         }

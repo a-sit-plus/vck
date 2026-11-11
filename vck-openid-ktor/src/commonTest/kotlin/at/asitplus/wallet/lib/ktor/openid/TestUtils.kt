@@ -142,7 +142,7 @@ object TestUtils {
         )
         CredentialValidator().validate(input, policy, CredentialValidationContext(expectedHolderKey = credentialKey))
             .credential.shouldBeInstanceOf<ValidatedCredential.SdJwtVc>()
-            .disclosures.values.any {
+            .decoded.validDisclosures.values.any {
                 it.claimName == claimName &&
                         it.claimValue.jsonPrimitive.content == expectedClaimValue
             }

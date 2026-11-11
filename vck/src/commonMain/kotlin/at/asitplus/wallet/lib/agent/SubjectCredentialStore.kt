@@ -228,7 +228,7 @@ interface SubjectCredentialStore {
                     is Holder.StoreCredentialInput.SdJwt -> SdJwt(
                         vcSerialized = credential.vcSdJwt,
                         sdJwt = (validated as ValidatedCredential.SdJwtVc).credential,
-                        disclosures = validated.disclosures,
+                        disclosures = validated.decoded.validDisclosures,
                         renewalInfo = prepared.renewalInfo,
                         issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf,
                         schemeIdentifier = credential.scheme.sdJwtType,

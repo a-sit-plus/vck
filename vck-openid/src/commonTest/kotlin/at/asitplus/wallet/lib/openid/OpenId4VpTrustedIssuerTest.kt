@@ -38,7 +38,7 @@ val OpenId4VpTrustedIssuerTest by matrixSuite {
 
         present(holder, verifierTrusting { setOf(ca.certificate) })
             .acceptedOrThrow().sdJwtVc
-            .reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
+            .decoded.reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
     }
 
     "SD-JWT presented by the holder is not verified for an untrusted issuer" {

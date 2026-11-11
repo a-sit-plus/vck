@@ -22,12 +22,13 @@ sealed interface ValidatedCredential {
         /** The SD-JWT with every supplied disclosure applied. */
         val decoded: SdJwtDecoded,
     ) : ValidatedCredential {
+        @Deprecated("Read the SD-JWT from its decoded view", ReplaceWith("decoded.sdJwtSigned"))
         val sdJwtSigned: SdJwtSigned get() = decoded.sdJwtSigned
 
-        /** Claims of the issuer-signed payload with every supplied disclosure applied. */
+        @Deprecated("Read the claims from the decoded view", ReplaceWith("decoded.reconstructedJsonObject"))
         val reconstructedJsonObject: JsonObject get() = decoded.reconstructedJsonObject
 
-        /** Map of serialized disclosure (as [String]) to parsed item, for every supplied disclosure. */
+        @Deprecated("Read the disclosures from the decoded view", ReplaceWith("decoded.validDisclosures"))
         val disclosures: Map<String, SelectiveDisclosureItem> get() = decoded.validDisclosures
     }
 

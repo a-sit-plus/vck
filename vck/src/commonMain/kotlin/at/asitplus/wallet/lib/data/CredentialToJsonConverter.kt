@@ -57,7 +57,7 @@ object CredentialToJsonConverter {
      * credential subject of a VC-JWT as in [toJsonElement], and the elements of an ISO mdoc by namespace.
      */
     fun toJsonElement(credential: ValidatedCredential): JsonObject = when (credential) {
-        is ValidatedCredential.SdJwtVc -> credential.reconstructedJsonObject
+        is ValidatedCredential.SdJwtVc -> credential.decoded.reconstructedJsonObject
         is ValidatedCredential.VcJwt -> toJsonElement(credential.credential)
         is ValidatedCredential.IsoMdoc -> credential.issuerSigned.toJsonObject()
     }

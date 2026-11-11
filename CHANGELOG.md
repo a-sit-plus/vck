@@ -35,7 +35,8 @@ Release 10.0.0 (unreleased):
       with their ancestors and sub-claims), and `sdJwtSigned`. Add `StoreEntry.SdJwt.decoded`, derived from
       `vcSerialized` on first use and not serialized
     - BREAKING: `ValidatedCredential.SdJwtVc` is constructed from `credential` and `decoded: SdJwtDecoded`; its
-      `sdJwtSigned`, `reconstructedJsonObject`, and `disclosures` remain as properties
+      `sdJwtSigned`, `reconstructedJsonObject`, and `disclosures` remain as properties, but are deprecated: read
+      `decoded.sdJwtSigned`, `decoded.reconstructedJsonObject`, and `decoded.validDisclosures` instead
     - BREAKING: `SelectiveDisclosureItem.salt` is a `String`, the salt exactly as in the disclosure, as RFC 9901, 4.2.1
       only requires a string: a disclosure whose salt is not base64url, e.g. contains `+`, `/`, `=`, or `.`, is no
       longer rejected. The constructor taking a `ByteArray` salt base64url-encodes it
