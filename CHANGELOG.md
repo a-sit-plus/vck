@@ -10,6 +10,8 @@ processing.
     - Remove `RemoteResourceRetrieverFunction` and `RemoteResourceRetrieverInput` as types and parameter values, e.g. in
      `RequestParser` and `OpenId4VciClient`
     - BREAKING: `csc-data-classes` no longer depends on `at.asitplus:jsonpath4k`
+    - BREAKING: Remove the constructor `JsonClaimReference(normalizedJsonPath: NormalizedJsonPath)`, use
+      `JsonClaimReference(DCQLClaimsPathPointer(...))`
 - Validation:
     - BREAKING: Replace the timeliness validators of credentials and their results (`VcJwsTimelinessValidator`,
       `SdJwtTimelinessValidator`, `MdocTimelinessValidator`, `MobileSecurityObjectTimelinessValidator`,
