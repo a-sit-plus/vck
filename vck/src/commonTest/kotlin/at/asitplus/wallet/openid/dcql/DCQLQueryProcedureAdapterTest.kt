@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
+import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.integrityOnlyPolicy
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -92,6 +93,35 @@ val DCQLQueryProcedureAdapterTest by matrixSuite {
         )
 
         dcqlQuery.checkSubmissionRequirements(presentation).isFailure shouldBe true
+    }
+
+    "An SD-JWT whose claims can not be read matches no query, while the others still match" {
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val holder = HolderAgent(keyMaterial = holderKeyMaterial)
+        val issuer = IssuerAgent(
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default,
+        )
+        val stored = holder.storeCredential(issueSdJwt(issuer, holderKeyMaterial).toStoreCredentialInput())
+            .getOrThrow().shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
+        val unreadable = stored.copy(vcSerialized = "not-an-sd-jwt~")
+        val queryWithoutClaims = Json.decodeFromString<DCQLQuery>(
+            """
+              {
+                "credentials": [
+                  {
+                    "id": "any_sd_jwt",
+                    "format": "dc+sd-jwt",
+                    "meta": { "vct_values": ["${stored.sdJwt.verifiableCredentialType}"] }
+                  }
+                ]
+              }
+            """.trimIndent()
+        )
+
+        val result = DCQLQueryAdapter(queryWithoutClaims).select(credentials = listOf(unreadable, stored))
+
+        result.credentialMatchingResults.values.single().map { it.isSuccess } shouldBe listOf(false, true)
     }
 
     "Match issuer path" {
