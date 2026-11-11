@@ -114,8 +114,8 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .singleAcceptedPresentation().sdJwtVc.apply {
-                    CLAIM_ADDRESS shouldBeIn reconstructedJsonObject.keys
-                    reconstructedJsonObject[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
+                    CLAIM_ADDRESS shouldBeIn decoded.reconstructedJsonObject.keys
+                    decoded.reconstructedJsonObject[CLAIM_ADDRESS].shouldNotBeNull().jsonObject.apply {
                         CLAIM_ADDRESS_REGION shouldBeIn this.keys
                         this[CLAIM_ADDRESS_COUNTRY].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomCountry
                         this[CLAIM_ADDRESS_REGION].shouldNotBeNull().jsonPrimitive.content shouldBe it.randomRegion

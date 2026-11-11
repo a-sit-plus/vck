@@ -266,7 +266,7 @@ class HolderAgent @JvmOverloads constructor(
         )
 
         is CredentialValidationInput.SdJwtVc -> Holder.StoreCredentialInput.SdJwt(
-            signedSdJwtVc = (validated as ValidatedCredential.SdJwtVc).sdJwtSigned,
+            signedSdJwtVc = (validated as ValidatedCredential.SdJwtVc).decoded.sdJwtSigned,
             vcSdJwt = compact,
             scheme = scheme as SdJwtCredentialScheme,
         )

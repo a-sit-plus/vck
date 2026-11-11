@@ -311,8 +311,8 @@ val CredentialValidatorTest by matrixSuite {
 
             result.checks.disclosedItems.size shouldBe issued.signedSdJwtVc.rawDisclosures.size
             result.credential.shouldBeInstanceOf<ValidatedCredential.SdJwtVc>().let {
-                it.disclosures.keys shouldBe issued.signedSdJwtVc.rawDisclosures.toSet()
-                it.reconstructedJsonObject.keys.contains("_sd") shouldBe false
+                it.decoded.validDisclosures.keys shouldBe issued.signedSdJwtVc.rawDisclosures.toSet()
+                it.decoded.reconstructedJsonObject.keys.contains("_sd") shouldBe false
             }
         }
 
@@ -399,7 +399,7 @@ val CredentialValidatorTest by matrixSuite {
 
             issuance.validateSdJwt(issued.signedSdJwtVc.serialize()).credential
                 .shouldBeInstanceOf<ValidatedCredential.SdJwtVc>()
-                .sdJwtSigned.jws.jwsHeader.vcTypeMetadata shouldBe setOf(vctm)
+                .decoded.sdJwtSigned.jws.jwsHeader.vcTypeMetadata shouldBe setOf(vctm)
         }
 
         "the legacy type vc+sd-jwt fails parsing" {
