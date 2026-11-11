@@ -1,16 +1,13 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Encodes [SelectiveDisclosureItem] as needed by SD-JWT spec,
@@ -29,7 +26,7 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
         encoder.encodeSerializableValue(
             listSerializer,
             listOfNotNull(
-                JsonPrimitive(value.salt.encodeToString(Base64UrlStrict)),
+                JsonPrimitive(value.salt),
                 value.claimName?.let { JsonPrimitive(value.claimName) },
                 value.claimValue
             )
@@ -39,20 +36,27 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
     override fun deserialize(decoder: Decoder): SelectiveDisclosureItem =
         with(decoder.decodeSerializableValue(listSerializer)) {
             when (size) {
+                // Object property: salt, claim name, claim value (RFC 9901, 4.2.1)
                 3 -> SelectiveDisclosureItem(
-                    salt = get(0).jsonPrimitive.content.decodeToByteArray(Base64UrlStrict),
-                    claimName = get(1).jsonPrimitive.content,
+                    salt = get(0).string("salt"),
+                    claimName = get(1).string("claim name"),
                     claimValue = get(2)
                 )
 
+                // Array element: salt, value (RFC 9901, 4.2.2)
                 2 -> SelectiveDisclosureItem(
-                    salt = get(0).jsonPrimitive.content.decodeToByteArray(Base64UrlStrict),
+                    salt = get(0).string("salt"),
                     claimName = null,
                     claimValue = get(1)
                 )
 
-                else -> throw IllegalArgumentException("Neither 2 nor 3 elements")
+                else -> throw SerializationException("A disclosure has 2 or 3 elements, not $size")
             }
         }
+
+    /** The salt and the claim name "MUST be a string" (RFC 9901, 4.2.1), so `null`, numbers and booleans are not. */
+    private fun JsonElement.string(name: String): String =
+        (this as? JsonPrimitive)?.takeIf { it.isString }?.content
+            ?: throw SerializationException("The $name of a disclosure must be a string: $this")
 
 }
