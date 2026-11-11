@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.csc.bindings.QesApprovalBinding
-import at.asitplus.jsonpath.core.NodeListEntry
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult.JsonResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.AllMandatoryClaimsMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.ClaimsQueryResults
+import at.asitplus.openid.dcql.DCQLSelectedClaim
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -89,7 +89,9 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
 
         "disclosed SD-JWT contains only one disclosure for one plain disclosed attribute" {
             val disclosedAttributes = ClaimsQueryResults(
-                listOf(JsonResult(listOf(NodeListEntry(NormalizedJsonPath() + "name", JsonPrimitive("Winston Smith")))))
+                listOf(
+                    JsonResult(listOf(DCQLSelectedClaim(DCQLClaimsPathPointer("name"), JsonPrimitive("Winston Smith"))))
+                )
             )
             val request = PresentationRequestParameters(
                 nonce = uuid4().toString(),
@@ -112,7 +114,9 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
         "disclosed SD-JWT contains only two disclosures for one disclosed nested attribute" {
             val disclosedAttributes = ClaimsQueryResults(
                 listOf(
-                    JsonResult(listOf(NodeListEntry(NormalizedJsonPath() + "address" + "city", JsonPrimitive("London"))))
+                    JsonResult(
+                        listOf(DCQLSelectedClaim(DCQLClaimsPathPointer("address", "city"), JsonPrimitive("London")))
+                    )
                 )
             )
             it.verifiablePresentationFactory.createVerifiablePresentation(

@@ -284,7 +284,7 @@ class VerifiablePresentationFactory(
      * not matching `values` are treated as if they did not exist (OpenID4VP 1.0, 6.4.1).
      */
     private fun ClaimsQueryResults.selectedClaims() = claimsQueryResults.flatMap { result ->
-        (result as DCQLClaimsQueryResult.JsonResult).nodeList.map { it.normalizedJsonPath.toDCQLClaimsPathPointer() }
+        (result as DCQLClaimsQueryResult.JsonResult).selectedClaims.map { it.path }
     }
 
     private suspend fun createKeyBindingJws(

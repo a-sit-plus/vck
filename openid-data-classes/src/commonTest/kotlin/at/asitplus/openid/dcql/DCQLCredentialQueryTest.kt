@@ -62,7 +62,7 @@ val DCQLCredentialQueryTest by matrixSuite {
             result.shouldBeInstanceOf<DCQLCredentialQueryMatchingResult.ClaimsQueryResults>()
                 .claimsQueryResults.single()
                 .shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>()
-                .nodeList.single().value shouldBe JsonPrimitive("Musterfrau")
+                .selectedClaims.single().value shouldBe JsonPrimitive("Musterfrau")
         }
     }
     "claim sets (OpenID4VP 1.0, 7.1.1 and 6.4.1)" - {
@@ -109,7 +109,7 @@ val DCQLCredentialQueryTest by matrixSuite {
             result.shouldBeInstanceOf<DCQLCredentialQueryMatchingResult.ClaimsQueryResults>()
                 .claimsQueryResults.single()
                 .shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>()
-                .nodeList.single().value shouldBe JsonPrimitive("Musterfrau")
+                .selectedClaims.single().value shouldBe JsonPrimitive("Musterfrau")
         }
     }
     "serialization" {

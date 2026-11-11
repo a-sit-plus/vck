@@ -69,6 +69,83 @@ val DCQLClaimsPathPointerTest by matrixSuite {
         }
     }
 
+    "OpenID4VP 1.0, 7.3 example: selected claims at their concrete paths" - {
+        val credential = Json.parseToJsonElement(
+            """
+            {
+              "name": "Arthur Dent",
+              "address": {
+                "street_address": "42 Market Street",
+                "locality": "Milliways",
+                "postal_code": "12345"
+              },
+              "degrees": [
+                {
+                  "type": "Bachelor of Science",
+                  "university": "University of Betelgeuse"
+                },
+                {
+                  "type": "Master of Science",
+                  "university": "University of Betelgeuse"
+                }
+              ],
+              "nationalities": ["British", "Betelgeusian"]
+            }
+            """.trimIndent()
+        )
+
+        "name" {
+            DCQLClaimsPathPointer("name").query(credential) shouldBe listOf(
+                DCQLSelectedClaim(DCQLClaimsPathPointer("name"), JsonPrimitive("Arthur Dent"))
+            )
+        }
+        "address with its sub-claims as the value" {
+            DCQLClaimsPathPointer("address").query(credential) shouldBe listOf(
+                DCQLSelectedClaim(DCQLClaimsPathPointer("address"), credential.jsonObject["address"]!!)
+            )
+        }
+        "street_address" {
+            DCQLClaimsPathPointer("address", "street_address").query(credential) shouldBe listOf(
+                DCQLSelectedClaim(
+                    DCQLClaimsPathPointer("address", "street_address"),
+                    JsonPrimitive("42 Market Street")
+                )
+            )
+        }
+        "all type claims in the degrees array, each at its index" {
+            (DCQLClaimsPathPointer("degrees") + null + "type").query(credential) shouldBe listOf(
+                DCQLSelectedClaim(DCQLClaimsPathPointer("degrees") + 0u + "type", JsonPrimitive("Bachelor of Science")),
+                DCQLSelectedClaim(DCQLClaimsPathPointer("degrees") + 1u + "type", JsonPrimitive("Master of Science")),
+            )
+        }
+        "the second nationality" {
+            (DCQLClaimsPathPointer("nationalities") + 1u).query(credential) shouldBe listOf(
+                DCQLSelectedClaim(DCQLClaimsPathPointer("nationalities") + 1u, JsonPrimitive("Betelgeusian"))
+            )
+        }
+        "a selected path is concrete and selects exactly its claim" {
+            val components = listOf<Any?>(
+                "name", "address", "street_address", "degrees", "type", "nationalities", null, 0u, 1u, 2u
+            )
+            repeat(500) {
+                val pointer = DCQLClaimsPathPointer(
+                    List(1 + Random.nextInt(4)) {
+                        when (val component = components.random()) {
+                            is String -> NameSegment(component)
+                            is UInt -> IndexSegment(component)
+                            else -> NullSegment
+                        }
+                    }.toNonEmptyList()
+                )
+                pointer.query(credential).forEach { selected ->
+                    selected.path.none { it == NullSegment } shouldBe true
+                    selected.path.size shouldBe pointer.size
+                    selected.path.query(credential) shouldBe listOf(selected)
+                }
+            }
+        }
+    }
+
     "numeric object keys remain names" {
         Json.decodeFromString<DCQLClaimsPathPointer>("""["age_equal_or_over","18"]""") shouldBe
                 DCQLClaimsPathPointer("age_equal_or_over", "18")
