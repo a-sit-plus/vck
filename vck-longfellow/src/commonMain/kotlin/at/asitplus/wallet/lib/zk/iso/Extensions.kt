@@ -9,8 +9,6 @@ import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.ZkDocument
 import at.asitplus.iso.ZkSystemSpec
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.agent.IsoDeviceSignatureInput
@@ -19,8 +17,8 @@ import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.agent.calculateIsoDeviceAuthenticationBytes
 import at.asitplus.wallet.lib.agent.calculateIsoDeviceSignature
 import at.asitplus.wallet.lib.agent.discloseIssuedItem
-import at.asitplus.wallet.lib.agent.toIsoNamespaceAttribute
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.zk.iso.LongfellowBackend.Companion.CIRCUIT_HASH_KEY
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.decodeFromByteArray
@@ -74,7 +72,7 @@ suspend fun Document.toMultipazDocument(): MdocDocument {
  * The produced [Document] serves as input for the Longfellow-ZK prover to generate a [ZkDocument].
  * Longfellow-ZK currently requires all disclosed claims in a proof to belong to exactly one namespace per [ZkDocument].
  *
- * @param requestedClaims The set of normalized JSON paths to disclose.
+ * @param requestedClaims The data elements to disclose.
  * @param sessionTranscript The ISO 18013-5 session transcript.
  * @param signDeviceAuthDetached Detached signing callback.
  * @return A plain [Document] scoped to a single namespace with an attached device signature.
@@ -83,13 +81,11 @@ suspend fun Document.toMultipazDocument(): MdocDocument {
  * @see <a href="https://github.com/longfellow-zk/longfellow-zk/blob/132e1a276942e08371713b27ee38947eeb4f7bee/lib/circuits/mdoc/mdoc_zk.cc#L425">Longfellow-ZK Constraint Source</a>
  */
 internal suspend fun StoreEntry.Iso.discloseRequestedClaims(
-    requestedClaims: Collection<NormalizedJsonPath>,
+    requestedClaims: Collection<MdocClaimReference>,
     sessionTranscript: SessionTranscript,
     signDeviceAuthDetached: SignCoseDetachedFun<ByteArray>
 ): Document {
-    val claimsByNamespace = requestedClaims
-        .mapNotNull { it.toIsoNamespaceAttribute() }
-        .groupBy({ it.first }, { it.second })
+    val claimsByNamespace = requestedClaims.groupBy({ it.namespace }, { it.claimName })
 
     require(claimsByNamespace.size == 1) {
         "All requested claims must belong to the same namespace for Longfellow-ZK compatibility."
@@ -160,22 +156,14 @@ internal fun ZkSystemSpec.toMultipazZkSystemSpec(): MultipazZkSystemSpec = Multi
     }
 }
 
-internal fun NormalizedJsonPath.toMdocRequestedClaim(
+internal fun MdocClaimReference.toMdocRequestedClaim(
     docType: String,
-): MdocRequestedClaim {
-    require(size == 2 && all { it is NormalizedJsonPathSegment.NameSegment }) {
-        "Expected an mdoc claim path with a namespace and data element: $this"
-    }
-
-    val (namespaceName, dataElementName) = map { (it as NormalizedJsonPathSegment.NameSegment).memberName }
-
-    return MdocRequestedClaim(
-        docType = docType,
-        namespaceName = namespaceName,
-        dataElementName = dataElementName,
-        intentToRetain = false, // TODO: Consider using the actual value instead of a place holder "false"
-    )
-}
+) = MdocRequestedClaim(
+    docType = docType,
+    namespaceName = namespace,
+    dataElementName = claimName,
+    intentToRetain = false, // TODO: Consider using the actual value instead of a place holder "false"
+)
 
 internal fun MultipazZkSystemSpec.matchesExactly(target: MultipazZkSystemSpec): Boolean =
     this.system == target.system && this.params == target.params
