@@ -132,8 +132,44 @@ val AgentSdJwtArrayElementDcqlTest by matrixSuite {
 
             it.validate(vp, request).credential.disclosedNationalities() shouldBe listOf("DE")
         }
+
+        test("index into an array without element digests is checked at its position") {
+            issueAndStoreNationalities(
+                it.holder, it.issuer(), it.holderKeyMaterial, nationalitySd = true, elementsSd = false
+            )
+            val dcqlQuery = buildDCQLQuery(nationalityAt(1u, "DE"))
+
+            val request = it.verifier.createPresentationRequest()
+            val vp = createPresentation(it.holder, request, dcqlQuery)
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val presentation = it.validate(vp, request)
+            presentation.credential.disclosedNationalities() shouldBe listOf("AT", "DE")
+            dcqlQuery.checkSubmissionRequirements(presentation).getOrThrow()
+            // Every element is in the presentation, so positions are known: "AT" is at index 0
+            buildDCQLQuery(nationalityAt(0u, "DE")).checkSubmissionRequirements(presentation).isFailure shouldBe true
+        }
+
+        test("index into an array with element digests matches any disclosed element") {
+            issueAndStoreNationalities(it.holder, it.issuer(), it.holderKeyMaterial, nationalitySd = true)
+            val dcqlQuery = buildDCQLQuery(nationalityAt(1u, "DE"))
+
+            val request = it.verifier.createPresentationRequest()
+            val vp = createPresentation(it.holder, request, dcqlQuery)
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val presentation = it.validate(vp, request)
+            presentation.credential.disclosedNationalities() shouldBe listOf("DE")
+            // The withheld "AT" may as well be a decoy (RFC 9901, 4.2.5), so the position of "DE" can not be determined
+            buildDCQLQuery(nationalityAt(0u, "DE")).checkSubmissionRequirements(presentation).getOrThrow()
+        }
     }
 }
+
+private fun nationalityAt(index: UInt, value: String) = DCQLJsonClaimsQuery(
+    path = DCQLClaimsPathPointer(CLAIM_NATIONALITIES) + index,
+    values = listOf(DCQLExpectedClaimValue.StringValue(value)),
+)
 
 /**
  * Signs SD-JWTs like [SignJwtExt], but puts a decoy digest (RFC 9901, 4.2.5) in front of the elements of the array
@@ -161,14 +197,15 @@ private class SignWithLeadingArrayDecoy(
 }
 
 /**
- * Issues `nationalities: ["AT", "DE"]` with selectively disclosable elements, the array itself selectively disclosable
- * if [nationalitySd], like the EU PID of the issuing backend.
+ * Issues `nationalities: ["AT", "DE"]`, the array itself selectively disclosable if [nationalitySd] and its elements if
+ * [elementsSd], like the EU PID of the issuing backend by default.
  */
 private suspend fun issueAndStoreNationalities(
     holder: Holder,
     issuer: Issuer,
     holderKeyMaterial: KeyMaterial,
     nationalitySd: Boolean,
+    elementsSd: Boolean = true,
 ) {
     holder.storeCredential(
         issuer.issueCredential(
@@ -176,7 +213,7 @@ private suspend fun issueAndStoreNationalities(
                 claims = listOf(
                     ClaimToBeIssued(
                         CLAIM_NATIONALITIES,
-                        listOf(ClaimToBeIssuedArrayElement("AT"), ClaimToBeIssuedArrayElement("DE")),
+                        listOf("AT", "DE").map { ClaimToBeIssuedArrayElement(it, elementsSd) },
                         selectivelyDisclosable = nationalitySd,
                     ),
                     ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, "Susanne"),
