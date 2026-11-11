@@ -25,6 +25,12 @@ Release 10.0.0 (unreleased):
       attestations, and verifier attestations, and the chains of WRPACs and WRPRCs, whose `timeliness` check used no
       leeway either. Add the parameter `leeway` (`Duration.ZERO` by default) to `isTrustedBy`, `isValidAt`,
       `isExpired`, and `isNotYetValid` of `X509Certificate`, and `timeLeeway` to `RelyingPartyValidator.clientTrust`
+- SD-JWT:
+    - BREAKING: `SelectiveDisclosureItem.salt` is a `String`, the salt exactly as in the disclosure, as RFC 9901, 4.2.1
+      only requires a string: a disclosure whose salt is not base64url, e.g. contains `+`, `/`, `=`, or `.`, is no
+      longer rejected. The constructor taking a `ByteArray` salt base64url-encodes it
+    - Fix: A disclosure whose salt or claim name is not a JSON string, e.g. a number, a boolean, or `null`, is rejected
+      (RFC 9901, 4.2.1) instead of being read as its text
 - Status lists:
     - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status
       List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still
