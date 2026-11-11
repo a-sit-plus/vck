@@ -12,6 +12,8 @@ processing.
     - BREAKING: `csc-data-classes` no longer depends on `at.asitplus:jsonpath4k`
     - BREAKING: Remove the constructor `JsonClaimReference(normalizedJsonPath: NormalizedJsonPath)`, use
       `JsonClaimReference(DCQLClaimsPathPointer(...))`
+    - BREAKING: Remove `SdJwtTypeMetadataClaimInformationPath.process`, which no code in VC-K used;
+      `sd-jwt-type-metadata` no longer depends on `at.asitplus:jsonpath4k`
 - Validation:
     - BREAKING: Replace the timeliness validators of credentials and their results (`VcJwsTimelinessValidator`,
       `SdJwtTimelinessValidator`, `MdocTimelinessValidator`, `MobileSecurityObjectTimelinessValidator`,
