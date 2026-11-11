@@ -121,25 +121,35 @@ private class Selected(val path: List<DCQLClaimsPathPointerSegment>, val value: 
 
 /** One step of OpenID4VP 1.0, 7.1.1 for [segment]; an error yields an empty selection. */
 private fun List<Selected>.select(segment: DCQLClaimsPathPointerSegment): List<Selected> = when (segment) {
-    // 2.1: "If any of the currently selected element(s) is not an object, abort processing and return an error. If the
-    // key does not exist in any element currently selected, remove that element from the selection."
-    is NameSegment -> if (any { it.value !is JsonObject }) listOf() else mapNotNull { selected ->
-        (selected.value as JsonObject)[segment.name]?.let { Selected(selected.path + segment, it) }
+    // 2.1: "select the element in the respective key in the currently selected element(s) [...] If the key does not
+    // exist in any element currently selected, remove that element from the selection."
+    is NameSegment -> selectFromEach<JsonObject> { selected, obj ->
+        listOfNotNull(obj[segment.name]?.let { selected.child(segment, it) })
     }
 
-    // 2.2: "If any of the currently selected element(s) is not an array, abort processing and return an error."
-    NullSegment -> if (any { it.value !is JsonArray }) listOf() else flatMap { selected ->
-        (selected.value as JsonArray).mapIndexed { index, element ->
-            Selected(selected.path + IndexSegment(index.toUInt()), element)
-        }
+    // 2.2: "select all elements of the currently selected array(s)"
+    NullSegment -> selectFromEach<JsonArray> { selected, array ->
+        array.mapIndexed { index, element -> selected.child(IndexSegment(index.toUInt()), element) }
     }
 
-    // 2.3: "If any of the currently selected element(s) is not an array, abort processing and return an error. If the
-    // index does not exist in a selected array, remove that array from the selection."
-    is IndexSegment -> if (any { it.value !is JsonArray }) listOf() else mapNotNull { selected ->
-        val array = selected.value as JsonArray
-        if (segment.index < array.size.toUInt()) Selected(selected.path + segment, array[segment.index.toInt()])
-        else null
+    // 2.3: "select the element at the respective index in the currently selected array(s) [...] If the index does not
+    // exist in a selected array, remove that array from the selection."
+    is IndexSegment -> selectFromEach<JsonArray> { selected, array ->
+        listOfNotNull(array.at(segment.index)?.let { selected.child(segment, it) })
     }
 }
 
+/**
+ * Selects from each element of the selection as a [T]. If any selected element is not a [T], processing aborts with
+ * an error, i.e. an empty selection (OpenID4VP 1.0, 7.1.1, 2.1 to 2.3: "If any of the currently selected element(s)
+ * is not an object/array, abort processing and return an error").
+ */
+private inline fun <reified T : JsonElement> List<Selected>.selectFromEach(
+    select: (selected: Selected, value: T) -> List<Selected>,
+): List<Selected> = if (all { it.value is T })
+    flatMap { select(it, it.value as T) }
+else listOf()
+
+private fun Selected.child(segment: DCQLClaimsPathPointerSegment, value: JsonElement) = Selected(path + segment, value)
+
+private fun JsonArray.at(index: UInt): JsonElement? = if (index < size.toUInt()) get(index.toInt()) else null
