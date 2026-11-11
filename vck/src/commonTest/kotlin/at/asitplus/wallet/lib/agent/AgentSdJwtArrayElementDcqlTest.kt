@@ -228,7 +228,7 @@ private suspend fun issueAndStoreNationalities(
 }
 
 private fun ValidatedCredential.SdJwtVc.disclosedNationalities() =
-    reconstructedJsonObject[CLAIM_NATIONALITIES]?.jsonArray?.map { it.jsonPrimitive.content }
+    decoded.reconstructedJsonObject[CLAIM_NATIONALITIES]?.jsonArray?.map { it.jsonPrimitive.content }
 
 private fun DCQLQuery.checkSubmissionRequirements(presentation: ValidatedPresentation) =
     DCQLQueryAdapter(this).checkAcceptedSubmissions(mapOf(credentials.single().id to listOf(presentation)))

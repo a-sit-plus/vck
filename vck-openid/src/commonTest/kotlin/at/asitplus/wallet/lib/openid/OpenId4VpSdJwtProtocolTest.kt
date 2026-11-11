@@ -80,7 +80,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .singleAcceptedPresentation().sdJwtVc
-                .reconstructedJsonObject[requestedClaim].shouldNotBeNull()
+                .decoded.reconstructedJsonObject[requestedClaim].shouldNotBeNull()
         }
 
         "authn response nonce cannot be replayed" {
@@ -188,8 +188,8 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
             it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
                 .singleAcceptedPresentation().sdJwtVc.apply {
                     requestedClaims.forEach {
-                        it.shouldBeIn(reconstructedJsonObject.keys)
-                        reconstructedJsonObject[it].shouldNotBeNull()
+                        it.shouldBeIn(decoded.reconstructedJsonObject.keys)
+                        decoded.reconstructedJsonObject[it].shouldNotBeNull()
                     }
                 }
 

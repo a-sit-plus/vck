@@ -819,7 +819,7 @@ private fun ValidatedPresentation.containsAllAttributes(attributes: Map<DCQLClai
             .let { items -> attributes.all { attribute -> items.any { it.matchesAttribute(attribute) } } }
 
         is ValidatedPresentation.SdJwt -> attributes.all { attribute ->
-            credential.disclosures.values.any { it.matchesAttribute(attribute) }
+            credential.decoded.validDisclosures.values.any { it.matchesAttribute(attribute) }
         }
 
         is ValidatedPresentation.VpJwt, is ValidatedPresentation.VcJwt -> false
