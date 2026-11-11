@@ -6,6 +6,7 @@ Release 10.0.0 (unreleased):
     - Remove code elements deprecated in 9.0.0: `Verifier` and its legacy validation classes
     - Remove `RemoteResourceRetrieverFunction` and `RemoteResourceRetrieverInput` as types and parameter values, e.g. in
      `RequestParser` and `OpenId4VciClient`
+    - BREAKING: `csc-data-classes` no longer depends on `at.asitplus:jsonpath4k`
 - Validation:
     - BREAKING: Replace the timeliness validators of credentials and their results (`VcJwsTimelinessValidator`,
       `SdJwtTimelinessValidator`, `MdocTimelinessValidator`, `MobileSecurityObjectTimelinessValidator`,
