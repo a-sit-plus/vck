@@ -1,6 +1,11 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.IndexSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -24,6 +29,13 @@ internal class ProcessedDisclosures(
     val payload: JsonObject,
     /** Serialized disclosure to parsed item, for every supplied disclosure that is valid. */
     val disclosures: Map<String, SelectiveDisclosureItem>,
+    /**
+     * Position of each claim in [payload] that a valid disclosure introduced, to that serialized disclosure. Array
+     * indices count the elements of [payload], i.e. without decoys and withheld elements (RFC 9901, 7.1 step 3.d).
+     */
+    val disclosuresByPath: Map<DCQLClaimsPathPointer, String>,
+    /** Positions in [payload] of the arrays that, as issued, contain array element digests (RFC 9901, 4.2.4.2). */
+    val arraysWithElementDigests: Set<DCQLClaimsPathPointer>,
     /** Whether a digest occurs more than once in the payload, directly or recursively via disclosures. */
     val duplicateDigest: Boolean,
 )
@@ -67,6 +79,8 @@ private class DisclosureProcessor(
     private val referenced = mutableSetOf<Int>()
     private val seenDigests = mutableSetOf<String>()
     private var duplicateDigest = false
+    private val disclosuresByPath = mutableMapOf<DCQLClaimsPathPointer, String>()
+    private val arraysWithElementDigests = mutableSetOf<DCQLClaimsPathPointer>()
 
     init {
         rawDisclosures.forEachIndexed { index, raw ->
@@ -80,12 +94,15 @@ private class DisclosureProcessor(
     }
 
     fun process(signedPayload: JsonObject): ProcessedDisclosures {
-        val payload = JsonObject(processObject(signedPayload, topLevel = true) - SdJwtConstants.SD_ALG)
+        val processed = processObject(signedPayload, path = emptyList(), topLevel = true)
+        val payload = JsonObject(processed - SdJwtConstants.SD_ALG)
         val items = rawDisclosures.indices.map { index -> validation(index) }
         val valid = items.withIndex()
             .filter { (_, item) -> item.parsing == Passed && item.digest == Passed && item.structure == Passed }
             .associate { (index, _) -> rawDisclosures[index] to parsed[index].getOrThrow() }
-        return ProcessedDisclosures(items, payload, valid, duplicateDigest)
+        // A disclosure applied before it failed its structure check, e.g. for a repeated digest, is not valid
+        val validByPath = disclosuresByPath.filterValues { it in valid }
+        return ProcessedDisclosures(items, payload, valid, validByPath, arraysWithElementDigests, duplicateDigest)
     }
 
     private fun validation(index: Int): DisclosedItemValidation {
@@ -114,10 +131,14 @@ private class DisclosureProcessor(
         return indexByDigest[digestValue]?.also { referenced += it }
     }
 
-    private fun processObject(input: JsonObject, topLevel: Boolean = false): Map<String, JsonElement> {
+    private fun processObject(
+        input: JsonObject,
+        path: List<DCQLClaimsPathPointerSegment>,
+        topLevel: Boolean = false,
+    ): Map<String, JsonElement> {
         val output = linkedMapOf<String, JsonElement>()
         input.forEach { (name, value) ->
-            if (name != SdJwtConstants.NAME_SD) output[name] = processValue(value)
+            if (name != SdJwtConstants.NAME_SD) output[name] = processValue(value, path + NameSegment(name))
         }
         val digests = (input[SdJwtConstants.NAME_SD] as? JsonArray).orEmpty()
             .mapNotNull { (it as? JsonPrimitive)?.takeIf { it.isString }?.content }
@@ -135,39 +156,57 @@ private class DisclosureProcessor(
             if (problem != null || claimName == null) {
                 failStructure(index, IllegalArgumentException(problem))
             } else {
-                output[claimName] = processValue(item.claimValue)
+                val position = path + NameSegment(claimName)
+                disclosuresByPath[position.toPointer()] = rawDisclosures[index]
+                output[claimName] = processValue(item.claimValue, position)
             }
         }
         return output
     }
 
-    private fun processArray(input: JsonArray): JsonArray = JsonArray(
-        input.mapNotNull { element ->
+    /** Positions count only the elements kept, so decoys and withheld elements shift no index (step 3.d). */
+    private fun processArray(input: JsonArray, path: List<DCQLClaimsPathPointerSegment>): JsonArray {
+        val output = mutableListOf<JsonElement>()
+        input.forEach { element ->
+            val position = path + IndexSegment(output.size.toUInt())
             val digestValue = (element as? JsonObject)
                 ?.takeIf { it.size == 1 }
                 ?.let { it["..."] as? JsonPrimitive }
                 ?.takeIf { it.isString }
                 ?.content
-                ?: return@mapNotNull processValue(element)
-            val index = disclosureFor(digestValue) ?: return@mapNotNull null
-            val item = parsed[index].getOrNull() ?: return@mapNotNull null
+            if (digestValue == null) {
+                output += processValue(element, position)
+                return@forEach
+            }
+            arraysWithElementDigests += path.toPointer()
+            val index = disclosureFor(digestValue) ?: return@forEach
+            val item = parsed[index].getOrNull() ?: return@forEach
             if (item.claimName != null) {
                 val problem = "An object property disclosure is referenced from an array"
                 failStructure(index, IllegalArgumentException(problem))
-                null
-            } else processValue(item.claimValue)
+            } else {
+                disclosuresByPath[position.toPointer()] = rawDisclosures[index]
+                output += processValue(item.claimValue, position)
+            }
         }
-    )
+        return JsonArray(output)
+    }
 
-    private fun processValue(value: JsonElement): JsonElement = when (value) {
-        is JsonObject -> JsonObject(processObject(value))
-        is JsonArray -> processArray(value)
+    private fun processValue(
+        value: JsonElement,
+        path: List<DCQLClaimsPathPointerSegment>
+    ): JsonElement = when (value) {
+        is JsonObject -> JsonObject(processObject(value, path))
+        is JsonArray -> processArray(value, path)
         else -> value
     }
 
+    /** Every position below the root is non-empty: the root of an SD-JWT payload is an object. */
+    private fun List<DCQLClaimsPathPointerSegment>.toPointer() = DCQLClaimsPathPointer(toNonEmptyList())
+
     /** Keeps the first structure failure of a disclosure. */
     private fun failStructure(index: Int, failure: Throwable) {
-        structureFailures.getOrPut(index) { failure }
+        val _ = structureFailures.getOrPut(index) { failure }
     }
 
     private fun duplicateDigestError() =
