@@ -231,7 +231,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 }
         }
 
-        "Selective Disclosure with mDL JSON Path syntax" {
+        "Selective Disclosure with an mDL claims path pointer" {
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
                     RequestOptionsCredential(
