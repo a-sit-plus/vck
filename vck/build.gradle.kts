@@ -19,15 +19,15 @@ val generateVckVersion by tasks.registering {
     inputs.property("artifactVersion", artifactVersion)
     outputs.dir(generatedVersionDirectory)
     doLast {
-        generatedVersionDirectory.get().file("at/asitplus/wallet/lib/Vck.kt").asFile.apply {
+        generatedVersionDirectory.get().file("at/asitplus/wallet/lib/BuildProperties.kt").asFile.apply {
             parentFile.mkdirs()
             writeText(
                 """
                 package at.asitplus.wallet.lib
 
                 /** Build information for the VC-K core library. */
-                object Vck {
-                    const val version: String = "${inputs.properties.getValue("artifactVersion")}"
+                object BuildProperties {
+                    const val vckVersion: String = "${inputs.properties.getValue("artifactVersion")}"
                 }
                 """.trimIndent() + "\n"
             )

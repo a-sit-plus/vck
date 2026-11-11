@@ -3,7 +3,7 @@
 Release 10.0.0 (unreleased):
 
 - Core:
-    - Add `at.asitplus.wallet.lib.Vck.version`, a compile-time constant generated from `artifactVersion`.
+    - Add `at.asitplus.wallet.lib.BuildProperties.vckVersion`, a compile-time constant generated from `artifactVersion`.
 - Removals:
     - Remove code elements deprecated in 9.0.0: `Verifier` and its legacy validation classes
     - Remove `RemoteResourceRetrieverFunction` and `RemoteResourceRetrieverInput` as types and parameter values, e.g. in
