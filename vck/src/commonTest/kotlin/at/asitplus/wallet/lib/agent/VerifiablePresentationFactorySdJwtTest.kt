@@ -105,7 +105,7 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
                     .shouldBeSingleton().first().acceptedOrThrow()
                 SdJwtDecoded(sdJwt).apply {
                     validDisclosures.shouldHaveSize(1)
-                    reconstructedJsonObject.shouldNotBeNull().keys shouldBe setOf("name") + setOfDefaultSdJwtClaims
+                    reconstructedJsonObject.keys shouldBe setOf("name") + setOfDefaultSdJwtClaims
                 }
             }
         }
@@ -126,7 +126,7 @@ val VerifiablePresentationFactorySdJwtTest by matrixSuite {
                 SdJwtDecoded(sdJwt).apply {
                     // for "city" inside "address" and "address" itself, but not for "city" inside "birthplace"
                     validDisclosures.shouldHaveSize(2)
-                    reconstructedJsonObject.shouldNotBeNull().apply {
+                    reconstructedJsonObject.apply {
                         keys shouldBe setOf("address") + setOfDefaultSdJwtClaims
                         get("address").shouldNotBeNull().let { address ->
                             address.jsonObject["city"].shouldNotBeNull().jsonPrimitive.content shouldBe "London"

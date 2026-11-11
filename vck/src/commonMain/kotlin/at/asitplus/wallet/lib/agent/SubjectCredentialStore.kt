@@ -126,6 +126,15 @@ interface SubjectCredentialStore {
 
             override val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.DC_SD_JWT
 
+            /**
+             * The view of this SD-JWT with all its disclosures applied, from which claims are matched and disclosures
+             * selected. Derived from [vcSerialized] on first use; as a delegated property it is neither serialized
+             * nor part of [equals].
+             */
+            val decoded: SdJwtDecoded by lazy {
+                SdJwtDecoded(SdJwtSigned.parseCatching(vcSerialized).getOrThrow())
+            }
+
             companion object {
                 /** Parses from a serialized [SdJwtSigned] (being a JWS with disclosures appended) */
                 fun fromString(
@@ -219,7 +228,7 @@ interface SubjectCredentialStore {
                     is Holder.StoreCredentialInput.SdJwt -> SdJwt(
                         vcSerialized = credential.vcSdJwt,
                         sdJwt = (validated as ValidatedCredential.SdJwtVc).credential,
-                        disclosures = validated.disclosures,
+                        disclosures = validated.decoded.validDisclosures,
                         renewalInfo = prepared.renewalInfo,
                         issuer = credential.signedSdJwtVc.jws.jwsHeader.certificateChain?.leaf,
                         schemeIdentifier = credential.scheme.sdJwtType,

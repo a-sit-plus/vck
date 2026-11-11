@@ -17,17 +17,25 @@ package at.asitplus.wallet.lib.procedures.dcql
  */
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.iso.CborCredentialSerializer
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.dcql.DCQLAuthorityKeyIdentifier
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.IndexSegment
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NullSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialClaimStructure
+import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLIsoMdocCredential
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryMatchingResult
-import at.asitplus.openid.dcql.DCQLQueryResponse
 import at.asitplus.openid.dcql.DCQLSdJwtCredential
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.openid.dcql.DCQLVcJwsCredential
 import at.asitplus.signum.indispensable.asn1.Asn1Decodable
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -44,6 +52,7 @@ import at.asitplus.signum.indispensable.asn1.encoding.decode
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElementOrNull
@@ -72,21 +81,88 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
      * [accepted] presentations only, by the credential query they answer: a rejected presentation counts as if it had
      * not been submitted, like a credential that does not match its query (OpenID4VP 1.0, 6.4.2), so the response is
      * only rejected if the request can not be satisfied without it.
+     *
+     * Each presentation is matched against its credential query as [forPresentation] adapts it, i.e. the loop of
+     * [DCQLQuery.checkSubmissionRequirements] with a query per presentation.
      */
     fun checkAcceptedSubmissions(
         accepted: Map<DCQLCredentialQueryIdentifier, List<ValidatedPresentation>>,
-    ): KmmResult<Unit> = dcqlQuery.checkSubmissionRequirements(
-        dcqlQueryResponse = DCQLQueryResponse(accepted.filterValues { it.isNotEmpty() }),
-        parseSdJwtCredential = { it.toDCQLSdJwtCredential() },
-        parseVcJwsCredential = { it.toDCQLVcJwsCredential() },
-        parseIsoMdocCredential = { it.toDCQLIsoMdocCredential() },
+    ): KmmResult<Unit> = catching {
+        val submissions = accepted.filterValues { it.isNotEmpty() }
+        dcqlQuery.checkCredentialSetQueryRequirements(submissions.keys).getOrThrow()
+        submissions.forEach { (id, presentations) ->
+            val credentialQuery = dcqlQuery.credentials.firstOrNull { it.id == id }
+                ?: throw IllegalArgumentException("Credential submitted for non-existing credential query: $id")
+            // OpenID4VP 1.0, 6.1: multiple: "If omitted, the default value is false"
+            require(credentialQuery.multiple || presentations.size == 1) {
+                "Credential query $id does not allow for multiple submissions, but received ${presentations.size}"
+            }
+            presentations.forEach { presentation ->
+                credentialQuery.forPresentation(presentation).checkSubmissionRequirements(
+                    credentialQueryResponses = listOf(presentation),
+                    parseSdJwtCredential = { it.toDCQLSdJwtCredential() },
+                    parseVcJwsCredential = { it.toDCQLVcJwsCredential() },
+                    parseIsoMdocCredential = { it.toDCQLIsoMdocCredential() },
+                ).getOrThrow()
+            }
+        }
+    }
+
+    /**
+     * For an SD-JWT VC, replaces each index into an array that, as issued, contains array element digests by `null`
+     * ([SdJwtDecoded.arraysWithElementDigests]): the presentation contains only the disclosed elements (RFC 9901, 7.1
+     * step 3.d), and a digest without disclosure may be a withheld element or a decoy (4.2.5), so the position of a
+     * disclosed element as issued can not be determined. OpenID4VP 1.0, 7.1 does not define indices into partially
+     * disclosed arrays; by analogy to draft-ietf-oauth-sd-jwt-vc-19, 5.6.1.2, an index addresses the array "as if all
+     * selectively disclosable claims were disclosed". Indices into other arrays address elements whose positions are
+     * known, so they are kept.
+     */
+    private fun DCQLCredentialQuery.forPresentation(presentation: ValidatedPresentation): DCQLCredentialQuery {
+        val query = this as? DCQLSdJwtCredentialQuery
+            ?: return this
+        val arrays = (presentation as? ValidatedPresentation.SdJwt)?.credential?.decoded?.arraysWithElementDigests
+            ?: return this
+        val claims = query.claims
+            ?: return this
+        return query.copy(
+            claims = DCQLClaimsQueryList(
+                list = claims.map { it.copy(path = it.path.withoutPositionsIn(arrays)) }.toNonEmptyList()
+            )
+        )
+    }
+
+    /**
+     * Replaces an index by `null` where the pointer's segments before it select one of [arrays], from left to right, so
+     * that an earlier `null` selects any element.
+     */
+    private fun DCQLClaimsPathPointer.withoutPositionsIn(arrays: Set<DCQLClaimsPathPointer>) = DCQLClaimsPathPointer(
+        fold(listOf<DCQLClaimsPathPointerSegment>()) { rewritten, segment ->
+            rewritten + segment.nullIfElementOf(arrays, rewritten)
+        }.toNonEmptyList()
     )
+
+    /** `null` if this is an index into one of [arrays] as selected by the [rewritten] segments before it, else this. */
+    private fun DCQLClaimsPathPointerSegment.nullIfElementOf(
+        arrays: Set<DCQLClaimsPathPointer>,
+        rewritten: List<DCQLClaimsPathPointerSegment>,
+    ): DCQLClaimsPathPointerSegment = when (this) {
+        is IndexSegment if arrays.any { it.isSelectedBy(rewritten) } -> NullSegment
+        else -> this
+    }
+
+    /** Whether [segments] select this concrete position: names and indices equal, `null` for any index. */
+    private fun DCQLClaimsPathPointer.isSelectedBy(segments: List<DCQLClaimsPathPointerSegment>) =
+        size == segments.size && zip(segments).all { (position, segment) ->
+            segment == position || (segment == NullSegment && position is IndexSegment)
+        }
 
     private fun ValidatedPresentation.toDCQLSdJwtCredential(): DCQLSdJwtCredential = when (this) {
         is ValidatedPresentation.SdJwt -> DCQLSdJwtCredential(
-            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(credential.reconstructedJsonObject),
+            claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
+                credential.decoded.reconstructedJsonObject
+            ),
             satisfiesCryptographicHolderBinding = credential.credential.confirmationClaim != null,
-            authorityKeyIdentifiers = credential.sdJwtSigned.jws.jwsHeader.certificateChain
+            authorityKeyIdentifiers = credential.decoded.sdJwtSigned.jws.jwsHeader.certificateChain
                 ?.flatMap { it.getAuthorityKeyIdentifier() } ?: listOf(),
             type = credential.credential.verifiableCredentialType,
         )
@@ -105,6 +181,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
 
         is ValidatedPresentation.VcJwt ->
             credential.credential.toDCQLCredential(satisfiesCryptographicHolderBinding = false)
+
         else -> throw IllegalArgumentException("Presentation is no VC-JWT")
     }
 
@@ -124,7 +201,9 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             DCQLIsoMdocCredential(
                 claimStructure = DCQLCredentialClaimStructure.IsoMdocStructure(
                     namespaces?.mapValues { namespace ->
-                        namespace.value.entries.associate { it.value.elementIdentifier to it.value.toDcqlClaimValue(namespace.key) }
+                        namespace.value.entries.associate {
+                            it.value.elementIdentifier to it.value.toDcqlClaimValue(namespace.key)
+                        }
                     } ?: mapOf()
                 ),
                 documentType = document.docType,

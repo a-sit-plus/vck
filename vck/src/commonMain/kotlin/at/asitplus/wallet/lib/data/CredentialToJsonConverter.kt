@@ -1,14 +1,13 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.validation.ValidatedCredential
+import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonArray
@@ -21,11 +20,9 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlin.time.Instant
 
-private const val SD_JWT_VC_TYPE = "vct"
-
 /**
- * In OpenID4VP, the claims to be presented are described using a JSONPath, so compiling this to a JsonElement seems
- * reasonable.
+ * The claims of a credential as JSON, on which OpenID4VP selects the claims to present with claims path pointers
+ * (OpenID4VP 1.0, 7).
  */
 object CredentialToJsonConverter {
 
@@ -43,27 +40,13 @@ object CredentialToJsonConverter {
             })
         }
 
-        is SubjectCredentialStore.StoreEntry.SdJwt -> {
-            val sdJwtSigned = SdJwtSigned.parseCatching(credential.vcSerialized).getOrNull()
-            val payloadVc = sdJwtSigned?.jws?.getPayload<JsonObject>()?.getOrNull()
-            val reconstructed = catching { sdJwtSigned?.let { SdJwtDecoded(it).reconstructedJsonObject } }.getOrNull()
-            val simpleDisclosureMap = credential.disclosures.map { entry ->
-                entry.value?.let { it.claimName to it.claimValue }
-            }.filterNotNull().toMap()
-
-            buildJsonObject {
-                if (payloadVc?.get(SD_JWT_VC_TYPE) == null)
-                    put(SD_JWT_VC_TYPE, JsonPrimitive(credential.sdJwt.verifiableCredentialType))
-                payloadVc?.forEach {
-                    put(it.key, it.value)
-                }
-
-                reconstructed?.forEach {
-                    put(it.key, it.value)
-                } ?: simpleDisclosureMap.forEach { pair ->
-                    pair.key?.let { put(it, pair.value) }
-                }
-            }
+        // The claims as RFC 9901, 7.1 processes them, so that the positions DCQL selects are those of
+        // SdJwtDecoded.disclosuresByPath, from which the disclosures to present are taken
+        is SubjectCredentialStore.StoreEntry.SdJwt -> catchingUnwrapped {
+            credential.decoded.reconstructedJsonObject
+        }.getOrElse {
+            Napier.w("SD-JWT can not be processed, it has no claims to match", it)
+            JsonObject(emptyMap())
         }
 
         is SubjectCredentialStore.StoreEntry.Iso -> credential.issuerSigned.toJsonObject()
@@ -74,7 +57,7 @@ object CredentialToJsonConverter {
      * credential subject of a VC-JWT as in [toJsonElement], and the elements of an ISO mdoc by namespace.
      */
     fun toJsonElement(credential: ValidatedCredential): JsonObject = when (credential) {
-        is ValidatedCredential.SdJwtVc -> credential.reconstructedJsonObject
+        is ValidatedCredential.SdJwtVc -> credential.decoded.reconstructedJsonObject
         is ValidatedCredential.VcJwt -> toJsonElement(credential.credential)
         is ValidatedCredential.IsoMdoc -> credential.issuerSigned.toJsonObject()
     }

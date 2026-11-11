@@ -105,7 +105,7 @@ val AgentSdJwtTest by matrixSuite {
             it.validate(sdJwt, request).apply {
                 observedStatus shouldBe TokenStatus.Valid
                 acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.SdJwt>()
-                    .credential.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
+                    .credential.decoded.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
             }
         }
 
@@ -131,8 +131,8 @@ val AgentSdJwtTest by matrixSuite {
             it.validate(vp, request).apply {
                 observedStatus shouldBe TokenStatus.Valid
                 acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.SdJwt>().credential.apply {
-                    reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
-                    reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
+                    decoded.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+                    decoded.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
                 }
             }
         }

@@ -111,7 +111,7 @@ sealed interface ValidatedPresentation {
         override val credentials get() = listOf(credential)
 
         /** The SD-JWT as presented, with the disclosures of [credential] and the verified [keyBinding]. */
-        val sdJwtSigned: SdJwtSigned get() = credential.sdJwtSigned.copy(keyBindingJws = keyBinding)
+        val sdJwtSigned: SdJwtSigned get() = credential.decoded.sdJwtSigned.copy(keyBindingJws = keyBinding)
     }
 
     data class MdocDocument(

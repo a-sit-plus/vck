@@ -96,7 +96,7 @@ val OpenId4VpX509SanDnsTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
                 .singleAcceptedPresentation().sdJwtVc
-                .reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                .decoded.reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
 
         }
 
@@ -125,7 +125,7 @@ val OpenId4VpX509SanDnsTest by matrixSuite {
 
             it.verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode()).getOrThrow()
                 .singleAcceptedPresentation().sdJwtVc
-                .reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
+                .decoded.reconstructedJsonObject[CLAIM_GIVEN_NAME].shouldNotBeNull()
         }
     }
 }

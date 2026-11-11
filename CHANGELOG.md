@@ -25,6 +25,23 @@ Release 10.0.0 (unreleased):
       attestations, and verifier attestations, and the chains of WRPACs and WRPRCs, whose `timeliness` check used no
       leeway either. Add the parameter `leeway` (`Duration.ZERO` by default) to `isTrustedBy`, `isValidAt`,
       `isExpired`, and `isNotYetValid` of `X509Certificate`, and `timeLeeway` to `RelyingPartyValidator.clientTrust`
+- SD-JWT:
+    - Fix: `SdJwtDecoded.reconstructedJsonObject` holds the claims as RFC 9901, 7.1 step 3 processes them: empty
+      objects and arrays are kept, arrays nested in arrays and in array element disclosures are processed, and only
+      the top-level `_sd_alg` is removed. It is no longer nullable. `SdJwtDecoded` and the validation of SD-JWT VCs now
+      share one implementation
+    - Add `SdJwtDecoded.disclosuresByPath` (the position of each disclosed claim as a claims path pointer, counting no
+      decoy digests), `arraysWithElementDigests`, `disclosuresFor(pointers)` (the disclosures of the selected claims
+      with their ancestors and sub-claims), and `sdJwtSigned`. Add `StoreEntry.SdJwt.decoded`, derived from
+      `vcSerialized` on first use and not serialized
+    - BREAKING: `ValidatedCredential.SdJwtVc` is constructed from `credential` and `decoded: SdJwtDecoded`; its
+      `sdJwtSigned`, `reconstructedJsonObject`, and `disclosures` remain as properties, but are deprecated: read
+      `decoded.sdJwtSigned`, `decoded.reconstructedJsonObject`, and `decoded.validDisclosures` instead
+    - BREAKING: `SelectiveDisclosureItem.salt` is a `String`, the salt exactly as in the disclosure, as RFC 9901, 4.2.1
+      only requires a string: a disclosure whose salt is not base64url, e.g. contains `+`, `/`, `=`, or `.`, is no
+      longer rejected. The constructor taking a `ByteArray` salt base64url-encodes it
+    - Fix: A disclosure whose salt or claim name is not a JSON string, e.g. a number, a boolean, or `null`, is rejected
+      (RFC 9901, 4.2.1) instead of being read as its text
 - Status lists:
     - Add: `DefaultZlibService` compression with fixed Huffman codes and back-references (RFC 1951), as Token Status
       List draft 21 section 4.1 recommends, instead of emitting only stored blocks. Data that does not compress is still
@@ -35,7 +52,18 @@ Release 10.0.0 (unreleased):
     - BREAKING: `RequestParser` no longer fetches request objects passed by reference in `request_uri`:
       `parseRequestParameters` fails with `InvalidRequest` for a request referencing its request object only in
       `request_uri`. Wallets fetch such request objects with `OpenId4VpProtocolClient.prepareAuthorizationResponse`.
-
+- DCQL:
+    - Fix: A holder matches DCQL claims queries on the claims of an SD-JWT VC as RFC 9901, 7.1 processes them
+      (`SdJwtDecoded.reconstructedJsonObject`), without `_sd` and `_sd_alg` and with empty objects and arrays, and
+      presents the disclosures of exactly the selected claims with their ancestors and sub-claims (RFC 9901, 7.2;
+      OpenID4VP 1.0, 6.4, 7.3). It no longer discloses another element of an array claim whose issuer added decoy
+      digests to it, or that contains an object without disclosed claims, than the one requested
+    - Fix: `DCQLQueryAdapter.checkAcceptedSubmissions` accepts SD-JWT VC claims requested by an index into an array
+      that, as issued, contains array element digests, checking the index as a wildcard: the position of a disclosed
+      element can not be determined, as withheld elements and decoys can not be told apart (RFC 9901, 4.2.5). An index
+      into another array is still checked at its position
+    - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
+      the credential query, with the failure of each combination, instead of a `NoSuchElementException`
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
