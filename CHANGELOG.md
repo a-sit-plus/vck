@@ -80,8 +80,10 @@ Release 10.0.0 (unreleased):
       digests to it, or that contains an object without disclosed claims, than the one requested. A stored SD-JWT
       that can not be processed matches no credential query, instead of one without claims, and no longer keeps the
       other credentials from being matched: `CredentialToJsonConverter.toJsonElement` throws for it
-    - Fix: `DCQLQueryAdapter.checkAcceptedSubmissions` accepts SD-JWT VC claims requested by array index, checking
-      the index as a wildcard, as the position of a disclosed element in the issued array can not be determined
+    - Fix: `DCQLQueryAdapter.checkAcceptedSubmissions` accepts SD-JWT VC claims requested by an index into an array
+      that, as issued, contains array element digests, checking the index as a wildcard: the position of a disclosed
+      element can not be determined, as withheld elements and decoys can not be told apart (RFC 9901, 4.2.5). An index
+      into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
 - OpenID for Verifiable Presentations verifier
