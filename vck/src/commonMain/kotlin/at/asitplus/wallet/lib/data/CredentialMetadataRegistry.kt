@@ -47,12 +47,15 @@ private fun SdJwtTypeMetadata.extractRepresentation() = when (vckExtensions?.for
 /**
  * Derives a scheme from type metadata. ISO mdoc claim paths must include their namespace; they are preserved even
  * when [SdJwtTypeMetadataVckExtensions.isoNamespace][at.asitplus.wallet.sdjwt.SdJwtTypeMetadataVckExtensions.isoNamespace]
- * is absent or names a different namespace.
+ * is absent or names a different namespace. VC-JWT claim paths must start at the root of the VC, e.g.
+ * `["credentialSubject", "given_name"]` or `["issuer"]`, as claims paths for W3C VCs do (OpenID4VP 1.0, B.1.2); they
+ * are preserved too.
  */
 fun SdJwtTypeMetadata.toCredentialScheme() = when (extractRepresentation()) {
     PLAIN_JWT -> ExtractedVcJwtCredentialScheme(
         vcType = vckExtensions?.vcType ?: vct.string,
-        claimDescriptions = claims?.map { it.toClaimDescription() }?.toSet() ?: setOf()
+        claimDescriptions = claims?.map { it.toClaimDescription() }?.toSet() ?: setOf(),
+        vcJwtClaimPathsAreQualified = true,
     )
 
     SD_JWT -> ExtractedSdJwtCredentialScheme(
@@ -99,9 +102,10 @@ private fun ULong.safeToUint(): UInt = also {
     }
 }.toUInt()
 
-data class ExtractedVcJwtCredentialScheme(
+data class ExtractedVcJwtCredentialScheme @JvmOverloads constructor(
     override val vcType: String,
-    override val claimDescriptions: Set<ClaimDescription>
+    override val claimDescriptions: Set<ClaimDescription>,
+    override val vcJwtClaimPathsAreQualified: Boolean = false,
 ) : VcJwtCredentialScheme
 
 data class ExtractedSdJwtCredentialScheme(

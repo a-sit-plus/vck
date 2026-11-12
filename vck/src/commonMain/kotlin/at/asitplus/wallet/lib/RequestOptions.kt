@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.MdocClaimReference
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import com.benasher44.uuid.uuid4
 
 typealias RequestedAttributes = Set<String>
@@ -37,6 +38,7 @@ data class RequestOptionsCredential(
      * Use `DCQLClaimsPathPointer("address.region")` to request a flat claim with a literal dot in its name.
      * Use `DCQLClaimsPathPointer("address", "region")` to request `region` nested inside `address`.
      *
+     * For [PLAIN_JWT], paths are relative to `credentialSubject`, see [toVcJwtClaimPath].
      * For [ISO_MDOC], see [requestedMdocClaims].
      */
     val attributePaths: RequestedAttributePaths? = null,
@@ -47,6 +49,7 @@ data class RequestOptionsCredential(
      * Use `DCQLClaimsPathPointer("address.region")` to request a flat claim with a literal dot in its name.
      * Use `DCQLClaimsPathPointer("address", "region")` to request `region` nested inside `address`.
      *
+     * For [PLAIN_JWT], paths are relative to `credentialSubject`, see [toVcJwtClaimPath].
      * For [ISO_MDOC], see [requestedOptionalMdocClaims].
      */
     val optionalAttributePaths: RequestedAttributePaths? = null,
@@ -123,4 +126,18 @@ data class RequestOptionsCredential(
             )
         }
     }
+}
+
+/**
+ * Qualifies a requested attribute path for a W3C VC: DCQL claims paths match on the root of the VC (OpenID4VP 1.0,
+ * B.1.2), while requested attributes name claims about the subject like for the other representations, so
+ * `credentialSubject` is prefixed unless the path already starts with it, e.g. `["given_name"]` becomes
+ * `["credentialSubject", "given_name"]` as in OpenID4VP 1.0, B.1.3.1.4.
+ */
+fun DCQLClaimsPathPointer.toVcJwtClaimPath(): DCQLClaimsPathPointer {
+    val firstSegment = segments.first()
+    val alreadyQualified = firstSegment is DCQLClaimsPathPointerSegment.NameSegment &&
+            firstSegment.name == VcDataModelConstants.CREDENTIAL_SUBJECT
+    return if (alreadyQualified) this
+    else DCQLClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT) + this
 }
