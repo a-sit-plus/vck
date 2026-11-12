@@ -130,6 +130,14 @@ processing.
       can be registered with several identifiers (ETSI TS 119 475 V1.2.1, B.2.2). The shared subject stands in for
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
+- Trusted relying parties:
+    - WRPRC authorization exempts, besides `vct`, every root claim of an SD-JWT VC that must not be selectively
+      disclosed, with its sub-claims: `iss`, `nbf`, `exp`, `cnf`, `vct#integrity`, `aka_vcts`, and `status`
+      (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3), since the holder can not withhold them. A request for e.g. `["iss"]` or
+      `["cnf", "jwk"]` no longer needs to be registered; `sub`, `iat`, and nested claims of these names still do
+    - Fix: An SD-JWT VC that selectively discloses a claim or an array element below one of these claims, e.g. in
+      `cnf` or `aka_vcts`, is rejected, as it does for these claims themselves: they must not be selectively disclosed
+      "including any of their sub-claims" (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3)
 
 Release 9.0.0:
 

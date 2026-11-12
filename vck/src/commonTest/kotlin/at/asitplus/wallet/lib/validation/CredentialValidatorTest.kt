@@ -30,7 +30,9 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
@@ -63,11 +65,18 @@ import kotlin.time.Instant
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import net.orandja.obor.codec.Cbor
 import net.orandja.obor.data.CborMap
 import net.orandja.obor.data.CborObject
+
+/** The digest of [disclosure] with the hash function of this payload's `_sd_alg` (RFC 9901, 4.1.1, 4.2.3). */
+private fun JsonObject.digestOf(disclosure: String) =
+    JsonPrimitive(disclosure.hashDisclosure(sdJwtDigest(this[SdJwtConstants.SD_ALG]?.jsonPrimitive?.content)))
 
 private val integrityOnly = strictPolicy.copy(trust = TrustPolicy.IntegrityOnly, status = StatusPolicy.Skip)
 
@@ -357,6 +366,42 @@ val CredentialValidatorTest by matrixSuite {
 
             result.report.decision shouldBe REJECTED
             result.checks.disclosedItems.last().structure.shouldBeInstanceOf<Failed>()
+        }
+
+        "a claim disclosed below a claim that must not be selectively disclosed fails its structure" {
+            val issuance = issuance()
+            val disclosure = SelectiveDisclosureItem(Random.nextBytes(16), "kid", JsonPrimitive("key-1")).toDisclosure()
+            val sdJwt = issuance.sdJwtWithPayload { payload ->
+                val cnf = payload.getValue("cnf").jsonObject
+                val digests = JsonArray(listOf(payload.digestOf(disclosure)))
+                JsonObject(payload + ("cnf" to JsonObject(cnf + (SdJwtConstants.NAME_SD to digests))))
+            } + "$disclosure~"
+
+            val result = issuance.validateSdJwt(sdJwt)
+
+            result.report.decision shouldBe REJECTED
+            result.checks.disclosedItems.last().apply {
+                digest shouldBe Passed
+                structure.shouldBeInstanceOf<Failed>()
+            }
+        }
+
+        "an array element disclosed below a claim that must not be selectively disclosed fails its structure" {
+            val issuance = issuance()
+            val disclosure =
+                SelectiveDisclosureItem(Random.nextBytes(16), null, JsonPrimitive("urn:example")).toDisclosure()
+            val sdJwt = issuance.sdJwtWithPayload { payload ->
+                val element = JsonObject(mapOf("..." to payload.digestOf(disclosure)))
+                JsonObject(payload + ("aka_vcts" to JsonArray(listOf(element))))
+            } + "$disclosure~"
+
+            val result = issuance.validateSdJwt(sdJwt)
+
+            result.report.decision shouldBe REJECTED
+            result.checks.disclosedItems.last().apply {
+                digest shouldBe Passed
+                structure.shouldBeInstanceOf<Failed>()
+            }
         }
 
         "a key binding JWT on an issued credential fails parsing" {
