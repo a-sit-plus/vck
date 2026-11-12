@@ -67,14 +67,25 @@ Release 10.0.0 (unreleased):
     - BREAKING: Presenting a credential bound to a key the holder doesn't have fails instead of being signed with the
       holder's key, as does a VC-JWT presentation of credentials bound to different keys or to none
 - Issuance (wallet):
+    - Supply the holder key of every credential request with a `ProofKeySupplier`: `JwtProofCreator` and
+      `AttestationProofCreator` get constructors taking one. It is asked for every request, so a retry, e.g. after
+      `invalid_nonce`, gets a fresh key, with a `ProofKeyRequest` naming the proof type and the issuer's
+      `key_attestations_required`, so it can check them before creating a key
+    - A proof creator failing because the user cancelled the signature, e.g. unlocking the key, fails the credential
+      request instead of leaving the proof to the next creator, which would prove a new key the user has not approved
+    - Add `ProofCreator.createProof`, which returns a `CreatedProof`, the proofs together with their key, and which
+      `OpenId4VciClient` calls. By default it returns the proofs of `invoke` with an unknown key, so proof creators
+      that only implement `invoke` keep working with a holder of one key
     - Check that a received credential is bound to a proof key of its request: `OpenId4VciClient.CredentialRequest`
       records its `proofKeys`, which reach `HolderAgent.prepareCredentialStorage` as `expectedHolderKeys` through
       `ReceivedCredential.Decoded.proofKeys`. `HolderBindingPolicy.RequireExpectedKey` accepts any of the new
       `CredentialValidationContext.expectedHolderKeys`. Without expected keys, a `HolderAgent` with one key expects that
       key, and one with a resolver blocks the check
     - Deprecate `CredentialValidationContext.expectedHolderKey`, use `expectedHolderKeys`
+    - Add `KeyAttestationInput.keys`, the keys to attest
     - BREAKING: New parameters change `copy` and `componentN` of the data classes `CredentialValidationContext`,
-      `ReceivedCredential.Decoded`, and `OpenId4VciClient.CredentialRequest.Plain` and `.Encrypted`
+      `ReceivedCredential.Decoded`, `OpenId4VciClient.CredentialRequest.Plain` and `.Encrypted`, and
+      `KeyAttestationInput`
 
 Release 9.0.0:
 

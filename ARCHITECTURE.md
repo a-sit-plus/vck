@@ -386,7 +386,9 @@ work with any HTTP stack. Code is placed by where its output goes:
 
 - Everything inside a request or response body stays in the parameter builders `OAuth2Client` and `OpenId4VciClient`,
   and in `OpenId4VpHolder` and `RequestParser` for OpenID4VP: PKCE, JAR, scope and authorization details, credential
-  request proofs, key attestations, encryption, request object parsing and decryption, presentations.
+  request proofs, key attestations, encryption, request object parsing and decryption, presentations. The proof
+  creators take the key of every credential request, also of a retry, from a `ProofKeySupplier`, as a key may be in
+  only one key attestation (TS3, 2.2.2.1).
 - Everything that ends up in an HTTP header or depends on HTTP responses lives in `OAuth2ProtocolClient`,
   `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient`: `Authorization`, DPoP proofs and nonces, client
   attestation and its PoP, attestation challenges, retries, and response parsing, e.g. the `redirect_uri` in the

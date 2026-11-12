@@ -8,12 +8,14 @@ import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants.ProofTypes
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.SupportedCredentialFormatSdJwt
+import at.asitplus.signum.supreme.UnlockFailed
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 
@@ -38,7 +40,7 @@ val ProofCreatorSelectionTest by matrixSuite {
 
     suspend fun proofOf(format: SupportedCredentialFormat, vararg creators: ProofCreator) =
         OpenId4VciClient(proofCreators = creators.toList())
-            .createCredentialProof(metadata, format, "https://wallet.example.com", "nonce")
+            .createCredentialProof(metadata, format, "https://wallet.example.com", "nonce")?.proofs
 
     test("the first proof created is used") {
         val proof = CredentialRequestProofContainer()
@@ -46,6 +48,17 @@ val ProofCreatorSelectionTest by matrixSuite {
 
         proofOf(bothProofTypes, FakeProofCreator(KmmResult.success(proof)), next) shouldBeSameInstanceAs proof
         next.calls shouldBe 0
+    }
+
+    test("a creator implementing only invoke, as before createProof, proves an unknown key") {
+        val proof = CredentialRequestProofContainer()
+
+        FakeProofCreator(KmmResult.success(proof))
+            .createProof(metadata.credentialIssuer, bothProofTypes, "https://wallet.example.com", "nonce")
+            .getOrThrow().shouldNotBeNull().apply {
+                proofs shouldBeSameInstanceAs proof
+                key.shouldBeNull()
+            }
     }
 
     test("a creator for another proof type leaves the proof to the next one") {
@@ -66,6 +79,20 @@ val ProofCreatorSelectionTest by matrixSuite {
             FakeProofCreator(KmmResult.failure(IllegalStateException("no key attestation"))),
             FakeProofCreator(KmmResult.success(proof)),
         ) shouldBeSameInstanceAs proof
+    }
+
+    test("a creator failing as the user cancelled unlocking the key fails without asking the next one") {
+        val cancelled = UnlockFailed("cancelled")
+        val next = FakeProofCreator(KmmResult.success(CredentialRequestProofContainer()))
+
+        shouldThrowAny {
+            proofOf(
+                bothProofTypes,
+                FakeProofCreator(KmmResult.failure(IllegalStateException("signing failed", cancelled))),
+                next,
+            )
+        } shouldBeSameInstanceAs cancelled
+        next.calls shouldBe 0
     }
 
     test("a JWT proof without the key attestation the issuer requires leaves the proof to the next creator") {
