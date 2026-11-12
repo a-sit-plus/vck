@@ -202,7 +202,9 @@ through `LibraryInitializer.registerExtensionLibrary()`. Metadata-derived scheme
 produces an `ExtractedVcJwt`/`ExtractedSdJwt`/`ExtractedIsoMdocCredentialScheme`. Both paths coexist by design; do not
 replace one with the other. ISO metadata claim paths must already include their namespace; the derived scheme
 sets `isoClaimPathsAreQualified` so both required-claims validation and issuer configurations preserve them unchanged.
-Code-defined ISO schemes can opt in too; otherwise relative paths are qualified with `isoNamespace`.
+Code-defined ISO schemes can opt in too; otherwise relative paths are qualified with `isoNamespace`. Likewise, VC-JWT
+metadata claim paths must start at the root of the VC (e.g. `["credentialSubject", "given_name"]` or `["issuer"]`), and
+the derived scheme sets `vcJwtClaimPathsAreQualified`; otherwise relative paths are qualified with `credentialSubject`.
 
 `AttributeIndex` coordinates scheme lookup, resolving from its registered `schemeSet` first, then through the
 registries, then through a fallback scheme. `CredentialMetadataRegistry` is its extension boundary:

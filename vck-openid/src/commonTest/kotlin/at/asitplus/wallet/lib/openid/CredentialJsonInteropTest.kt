@@ -17,7 +17,9 @@ import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -41,9 +43,16 @@ val CredentialJsonInteropTest by matrixSuite {
 
             val credential =
                 CredentialToJsonConverter.toJsonElement(it.subjectCredentialStore.getCredentials().getOrThrow()[0])
-            listOf("id", "name", "mime-type", "value").forEach { claimName ->
+            // claims paths match on the root of the VC, OpenID4VP 1.0, B.1.2
+            listOf("id", "issuer").forEach { claimName ->
                 credential.shouldHavePrimitiveAt(DCQLClaimsPathPointer(claimName))
             }
+            (DCQLClaimsPathPointer("type") + 1u).query(credential).single().value shouldBe
+                    JsonPrimitive(AtomicAttribute2023.vcType)
+            listOf("id", "name", "mime-type", "value").forEach { claimName ->
+                credential.shouldHavePrimitiveAt(DCQLClaimsPathPointer("credentialSubject", claimName))
+            }
+            DCQLClaimsPathPointer("name").query(credential).shouldBeEmpty()
         }
 
         test("SD jwt credential path resolving") {

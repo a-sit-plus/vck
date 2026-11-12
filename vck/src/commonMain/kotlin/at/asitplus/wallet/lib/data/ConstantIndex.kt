@@ -172,7 +172,35 @@ interface VcJwtCredentialScheme : CredentialScheme {
      */
     override val vcType: String
 
+    /**
+     * Whether every claim path already starts at the root of the VC, e.g. `["credentialSubject", "given_name"]` or
+     * `["issuer"]`, as claims paths for W3C VCs do (OpenID4VP 1.0, B.1.2; OpenID4VCI 1.0, C). Defaults to false for
+     * schemes sharing paths relative to the credential subject across formats, see [vcJwtQualifiedClaimDescriptions].
+     */
+    val vcJwtClaimPathsAreQualified: Boolean
+        get() = false
+
     override val supportedRepresentations: Collection<CredentialRepresentation>
         get() = listOf(PLAIN_JWT)
+}
+
+/**
+ * The [claimDescriptions][CredentialScheme.claimDescriptions] with paths starting at the root of the W3C VC, as
+ * claims paths for W3C VCs do (OpenID4VP 1.0, B.1.2; OpenID4VCI 1.0, C): multi-format schemes (e.g.
+ * [ConstantIndex.AtomicAttribute2023]) share JSON-style claim descriptions of the subject across representations, so
+ * `credentialSubject` is prefixed unless the path already starts with it. When
+ * [VcJwtCredentialScheme.vcJwtClaimPathsAreQualified] is true, every path is preserved, so it may name a claim at the
+ * root of the VC, e.g. `["issuer"]`. Metadata-derived schemes use qualified paths.
+ */
+val VcJwtCredentialScheme.vcJwtQualifiedClaimDescriptions: Set<ClaimDescription>
+    get() = if (vcJwtClaimPathsAreQualified) claimDescriptions
+    else claimDescriptions.map { it.qualifiedWithCredentialSubject() }.toSet()
+
+private fun ClaimDescription.qualifiedWithCredentialSubject(): ClaimDescription {
+    val firstSegment = path.firstOrNull()
+    val alreadyQualified = firstSegment is OpenId4VciClaimsPathPointerSegmentString &&
+            firstSegment.string == VcDataModelConstants.CREDENTIAL_SUBJECT
+    return if (alreadyQualified) this
+    else copy(path = OpenId4VciClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT) + path)
 }
 
