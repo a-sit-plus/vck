@@ -59,8 +59,9 @@ internal class ProcessedDisclosures(
  * (step 3.d). Disclosed values are processed recursively (steps 3.c.ii.5, 3.c.iii.3). `_sd` keys are removed, while
  * an object left without properties stays `{}` (step 3.e), and the top-level `_sd_alg` is removed (step 3.f).
  *
- * A disclosure of one of the [notDisclosable] claims at the top level of the payload fails its structure check
- * (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3).
+ * A disclosure of one of the [notDisclosable] claims at the top level of the payload, or of a claim or an array element
+ * anywhere below one of them, fails its structure check: these claims, "including any of their sub-claims, [...] MUST
+ * NOT be included in Disclosures" (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3).
  */
 internal fun processDisclosures(
     rawDisclosures: List<String>,
@@ -149,6 +150,7 @@ private class DisclosureProcessor(
         }
         val digests = (input[SdJwtConstants.NAME_SD] as? JsonArray).orEmpty()
             .mapNotNull { (it as? JsonPrimitive)?.takeIf { it.isString }?.content }
+        val notDisclosableRoot = path.notDisclosableRoot()
         digests.forEach { digestValue ->
             val index = disclosureFor(digestValue) ?: return@forEach
             val item = parsed[index].getOrNull() ?: return@forEach
@@ -158,6 +160,8 @@ private class DisclosureProcessor(
                 claimName == SdJwtConstants.NAME_SD || claimName == "..." -> "The claim name $claimName is reserved"
                 claimName in output -> "The claim name $claimName exists already at this level"
                 topLevel && claimName in notDisclosable -> "The claim $claimName must not be selectively disclosed"
+                notDisclosableRoot != null ->
+                    "The claim $claimName below $notDisclosableRoot must not be selectively disclosed"
                 else -> null
             }
             if (problem != null || claimName == null) {
@@ -181,6 +185,7 @@ private class DisclosureProcessor(
      */
     private fun processArray(input: JsonArray, path: List<DCQLClaimsPathPointerSegment>): JsonArray {
         val output = mutableListOf<JsonElement>()
+        val notDisclosableRoot = path.notDisclosableRoot()
         input.forEach { element ->
             val position = path + IndexSegment(output.size.toUInt())
             val digestValue = (element as? JsonObject)
@@ -195,8 +200,13 @@ private class DisclosureProcessor(
             arraysWithElementDigests += path.toPointer()
             val index = disclosureFor(digestValue) ?: return@forEach
             val item = parsed[index].getOrNull() ?: return@forEach
-            if (item.claimName != null) {
-                val problem = "An object property disclosure is referenced from an array"
+            val problem = when {
+                item.claimName != null -> "An object property disclosure is referenced from an array"
+                notDisclosableRoot != null ->
+                    "An array element below $notDisclosableRoot must not be selectively disclosed"
+                else -> null
+            }
+            if (problem != null) {
                 failStructure(index, IllegalArgumentException(problem))
             } else {
                 disclosuresByPath[position.toPointer()] = rawDisclosures[index]
@@ -214,6 +224,10 @@ private class DisclosureProcessor(
         is JsonArray -> processArray(value, path)
         else -> value
     }
+
+    /** The [notDisclosable] claim at the top level of the payload that this position is, or is below, if any. */
+    private fun List<DCQLClaimsPathPointerSegment>.notDisclosableRoot(): String? =
+        (firstOrNull() as? NameSegment)?.name?.takeIf { it in notDisclosable }
 
     /** Every position below the root is non-empty: the root of an SD-JWT payload is an object. */
     private fun List<DCQLClaimsPathPointerSegment>.toPointer() = DCQLClaimsPathPointer(toNonEmptyList())
