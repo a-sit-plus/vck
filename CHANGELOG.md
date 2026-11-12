@@ -66,6 +66,8 @@ Release 10.0.0 (unreleased):
       and the `VerifiablePresentationFactory` constructor taking one `KeyMaterial`
     - BREAKING: Presenting a credential bound to a key the holder doesn't have fails instead of being signed with the
       holder's key, as does a VC-JWT presentation of credentials bound to different keys or to none
+    - Add constructors without the unused `keyMaterial` to `OpenId4VpKtorHolder`, `DcApiHolder` and
+      `Iso180137AnnexCHolder`, and deprecate the ones with it
 - Issuance (wallet):
     - Supply the holder key of every credential request with a `ProofKeySupplier`: `JwtProofCreator` and
       `AttestationProofCreator` get constructors taking one. It is asked for every request, so a retry, e.g. after
