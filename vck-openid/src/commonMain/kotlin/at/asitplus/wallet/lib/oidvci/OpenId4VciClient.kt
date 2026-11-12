@@ -41,6 +41,7 @@ import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.decodeFromQuery
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -105,10 +106,19 @@ class OpenId4VciClient @JvmOverloads constructor(
         val credentialResponseEncryptionKeyId: String?
 
         /**
+         * The keys this request's proofs prove, which the issued credentials have to be bound to. Recorded at creation,
+         * as a proof may name its key by `kid` only; empty if unknown, e.g. for a parsed request.
+         */
+        val proofKeys: Set<CryptoPublicKey>
+
+        /**
          * Send [request] as JSON-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media
          * type `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]).
          */
-        data class Plain(val request: CredentialRequestParameters) : CredentialRequest {
+        data class Plain @JvmOverloads constructor(
+            val request: CredentialRequestParameters,
+            override val proofKeys: Set<CryptoPublicKey> = emptySet(),
+        ) : CredentialRequest {
             override val credentialResponseEncryptionKeyId: String?
                 get() = request.credentialResponseEncryption?.jsonWebKey?.keyId
         }
@@ -117,9 +127,10 @@ class OpenId4VciClient @JvmOverloads constructor(
          * Send [request] as JWE-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media
          * type `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]).
          */
-        data class Encrypted(
+        data class Encrypted @JvmOverloads constructor(
             val request: JweEncrypted,
             override val credentialResponseEncryptionKeyId: String? = null,
+            override val proofKeys: Set<CryptoPublicKey> = emptySet(),
         ) : CredentialRequest
 
         companion object {
@@ -568,7 +579,7 @@ class OpenId4VciClient @JvmOverloads constructor(
                 credential.credentialString?.toValidationInput(representation)
                     ?: throw IllegalArgumentException("Credential is not a string (OpenID4VCI 1.0, Appendix A)")
             }.fold(
-                onSuccess = { ReceivedCredential.Decoded(it) },
+                onSuccess = { ReceivedCredential.Decoded(it, request.proofKeys) },
                 onFailure = { ReceivedCredential.Undecodable(it) },
             )
         }

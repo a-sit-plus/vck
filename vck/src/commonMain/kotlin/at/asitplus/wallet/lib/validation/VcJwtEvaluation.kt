@@ -39,9 +39,11 @@ internal suspend fun evaluateVcJwt(
         certificateChain = signature.certificateChain,
         semantics = semanticsOf(vcJws.semantics(), expectedIdentifier(expected, types)),
         disclosedItems = emptyList(),
-        holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
-            vcJws.subject?.let { key.matchesIdentifier(it) } == true
-        },
+        // Bound by `sub`, as the `did:key` or the JWK thumbprint of an expected key
+        holderBinding = holderBinding.check(
+            context,
+            vcJws.subject?.let { sub -> context.allExpectedHolderKeys.firstOrNull { it.matchesIdentifier(sub) } },
+        ),
         timeliness = vcJws.validityPeriod.timeliness(timeScope),
         status = vcJws.vc.credentialStatus?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.VcJwt(vcJws),

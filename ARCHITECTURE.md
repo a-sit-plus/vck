@@ -347,9 +347,10 @@ a credential that only fails checks the policy may relax (`isIntactCredential`),
   A registered scheme supplies metadata even with empty or entirely optional claim descriptions; it then declares
   no mandatory claims and the check passes. Presentations disclose selectively, so the check does not apply to
   presented credentials.
-- A received credential is validated once, by the `HolderAgent` that stores it, with its key and validator: protocol
-  clients only decrypt and decode it into a `ReceivedCredential`, and one that can not be decoded is prepared as
-  rejected (`HolderAgent.rejectUndecodable`) instead of failing its batch. The stored credential is the validated one,
+- A received credential is validated once, by the `HolderAgent` that stores it, with its validator and bound to a
+  proof key of its request (`expectedHolderKeys`, OpenID4VCI 1.0, 8.3): protocol clients only decrypt and decode it
+  into a `ReceivedCredential`, and one that can not be decoded is prepared as rejected (`HolderAgent.rejectUndecodable`)
+  instead of failing its batch. The stored credential is the validated one,
   e.g. the `IssuerSigned` decoded from the issuer's bytes, which keeps every signed byte.
 - Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
   `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy

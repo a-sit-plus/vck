@@ -51,9 +51,7 @@ internal suspend fun evaluateIssuerSigned(
         certificateChain = signature.certificateChain,
         semantics = expectedIdentifier(context.expectedCredentialIdentifier, listOf(mso.docType)),
         disclosedItems = validateIssuerSignedItems(issuerSigned, mso),
-        holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
-            mso.holderKey() == key
-        },
+        holderBinding = holderBinding.check(context, mso.holderKey()),
         timeliness = mso.validityPeriod.timeliness(timeScope),
         status = mso.status?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.IsoMdoc(issuerSigned),

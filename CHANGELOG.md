@@ -66,6 +66,15 @@ Release 10.0.0 (unreleased):
       and the `VerifiablePresentationFactory` constructor taking one `KeyMaterial`
     - BREAKING: Presenting a credential bound to a key the holder doesn't have fails instead of being signed with the
       holder's key, as does a VC-JWT presentation of credentials bound to different keys or to none
+- Issuance (wallet):
+    - Check that a received credential is bound to a proof key of its request: `OpenId4VciClient.CredentialRequest`
+      records its `proofKeys`, which reach `HolderAgent.prepareCredentialStorage` as `expectedHolderKeys` through
+      `ReceivedCredential.Decoded.proofKeys`. `HolderBindingPolicy.RequireExpectedKey` accepts any of the new
+      `CredentialValidationContext.expectedHolderKeys`. Without expected keys, a `HolderAgent` with one key expects that
+      key, and one with a resolver blocks the check
+    - Deprecate `CredentialValidationContext.expectedHolderKey`, use `expectedHolderKeys`
+    - BREAKING: New parameters change `copy` and `componentN` of the data classes `CredentialValidationContext`,
+      `ReceivedCredential.Decoded`, and `OpenId4VciClient.CredentialRequest.Plain` and `.Encrypted`
 
 Release 9.0.0:
 

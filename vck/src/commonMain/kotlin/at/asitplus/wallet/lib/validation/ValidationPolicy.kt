@@ -71,9 +71,10 @@ data class ValidationPolicy(
      */
     val requireTimeliness: Boolean,
     /**
-     * Whether a credential validated on its own has to be bound to [CredentialValidationContext.expectedHolderKey].
-     * In a presentation, the presentation decides the holder binding of its credentials, e.g. a VC-JWT in a VP has to
-     * be bound to the key of the VP, and other artifacts have no holder, so it does not apply to them.
+     * Whether a credential validated on its own has to be bound to one of the
+     * [CredentialValidationContext.expectedHolderKeys]. In a presentation, the presentation decides the holder binding
+     * of its credentials, e.g. a VC-JWT in a VP has to be bound to the key of the VP, and other artifacts have no
+     * holder, so it does not apply to them.
      */
     val holderBinding: HolderBindingPolicy = HolderBindingPolicy.None,
     /**
@@ -126,7 +127,10 @@ sealed interface HolderBindingPolicy {
     /** The credential's holder binding is not compared to any key. */
     data object None : HolderBindingPolicy
 
-    /** The credential has to be bound to [CredentialValidationContext.expectedHolderKey]. */
+    /**
+     * The credential has to be bound to one of the expected keys of [CredentialValidationContext]; without any, the
+     * check is blocked.
+     */
     data object RequireExpectedKey : HolderBindingPolicy
 }
 
@@ -172,8 +176,21 @@ sealed interface RegistrationPolicy {
  * [expectedCredentialIdentifier] does not select trust anchors for a credential whose signed type differs.
  */
 data class CredentialValidationContext @JvmOverloads constructor(
-    /** The key the credential has to be bound to, see [HolderBindingPolicy.RequireExpectedKey]. */
+    /** A key the credential may be bound to, see [expectedHolderKeys]. */
+    @Deprecated(
+        "A credential may be bound to one of several expected keys: use expectedHolderKeys",
+    )
     val expectedHolderKey: CryptoPublicKey? = null,
     /** The signed `vct`, `docType`, or VC type the credential has to carry. */
     val expectedCredentialIdentifier: String? = null,
-)
+    /**
+     * The keys the credential may be bound to, e.g. the proof keys of its credential request (OpenID4VCI 1.0, 8.2), see
+     * [HolderBindingPolicy.RequireExpectedKey].
+     */
+    val expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
+) {
+    /** [expectedHolderKeys] and the deprecated [expectedHolderKey]. */
+    @Suppress("DEPRECATION")
+    internal val allExpectedHolderKeys: Set<CryptoPublicKey>
+        get() = expectedHolderKeys + setOfNotNull(expectedHolderKey)
+}

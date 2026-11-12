@@ -52,9 +52,7 @@ internal suspend fun evaluateSdJwtVc(
             else Passed,
         ),
         disclosedItems = processed.items,
-        holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
-            parsed.credential.holderKey() == key
-        },
+        holderBinding = holderBinding.check(context, parsed.credential.holderKey()),
         timeliness = parsed.credential.validityPeriod.timeliness(timeScope),
         status = parsed.credential.statusElement?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.SdJwtVc(
