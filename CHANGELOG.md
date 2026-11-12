@@ -86,6 +86,20 @@ processing.
       data element as a `[namespace, claimName]` array (`MdocClaimReference.ArraySerializer`)
     - BREAKING: Remove `NormalizedJsonPath.toIsoNamespaceAttribute()`. A requested claim can no longer have another
       shape than a name space and a data element identifier, so none is ignored with a warning any more
+    - BREAKING: `RequestOptionsCredential` with the representation `ISO_MDOC` reads its `attributePaths` and
+      `optionalAttributePaths` once, as `requestedMdocClaims` and `requestedOptionalMdocClaims`
+      (`MdocClaimReference`s): a pointer holds a data element identifier in the `isoNamespace` of the credential
+      scheme, or a name space and a data element identifier (ISO/IEC 18013-5:2021, 8.3.2.1.2.1). Any other pointer,
+      e.g. one with three names or an index, fails constructing the `RequestOptionsCredential`. `toDocRequest()` no
+      longer ignores pointers with three or more names, and the DCQL query of `CredentialPresentationRequestBuilder`
+      no longer puts a data element identifier into the name space `mdoc` when the credential scheme has no
+      `isoNamespace`. Remove `DCQLClaimsPathPointer.toIsoMdocClaimPath(scheme)` and
+      `DCQLClaimsPathPointer.toSingleItemsRequest()`
+    - `RequestOptionsCredential.toDocRequest()` also requests the data elements of `optionalAttributePaths`, as the
+      DCQL query does: a `DocRequest` marks no data element as optional (ISO/IEC 18013-5:2021, 8.3.2.1.2.1), and the
+      mdoc may answer with error codes for data elements it does not return (8.3.2.1.2.2). It fails for another
+      representation than `ISO_MDOC`. A data element requested twice, e.g. once with and once without its name space,
+      is requested once
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
