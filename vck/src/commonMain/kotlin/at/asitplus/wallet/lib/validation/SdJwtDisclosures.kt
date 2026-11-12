@@ -41,19 +41,26 @@ internal class ProcessedDisclosures(
 )
 
 /**
- * Processes [rawDisclosures] against [signedPayload], hashing each with [digest] over its original base64url string,
- * as the Holder or Verifier has to (RFC 9901, 7.1 *Verification of the SD-JWT*, step 3), but reporting every supplied
- * disclosure instead of aborting at the first problem:
- *  - `parsing`: decodes to a JSON array of two or three elements (RFC 9901, 4.2), without normalizing the input
+ * Processes [rawDisclosures] against [signedPayload] as the Holder or Verifier has to (RFC 9901, 7.1 *Verification of
+ * the SD-JWT*, step 3), hashing each with [digest] over the US-ASCII bytes of its original base64url string (step 3.a,
+ * 4.2.3). Instead of rejecting the SD-JWT at the first problem, it reports every supplied disclosure and leaves the
+ * rejection to the caller:
+ *  - `parsing`: decodes to a JSON array of three elements (salt, claim name, claim value) or two elements (salt,
+ *    claim value), whose salt and claim name are strings, without normalizing the input (4.2.1, 4.2.2)
  *  - `digest`: referenced by a digest in the payload, directly or recursively via other disclosures (step 5)
- *  - `structure`: an object property disclosure (three elements) for an `_sd` digest, whose claim name is not `_sd`
- *    or `...` and does not exist at that level already, an array element disclosure (two elements) for a `...`
- *    digest (step 3.c), and neither the disclosure nor its digest occur twice (step 4)
+ *  - `structure`: three elements for an `_sd` digest, with a claim name that is not `_sd` or `...` and does not exist
+ *    at that level already (step 3.c.ii.1 to 3), two elements for a `...` digest (step 3.c.iii.1), not supplied more
+ *    than once ("A Holder MUST NOT [...] send a Disclosure more than once", 4), and its digest not occurring more than
+ *    once in the payload (step 4)
  *
- * A digest without a supplied disclosure is ignored, i.e. a withheld claim (step 3.c.i), and its array element
- * removed (step 3.d). `_sd` keys and `_sd_alg` are removed from the result (steps 3.e and 3.f).
+ * A disclosure that fails a check is not applied, except the first occurrence of a repeated digest, which is applied
+ * before the repetition is found; it is left out of [ProcessedDisclosures.disclosuresByPath] though. A digest without a
+ * supplied disclosure, i.e. a withheld claim or a decoy, is ignored (step 3.c.i), and its array element removed
+ * (step 3.d). Disclosed values are processed recursively (steps 3.c.ii.5, 3.c.iii.3). `_sd` keys are removed, while
+ * an object left without properties stays `{}` (step 3.e), and the top-level `_sd_alg` is removed (step 3.f).
  *
- * A disclosure of one of the [notDisclosable] claims at the top level of the payload fails its structure check.
+ * A disclosure of one of the [notDisclosable] claims at the top level of the payload fails its structure check
+ * (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3).
  */
 internal fun processDisclosures(
     rawDisclosures: List<String>,
