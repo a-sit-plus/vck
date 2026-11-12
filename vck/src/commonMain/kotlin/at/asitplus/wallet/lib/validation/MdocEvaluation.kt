@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.catching
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.wallet.lib.agent.holderKey
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
@@ -51,7 +52,7 @@ internal suspend fun evaluateIssuerSigned(
         semantics = expectedIdentifier(context.expectedCredentialIdentifier, listOf(mso.docType)),
         disclosedItems = validateIssuerSignedItems(issuerSigned, mso),
         holderBinding = holderBinding.check(context.expectedHolderKey) { key ->
-            mso.deviceKeyInfo.deviceKey.toCryptoPublicKey().getOrNull() == key
+            mso.holderKey() == key
         },
         timeliness = mso.validityPeriod.timeliness(timeScope),
         status = mso.status?.let { TokenStatusInfo.from(it) },

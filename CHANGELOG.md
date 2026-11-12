@@ -48,6 +48,16 @@ Release 10.0.0 (unreleased):
 - Holder keys, so that a holder can use a different key for every credential:
     - Add `HolderKeyResolver`, which finds the `KeyMaterial` of the key a credential is bound to, and
       `HolderKeyResolver.single` for a holder with one key
+    - Add `StoreEntry.holderKey()`, the key a credential is bound to, `null` if none: the `cnf` key of an SD-JWT VC,
+      the `deviceKey` of an mdoc, and the `did:key` in the `sub` of a VC-JWT. DCQL matching uses this definition;
+      `CredentialValidator` still matches the `sub` of a VC-JWT
+    - Add `StoreEntry.isHolderBound()`, whether a credential is bound to a key at all: an SD-JWT VC with a `cnf`, every
+      mdoc, and a VC-JWT with a `did:key` in `sub`. Its `holderKey()` is `null` also if the key can't be read, e.g. a
+      `cnf` with a `kid` instead of a `jwk`, so DCQL matching uses `isHolderBound()`
+    - BREAKING: A VC-JWT whose `sub` is not a `did:key`, e.g. a JWK thumbprint, no longer counts as holder-bound in
+      DCQL matching. That was a VC-K convention without a basis in a specification: VCDM 1.1 defines `sub` as the `id`
+      of the `credentialSubject`, and only a `did:key` lets the key be derived from it. Issuers bind a VC-JWT to a key
+      with a `did:key` in `sub`
 
 Release 9.0.0:
 

@@ -152,7 +152,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
                 }
             } ?: mapOf()
         ),
-        satisfiesCryptographicHolderBinding = issuerSigned.issuerAuth.payload?.deviceKeyInfo != null,
+        satisfiesCryptographicHolderBinding = isHolderBound(),
         authorityKeyIdentifiers = issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
             X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
         } ?: listOf(),
@@ -163,7 +163,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
             CredentialToJsonConverter.toJsonElement(this)
         ),
-        satisfiesCryptographicHolderBinding = sdJwt.confirmationClaim != null,
+        satisfiesCryptographicHolderBinding = isHolderBound(),
         authorityKeyIdentifiers = SdJwtSigned.parseCatching(
             vcSerialized
         ).getOrThrow().jws.jwsHeader.certificateChain?.flatMap {
@@ -176,7 +176,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
             CredentialToJsonConverter.toJsonElement(this.vc)
         ),
-        satisfiesCryptographicHolderBinding = !vc.subject.isNullOrEmpty(),
+        satisfiesCryptographicHolderBinding = isHolderBound(),
         authorityKeyIdentifiers = JwsCompactTyped<VerifiableCredentialJws>(
             vcSerialized
         ).jws.jwsHeader.certificateChain?.flatMap {
