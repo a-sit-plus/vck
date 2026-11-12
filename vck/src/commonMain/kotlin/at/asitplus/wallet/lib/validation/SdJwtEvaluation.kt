@@ -15,10 +15,13 @@ import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Registered claims of an SD-JWT VC that must not be selectively disclosed (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3),
- * so they are read from the issuer-signed payload.
+ * Registered claims of an SD-JWT VC that must not be selectively disclosed, so they are read from the issuer-signed
+ * payload: "The following registered JWT claims, including any of their sub-claims, when used in the SD-JWT component
+ * of an SD-JWT VC, MUST NOT be included in Disclosures and therefore MUST NOT be selectively disclosed"
+ * (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3).
  */
-private val notDisclosable = setOf("iss", "nbf", "exp", "cnf", "vct", "vct#integrity", "aka_vcts", "status")
+internal val sdJwtVcNotDisclosableClaims =
+    setOf("iss", "nbf", "exp", "cnf", "vct", "vct#integrity", "aka_vcts", "status")
 
 /**
  * Evaluates an issued SD-JWT VC: parses it strictly, verifies the issuer signature, processes every supplied
@@ -39,7 +42,7 @@ internal suspend fun evaluateSdJwtVc(
     if (signature.outcome != Passed)
         return FormatEvaluation.WithoutPrerequisites(Passed, signature.outcome)
     val processed =
-        processDisclosures(parsed.sdJwtSigned.rawDisclosures, parsed.signedPayload, parsed.digest, notDisclosable)
+        processDisclosures(parsed.sdJwtSigned.rawDisclosures, parsed.signedPayload, parsed.digest, sdJwtVcNotDisclosableClaims)
     val vct = parsed.credential.verifiableCredentialType
     return FormatEvaluation.Evaluated(
         credentialIdentifier = vct,

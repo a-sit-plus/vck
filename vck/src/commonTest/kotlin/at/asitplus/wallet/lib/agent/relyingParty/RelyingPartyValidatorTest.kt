@@ -267,11 +267,28 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
-    "only the root vct is exempt from claim registration" - {
+    "root claims never selectively disclosed and their sub-claims are exempt from claim registration" - {
         listOf(
-            DCQLClaimsPathPointer("vct") to ACCEPTED,
-            DCQLClaimsPathPointer("address", "vct") to REJECTED,
-        ).asData() test { (path, decision) ->
+            "[\"vct\"]" to ACCEPTED,
+            "[\"vct#integrity\"]" to ACCEPTED,
+            "[\"aka_vcts\"]" to ACCEPTED,
+            "[\"aka_vcts\",0]" to ACCEPTED,
+            "[\"aka_vcts\",null]" to ACCEPTED,
+            "[\"iss\"]" to ACCEPTED,
+            "[\"nbf\"]" to ACCEPTED,
+            "[\"exp\"]" to ACCEPTED,
+            "[\"cnf\"]" to ACCEPTED,
+            "[\"cnf\",\"jwk\"]" to ACCEPTED,
+            "[\"cnf\",\"jwk\",\"x\"]" to ACCEPTED,
+            "[\"status\"]" to ACCEPTED,
+            "[\"status\",\"status_list\",\"idx\"]" to ACCEPTED,
+            "[\"sub\"]" to REJECTED,
+            "[\"iat\"]" to REJECTED,
+            "[\"address\",\"vct\"]" to REJECTED,
+            "[\"address\",\"cnf\"]" to REJECTED,
+            "[\"address\",\"iss\"]" to REJECTED,
+        ).asData() test { (request, decision) ->
+            val path = joseCompliantSerializer.decodeFromString(DCQLClaimsPathPointer.serializer(), request)
             val fixture = buildWrpFixture()
             val credential = WrpCredential(
                 format = "dc+sd-jwt",
