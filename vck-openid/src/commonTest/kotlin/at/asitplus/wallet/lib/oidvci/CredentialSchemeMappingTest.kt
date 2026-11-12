@@ -9,6 +9,8 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ExtractedIsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.ExtractedVcJwtCredentialScheme
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.toCredentialScheme
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataDefinition
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformation
@@ -23,6 +25,7 @@ import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 
 val CredentialSchemeMappingTest by matrixSuite {
 
@@ -66,6 +69,65 @@ val CredentialSchemeMappingTest by matrixSuite {
                 OpenId4VciClaimsPathPointer(AtomicAttribute2023.isoNamespace, AtomicAttribute2023.CLAIM_GIVEN_NAME)
         // The un-qualified JSON-style path must not be advertised for the ISO mdoc representation.
         paths shouldNotContain OpenId4VciClaimsPathPointer(AtomicAttribute2023.CLAIM_GIVEN_NAME)
+    }
+
+    test("AtomicAttribute plain JWT claims point into the VC, OpenID4VCI 1.0, C") {
+        val format = mapper.map(AtomicAttribute2023)[mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)]
+            .shouldNotBeNull()
+        val paths = format.credentialMetadata?.claimDescription.shouldNotBeNull().map { it.path }
+        paths shouldContain OpenId4VciClaimsPathPointer(
+            VcDataModelConstants.CREDENTIAL_SUBJECT,
+            AtomicAttribute2023.CLAIM_GIVEN_NAME,
+        )
+        paths shouldNotContain OpenId4VciClaimsPathPointer(AtomicAttribute2023.CLAIM_GIVEN_NAME)
+    }
+
+    test("plain JWT claims already starting with credentialSubject are not double-prefixed") {
+        val path = OpenId4VciClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT, "given_name")
+        val scheme = ExtractedVcJwtCredentialScheme(
+            vcType = "IDCredential",
+            claimDescriptions = setOf(ClaimDescription(path)),
+        )
+        val format = scheme.toPlainJwtSupportedCredentialFormat("identifier").second
+
+        format.credentialMetadata?.claimDescription.shouldNotBeNull().map { it.path } shouldBe listOf(path)
+    }
+
+    test("plain JWT claims at the root of the VC are advertised unchanged if the paths are qualified") {
+        val path = OpenId4VciClaimsPathPointer("issuer")
+        val scheme = ExtractedVcJwtCredentialScheme(
+            vcType = "IDCredential",
+            claimDescriptions = setOf(ClaimDescription(path)),
+            vcJwtClaimPathsAreQualified = true,
+        )
+
+        val format = scheme.toPlainJwtSupportedCredentialFormat("identifier").second
+
+        format.credentialMetadata?.claimDescription.shouldNotBeNull().map { it.path } shouldBe listOf(path)
+    }
+
+    test("plain JWT metadata paths are advertised without adding credentialSubject") {
+        val scheme = SdJwtTypeMetadataDefinition(
+            vct = SdJwtVcType("urn:test:vc-jwt-metadata"),
+            vckExtensions = SdJwtTypeMetadataVckExtensions(
+                format = at.asitplus.wallet.sdjwt.CredentialFormatEnum.JWT_VC,
+                vcType = "IDCredential",
+            ),
+            claims = SdJwtTypeMetadataClaimInformationList(listOf(
+                SdJwtTypeMetadataClaimInformation(
+                    path = SdJwtTypeMetadataClaimInformationPath(listOf(
+                        SdJwtTypeMetadataClaimInformationPathSegmentName("issuer"),
+                    )),
+                    isMandatory = true,
+                )
+            )),
+        ).toSdJwtTypeMetadata().toCredentialScheme()
+
+        val format = scheme.shouldBeInstanceOf<ExtractedVcJwtCredentialScheme>()
+            .toPlainJwtSupportedCredentialFormat("identifier").second
+
+        format.credentialMetadata?.claimDescription.shouldNotBeNull().map { it.path } shouldBe
+                listOf(OpenId4VciClaimsPathPointer("issuer"))
     }
 
     test("already namespace-qualified ISO claims are not double-prefixed") {
