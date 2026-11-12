@@ -6,7 +6,6 @@ import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.QesApprovalRequest
 import at.asitplus.openid.TransactionDataBase64Url
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
 import at.asitplus.openid.dcql.DCQLIsoMdocZkCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
@@ -62,9 +61,7 @@ internal class PresentationResponseCreator(
             submissions.mapIndexed { submissionIndex, it ->
                 val credential = it.credential
                 if (credential is StoreEntry.Vc && !query.requireCryptographicHolderBinding) {
-                    if (it.matchingResult !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
-                        throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
-                    }
+                    // presented as a whole, its claims are not selectively disclosable (OpenID4VP 1.0, 6.4.1)
                     CreatePresentationResult.VcJws(credential.vcSerialized)
                 } else {
                     verifiablePresentationFactory.createVerifiablePresentation(

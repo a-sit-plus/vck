@@ -113,6 +113,22 @@ processing.
       disclosed, with its sub-claims: `iss`, `nbf`, `exp`, `cnf`, `vct#integrity`, `aka_vcts`, and `status`
       (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3), since the holder can not withhold them. A request for e.g. `["iss"]` or
       `["cnf", "jwk"]` no longer needs to be registered; `sub`, `iat`, and nested claims of these names still do
+- OpenID4VP:
+    - BREAKING: Match DCQL claims paths for W3C VCs (`jwt_vc_json`) on the root of the VC, as OpenID4VP 1.0, B.1.2
+      requires, e.g. `["credentialSubject", "given_name"]`, instead of on the credential subject, so VC-K wallets and
+      verifiers interoperate with others. `CredentialToJsonConverter.toJsonElement` returns the VC itself for
+      `StoreEntry.Vc` and `VerifiableCredentialJws`, without the flattened subject claims, the `vc` array, and the
+      scheme identifier as `type`. VC-JWT queries with claims of VC-K 9.x verifiers (e.g. `["given_name"]`) no longer
+      match, queries without claims are not affected
+    - `CredentialPresentationRequestBuilder` prefixes `credentialSubject` to the `attributePaths` and
+      `optionalAttributePaths` of a VC-JWT `RequestOptionsCredential`, unless they already start with it (see
+      `toVcJwtClaimPath`), so callers keep naming claims about the subject as for the other representations
+    - The required claims of a VC-JWT type (`CredentialScheme.requiredClaims`) are qualified with `credentialSubject`
+      too, see `vcJwtQualifiedClaimDescriptions`
+    - Present a VC-JWT as a whole also if the DCQL query requests claims of it, since its claims are not selectively
+      disclosable (OpenID4VP 1.0, 6.4.1), instead of failing with "Credential type only allows disclosure of all
+      attributes"
+    - Add `VcDataModelConstants.CREDENTIAL_SUBJECT`
 
 Release 9.0.0:
 

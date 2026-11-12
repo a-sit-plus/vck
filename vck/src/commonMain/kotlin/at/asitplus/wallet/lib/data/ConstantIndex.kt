@@ -176,3 +176,20 @@ interface VcJwtCredentialScheme : CredentialScheme {
         get() = listOf(PLAIN_JWT)
 }
 
+/**
+ * The [claimDescriptions][CredentialScheme.claimDescriptions] with paths starting at the root of the W3C VC, as
+ * claims paths for W3C VCs do (OpenID4VP 1.0, B.1.2; OpenID4VCI 1.0, C): multi-format schemes (e.g.
+ * [ConstantIndex.AtomicAttribute2023]) share JSON-style claim descriptions of the subject across representations, so
+ * `credentialSubject` is prefixed unless the path already starts with it.
+ */
+val VcJwtCredentialScheme.vcJwtQualifiedClaimDescriptions: Set<ClaimDescription>
+    get() = claimDescriptions.map { it.qualifiedWithCredentialSubject() }.toSet()
+
+private fun ClaimDescription.qualifiedWithCredentialSubject(): ClaimDescription {
+    val firstSegment = path.firstOrNull()
+    val alreadyQualified = firstSegment is OpenId4VciClaimsPathPointerSegmentString &&
+            firstSegment.string == VcDataModelConstants.CREDENTIAL_SUBJECT
+    return if (alreadyQualified) this
+    else copy(path = OpenId4VciClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT) + path)
+}
+

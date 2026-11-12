@@ -14,7 +14,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -27,18 +26,7 @@ import kotlin.time.Instant
 object CredentialToJsonConverter {
 
     fun toJsonElement(credential: SubjectCredentialStore.StoreEntry): JsonElement = when (credential) {
-        is SubjectCredentialStore.StoreEntry.Vc -> buildJsonObject {
-            put("type", JsonPrimitive(credential.schemeIdentifier))
-            val vcAsJsonElement = joseCompliantSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject)
-            vcAsJsonElement.jsonObject.entries.forEach {
-                put(it.key, it.value)
-            }
-            // TODO: Remove the rest here when there is a clear specification on how to encode vc credentials
-            //  This may actually depend on the presentation context, so more information may be required
-            put("vc", buildJsonArray {
-                add(vcAsJsonElement)
-            })
-        }
+        is SubjectCredentialStore.StoreEntry.Vc -> toJsonElement(credential.vc)
 
         // The claims as RFC 9901, 7.1 processes them, so that the positions DCQL selects are those of
         // SdJwtDecoded.disclosuresByPath, from which the disclosures to present are taken
@@ -54,7 +42,7 @@ object CredentialToJsonConverter {
 
     /**
      * The claims of a validated credential, e.g. to display them: the reconstructed claims of an SD-JWT VC, the
-     * credential subject of a VC-JWT as in [toJsonElement], and the elements of an ISO mdoc by namespace.
+     * root of the VC of a VC-JWT as in [toJsonElement], and the elements of an ISO mdoc by namespace.
      */
     fun toJsonElement(credential: ValidatedCredential): JsonObject = when (credential) {
         is ValidatedCredential.SdJwtVc -> credential.decoded.reconstructedJsonObject
@@ -72,17 +60,12 @@ object CredentialToJsonConverter {
         }
     }
 
-    fun toJsonElement(verifiableCredentialJws: VerifiableCredentialJws) = buildJsonObject {
-        val vcAsJsonElement = joseCompliantSerializer.encodeToJsonElement(verifiableCredentialJws.vc.credentialSubject)
-        vcAsJsonElement.jsonObject.entries.forEach {
-            put(it.key, it.value)
-        }
-        // TODO: Remove the rest here when there is a clear specification on how to encode vc credentials
-        //  This may actually depend on the presentation context, so more information may be required
-        put("vc", buildJsonArray {
-            add(vcAsJsonElement)
-        })
-    }
+    /**
+     * The root of the W3C VC, i.e. the `vc` claim of the JWT (W3C VC Data Model 1.1, 6.3.1), which DCQL claims paths
+     * "always match on" for W3C VCs (OpenID4VP 1.0, B.1.2), e.g. `["credentialSubject", "given_name"]`.
+     */
+    fun toJsonElement(verifiableCredentialJws: VerifiableCredentialJws): JsonObject =
+        joseCompliantSerializer.encodeToJsonElement(verifiableCredentialJws.vc).jsonObject
 
     /**
      * Converts any value to a [JsonElement], to be used when serializing values into JSON structures. A value of a type
