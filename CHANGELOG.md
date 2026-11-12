@@ -58,6 +58,14 @@ Release 10.0.0 (unreleased):
       DCQL matching. That was a VC-K convention without a basis in a specification: VCDM 1.1 defines `sub` as the `id`
       of the `credentialSubject`, and only a `did:key` lets the key be derived from it. Issuers bind a VC-JWT to a key
       with a `did:key` in `sub`
+- Presentation:
+    - Sign every presentation with the key its credential is bound to: `HolderAgent` and
+      `VerifiablePresentationFactory` get constructors taking a `HolderKeyResolver`, the factory with signer factories
+      such as `signKeyBinding: (KeyMaterial) -> SignJwtFun<KeyBindingJws>` instead of fixed signers
+    - Add `Holder.holderKeyResolver`. Deprecate `Holder.keyMaterial`, which fails for a `HolderAgent` with a resolver,
+      and the `VerifiablePresentationFactory` constructor taking one `KeyMaterial`
+    - BREAKING: Presenting a credential bound to a key the holder doesn't have fails instead of being signed with the
+      holder's key, as does a VC-JWT presentation of credentials bound to different keys or to none
 
 Release 9.0.0:
 

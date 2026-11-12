@@ -34,6 +34,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult.*
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsCompact
@@ -67,23 +68,96 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 
-class VerifiablePresentationFactory(
-    private val keyMaterial: KeyMaterial,
-    private val signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
-        SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
-    private val signKeyBinding: SignJwtFun<KeyBindingJws> =
-        SignJwt(keyMaterial, JwsHeaderNone()),
-    private val mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
-    private val signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
-        keyMaterial = keyMaterial,
-        protectedHeaderModifier = CoseHeaderNone(),
-        unprotectedHeaderModifier = CoseHeaderNone()
-    ),
+/**
+ * Creates presentations of stored credentials, each signed with the key its credential is bound to (see
+ * [StoreEntry.holderKey]), as [holderKeyResolver] finds it. Signs one presentation after the other.
+ */
+class VerifiablePresentationFactory private constructor(
+    private val holderKeyResolver: HolderKeyResolver,
+    private val signers: Signers,
+    private val mdocZkEngine: IsoMdocZkEngine,
     /** Clock to use for timestamps in the presentations generated. */
-    private val clock: Clock = Clock.System,
+    private val clock: Clock,
 ) {
+    /** The signers to use with a resolved holder key. */
+    private class Signers(
+        val verifiablePresentation: (KeyMaterial) -> SignJwtFun<VerifiablePresentationJws>,
+        val keyBinding: (KeyMaterial) -> SignJwtFun<KeyBindingJws>,
+        val deviceAuthDetached: (KeyMaterial) -> SignCoseDetachedFun<ByteArray>,
+    )
+
+    /** Signs each credential with its key from [holderKeyResolver], using signers built by the given factories. */
+    @JvmOverloads
+    constructor(
+        holderKeyResolver: HolderKeyResolver,
+        signVerifiablePresentation: (KeyMaterial) -> SignJwtFun<VerifiablePresentationJws> =
+            { SignJwt(it, JwsHeaderCertOrJwk()) },
+        signKeyBinding: (KeyMaterial) -> SignJwtFun<KeyBindingJws> = { SignJwt(it, JwsHeaderNone()) },
+        mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
+        signDeviceAuthDetached: (KeyMaterial) -> SignCoseDetachedFun<ByteArray> = {
+            SignCoseDetached(
+                keyMaterial = it,
+                protectedHeaderModifier = CoseHeaderNone(),
+                unprotectedHeaderModifier = CoseHeaderNone()
+            )
+        },
+        clock: Clock = Clock.System,
+    ) : this(
+        holderKeyResolver = holderKeyResolver,
+        signers = Signers(signVerifiablePresentation, signKeyBinding, signDeviceAuthDetached),
+        mdocZkEngine = mdocZkEngine,
+        clock = clock,
+    )
+
+    /** Signs with [keyMaterial] and the given signers, for credentials bound to [keyMaterial] only. */
+    @Deprecated(
+        "Use the constructor taking a holderKeyResolver, which signs each credential with the key it is bound to",
+        ReplaceWith(
+            "VerifiablePresentationFactory(holderKeyResolver = HolderKeyResolver.single(keyMaterial), " +
+                    "signVerifiablePresentation = { signVerifiablePresentation }, signKeyBinding = { signKeyBinding }, " +
+                    "mdocZkEngine = mdocZkEngine, signDeviceAuthDetached = { signDeviceAuthDetached }, clock = clock)",
+            "at.asitplus.wallet.lib.agent.HolderKeyResolver",
+        )
+    )
+    @JvmOverloads
+    constructor(
+        keyMaterial: KeyMaterial,
+        signVerifiablePresentation: SignJwtFun<VerifiablePresentationJws> =
+            SignJwt(keyMaterial, JwsHeaderCertOrJwk()),
+        signKeyBinding: SignJwtFun<KeyBindingJws> =
+            SignJwt(keyMaterial, JwsHeaderNone()),
+        mdocZkEngine: IsoMdocZkEngine = IsoMdocZkEngine(),
+        signDeviceAuthDetached: SignCoseDetachedFun<ByteArray> = SignCoseDetached(
+            keyMaterial = keyMaterial,
+            protectedHeaderModifier = CoseHeaderNone(),
+            unprotectedHeaderModifier = CoseHeaderNone()
+        ),
+        clock: Clock = Clock.System,
+    ) : this(
+        holderKeyResolver = HolderKeyResolver.single(keyMaterial),
+        signers = Signers({ signVerifiablePresentation }, { signKeyBinding }, { signDeviceAuthDetached }),
+        mdocZkEngine = mdocZkEngine,
+        clock = clock,
+    )
+
+    /**
+     * The key [credential] is bound to, failing if it is not holder-bound, if its key can't be read, e.g. a `cnf` with a
+     * `kid`, or if the key can't be resolved.
+     */
+    private suspend fun holderKeyOf(credential: StoreEntry): KeyMaterial {
+        val boundKey = credential.holderKey()
+            ?: throw PresentationException(
+                if (credential.isHolderBound()) "The credential is bound to a holder key that can't be read"
+                else "The credential is not bound to a holder key"
+            )
+        return holderKeyResolver.resolve(boundKey).getOrElse {
+            throw PresentationException("The holder key of the credential can not be used", it)
+        }
+    }
+
     /**
      * Creates one Device Response while preserving every selected document and its order. A collection is used rather
      * than a map because one credential may satisfy more than one `DocRequest`.
@@ -171,25 +245,27 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         isoPresentationParameters: Collection<IsoPresentationParameters>,
     ): CreatePresentationResult.DeviceResponse {
-        suspend fun disclosePlainDocument(param: IsoPresentationParameters) = param.credential
-            .discloseRequestedClaims(param.claims, request)
+        suspend fun disclosePlainDocument(param: IsoPresentationParameters, keyMaterial: KeyMaterial) = param.credential
+            .discloseRequestedClaims(param.claims, request, signers.deviceAuthDetached(keyMaterial))
             .getOrThrow()
 
         val plainDocuments = mutableListOf<Document>()
         val zkDocuments = mutableListOf<ZkDocument>()
 
+        // One document after the other, each signed with its credential's key
         isoPresentationParameters.forEach { param ->
+            val keyMaterial = holderKeyOf(param.credential)
             val zkMetadata = param.zkMetadata
             if (zkMetadata is ZkMetadata.IsoMdocZk) {
                 mdocZkEngine.generate(request, param, keyMaterial, clock.now()).fold(
                     onSuccess = { zkDocuments += it.zkDocument },
                     onFailure = { error ->
                         if (zkMetadata.zkRequest.zkRequired) throw error
-                        plainDocuments += disclosePlainDocument(param)
+                        plainDocuments += disclosePlainDocument(param, keyMaterial)
                     }
                 )
             } else {
-                plainDocuments += disclosePlainDocument(param)
+                plainDocuments += disclosePlainDocument(param, keyMaterial)
             }
         }
 
@@ -208,6 +284,7 @@ class VerifiablePresentationFactory(
     private suspend fun StoreEntry.Iso.discloseRequestedClaims(
         requestedClaims: Collection<NormalizedJsonPath>,
         request: PresentationRequestParameters,
+        signDeviceAuthDetached: SignCoseDetachedFun<ByteArray>,
     ): KmmResult<Document> = catching {
         // grouping by namespace and all requested claims for that namespace
         val namespaceToAttributesMap: Map<String, List<String>> = requestedClaims
@@ -278,7 +355,7 @@ class VerifiablePresentationFactory(
     ): CreatePresentationResult.SdJwt {
         val digest = validSdJwtCredential.sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
         val digestInput = SdJwtSigned.sdHashInput(validSdJwtCredential, disclosures)
-        val keyBinding = createKeyBindingJws(request, digestInput, digest)
+        val keyBinding = createKeyBindingJws(request, digestInput, digest, holderKeyOf(validSdJwtCredential))
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
             catching { JwsCompact(issuerSignedJwsSerialized) }
@@ -408,7 +485,8 @@ class VerifiablePresentationFactory(
         request: PresentationRequestParameters,
         hashInput: String,
         digest: Digest,
-    ): JwsCompactTyped<KeyBindingJws> = signKeyBinding(
+        keyMaterial: KeyMaterial,
+    ): JwsCompactTyped<KeyBindingJws> = signers.keyBinding(keyMaterial)(
         JwsContentTypeConstants.KB_JWT,
         KeyBindingJws(
             issuedAt = clock.now().truncateToSeconds(),
@@ -460,26 +538,34 @@ class VerifiablePresentationFactory(
     }
 
     /**
-     * Creates a [VerifiablePresentation] with the given [validCredentials].
+     * Creates a [VerifiablePresentation] with the given [validCredentials], signed with the key they are all bound to,
+     * failing if they are bound to different keys or to none.
      *
      * Note: The caller is responsible that only valid credentials are passed to this function!
      */
     suspend fun createVcPresentation(
         validCredentials: List<StoreEntry.Vc>,
         request: PresentationRequestParameters,
-    ): CreatePresentationResult.VcJwsPresentationData = with(
-        signVerifiablePresentation(
-            JwsContentTypeConstants.JWT,
-            VerifiablePresentation(validCredentials.map { it.vcSerialized }).toJws(
-                request.nonce,
-                keyMaterial.publicKey.didEncoded,
-                request.audience
-            ),
-            VerifiablePresentationJws.serializer(),
-        ).getOrElse {
-            throw PresentationException(it)
-        }) {
-        CreatePresentationResult.VpJws(toString(), this)
+    ): CreatePresentationResult.VcJwsPresentationData {
+        val keyMaterial = holderKeyOf(
+            validCredentials.firstOrNull() ?: throw PresentationException("No credentials to present")
+        )
+        if (validCredentials.any { it.holderKey()?.equalsCryptographically(keyMaterial.publicKey) != true })
+            throw PresentationException("A credential is not bound to the key of the presentation")
+        return with(
+            signers.verifiablePresentation(keyMaterial)(
+                JwsContentTypeConstants.JWT,
+                VerifiablePresentation(validCredentials.map { it.vcSerialized }).toJws(
+                    request.nonce,
+                    keyMaterial.publicKey.didEncoded,
+                    request.audience
+                ),
+                VerifiablePresentationJws.serializer(),
+            ).getOrElse {
+                throw PresentationException(it)
+            }) {
+            CreatePresentationResult.VpJws(toString(), this)
+        }
     }
 }
 

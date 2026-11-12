@@ -443,6 +443,11 @@ VC-K uses Signum for crypto, ASN.1, JOSE, and COSE types. Do not introduce paral
 external API requires an adapter. Application-facing signing hooks usually flow through `KeyMaterial`, `Signer`, or
 specific signing/verification function types.
 
+A holder may bind every credential to its own key. `HolderAgent` and `VerifiablePresentationFactory` find the key of a
+credential with a `HolderKeyResolver`, from the key the credential is bound to (`StoreEntry.holderKey()`), and sign
+each presentation with it, e.g. the KB-JWT with the key in `cnf` (SD-JWT VC, 2.2.2.3). `HolderKeyResolver.single`
+serves a holder with one key.
+
 Use `KmmResult` for public multiplatform APIs that need Swift-friendly result handling. Avoid replacing it with
 Kotlin's inline `Result` in public APIs. Use `catching` to produce `KmmResult`, and `catchingUnwrapped` when an internal
 Kotlin `Result` is sufficient. Both let fatal exceptions and cancellation bubble up.

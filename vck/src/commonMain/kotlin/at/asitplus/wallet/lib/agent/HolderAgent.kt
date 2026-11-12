@@ -42,27 +42,80 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * An agent that only implements [Holder], i.e. it can receive credentials from other agents
  * and present credentials to other agents.
+ *
+ * With one [KeyMaterial], all credentials are bound to that key. With a [HolderKeyResolver], each credential may have
+ * its own key, which is resolved when presenting it.
  */
-class HolderAgent @JvmOverloads constructor(
-    override val keyMaterial: KeyMaterial,
-    private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-    private val verifiablePresentationFactory: VerifiablePresentationFactory =
-        VerifiablePresentationFactory(keyMaterial = keyMaterial),
-    /**
-     * Validates credentials before they are stored, see [storeCredentialWithReport], and orders stored credentials by
-     * their time and status, see [getValidCredentialsByPriority], unless [orderingValidator] is set. Configure it with
-     * the trust anchors per credential type and the status list token resolver; without trust anchors,
-     * [storeCredential] checks integrity only.
-     */
-    private val credentialValidator: CredentialValidator = CredentialValidator(),
-    /**
-     * Orders stored credentials by their time and status when matching them against a presentation request, see
-     * [getValidCredentialsByPriority]: e.g. with a status list token resolver that returns cached tokens only, so
-     * that matching, and creating a presentation, never waits for the network. A status that can not be resolved
-     * does not demote a credential. By default [credentialValidator].
-     */
-    private val orderingValidator: CredentialValidator = credentialValidator,
+class HolderAgent private constructor(
+    /** `null` for a holder with a [HolderKeyResolver]. */
+    private val singleKey: KeyMaterial?,
+    override val holderKeyResolver: HolderKeyResolver,
+    private val subjectCredentialStore: SubjectCredentialStore,
+    private val verifiablePresentationFactory: VerifiablePresentationFactory,
+    private val credentialValidator: CredentialValidator,
+    private val orderingValidator: CredentialValidator,
 ) : Holder {
+
+    /**
+     * A holder whose credentials are all bound to [keyMaterial].
+     *
+     * @param credentialValidator Validates credentials before they are stored, see [storeCredentialWithReport], and
+     * orders stored credentials by their time and status, see [getValidCredentialsByPriority], unless
+     * [orderingValidator] is set. Configure it with the trust anchors per credential type and the status list token
+     * resolver; without trust anchors, [storeCredential] checks integrity only.
+     * @param orderingValidator Orders stored credentials by their time and status when matching them against a
+     * presentation request, see [getValidCredentialsByPriority]: e.g. with a status list token resolver that returns
+     * cached tokens only, so that matching, and creating a presentation, never waits for the network. A status that
+     * can not be resolved does not demote a credential. By default [credentialValidator].
+     */
+    @JvmOverloads
+    constructor(
+        keyMaterial: KeyMaterial,
+        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
+        verifiablePresentationFactory: VerifiablePresentationFactory =
+            VerifiablePresentationFactory(holderKeyResolver = HolderKeyResolver.single(keyMaterial)),
+        credentialValidator: CredentialValidator = CredentialValidator(),
+        orderingValidator: CredentialValidator = credentialValidator,
+    ) : this(
+        singleKey = keyMaterial,
+        holderKeyResolver = HolderKeyResolver.single(keyMaterial),
+        subjectCredentialStore = subjectCredentialStore,
+        verifiablePresentationFactory = verifiablePresentationFactory,
+        credentialValidator = credentialValidator,
+        orderingValidator = orderingValidator,
+    )
+
+    /**
+     * A holder whose credentials may each have their own key, found by [holderKeyResolver]. Pass the resolver by name,
+     * as a trailing lambda would also match this constructor. Storing a credential needs its expected keys, see
+     * [prepareCredentialStorage].
+     *
+     * @param credentialValidator see the constructor taking a [KeyMaterial]
+     * @param orderingValidator see the constructor taking a [KeyMaterial]
+     */
+    @JvmOverloads
+    constructor(
+        holderKeyResolver: HolderKeyResolver,
+        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
+        verifiablePresentationFactory: VerifiablePresentationFactory =
+            VerifiablePresentationFactory(holderKeyResolver = holderKeyResolver),
+        credentialValidator: CredentialValidator = CredentialValidator(),
+        orderingValidator: CredentialValidator = credentialValidator,
+    ) : this(
+        singleKey = null,
+        holderKeyResolver = holderKeyResolver,
+        subjectCredentialStore = subjectCredentialStore,
+        verifiablePresentationFactory = verifiablePresentationFactory,
+        credentialValidator = credentialValidator,
+        orderingValidator = orderingValidator,
+    )
+
+    /** The one key of this holder. Fails for a holder with a [HolderKeyResolver]. */
+    @Deprecated("A holder may use a different key for every credential, use holderKeyResolver")
+    override val keyMaterial: KeyMaterial
+        get() = singleKey ?: throw UnsupportedOperationException(
+            "This holder has been constructed with a HolderKeyResolver, use holderKeyResolver"
+        )
 
     private val presentationResponseCreator = PresentationResponseCreator(verifiablePresentationFactory)
 
@@ -122,7 +175,7 @@ class HolderAgent @JvmOverloads constructor(
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
     ): KmmResult<PreparedCredentialStorage> = catching {
-        PreparedCredentialStorage(credential, validate(credential, policy), renewalInfo, keyMaterial.publicKey)
+        PreparedCredentialStorage(credential, validate(credential, policy), renewalInfo, singleKey?.publicKey)
     }
 
     /**
@@ -149,7 +202,7 @@ class HolderAgent @JvmOverloads constructor(
             credential = validation.unacceptedCredential?.let { input.toStoreCredentialInput(it, scheme) },
             validation = validation,
             renewalInfo = renewalInfo,
-            holderKey = keyMaterial.publicKey,
+            holderKey = singleKey?.publicKey,
         )
     }
 
@@ -167,7 +220,7 @@ class HolderAgent @JvmOverloads constructor(
         credential = null,
         validation = credentialValidator.rejectUndecodable(cause, policy.boundToHolder()),
         renewalInfo = renewalInfo,
-        holderKey = keyMaterial.publicKey,
+        holderKey = singleKey?.publicKey,
     )
 
     /**
@@ -209,8 +262,12 @@ class HolderAgent @JvmOverloads constructor(
         )
     }
 
-    private fun PreparedCredentialStorage.requireHolder() = require(holderKey == keyMaterial.publicKey) {
-        "The credential has been prepared for another holder"
+    /** The key the credential of [this] has been validated against is still a key of this holder. */
+    private suspend fun PreparedCredentialStorage.requireHolder() {
+        val key = requireNotNull(holderKey) { "The credential has not been prepared for a holder key" }
+        holderKeyResolver.resolve(key).getOrElse {
+            throw IllegalArgumentException("The credential has been prepared for another holder", it)
+        }
     }
 
     private suspend fun validate(
@@ -241,7 +298,7 @@ class HolderAgent @JvmOverloads constructor(
     }
 
     private fun context(credentialIdentifier: String) = CredentialValidationContext(
-        expectedHolderKey = keyMaterial.publicKey,
+        expectedHolderKey = singleKey?.publicKey,
         expectedCredentialIdentifier = credentialIdentifier,
     )
 
