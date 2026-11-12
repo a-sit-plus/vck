@@ -45,6 +45,10 @@ Release 10.0.0 (unreleased):
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
 
+- Holder keys, so that a holder can use a different key for every credential:
+    - Add `HolderKeyResolver`, which finds the `KeyMaterial` of the key a credential is bound to, and
+      `HolderKeyResolver.single` for a holder with one key
+
 Release 9.0.0:
 
 The new validation API (`CredentialValidator`, `RelyingPartyValidator`, `IssuerMetadataValidator`) reports every check
