@@ -129,6 +129,10 @@ processing.
       disclosable (OpenID4VP 1.0, 6.4.1), instead of failing with "Credential type only allows disclosure of all
       attributes"
     - Add `VcDataModelConstants.CREDENTIAL_SUBJECT`
+- OpenID4VCI:
+    - BREAKING: Advertise the claims of a `jwt_vc_json` credential configuration as paths into the VC (OpenID4VCI
+      1.0, C), e.g. `["credentialSubject", "given_name"]` instead of `["given_name"]`, see
+      `toPlainJwtSupportedCredentialFormat`
 
 Release 9.0.0:
 

@@ -9,6 +9,8 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ExtractedIsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.ExtractedVcJwtCredentialScheme
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.toCredentialScheme
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataDefinition
 import at.asitplus.wallet.sdjwt.SdJwtTypeMetadataClaimInformation
@@ -66,6 +68,28 @@ val CredentialSchemeMappingTest by matrixSuite {
                 OpenId4VciClaimsPathPointer(AtomicAttribute2023.isoNamespace, AtomicAttribute2023.CLAIM_GIVEN_NAME)
         // The un-qualified JSON-style path must not be advertised for the ISO mdoc representation.
         paths shouldNotContain OpenId4VciClaimsPathPointer(AtomicAttribute2023.CLAIM_GIVEN_NAME)
+    }
+
+    test("AtomicAttribute plain JWT claims point into the VC, OpenID4VCI 1.0, C") {
+        val format = mapper.map(AtomicAttribute2023)[mapper.toCredentialIdentifier(AtomicAttribute2023, PLAIN_JWT)]
+            .shouldNotBeNull()
+        val paths = format.credentialMetadata?.claimDescription.shouldNotBeNull().map { it.path }
+        paths shouldContain OpenId4VciClaimsPathPointer(
+            VcDataModelConstants.CREDENTIAL_SUBJECT,
+            AtomicAttribute2023.CLAIM_GIVEN_NAME,
+        )
+        paths shouldNotContain OpenId4VciClaimsPathPointer(AtomicAttribute2023.CLAIM_GIVEN_NAME)
+    }
+
+    test("plain JWT claims already starting with credentialSubject are not double-prefixed") {
+        val path = OpenId4VciClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT, "given_name")
+        val scheme = ExtractedVcJwtCredentialScheme(
+            vcType = "IDCredential",
+            claimDescriptions = setOf(ClaimDescription(path)),
+        )
+        val format = scheme.toPlainJwtSupportedCredentialFormat("identifier").second
+
+        format.credentialMetadata?.claimDescription.shouldNotBeNull().map { it.path } shouldBe listOf(path)
     }
 
     test("already namespace-qualified ISO claims are not double-prefixed") {
