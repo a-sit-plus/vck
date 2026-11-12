@@ -347,9 +347,10 @@ a credential that only fails checks the policy may relax (`isIntactCredential`),
   A registered scheme supplies metadata even with empty or entirely optional claim descriptions; it then declares
   no mandatory claims and the check passes. Presentations disclose selectively, so the check does not apply to
   presented credentials.
-- A received credential is validated once, by the `HolderAgent` that stores it, with its key and validator: protocol
-  clients only decrypt and decode it into a `ReceivedCredential`, and one that can not be decoded is prepared as
-  rejected (`HolderAgent.rejectUndecodable`) instead of failing its batch. The stored credential is the validated one,
+- A received credential is validated once, by the `HolderAgent` that stores it, with its validator and bound to a
+  proof key of its request (`expectedHolderKeys`, OpenID4VCI 1.0, 8.3): protocol clients only decrypt and decode it
+  into a `ReceivedCredential`, and one that can not be decoded is prepared as rejected (`HolderAgent.rejectUndecodable`)
+  instead of failing its batch. The stored credential is the validated one,
   e.g. the `IssuerSigned` decoded from the issuer's bytes, which keeps every signed byte.
 - Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
   `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy
@@ -385,7 +386,9 @@ work with any HTTP stack. Code is placed by where its output goes:
 
 - Everything inside a request or response body stays in the parameter builders `OAuth2Client` and `OpenId4VciClient`,
   and in `OpenId4VpHolder` and `RequestParser` for OpenID4VP: PKCE, JAR, scope and authorization details, credential
-  request proofs, key attestations, encryption, request object parsing and decryption, presentations.
+  request proofs, key attestations, encryption, request object parsing and decryption, presentations. The proof
+  creators take the key of every credential request, also of a retry, from a `ProofKeySupplier`, as a key may be in
+  only one key attestation (TS3, 2.2.2.1).
 - Everything that ends up in an HTTP header or depends on HTTP responses lives in `OAuth2ProtocolClient`,
   `OpenId4VciProtocolClient` and `OpenId4VpProtocolClient`: `Authorization`, DPoP proofs and nonces, client
   attestation and its PoP, attestation challenges, retries, and response parsing, e.g. the `redirect_uri` in the
@@ -442,6 +445,11 @@ the integrator's controllers, e.g. `Cache-Control: no-store`, `DPoP-Nonce`, `OAu
 VC-K uses Signum for crypto, ASN.1, JOSE, and COSE types. Do not introduce parallel crypto representations unless an
 external API requires an adapter. Application-facing signing hooks usually flow through `KeyMaterial`, `Signer`, or
 specific signing/verification function types.
+
+A holder may bind every credential to its own key. `HolderAgent` and `VerifiablePresentationFactory` find the key of a
+credential with a `HolderKeyResolver`, from the key the credential is bound to (`StoreEntry.holderKey()`), and sign
+each presentation with it, e.g. the KB-JWT with the key in `cnf` (SD-JWT VC, 2.2.2.3). `HolderKeyResolver.single`
+serves a holder with one key.
 
 Use `KmmResult` for public multiplatform APIs that need Swift-friendly result handling. Avoid replacing it with
 Kotlin's inline `Result` in public APIs. Use `catching` to produce `KmmResult`, and `catchingUnwrapped` when an internal

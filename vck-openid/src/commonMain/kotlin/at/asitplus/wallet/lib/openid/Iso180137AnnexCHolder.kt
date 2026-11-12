@@ -21,9 +21,15 @@ import kotlin.jvm.JvmOverloads
  * both protocols are transported through the same browser API.
  */
 class Iso180137AnnexCHolder @JvmOverloads constructor(
-    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val holder: Holder = HolderAgent(keyMaterial),
+    private val holder: Holder = HolderAgent(keyMaterial = EphemeralKeyWithoutCert()),
 ) {
+
+    @Deprecated("keyMaterial is not used: use the constructor taking only the holder", ReplaceWith("Iso180137AnnexCHolder(holder)"))
+    @JvmOverloads
+    constructor(
+        @Suppress("UNUSED_PARAMETER") keyMaterial: KeyMaterial,
+        holder: Holder = HolderAgent(keyMaterial),
+    ) : this(holder)
 
     /** Adapts the Annex C device request to the presentation model used by VC-K's credential matcher. */
     fun createPresentationRequest(

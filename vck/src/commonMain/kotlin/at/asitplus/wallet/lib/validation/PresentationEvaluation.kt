@@ -218,7 +218,7 @@ internal suspend fun evaluateVpJwtPresentation(
             input = CredentialValidationInput.VcJwt(vc),
             signatureCheck = signatureCheck,
             holderBinding = holderBinding,
-            context = CredentialValidationContext(expectedHolderKey = holderKey),
+            context = CredentialValidationContext(expectedHolderKeys = setOfNotNull(holderKey)),
             timeScope = timeScope,
         )
         complete(evaluation, holderBinding)

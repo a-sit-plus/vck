@@ -27,7 +27,6 @@ import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.signum.supreme.UserInitiatedCancellationReason
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -240,17 +239,6 @@ class OpenId4VpHolder @JvmOverloads constructor(
         }.let {
             authenticationResponseFactory.createAuthenticationResponse(preparationState, it)
         }
-    }
-
-    private fun Throwable.getUserSignatureCancellationException(): UserInitiatedCancellationReason? {
-        var current: Throwable? = this
-        while (current != null) {
-            if (current is UserInitiatedCancellationReason) {
-                return current // DON'T send error response for user cancellation
-            }
-            current = current.cause
-        }
-        return null
     }
 
     /**

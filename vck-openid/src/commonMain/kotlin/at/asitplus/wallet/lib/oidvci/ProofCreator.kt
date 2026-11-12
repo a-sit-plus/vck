@@ -8,6 +8,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ProofTypes
 import at.asitplus.openid.SupportedCredentialFormat
 import at.asitplus.openid.truncateToSeconds
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -17,6 +18,7 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oidvci.OpenId4VciClient.KeyAttestationInput
+import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -40,7 +42,7 @@ interface ProofCreator {
      * @param clientNonce the `c_nonce` from the Nonce Endpoint of the issuer (7.2), if it has one
      * @return `null` if the issuer does not accept the proof type of this creator for [credentialFormat], or a failure
      * if the proof can not be created, e.g. without a key attestation the issuer requires; either way, the next creator
-     * is asked
+     * is asked, unless the user cancelled the signature
      */
     suspend fun invoke(
         credentialIssuer: String,
@@ -48,25 +50,86 @@ interface ProofCreator {
         clientId: String,
         clientNonce: String?,
     ): KmmResult<CredentialRequestProofContainer?>
+
+    /**
+     * Creates the proof like [invoke], together with the key it proves, which the issued credential has to be bound
+     * to. [OpenId4VciClient] calls this one. Implement it to report the key; by default it returns the proof of
+     * [invoke] with an unknown key (`null`), so a creator that only implements [invoke] keeps working with a holder of
+     * one key, see [at.asitplus.wallet.lib.agent.HolderAgent.prepareCredentialStorage].
+     *
+     * @return the proof and its key, see [invoke]
+     */
+    suspend fun createProof(
+        credentialIssuer: String,
+        credentialFormat: SupportedCredentialFormat,
+        clientId: String,
+        clientNonce: String?,
+    ): KmmResult<CreatedProof?> = invoke(credentialIssuer, credentialFormat, clientId, clientNonce)
+        .map { proofs -> proofs?.let { CreatedProof(it, key = null) } }
 }
 
 /**
+ * The [proofs] of a credential request and the [key] they prove, which the issued credential has to be bound to.
+ * [key] is `null` if unknown, e.g. when the key attestation loader chooses the key, see [AttestationProofCreator].
+ */
+data class CreatedProof(
+    val proofs: CredentialRequestProofContainer,
+    val key: CryptoPublicKey?,
+)
+
+/**
+ * Supplies the holder key of one credential request. Called for every request, also a retry, so no key is attested
+ * twice: a key may be in only one key attestation (TS3, 2.2.2.1).
+ */
+fun interface ProofKeySupplier {
+    /** The key to prove in a credential request described by [request]. */
+    suspend fun key(request: ProofKeyRequest): KmmResult<KeyMaterial>
+
+    companion object {
+        /** Always [key], for a holder with a single key. */
+        fun single(key: KeyMaterial) = ProofKeySupplier { KmmResult.success(key) }
+    }
+}
+
+/**
+ * What a [ProofKeySupplier] is asked a key for: a proof of [proofType] (OpenID4VCI 1.0, Appendix F), for which the
+ * issuer requires a key attestation as [keyAttestationRequired] describes (12.2.4), `null` if it requires none. A
+ * supplier can check the key storage requirements before creating a key (ARF WUA_05a).
+ */
+data class ProofKeyRequest(
+    val proofType: String,
+    val keyAttestationRequired: KeyAttestationRequired?,
+)
+
+/** Checks that [this] key attestation attests [key] first (TS3, 2.2.2.1); not retried with the same key. */
+private fun JwsCompactTyped<KeyAttestationJwt>.requireAttests(key: KeyMaterial) {
+    val attested = payload.attestedKeys.map { it.jwkThumbprintPlain }
+    require(attested.isNotEmpty()) { "Key attestation contains no attested_keys" }
+    require(attested.first() == key.jsonWebKey.jwkThumbprintPlain) {
+        "Key attestation attested_keys[0] must match credential proof signing key"
+    }
+}
+
+private val JsonWebKey.jwkThumbprintPlain: String
+    get() = jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
+
+/**
  * Creates proofs of the `jwt` proof type (OpenID4VCI 1.0, Appendix F.1): a JWT of type `openid4vci-proof+jwt`, signed
- * with [keyMaterial], the key the issued credential will be bound to, which the header references as `jwk` or `kid`,
- * see [selectProofJwtKeyBinding]. Its payload carries the `client_id` as `iss`, the Credential Issuer Identifier as
- * `aud`, the `c_nonce` as `nonce`, and as `iat` the time of [clock] three minutes ago, to tolerate the clock skew of
- * the issuer.
+ * with the key from [keySupplier], the key the issued credential will be bound to, which the header references as
+ * `jwk` or `kid`, see [selectProofJwtKeyBinding]. Its payload carries the `client_id` as `iss`, the Credential Issuer
+ * Identifier as `aud`, the `c_nonce` as `nonce`, and as `iat` the time of [clock] three minutes ago, to tolerate the
+ * clock skew of the issuer.
  *
  * If the issuer requires a key attestation for the `jwt` proof type (`key_attestations_required`), the proof carries
  * one in its `key_attestation` header (Appendix D), loaded with [loadKeyAttestation]. Then creating the proof fails
- * without [loadKeyAttestation], if [loadKeyAttestation] fails, or if the key attestation does not attest
- * [keyMaterial] as its first key.
+ * without [loadKeyAttestation], if [loadKeyAttestation] fails, or if the key attestation does not attest the
+ * signing key as its first key.
  *
  * Creates no proof if the issuer does not accept the `jwt` proof type for the requested credential.
  */
 class JwtProofCreator(
-    /** Used to prove possession of the key material for [CredentialRequestProofContainer], i.e., the holder key. */
-    private val keyMaterial: KeyMaterial,
+    /** Supplies the holder key of each request, see [ProofKeySupplier]. */
+    private val keySupplier: ProofKeySupplier,
     /** Optionally load key attestation when the issuer metadata requires it. */
     private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt>>)? = null,
     /**
@@ -102,12 +165,36 @@ class JwtProofCreator(
     /** Clock to use for proof generation. */
     private val clock: Clock = Clock.System,
 ) : ProofCreator {
+
+    /** Proves possession of [keyMaterial] in every request. */
+    @JvmOverloads
+    constructor(
+        /** Used to prove possession of the key material for [CredentialRequestProofContainer], i.e., the holder key. */
+        keyMaterial: KeyMaterial,
+        /** Optionally load key attestation when the issuer metadata requires it. */
+        loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt>>)? = null,
+        /** See the primary constructor. */
+        selectProofJwtKeyBinding: (suspend (KeyMaterial) -> Pair<JsonWebKey?, String?>) = { key ->
+            Pair(key.jsonWebKey, null)
+        },
+        /** Clock to use for proof generation. */
+        clock: Clock = Clock.System,
+    ) : this(ProofKeySupplier.single(keyMaterial), loadKeyAttestation, selectProofJwtKeyBinding, clock)
+
     override suspend fun invoke(
         credentialIssuer: String,
         credentialFormat: SupportedCredentialFormat,
         clientId: String,
         clientNonce: String?,
-    ): KmmResult<CredentialRequestProofContainer?> = catching {
+    ): KmmResult<CredentialRequestProofContainer?> =
+        createProof(credentialIssuer, credentialFormat, clientId, clientNonce).map { it?.proofs }
+
+    override suspend fun createProof(
+        credentialIssuer: String,
+        credentialFormat: SupportedCredentialFormat,
+        clientId: String,
+        clientNonce: String?,
+    ): KmmResult<CreatedProof?> = catching {
         credentialFormat.supportedProofTypes?.get(ProofTypes.JWT)?.let { type ->
             createCredentialRequestProofJwt(
                 clientNonce = clientNonce,
@@ -125,50 +212,44 @@ class JwtProofCreator(
         keyAttestationRequired: KeyAttestationRequired? = null,
         supportedAlgorithms: Collection<String>? = null,
         clientId: String,
-    ): CredentialRequestProofContainer {
+    ): CreatedProof {
         if (keyAttestationRequired != null && loadKeyAttestation == null) {
             throw IllegalArgumentException("Key attestation required, none provided")
         }
+        val key = keySupplier.key(ProofKeyRequest(ProofTypes.JWT, keyAttestationRequired)).getOrThrow()
         val keyAttestation: JwsCompactTyped<KeyAttestationJwt>? = if (keyAttestationRequired != null) {
             loadKeyAttestation?.invoke(
                 KeyAttestationInput(
                     credentialIssuer = credentialIssuer,
                     clientNonce = clientNonce,
                     supportedAlgorithms = supportedAlgorithms,
-                    requirements = keyAttestationRequired
+                    requirements = keyAttestationRequired,
+                    keys = listOf(key.publicKey),
                 )
             )?.getOrElse { throw IllegalArgumentException("Key attestation required, none provided", it) }
         } else null
-        keyAttestation?.requireKeyMaterialAtAttestedKeyIndex0()
+        keyAttestation?.requireAttests(key)
 
         // To be refactored once signJwt is not passed in the constructor but to this function
-        return CredentialRequestProofContainer(
-            jwt = setOf(
-                SignJwt<JsonWebToken>(keyMaterial, headerModifier(keyAttestation)).invoke(
-                    type = OpenIdConstants.PROOF_JWT_TYPE,
-                    payload = JsonWebToken(
-                        issuer = clientId, // omit when token was pre-authn?
-                        audience = credentialIssuer,
-                        // Apply a bit of clock skew to avoid getting rejected by the issuer
-                        issuedAt = clock.now().truncateToSeconds() - 3.minutes,
-                        nonce = clientNonce,
-                    ),
-                    serializer = JsonWebToken.serializer(),
-                ).getOrThrow().jws
-            )
+        return CreatedProof(
+            proofs = CredentialRequestProofContainer(
+                jwt = setOf(
+                    SignJwt<JsonWebToken>(key, headerModifier(keyAttestation)).invoke(
+                        type = OpenIdConstants.PROOF_JWT_TYPE,
+                        payload = JsonWebToken(
+                            issuer = clientId, // omit when token was pre-authn?
+                            audience = credentialIssuer,
+                            // Apply a bit of clock skew to avoid getting rejected by the issuer
+                            issuedAt = clock.now().truncateToSeconds() - 3.minutes,
+                            nonce = clientNonce,
+                        ),
+                        serializer = JsonWebToken.serializer(),
+                    ).getOrThrow().jws
+                )
+            ),
+            key = key.publicKey,
         )
     }
-
-    private fun JwsCompactTyped<KeyAttestationJwt>.requireKeyMaterialAtAttestedKeyIndex0() {
-        val attestedKey = payload.attestedKeys.firstOrNull()
-            ?: throw IllegalArgumentException("Key attestation required, none provided")
-        if (attestedKey.jwkThumbprintPlain != keyMaterial.jsonWebKey.jwkThumbprintPlain) {
-            throw IllegalArgumentException("Key attestation attested_keys[0] must match credential proof signing key")
-        }
-    }
-
-    private val JsonWebKey.jwkThumbprintPlain: String
-        get() = jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
 
     private fun headerModifier(
         keyAttestation: JwsCompactTyped<KeyAttestationJwt>?
@@ -201,19 +282,42 @@ class JwtProofCreator(
  * `c_nonce` is passed to [loadKeyAttestation] as [KeyAttestationInput.clientNonce], as it has to be the `nonce` of the
  * key attestation if the issuer has a Nonce Endpoint (Appendix F.3).
  *
+ * With a [keySupplier], the attestation has to attest its key first. Without one, [loadKeyAttestation] chooses the
+ * key, and [CreatedProof.key] is `null`.
+ *
  * Creating the proof fails if [loadKeyAttestation] fails. Creates no proof if the issuer does not accept the
  * `attestation` proof type for the requested credential.
  */
 class AttestationProofCreator(
     /** Load the key attestation for the proof. */
     private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt>>),
+    /**
+     * Supplies the holder key of each request to attest, see [ProofKeySupplier]; `null` lets [loadKeyAttestation]
+     * choose the key. No default, so that a trailing lambda still is the [loadKeyAttestation] of the other constructor.
+     */
+    private val keySupplier: ProofKeySupplier?,
 ) : ProofCreator {
+
+    /** [loadKeyAttestation] chooses the key to attest. */
+    constructor(
+        /** Load the key attestation for the proof. */
+        loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsCompactTyped<KeyAttestationJwt>>),
+    ) : this(loadKeyAttestation, keySupplier = null)
+
     override suspend fun invoke(
         credentialIssuer: String,
         credentialFormat: SupportedCredentialFormat,
         clientId: String,
         clientNonce: String?,
-    ): KmmResult<CredentialRequestProofContainer?> = catching {
+    ): KmmResult<CredentialRequestProofContainer?> =
+        createProof(credentialIssuer, credentialFormat, clientId, clientNonce).map { it?.proofs }
+
+    override suspend fun createProof(
+        credentialIssuer: String,
+        credentialFormat: SupportedCredentialFormat,
+        clientId: String,
+        clientNonce: String?,
+    ): KmmResult<CreatedProof?> = catching {
         credentialFormat.supportedProofTypes?.get(ProofTypes.ATTESTATION)?.let { type ->
             createCredentialRequestProofAttestation(
                 clientNonce = clientNonce,
@@ -229,17 +333,21 @@ class AttestationProofCreator(
         credentialIssuer: String?,
         keyAttestationRequired: KeyAttestationRequired? = null,
         supportedAlgorithms: Collection<String>? = null,
-    ): CredentialRequestProofContainer = CredentialRequestProofContainer(
-        attestation = setOf(
-            loadKeyAttestation.invoke(
-                KeyAttestationInput(
-                    credentialIssuer = credentialIssuer,
-                    clientNonce = clientNonce,
-                    supportedAlgorithms = supportedAlgorithms,
-                    requirements = keyAttestationRequired
-                )
-            ).getOrThrow().jws
+    ): CreatedProof {
+        val key = keySupplier?.key(ProofKeyRequest(ProofTypes.ATTESTATION, keyAttestationRequired))?.getOrThrow()
+        val keyAttestation = loadKeyAttestation.invoke(
+            KeyAttestationInput(
+                credentialIssuer = credentialIssuer,
+                clientNonce = clientNonce,
+                supportedAlgorithms = supportedAlgorithms,
+                requirements = keyAttestationRequired,
+                keys = listOfNotNull(key?.publicKey),
+            )
+        ).getOrThrow()
+        key?.let { keyAttestation.requireAttests(it) }
+        return CreatedProof(
+            proofs = CredentialRequestProofContainer(attestation = setOf(keyAttestation.jws)),
+            key = key?.publicKey,
         )
-    )
-
+    }
 }

@@ -28,19 +28,28 @@ import kotlin.jvm.JvmOverloads
  * entry point and delegates the protocol-specific work to [OpenId4VpHolder] or [Iso180137AnnexCHolder].
  */
 class DcApiHolder @JvmOverloads constructor(
-    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val holder: Holder = HolderAgent(keyMaterial),
+    private val holder: Holder = HolderAgent(keyMaterial = EphemeralKeyWithoutCert()),
     private val openId4VpHolder: OpenId4VpHolder = OpenId4VpHolder(holder = holder),
-    private val iso180137AnnexCHolder: Iso180137AnnexCHolder = Iso180137AnnexCHolder(
-        keyMaterial = keyMaterial,
-        holder = holder,
-    ),
+    private val iso180137AnnexCHolder: Iso180137AnnexCHolder = Iso180137AnnexCHolder(holder = holder),
     /**
      * Validates the relying party behind ISO/IEC 18013-7 Annex C requests, see [RelyingPartyValidator]; configure
      * the one for OpenID4VP requests on [openId4VpHolder].
      */
     private val relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
 ) {
+
+    @Deprecated(
+        "keyMaterial is not used: use the constructor without it",
+        ReplaceWith("DcApiHolder(holder, openId4VpHolder, iso180137AnnexCHolder, relyingPartyValidator)")
+    )
+    @JvmOverloads
+    constructor(
+        @Suppress("UNUSED_PARAMETER") keyMaterial: KeyMaterial,
+        holder: Holder = HolderAgent(keyMaterial),
+        openId4VpHolder: OpenId4VpHolder = OpenId4VpHolder(holder = holder),
+        iso180137AnnexCHolder: Iso180137AnnexCHolder = Iso180137AnnexCHolder(holder = holder),
+        relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
+    ) : this(holder, openId4VpHolder, iso180137AnnexCHolder, relyingPartyValidator)
 
     /**
      * Validates the request and prepares credential selection. Clients can inspect the returned state, ask for user

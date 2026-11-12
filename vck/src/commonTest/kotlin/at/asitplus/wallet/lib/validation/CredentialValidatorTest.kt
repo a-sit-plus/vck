@@ -7,6 +7,8 @@ import at.asitplus.iso.MobileSecurityObject
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
 import at.asitplus.iso.wrapInCborTag
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -28,6 +30,7 @@ import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.cbor.CoseHeaderCertificate
 import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCose
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -37,6 +40,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.jws.JwsHeaderModifierFun
 import at.asitplus.wallet.lib.jws.patchHeader
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
@@ -146,7 +150,8 @@ val CredentialValidatorTest by matrixSuite {
                 "a credential bound to another key fails holder binding, unless binding is not required" {
                     val issuance = issuance()
                     val issued = issuance.issue(representation)
-                    val otherKey = CredentialValidationContext(expectedHolderKey = EphemeralKeyWithoutCert().publicKey)
+                    val otherKey =
+                        CredentialValidationContext(expectedHolderKeys = setOf(EphemeralKeyWithoutCert().publicKey))
 
                     issuance.validate(issued, context = otherKey).let {
                         it.checks.holderBinding.shouldBeInstanceOf<Failed>()
@@ -291,6 +296,37 @@ val CredentialValidatorTest by matrixSuite {
                 it.checks.semantics shouldBe Passed
                 it.checks.timeliness.outcome.shouldBeInstanceOf<Failed>()
             }
+        }
+    }
+
+    "VC-JWT bound by sub" - {
+        suspend fun Issuance.vcJwtFor(subject: String) = issuer.issueCredential(
+            CredentialToBeIssued.VcJwt(
+                subject = AtomicAttribute2023(subject, ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME, "Susanne").toJsonElement(),
+                expiration = Clock.System.now() + 1.days,
+                scheme = scheme,
+                subjectPublicKey = holderKey.publicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+            )
+        ).getOrThrow()
+
+        "the did:key of an expected key passes" {
+            val issuance = issuance()
+            issuance.validate(issuance.vcJwtFor(issuance.holderKey.publicKey.didEncoded), policy = integrityOnly)
+                .checks.holderBinding shouldBe Passed
+        }
+
+        "the JWK thumbprint of an expected key passes" {
+            val issuance = issuance()
+            issuance.validate(issuance.vcJwtFor(issuance.holderKey.jsonWebKey.jwkThumbprint), policy = integrityOnly)
+                .checks.holderBinding shouldBe Passed
+        }
+
+        "the did:key of another key fails" {
+            val issuance = issuance()
+            val other = EphemeralKeyWithoutCert().publicKey.didEncoded
+            issuance.validate(issuance.vcJwtFor(other), policy = integrityOnly)
+                .checks.holderBinding.shouldBeInstanceOf<Failed>()
         }
     }
 

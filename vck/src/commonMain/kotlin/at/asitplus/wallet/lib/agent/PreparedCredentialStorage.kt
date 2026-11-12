@@ -19,8 +19,8 @@ data class PreparedCredentialStorage internal constructor(
     val credential: Holder.StoreCredentialInput?,
     val validation: CredentialValidationResult,
     val renewalInfo: CredentialRenewalInfo?,
-    /** The key [validation] required the credential to be bound to. */
-    internal val holderKey: CryptoPublicKey,
+    /** The key the credential is bound to, `null` if it is not intact or not holder-bound. */
+    internal val holderKey: CryptoPublicKey?,
 ) {
     init {
         require(credential != null || validation.unacceptedCredential == null) {

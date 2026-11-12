@@ -75,8 +75,10 @@ internal class Issuance(
         DummyCredentialDataProvider.getCredential(holderKey.publicKey, scheme, representation).getOrThrow()
     ).getOrThrow()
 
-    fun context(identifier: String? = null) =
-        CredentialValidationContext(expectedHolderKey = holderKey.publicKey, expectedCredentialIdentifier = identifier)
+    fun context(identifier: String? = null) = CredentialValidationContext(
+        expectedHolderKeys = setOf(holderKey.publicKey),
+        expectedCredentialIdentifier = identifier,
+    )
 }
 
 internal suspend fun issuance() = Issuance(TestCertificateAuthority(), TestCertificateAuthority()).setUp()
