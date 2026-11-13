@@ -8,10 +8,13 @@ import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.openid.dcql.DCQLCredentialQuery
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.MdocClaimReference
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import com.benasher44.uuid.uuid4
 
 typealias RequestedAttributes = Set<String>
@@ -34,6 +37,9 @@ data class RequestOptionsCredential(
      *
      * Use `DCQLClaimsPathPointer("address.region")` to request a flat claim with a literal dot in its name.
      * Use `DCQLClaimsPathPointer("address", "region")` to request `region` nested inside `address`.
+     *
+     * For [PLAIN_JWT], paths are relative to `credentialSubject`, see [toVcJwtClaimPath].
+     * For [ISO_MDOC], see [requestedMdocClaims].
      */
     val attributePaths: RequestedAttributePaths? = null,
     /**
@@ -42,47 +48,51 @@ data class RequestOptionsCredential(
      *
      * Use `DCQLClaimsPathPointer("address.region")` to request a flat claim with a literal dot in its name.
      * Use `DCQLClaimsPathPointer("address", "region")` to request `region` nested inside `address`.
+     *
+     * For [PLAIN_JWT], paths are relative to `credentialSubject`, see [toVcJwtClaimPath].
+     * For [ISO_MDOC], see [requestedOptionalMdocClaims].
      */
     val optionalAttributePaths: RequestedAttributePaths? = null,
 ) {
 
+    /**
+     * The data elements an [ISO_MDOC] request asks for with [attributePaths], empty for other representations.
+     *
+     * ISO/IEC 18013-5:2021, 8.3.2.1.2.1 requests a data element by its name space and data element identifier, so
+     * each pointer holds either the data element identifier in the [CredentialScheme.isoNamespace] of
+     * [credentialScheme], e.g. `DCQLClaimsPathPointer("given_name")`, or the name space and the data element
+     * identifier, e.g. `DCQLClaimsPathPointer("org.iso.18013.5.1", "given_name")`. Any other pointer is rejected
+     * when constructing this request.
+     */
+    val requestedMdocClaims: Set<MdocClaimReference> = attributePaths.toMdocClaims()
+
+    /** The data elements an [ISO_MDOC] request asks for with [optionalAttributePaths], see [requestedMdocClaims]. */
+    val requestedOptionalMdocClaims: Set<MdocClaimReference> = optionalAttributePaths.toMdocClaims()
+
+    /**
+     * Requests [requestedMdocClaims] and [requestedOptionalMdocClaims] alike: a `DocRequest` marks no data element
+     * as optional (ISO/IEC 18013-5:2021, 8.3.2.1.2.1), and the mdoc may answer with error codes for data elements
+     * it does not return (ISO/IEC 18013-5:2021, 8.3.2.1.2.2).
+     */
     fun toDocRequest(): DocRequest {
         require(credentialScheme is IsoMdocCredentialScheme) {
             "ISO Device Retrieval can only be created for IsoMdoc credential schemes"
         }
-        val effectiveAttributes = effectiveRequestedAttributePaths()
-        require(effectiveAttributes.all { it.segments.all { it is DCQLClaimsPathPointerSegment.NameSegment } }) {
-            "ISO mdoc requested attribute paths must contain only name segments"
+        require(representation == ISO_MDOC) {
+            "ISO Device Retrieval can only be created for the representation ISO_MDOC, not $representation"
         }
-        // Merge (don't overwrite) entries that land in the same namespace, e.g. a two-segment path whose namespace
-        // equals the scheme's default namespace plus one-segment paths under that same default namespace.
-        val effectiveRequest = (effectiveAttributes.namespacedItems() + effectiveAttributes.singleClaimsItems())
-            .groupBy({ it.first }, { it.second })
-            .mapValues { (_, lists) -> ItemsRequestList(lists.flatMap { it.entries }) }
+        val namespaces = (requestedMdocClaims + requestedOptionalMdocClaims)
+            .groupBy({ it.namespace }, { SingleItemsRequest(dataElementIdentifier = it.claimName, intentToRetain = false) })
+            .mapValues { ItemsRequestList(it.value) }
         return DocRequest(
             itemsRequest = ByteStringWrapper(
                 ItemsRequest(
                     docType = credentialScheme.isoDocType,
-                    namespaces = effectiveRequest
+                    namespaces = namespaces,
                 ),
             ),
         )
     }
-
-    private fun RequestedAttributePaths.namespacedItems(): List<Pair<String, ItemsRequestList>> =
-        filter { it.segments.all { it is DCQLClaimsPathPointerSegment.NameSegment } }
-            .filter { it.segments.size == 2 }
-            .groupBy { (it.segments.first() as DCQLClaimsPathPointerSegment.NameSegment).name }
-            .map { it.key to ItemsRequestList(it.value.map { it.toSingleItemsRequest() }) }
-            .takeIf { it.isNotEmpty() } ?: listOf()
-
-    private fun RequestedAttributePaths.singleClaimsItems(): List<Pair<String, ItemsRequestList>> =
-        filter { it.segments.all { it is DCQLClaimsPathPointerSegment.NameSegment } }
-            .filter { it.segments.size == 1 }
-            .map { it.toSingleItemsRequest() }
-            .takeIf { it.isNotEmpty() }?.let {
-                listOf(credentialScheme.isoNamespace!! to ItemsRequestList(it))
-            } ?: listOf()
 
     fun effectiveRequestedAttributePaths(): RequestedAttributePaths =
         attributePaths ?: emptySet()
@@ -90,38 +100,44 @@ data class RequestOptionsCredential(
     fun effectiveRequestedOptionalAttributePaths(): RequestedAttributePaths =
         optionalAttributePaths ?: emptySet()
 
+    private fun RequestedAttributePaths?.toMdocClaims(): Set<MdocClaimReference> =
+        if (this == null || representation != ISO_MDOC) emptySet()
+        else mapTo(linkedSetOf()) { it.toMdocClaim() }
+
+    private fun DCQLClaimsPathPointer.toMdocClaim(): MdocClaimReference {
+        val names = segments.map {
+            require(it is DCQLClaimsPathPointerSegment.NameSegment) {
+                "An ISO mdoc data element is requested by its name space and data element identifier, not by $this"
+            }
+            it.name
+        }
+        return when (names.size) {
+            1 -> MdocClaimReference(
+                namespace = requireNotNull(credentialScheme.isoNamespace) {
+                    "The credential scheme has no ISO name space for the data element identifier in $this"
+                },
+                claimName = names.single(),
+            )
+
+            2 -> MdocClaimReference(namespace = names.first(), claimName = names.last())
+            else -> throw IllegalArgumentException(
+                "An ISO mdoc data element is requested by its data element identifier, optionally preceded by its " +
+                        "name space, not by $this"
+            )
+        }
+    }
 }
 
-fun DCQLClaimsPathPointer.toIsoMdocClaimPath(
-    scheme: CredentialScheme?,
-): DCQLClaimsPathPointer {
-    require(segments.all { it is DCQLClaimsPathPointerSegment.NameSegment }) {
-        "ISO mdoc requested attribute paths must contain only name segments"
-    }
-    return when (segments.size) {
-        1 -> DCQLClaimsPathPointer(
-            scheme?.isoNamespace ?: "mdoc",
-            (segments.first() as DCQLClaimsPathPointerSegment.NameSegment).name,
-        )
-
-        2 -> this
-        else -> throw IllegalArgumentException(
-            "ISO mdoc requested attribute paths must contain a claim name or a namespace and claim name"
-        )
-    }
-}
-
-
-fun DCQLClaimsPathPointer.toSingleItemsRequest(): SingleItemsRequest {
-    require(segments.all { it is DCQLClaimsPathPointerSegment.NameSegment }) {
-        "ISO mdoc requested attribute paths must contain only name segments"
-    }
-    require(segments.size <= 2) {
-        "ISO mdoc requested attribute paths must contain at most 2 segments"
-    }
-    val claimName = (segments.last() as DCQLClaimsPathPointerSegment.NameSegment).name
-    return SingleItemsRequest(
-        dataElementIdentifier = claimName,
-        intentToRetain = false
-    )
+/**
+ * Qualifies a requested attribute path for a W3C VC: DCQL claims paths match on the root of the VC (OpenID4VP 1.0,
+ * B.1.2), while requested attributes name claims about the subject like for the other representations, so
+ * `credentialSubject` is prefixed unless the path already starts with it, e.g. `["given_name"]` becomes
+ * `["credentialSubject", "given_name"]` as in OpenID4VP 1.0, B.1.3.1.4.
+ */
+fun DCQLClaimsPathPointer.toVcJwtClaimPath(): DCQLClaimsPathPointer {
+    val firstSegment = segments.first()
+    val alreadyQualified = firstSegment is DCQLClaimsPathPointerSegment.NameSegment &&
+            firstSegment.name == VcDataModelConstants.CREDENTIAL_SUBJECT
+    return if (alreadyQualified) this
+    else DCQLClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT) + this
 }

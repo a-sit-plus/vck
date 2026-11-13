@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.isoQualifiedClaimDescriptions
+import at.asitplus.wallet.lib.data.vcJwtQualifiedClaimDescriptions
 
 /**
  * Defines mapping of [CredentialScheme] to identifiers used in OID4VCI in [OpenId4VciServer]
@@ -70,7 +71,10 @@ fun IsoMdocCredentialScheme.toIsoMdocSupportedCredentialFormat(identifier: Strin
         isoClaims = isoQualifiedClaimDescriptions
     )
 
-/** Bound to a JWK, `jwk` in OpenID4VCI 1.0, 12.2.4. */
+/**
+ * Bound to a JWK, `jwk` in OpenID4VCI 1.0, 12.2.4. Claims paths point into the VC (OpenID4VCI 1.0, C), so they start
+ * with `credentialSubject`, see [vcJwtQualifiedClaimDescriptions].
+ */
 fun VcJwtCredentialScheme.toPlainJwtSupportedCredentialFormat(identifier: String): Pair<String, SupportedCredentialFormat> =
     identifier to SupportedCredentialFormat.forVcJwt(
         scope = identifier,
@@ -78,7 +82,7 @@ fun VcJwtCredentialScheme.toPlainJwtSupportedCredentialFormat(identifier: String
             types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType),
         ),
         supportedBindingMethods = setOf(BINDING_METHOD_JWK),
-        vcJwtClaims = claimDescriptions
+        vcJwtClaims = vcJwtQualifiedClaimDescriptions
     )
 
 /**

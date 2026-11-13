@@ -7,6 +7,8 @@ import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ExtractedIsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.ExtractedVcJwtCredentialScheme
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.toCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.StaticCredentialMetadataRegistry
@@ -48,14 +50,35 @@ private fun presentClaim(representation: CredentialRepresentation) = when (repre
 private fun mandatory(vararg path: String) = ClaimDescription(OpenId4VciClaimsPathPointer(path.toList()), true)
 private fun optional(vararg path: String) = ClaimDescription(OpenId4VciClaimsPathPointer(path.toList()), false)
 
-/** Requires the claims [descriptions] describe, for every type, qualified with the ISO namespace for mdocs. */
+/**
+ * Requires the claims [descriptions] describe, for every type, qualified with the ISO namespace for mdocs and with
+ * `credentialSubject` for VC-JWTs.
+ */
 private fun requiring(vararg descriptions: ClaimDescription) = RequiredClaimsResolver { identifier, representation ->
-    ExtractedIsoMdocCredentialScheme(
-        isoDocType = scheme.isoDocType,
-        isoNamespace = scheme.isoNamespace,
-        claimDescriptions = descriptions.toSet(),
-    ).requiredClaims(identifier, representation, source = "test metadata")
+    when (representation) {
+        PLAIN_JWT -> ExtractedVcJwtCredentialScheme(
+            vcType = scheme.vcType,
+            claimDescriptions = descriptions.toSet(),
+        )
+
+        SD_JWT, ISO_MDOC -> ExtractedIsoMdocCredentialScheme(
+            isoDocType = scheme.isoDocType,
+            isoNamespace = scheme.isoNamespace,
+            claimDescriptions = descriptions.toSet(),
+        )
+    }.requiredClaims(identifier, representation, source = "test metadata")
 }
+
+/** The path of a claim [path] is qualified to in a credential of [representation], see [requiring]. */
+private fun qualified(representation: CredentialRepresentation, vararg path: String) = OpenId4VciClaimsPathPointer(
+    listOfNotNull(
+        when (representation) {
+            PLAIN_JWT -> VcDataModelConstants.CREDENTIAL_SUBJECT
+            SD_JWT -> null
+            ISO_MDOC -> scheme.isoNamespace
+        }
+    ) + path
+)
 
 private fun Issuance.validator(resolver: RequiredClaimsResolver) = CredentialValidator(
     trustAnchors = trustAnchors,
@@ -108,9 +131,7 @@ val RequiredClaimsTest by matrixSuite {
                 result.report.decision shouldBe REJECTED
                 result.credential.shouldBeNull()
                 result.unacceptedCredential.shouldNotBeNull()
-                val expected = OpenId4VciClaimsPathPointer(
-                    listOfNotNull(scheme.isoNamespace.takeIf { representation == ISO_MDOC }, "missing")
-                )
+                val expected = qualified(representation, "missing")
                 result.claims.missing shouldContainExactly listOf(expected)
                 result.claims.outcome.shouldBeInstanceOf<Failed>().throwable
                     .shouldBeInstanceOf<MissingRequiredClaimException>().missing shouldContainExactly listOf(expected)
@@ -233,6 +254,28 @@ val RequiredClaimsTest by matrixSuite {
         RequiredClaimsResolver.Default.check(
             RequiredClaimsPolicy.RequireMandatory, registered.sdJwtType, SD_JWT, emptyList(),
         ) { Json.parseToJsonElement("{}").jsonObject }.outcome shouldBe Passed
+    }
+
+    "VC-JWT paths start at the root of the credential, OpenID4VP 1.0, B.1.2" {
+        val vcScheme = ExtractedVcJwtCredentialScheme(
+            vcType = scheme.vcType,
+            claimDescriptions = setOf(
+                mandatory("given_name"),
+                mandatory(VcDataModelConstants.CREDENTIAL_SUBJECT, "family_name"),
+            ),
+        )
+        val required = vcScheme.requiredClaims(scheme.vcType, PLAIN_JWT)
+        required.claims.map { it.path } shouldContainExactly listOf(
+            OpenId4VciClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT, "given_name"),
+            OpenId4VciClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT, "family_name"),
+        )
+        RequiredClaimsResolver { _, _ -> required }.check(
+            RequiredClaimsPolicy.RequireMandatory, scheme.vcType, PLAIN_JWT, emptyList(),
+        ) {
+            Json.parseToJsonElement(
+                """{"credentialSubject":{"given_name":"Alice","family_name":"Doe"}}"""
+            ).jsonObject
+        }.outcome shouldBe Passed
     }
 
     "ISO metadata preserves qualified mandatory paths" - {

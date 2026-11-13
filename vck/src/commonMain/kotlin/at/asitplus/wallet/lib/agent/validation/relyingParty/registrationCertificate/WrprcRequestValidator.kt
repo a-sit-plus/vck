@@ -21,6 +21,7 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SingleClaimReference
+import at.asitplus.wallet.lib.validation.sdJwtVcNotDisclosableClaims
 import kotlinx.serialization.Serializable
 
 /**
@@ -123,13 +124,23 @@ object WrprcRequestValidator {
         SD_JWT -> {
             val claim = attribute as? JsonClaimReference ?: return false
             val segments = claim.path
-            // SD-JWT VC: vct is a root claim, never selectively disclosed (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3).
-            if (segments.size == 1 && segments.first() == NameSegment("vct")) return true
+            if (segments.isNeverSelectivelyDisclosed()) return true
             this.claim.orEmpty().any { it.path.covers(segments) }
         }
 
         PLAIN_JWT -> false
     }
+
+    /**
+     * Whether the path selects a root claim of an SD-JWT VC, or one of its sub-claims, that the holder can not
+     * withhold, so a WRPRC need not register it: "The following registered JWT claims, including any of their
+     * sub-claims, when used in the SD-JWT component of an SD-JWT VC, MUST NOT be included in Disclosures and therefore
+     * MUST NOT be selectively disclosed: iss, nbf, exp, cnf, vct, vct#integrity, aka_vcts, status"
+     * (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3). `sub` and `iat` "MAY be included in Disclosures" (ibid.), and claims
+     * of these names below the root are not registered JWT claims, so both must be registered.
+     */
+    private fun List<DCQLClaimsPathPointerSegment>.isNeverSelectivelyDisclosed(): Boolean =
+        (firstOrNull() as? NameSegment)?.name in sdJwtVcNotDisclosableClaims
 
     /**
      * Structural over-asking check: a registered claim includes its descendants (OpenID4VP 1.0, 7.3).

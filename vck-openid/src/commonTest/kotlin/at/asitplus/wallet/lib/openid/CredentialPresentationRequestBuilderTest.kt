@@ -17,9 +17,13 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.throwables.shouldThrowAny
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
@@ -234,6 +238,113 @@ val CredentialPresentationRequestBuilderTest by matrixSuite {
             .itemsRequest.value.namespaces
             .getValue(ConstantIndex.AtomicAttribute2023.isoNamespace).entries
             .map { it.dataElementIdentifier }.toSet() shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_FAMILY_NAME)
+    }
+
+    test("iso mdoc requests a data element once, however its pointer names it") {
+        val credential = RequestOptionsCredential(
+            credentialScheme = ConstantIndex.AtomicAttribute2023,
+            representation = ISO_MDOC,
+            attributePaths = setOf(
+                DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                DCQLClaimsPathPointer(ConstantIndex.AtomicAttribute2023.isoNamespace, CLAIM_GIVEN_NAME),
+            ),
+            optionalAttributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+        )
+        val expected = MdocClaimReference(ConstantIndex.AtomicAttribute2023.isoNamespace, CLAIM_GIVEN_NAME)
+        credential.requestedMdocClaims shouldBe setOf(expected)
+        credential.requestedOptionalMdocClaims shouldBe setOf(expected)
+
+        CredentialPresentationRequestBuilder(credential).toDCQLRequest().shouldNotBeNull().dcqlQuery
+            .credentials.shouldBeSingleton().first()
+            .shouldBeInstanceOf<DCQLIsoMdocCredentialQuery>()
+            .claims.shouldNotBeNull().shouldBeSingleton().first()
+            .shouldBeInstanceOf<DCQLIsoMdocClaimsQuery>().apply {
+                namespace shouldBe expected.namespace
+                claimName shouldBe expected.claimName
+            }
+    }
+
+    test("iso device retrieval requests optional data elements too") {
+        val request = CredentialPresentationRequestBuilder(
+            RequestOptionsCredential(
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
+                representation = ISO_MDOC,
+                attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+                optionalAttributePaths = setOf(DCQLClaimsPathPointer(CLAIM_FAMILY_NAME)),
+            )
+        ).toIsoDeviceRetrievalRequest()
+
+        request.deviceRequest.docRequests.shouldBeSingleton().first()
+            .itemsRequest.value.namespaces
+            .getValue(ConstantIndex.AtomicAttribute2023.isoNamespace).entries
+            .map { it.dataElementIdentifier }.toSet() shouldBe setOf(CLAIM_GIVEN_NAME, CLAIM_FAMILY_NAME)
+    }
+
+    test("iso mdoc rejects pointers that name no data element") {
+        listOf(
+            DCQLClaimsPathPointer(ConstantIndex.AtomicAttribute2023.isoNamespace, CLAIM_GIVEN_NAME, "nested"),
+            DCQLClaimsPathPointer(
+                DCQLClaimsPathPointerSegment.NameSegment(ConstantIndex.AtomicAttribute2023.isoNamespace),
+                DCQLClaimsPathPointerSegment.IndexSegment(0u),
+            ),
+            DCQLClaimsPathPointer(null),
+        ).forEach { pointer ->
+            shouldThrow<IllegalArgumentException> {
+                RequestOptionsCredential(
+                    credentialScheme = ConstantIndex.AtomicAttribute2023,
+                    representation = ISO_MDOC,
+                    attributePaths = setOf(pointer),
+                )
+            }
+            shouldThrow<IllegalArgumentException> {
+                RequestOptionsCredential(
+                    credentialScheme = ConstantIndex.AtomicAttribute2023,
+                    representation = ISO_MDOC,
+                    optionalAttributePaths = setOf(pointer),
+                )
+            }
+        }
+    }
+
+    test("iso mdoc rejects a data element identifier without a name space") {
+        val scheme = object : CredentialScheme {
+            override val isoDocType: String
+                get() = "something"
+        }
+        shouldThrow<IllegalArgumentException> {
+            RequestOptionsCredential(
+                credentialScheme = scheme,
+                representation = ISO_MDOC,
+                attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+            )
+        }
+        RequestOptionsCredential(
+            credentialScheme = scheme,
+            representation = ISO_MDOC,
+            attributePaths = setOf(DCQLClaimsPathPointer("custom.namespace", CLAIM_GIVEN_NAME)),
+        ).requestedMdocClaims shouldBe setOf(MdocClaimReference("custom.namespace", CLAIM_GIVEN_NAME))
+    }
+
+    test("json representations keep their pointers and request no mdoc data elements") {
+        val pointer = DCQLClaimsPathPointer(ConstantIndex.AtomicAttribute2023.isoNamespace, CLAIM_GIVEN_NAME, "nested")
+        val credential = RequestOptionsCredential(
+            credentialScheme = ConstantIndex.AtomicAttribute2023,
+            representation = SD_JWT,
+            attributePaths = setOf(pointer),
+        )
+        credential.requestedMdocClaims.shouldBeEmpty()
+
+        CredentialPresentationRequestBuilder(credential).apply {
+            toDCQLRequest().shouldNotBeNull().dcqlQuery
+                .credentials.shouldBeSingleton().first()
+                .shouldBeInstanceOf<DCQLSdJwtCredentialQuery>()
+                .claims.shouldNotBeNull().shouldBeSingleton().first()
+                .shouldBeInstanceOf<DCQLJsonClaimsQuery>()
+                .path shouldBe pointer
+            shouldThrow<IllegalArgumentException> {
+                toIsoDeviceRetrievalRequest()
+            }
+        }
     }
 
 }

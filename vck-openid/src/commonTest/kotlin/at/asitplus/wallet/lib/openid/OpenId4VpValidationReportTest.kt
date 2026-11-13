@@ -165,9 +165,12 @@ private class TrustedIssuance(
                     RequestOptionsCredential(
                         credentialScheme = AtomicAttribute2023,
                         representation = representation,
-                        // VC-JWTs are presented as a whole
-                        attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
-                            .takeUnless { representation == CredentialRepresentation.PLAIN_JWT },
+                        // the claim name of the subject of a VC-JWT, see DummyCredentialDataProvider
+                        attributePaths = setOf(
+                            DCQLClaimsPathPointer(
+                                if (representation == CredentialRepresentation.PLAIN_JWT) "name" else CLAIM_GIVEN_NAME
+                            )
+                        ),
                     )
                 ).toDCQLRequest(),
             ),

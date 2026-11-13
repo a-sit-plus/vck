@@ -12,17 +12,21 @@ package at.asitplus.wallet.lib.openid
  * see the "LICENSE" file for more details
  */
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLIsoMdocZkCredentialQuery
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.openid.dcql.DCQLX509CredentialQuery
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.eupid.EuPidDataElements
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -40,6 +44,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStorePlainJwt
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
@@ -49,6 +54,7 @@ import at.asitplus.wallet.mdl.MDL_DOCTYPE
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.AssertionErrorBuilder.Companion.fail
 import io.kotest.assertions.throwables.shouldNotThrowAny
+import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -133,6 +139,73 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
                         }
                     }
                 }
+        }
+
+        test("plain jwt: requested attributes are claims paths into the root of the credential") {
+            issueAndStorePlainJwt(it.holderAgent, it.holderKeyMaterial, it.euPidScheme)
+
+            val presentationRequest = CredentialPresentationRequestBuilder(
+                RequestOptionsCredential(
+                    credentialScheme = it.euPidScheme,
+                    representation = PLAIN_JWT,
+                    attributePaths = setOf(
+                        DCQLClaimsPathPointer(EuPidDataElements.FAMILY_NAME),
+                        DCQLClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT, EuPidDataElements.GIVEN_NAME),
+                    ),
+                )
+            ).toDCQLRequest().shouldNotBeNull()
+            // OpenID4VP 1.0, B.1.2 and the request in B.1.3.1.4
+            presentationRequest.dcqlQuery.credentials.shouldBeSingleton().first()
+                .shouldBeInstanceOf<DCQLJwtVcCredentialQuery>()
+                .claims.shouldNotBeNull().map { it.path } shouldBe listOf(
+                DCQLClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT, EuPidDataElements.FAMILY_NAME),
+                DCQLClaimsPathPointer(VcDataModelConstants.CREDENTIAL_SUBJECT, EuPidDataElements.GIVEN_NAME),
+            )
+
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(presentationRequest),
+                creationOptions = CreationOptions.Query("https://example.com")
+            ).getOrThrow().url
+            val authnResponse = it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            it.verifierOid4vp.validateAuthnResponse(authnResponse.url).getOrThrow()
+                .singleAcceptedPresentation()
+                .shouldBeInstanceOf<ValidatedPresentation.VpJwt>().credentials.shouldNotBeEmpty()
+        }
+
+        test("plain jwt: claims paths relative to the credential subject do not match") {
+            issueAndStorePlainJwt(it.holderAgent, it.holderKeyMaterial, it.euPidScheme)
+
+            val presentationRequest = CredentialPresentationRequestBuilder(
+                RequestOptionsCredential(it.euPidScheme, PLAIN_JWT)
+            ).toDCQLRequest().shouldNotBeNull().let { request ->
+                CredentialPresentationRequest.DCQLRequest(
+                    request.dcqlQuery.copy(
+                        credentials = DCQLCredentialQueryList(
+                            request.dcqlQuery.credentials.map { query ->
+                                (query as DCQLJwtVcCredentialQuery).copy(
+                                    claims = DCQLClaimsQueryList(
+                                        nonEmptyListOf(
+                                            DCQLJsonClaimsQuery(
+                                                path = DCQLClaimsPathPointer(EuPidDataElements.FAMILY_NAME)
+                                            )
+                                        )
+                                    )
+                                )
+                            }.toNonEmptyList()
+                        )
+                    )
+                )
+            }
+
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpRequestOptions(presentationRequest),
+                creationOptions = CreationOptions.Query("https://example.com")
+            ).getOrThrow().url
+            it.holderOid4vp.createAuthorizationResponse(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+                .error.shouldNotBeNull()
         }
 
         test("plain jwt: send plain if no cryptographic holder binding") {

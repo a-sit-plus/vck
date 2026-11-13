@@ -86,6 +86,20 @@ processing.
       data element as a `[namespace, claimName]` array (`MdocClaimReference.ArraySerializer`)
     - BREAKING: Remove `NormalizedJsonPath.toIsoNamespaceAttribute()`. A requested claim can no longer have another
       shape than a name space and a data element identifier, so none is ignored with a warning any more
+    - BREAKING: `RequestOptionsCredential` with the representation `ISO_MDOC` reads its `attributePaths` and
+      `optionalAttributePaths` once, as `requestedMdocClaims` and `requestedOptionalMdocClaims`
+      (`MdocClaimReference`s): a pointer holds a data element identifier in the `isoNamespace` of the credential
+      scheme, or a name space and a data element identifier (ISO/IEC 18013-5:2021, 8.3.2.1.2.1). Any other pointer,
+      e.g. one with three names or an index, fails constructing the `RequestOptionsCredential`. `toDocRequest()` no
+      longer ignores pointers with three or more names, and the DCQL query of `CredentialPresentationRequestBuilder`
+      no longer puts a data element identifier into the name space `mdoc` when the credential scheme has no
+      `isoNamespace`. Remove `DCQLClaimsPathPointer.toIsoMdocClaimPath(scheme)` and
+      `DCQLClaimsPathPointer.toSingleItemsRequest()`
+    - `RequestOptionsCredential.toDocRequest()` also requests the data elements of `optionalAttributePaths`, as the
+      DCQL query does: a `DocRequest` marks no data element as optional (ISO/IEC 18013-5:2021, 8.3.2.1.2.1), and the
+      mdoc may answer with error codes for data elements it does not return (8.3.2.1.2.2). It fails for another
+      representation than `ISO_MDOC`. A data element requested twice, e.g. once with and once without its name space,
+      is requested once
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
@@ -94,6 +108,31 @@ processing.
       can be registered with several identifiers (ETSI TS 119 475 V1.2.1, B.2.2). The shared subject stands in for
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
+- Trusted relying parties:
+    - WRPRC authorization exempts, besides `vct`, every root claim of an SD-JWT VC that must not be selectively
+      disclosed, with its sub-claims: `iss`, `nbf`, `exp`, `cnf`, `vct#integrity`, `aka_vcts`, and `status`
+      (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3), since the holder can not withhold them. A request for e.g. `["iss"]` or
+      `["cnf", "jwk"]` no longer needs to be registered; `sub`, `iat`, and nested claims of these names still do
+- OpenID4VP:
+    - BREAKING: Match DCQL claims paths for W3C VCs (`jwt_vc_json`) on the root of the VC, as OpenID4VP 1.0, B.1.2
+      requires, e.g. `["credentialSubject", "given_name"]`, instead of on the credential subject, so VC-K wallets and
+      verifiers interoperate with others. `CredentialToJsonConverter.toJsonElement` returns the VC itself for
+      `StoreEntry.Vc` and `VerifiableCredentialJws`, without the flattened subject claims, the `vc` array, and the
+      scheme identifier as `type`. VC-JWT queries with claims of VC-K 9.x verifiers (e.g. `["given_name"]`) no longer
+      match, queries without claims are not affected
+    - `CredentialPresentationRequestBuilder` prefixes `credentialSubject` to the `attributePaths` and
+      `optionalAttributePaths` of a VC-JWT `RequestOptionsCredential`, unless they already start with it (see
+      `toVcJwtClaimPath`), so callers keep naming claims about the subject as for the other representations
+    - The required claims of a VC-JWT type (`CredentialScheme.requiredClaims`) are qualified with `credentialSubject`
+      too, see `vcJwtQualifiedClaimDescriptions`
+    - Present a VC-JWT as a whole also if the DCQL query requests claims of it, since its claims are not selectively
+      disclosable (OpenID4VP 1.0, 6.4.1), instead of failing with "Credential type only allows disclosure of all
+      attributes"
+    - Add `VcDataModelConstants.CREDENTIAL_SUBJECT`
+- OpenID4VCI:
+    - BREAKING: Advertise the claims of a `jwt_vc_json` credential configuration as paths into the VC (OpenID4VCI
+      1.0, C), e.g. `["credentialSubject", "given_name"]` instead of `["given_name"]`, see
+      `toPlainJwtSupportedCredentialFormat`
 
 Release 9.0.0:
 
