@@ -138,6 +138,10 @@ processing.
     - Fix: An SD-JWT VC that selectively discloses a claim or an array element below one of these claims, e.g. in
       `cnf` or `aka_vcts`, is rejected, as it does for these claims themselves: they must not be selectively disclosed
       "including any of their sub-claims" (draft-ietf-oauth-sd-jwt-vc-19, 2.2.2.3)
+    - BREAKING: `JsonClaimReference` is a `data class` instead of a `@JvmInline value class`, so it can be passed as
+      `vararg` and its constructors can be called from Java; its JSON form is unchanged. Add the constructors
+      `JsonClaimReference(name, vararg names)` for a path of names and `MdocClaimReference(scheme, claimName)` for a
+      data element in the `isoNamespace` of an `IsoMdocCredentialScheme`
 - OpenID4VP:
     - BREAKING: Match DCQL claims paths for W3C VCs (`jwt_vc_json`) on the root of the VC, as OpenID4VP 1.0, B.1.2
       requires, e.g. `["credentialSubject", "given_name"]`, instead of on the credential subject, so VC-K wallets and
