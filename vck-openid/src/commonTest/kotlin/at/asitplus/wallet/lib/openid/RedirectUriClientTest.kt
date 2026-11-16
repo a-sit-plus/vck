@@ -104,7 +104,7 @@ val RedirectUriClientTest by matrixSuite {
             ).toNonEmptyList()
 
             val requestOptions = OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder(
+                presentationRequest = CredentialPresentationRequestBuilder.fromRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
                     )
@@ -131,7 +131,7 @@ val RedirectUriClientTest by matrixSuite {
                 )
             ).toNonEmptyList()
             val requestOptions = OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder(
+                presentationRequest = CredentialPresentationRequestBuilder.fromRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
                     )

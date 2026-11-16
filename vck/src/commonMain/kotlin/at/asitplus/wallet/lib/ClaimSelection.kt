@@ -12,6 +12,12 @@ import kotlin.jvm.JvmOverloads
 sealed interface ClaimSelection<C : SingleClaimReference> {
 
     /**
+     * All claims of this selection, in the order of their first occurrence: the claims queries in `claims` of a DCQL
+     * Credential Query (OpenID4VP 1.0, 6.1), which its claim combinations reference.
+     */
+    val allClaims: Set<C>
+
+    /**
      * Requests every claim of [required], and the claims of [ifAvailable] if the holder's credential contains them. A
      * claim may not be both required and requested if available.
      *
@@ -34,6 +40,9 @@ sealed interface ClaimSelection<C : SingleClaimReference> {
          */
         val ifAvailable: Set<C> = setOf(),
     ) : ClaimSelection<C> {
+        override val allClaims: Set<C>
+            get() = required + ifAvailable
+
         init {
             requireDisjoint(required, ifAvailable)
         }
@@ -64,20 +73,16 @@ sealed interface ClaimSelection<C : SingleClaimReference> {
         @JvmOverloads
         constructor(vararg options: Set<C>, common: Set<C> = setOf()) : this(options.toList(), common)
 
+        override val allClaims: Set<C>
+            get() = common + options.flatten()
+
         init {
             require(options.isNotEmpty()) { "At least one option of claims is required" }
-            require(claims.isNotEmpty()) { "Alternatives without any claim request none; use All() instead" }
+            require(allClaims.isNotEmpty()) { "Alternatives without any claim request none; use All() instead" }
             options.forEach { requireDisjoint(common, it) }
         }
     }
 }
-
-/** All claims of this selection, in the order of their first occurrence. */
-internal val <C : SingleClaimReference> ClaimSelection<C>.claims: Set<C>
-    get() = when (this) {
-        is ClaimSelection.All -> required + ifAvailable
-        is ClaimSelection.Alternatives -> common + options.flatten()
-    }
 
 /**
  * Requires that no claim occurs in both parts of one claim combination, e.g. a path required and also requested if

@@ -450,7 +450,7 @@ private suspend fun dcapiFixture(
         ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(ephemeralKeyStore),
         presentationPolicy = testPresentationPolicy,
     )
-    val presentationRequestBuilder = CredentialPresentationRequestBuilder(requestOptions)
+    val presentationRequestBuilder = CredentialPresentationRequestBuilder.fromRequestOptions(requestOptions)
     val isoRequest = verifier.createAuthnRequest(
         OpenId4VpRequestOptions(
             presentationRequest = presentationRequestBuilder.toIsoDeviceRetrievalRequest(),
