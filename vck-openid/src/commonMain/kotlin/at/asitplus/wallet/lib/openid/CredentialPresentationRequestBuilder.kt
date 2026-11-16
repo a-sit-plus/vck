@@ -52,6 +52,11 @@ class CredentialPresentationRequestBuilder(
             this(RequestedPresentation.allOf(*credentials))
 
     /** Requests every one of [credentials], see [RequestOptionsCredential.toRequestedCredential]. */
+    @Deprecated(
+        "Request RequestedCredentials",
+        ReplaceWith("CredentialPresentationRequestBuilder(credentials.map { it.toRequestedCredential() })"),
+    )
+    @Suppress("DEPRECATION")
     constructor(vararg credentials: RequestOptionsCredential) :
             this(credentials.map { it.toRequestedCredential() })
 
@@ -106,7 +111,12 @@ class CredentialPresentationRequestBuilder(
 
     companion object {
         /** Requests every one of [credentials], see [RequestOptionsCredential.toRequestedCredential]. */
+        @Deprecated(
+            "Request RequestedCredentials",
+            ReplaceWith("CredentialPresentationRequestBuilder(credentials.map { it.toRequestedCredential() })"),
+        )
         @JvmStatic
+        @Suppress("DEPRECATION")
         fun fromRequestOptions(credentials: Collection<RequestOptionsCredential>) =
             CredentialPresentationRequestBuilder(credentials.map { it.toRequestedCredential() })
     }

@@ -10,12 +10,18 @@ import at.asitplus.openid.PushedAuthenticationResponseParameters;
 import at.asitplus.openid.TokenResponseParameters;
 import at.asitplus.wallet.eupid.EuPidCredential;
 import at.asitplus.wallet.lib.agent.validation.TimeScope;
+import at.asitplus.wallet.lib.data.JsonClaimReference;
 import at.asitplus.wallet.lib.data.LocalDateOrInstant;
+import at.asitplus.wallet.lib.data.MdocClaimReference;
 import at.asitplus.wallet.lib.validation.StatusPolicy;
 import at.asitplus.wallet.lib.validation.TrustPolicy;
 import at.asitplus.wallet.lib.validation.ValidationPolicy;
 import at.asitplus.wallet.mdl.DrivingPrivilege;
 import at.asitplus.wallet.mdl.MobileDrivingLicence;
+import at.asitplus.wallet.lib.ClaimSelection;
+import at.asitplus.wallet.lib.RequestedCredential;
+import at.asitplus.wallet.lib.RequestedCredentialSet;
+import at.asitplus.wallet.lib.RequestedPresentation;
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued;
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued;
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert;
@@ -110,6 +116,55 @@ public class TestJavaApi {
                 || !region.getName().equals("region")
                 || !region.getValue().equals("Vienna")) {
             throw new AssertionError("nested claim missing");
+        }
+    }
+
+    public static void createsRequestedPresentationFromJavaApi() {
+        JsonClaimReference givenName = new JsonClaimReference("given_name");
+        JsonClaimReference streetAddress = new JsonClaimReference("address", "street_address");
+        RequestedCredential.SdJwt pid = new RequestedCredential.SdJwt(
+                "urn:eudi:pid:1",
+                new ClaimSelection.All<>(Set.of(givenName), Set.of(streetAddress)),
+                "pid"
+        );
+        if (!pid.getVct().equals("urn:eudi:pid:1") || !pid.getId().equals("pid")) {
+            throw new AssertionError("vct or id of the SD-JWT VC missing");
+        }
+        if (!(new RequestedCredential.SdJwt("urn:eudi:pid:1").getClaims() instanceof ClaimSelection.All)) {
+            throw new AssertionError("claims must default to ClaimSelection.All");
+        }
+
+        MdocClaimReference portrait = new MdocClaimReference("org.iso.18013.5.1", "portrait");
+        RequestedCredential.Mdoc mdl = new RequestedCredential.Mdoc(
+                "org.iso.18013.5.1.mDL",
+                new MdocClaimReference[]{portrait},
+                Set.of(portrait),
+                "mdl"
+        );
+        boolean retained = mdl.toDocRequest().getItemsRequest().getValue().getNamespaces()
+                .get("org.iso.18013.5.1").getEntries().get(0).getIntentToRetain();
+        if (!retained) {
+            throw new AssertionError("intent to retain missing from the DocRequest");
+        }
+
+        RequestedCredential.SdJwt ageCheck = new RequestedCredential.SdJwt(
+                "urn:eudi:pid:1",
+                new ClaimSelection.Alternatives<>(List.of(
+                        Set.of(new JsonClaimReference("age_over_18")),
+                        Set.of(new JsonClaimReference("birth_date"))
+                )),
+                "age"
+        );
+
+        RequestedPresentation presentation = new RequestedPresentation(
+                RequestedCredentialSet.oneOf(List.of(Set.of(pid, mdl), Set.of(pid))),
+                RequestedCredentialSet.optional(List.of(Set.of(ageCheck)))
+        );
+        if (presentation.getCredentials().size() != 3) {
+            throw new AssertionError("each credential must be requested once");
+        }
+        if (RequestedPresentation.allOf(pid, mdl).getSets().size() != 1) {
+            throw new AssertionError("allOf must request one set");
         }
     }
 

@@ -3,7 +3,8 @@
 Release 10.0.0 (unreleased):
 
 Removes JSONPath as a dependency, because OpenID4VP relies on DCQL paths only. Strengthens implementation of SD-JWT
-processing.
+processing. Adds typed presentation requests (`RequestedCredential`, `RequestedPresentation`) with claims requested if
+available, claim alternatives, and credential sets, replacing the deprecated `RequestOptionsCredential`.
 
 - Removals:
     - Remove code elements deprecated in 9.0.0: `Verifier` and its legacy validation classes
@@ -182,6 +183,14 @@ processing.
       18013-5:2021, 8.3.2.1.2.1), and `toIsoDeviceRetrievalRequest()` also for other credentials than mdocs and for
       alternative or optional credentials. `RequestOptionsCredential.toDocRequest()` accepts any credential scheme
       with an `isoDocType`, as the DCQL query does, not only an `IsoMdocCredentialScheme`
+    - Deprecate `RequestOptionsCredential`, `RequestedAttributePaths`, the `CredentialPresentationRequestBuilder`
+      constructor taking `RequestOptionsCredential`s, and `CredentialPresentationRequestBuilder.fromRequestOptions`.
+      Migrate by requesting a `RequestedCredential` of the representation: name VC-JWT claims from the root of the VC,
+      e.g. `JsonClaimReference("credentialSubject", "given_name")` for the attribute path `["given_name"]`, mdoc data
+      elements as `MdocClaimReference(scheme, "given_name")`, and `optionalAttributePaths` as
+      `ClaimSelection.All(required, ifAvailable)`; `RequestOptionsCredential.toRequestedCredential()` converts as a
+      first step
+    - BREAKING: Remove the unused typealias `RequestedAttributes`
     - The required claims of a VC-JWT type (`CredentialScheme.requiredClaims`) are qualified with `credentialSubject`
       too, see `vcJwtQualifiedClaimDescriptions`, unless the new `VcJwtCredentialScheme.vcJwtClaimPathsAreQualified`
       is true. Schemes derived from type metadata (`ExtractedVcJwtCredentialScheme`) set it, so their claim paths

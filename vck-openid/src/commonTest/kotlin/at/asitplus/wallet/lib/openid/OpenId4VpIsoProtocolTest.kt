@@ -210,6 +210,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
         }
 
         "Selective Disclosure with an mDL claims path pointer" {
+            @Suppress("DEPRECATION") // the claims path pointers of the deprecated RequestOptionsCredential
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
                     RequestOptionsCredential(
