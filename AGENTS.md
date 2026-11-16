@@ -33,3 +33,7 @@ Agent-only operating notes:
   is already known. Keep tests for already implemented behavior enabled.
 - Use `catchingUnwrapped` instead of `catching` when we don't need the `KmmResult` as a return type
 - Every `@Throws` annotation on a suspending function needs to include `CancellationException` for iOS builds
+- Structure each test as Arrange-Act-Assert, with the three parts separated by a blank line: arrange the state and
+  inputs (e.g. store credentials, build the `request`), act once on the behavior under test, and assert on its result
+  last, e.g. in one `.apply { ... }` block on it. Keep assertions out of the arrange and act parts, except casts such
+  as `shouldBeInstanceOf` that the next step needs.
