@@ -152,6 +152,7 @@ val OpenId4VpCombinedProtocolTest by matrixSuite {
         test("plain jwt: requested attributes are claims paths into the root of the credential") {
             issueAndStorePlainJwt(it.holderAgent, it.holderKeyMaterial, it.euPidScheme)
 
+            @Suppress("DEPRECATION") // the attribute paths of the deprecated RequestOptionsCredential
             val presentationRequest = CredentialPresentationRequestBuilder(
                 RequestOptionsCredential(
                     credentialScheme = it.euPidScheme,
