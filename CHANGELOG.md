@@ -97,6 +97,14 @@ processing.
       into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
+    - Fix: `DCQLQuery.toIso180137AnnexCDeviceRequest()` fails for what an ISO `DeviceRequest` can not express,
+      instead of requesting more or other than the query: `claim_sets` with several options, `credential_sets` other
+      than required sets with a single option that together request every credential query, expected claim `values`,
+      `multiple`, and `trusted_authorities`. `claim_sets` with a single option request the claims of that option, and
+      a data element queried twice is requested once, retained if any of its claims queries retains it.
+      `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC 18013-7 Annex C
+      before creating any request, so a query that can not be converted creates no nonce, ephemeral key, or stored
+      request for any exchange protocol
     - BREAKING: `DCQLClaimsPathPointer.query` returns a `List<DCQLSelectedClaim>`, each selected claim with its
       `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
       a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
