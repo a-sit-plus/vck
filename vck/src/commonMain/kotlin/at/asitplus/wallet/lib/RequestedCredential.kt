@@ -216,7 +216,9 @@ sealed interface RequestedCredential {
                 is ClaimSelection.Alternatives ->
                     throw IllegalArgumentException("An ISO DocRequest can not express alternative data elements")
             }
-            require(dataElements.isNotEmpty()) { "An ISO DocRequest requests at least one data element" }
+            require(dataElements.isNotEmpty()) {
+                "An ISO DocRequest needs at least one data element, but none is requested"
+            }
             val namespaces = dataElements
                 .groupBy(
                     keySelector = { it.namespace },
