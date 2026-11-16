@@ -1,18 +1,17 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.formUrlEncode
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -54,10 +53,9 @@ val OpenId4VpX509HashTest by matrixSuite {
             val (walletUrl, jar) = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = SD_JWT,
-                            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
+                        RequestedCredential.SdJwt(
+                            AtomicAttribute2023,
+                            JsonClaimReference(CLAIM_GIVEN_NAME),
                         ),
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
@@ -83,10 +81,9 @@ val OpenId4VpX509HashTest by matrixSuite {
             val (walletUrl, jar) = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = SD_JWT,
-                            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
+                        RequestedCredential.SdJwt(
+                            AtomicAttribute2023,
+                            JsonClaimReference(CLAIM_GIVEN_NAME),
                         )
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,

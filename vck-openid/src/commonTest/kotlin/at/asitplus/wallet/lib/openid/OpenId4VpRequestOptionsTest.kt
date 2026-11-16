@@ -4,7 +4,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import io.kotest.assertions.throwables.shouldThrowAny
 
@@ -12,9 +12,9 @@ import io.kotest.assertions.throwables.shouldThrowAny
 val OpenId4VpRequestOptionsTest by matrixSuite {
 
     test("transaction data requires matching credential ids") {
-        val credential = RequestOptionsCredential(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            id = "cred-1"
+        val credential = RequestedCredential.VcJwt(
+            scheme = ConstantIndex.AtomicAttribute2023,
+            id = "cred-1",
         )
         val transactionData = QCertCreationAcceptance(
             qcTermsConditionsUri = "https://example.com/terms",
@@ -41,7 +41,7 @@ val OpenId4VpRequestOptionsTest by matrixSuite {
         shouldThrowAny {
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = null
@@ -53,7 +53,7 @@ val OpenId4VpRequestOptionsTest by matrixSuite {
         shouldThrowAny {
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.Fragment,
                 populateClientId = false
@@ -65,7 +65,7 @@ val OpenId4VpRequestOptionsTest by matrixSuite {
         shouldThrowAny {
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",

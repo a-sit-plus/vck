@@ -6,13 +6,12 @@ import at.asitplus.openid.formUrlEncode
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultNonceService
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -34,7 +33,7 @@ import kotlinx.coroutines.runBlocking
 val OpenId4VpVerifierErrorResponseTest by matrixSuite {
 
     val presentationRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(AtomicAttribute2023, SD_JWT),
+        RequestedCredential.SdJwt(AtomicAttribute2023),
     ).toDCQLRequest()
 
     fixture {

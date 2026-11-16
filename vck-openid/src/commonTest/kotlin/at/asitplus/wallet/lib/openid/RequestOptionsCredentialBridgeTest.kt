@@ -32,7 +32,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 
-val CredentialPresentationRequestBuilderTest by matrixSuite {
+val RequestOptionsCredentialBridgeTest by matrixSuite {
     test("invalid credential scheme for SD-JWT should not throw when creating query") {
         val credential = RequestOptionsCredential(
             credentialScheme = object : SdJwtCredentialScheme {

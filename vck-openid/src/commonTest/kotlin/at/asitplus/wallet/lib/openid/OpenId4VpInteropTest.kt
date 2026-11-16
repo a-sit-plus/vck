@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.formUrlEncode
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -11,7 +10,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -24,6 +23,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
@@ -105,13 +105,10 @@ val OpenId4VpInteropTest by matrixSuite {
             val (requestUrlForWallet, requestObject) = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = ConstantIndex.AtomicAttribute2023,
-                            representation = SD_JWT,
-                            attributePaths = setOf(
-                                DCQLClaimsPathPointer(CLAIM_FAMILY_NAME),
-                                DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)
-                            )
+                        RequestedCredential.SdJwt(
+                            ConstantIndex.AtomicAttribute2023,
+                            JsonClaimReference(CLAIM_FAMILY_NAME),
+                            JsonClaimReference(CLAIM_GIVEN_NAME),
                         )
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,

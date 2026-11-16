@@ -25,7 +25,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -84,7 +84,7 @@ val PreRegisteredClientTest by matrixSuite {
                 )
                 val defaultRequestOptions = OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                 )
             }
@@ -95,7 +95,7 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.Fragment,
                 ),
@@ -129,7 +129,7 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.Query,
                     state = expectedState,
@@ -194,8 +194,8 @@ val PreRegisteredClientTest by matrixSuite {
         "test with direct_post" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    presentationRequest = CredentialPresentationRequestBuilder.fromRequestOptions(
-                        credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023),
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = it.redirectUrl
@@ -217,7 +217,7 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.redirectUrl
@@ -246,7 +246,7 @@ val PreRegisteredClientTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.redirectUrl
@@ -424,7 +424,7 @@ val PreRegisteredClientTest by matrixSuite {
 
 private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
     presentationRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
     ).toDCQLRequest(),
 )
 

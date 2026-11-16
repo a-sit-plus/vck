@@ -17,7 +17,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -130,7 +130,7 @@ private fun trustingAttester(attester: KeyMaterial) = RelyingPartyValidator(
 
 private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
     presentationRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
     ).toDCQLRequest(),
 )
 

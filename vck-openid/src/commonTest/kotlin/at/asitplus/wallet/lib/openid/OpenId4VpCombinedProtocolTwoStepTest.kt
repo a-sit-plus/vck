@@ -1,11 +1,11 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.ClaimSelection
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.DCQLMatchingResult
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -14,10 +14,9 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentation.DCQLPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import com.benasher44.uuid.uuid4
@@ -56,7 +55,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenId4VpRequestOptions(
                     CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
+                        RequestedCredential.Mdoc(AtomicAttribute2023)
                     ).toDCQLRequest(),
                 ),
                 creationOptions = CreationOptions.Query("https://example.com")
@@ -91,7 +90,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenId4VpRequestOptions(
                     CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
+                        RequestedCredential.Mdoc(AtomicAttribute2023)
                     ).toDCQLRequest(),
                 ),
                 creationOptions = CreationOptions.Query("https://example.com")
@@ -133,12 +132,13 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenId4VpRequestOptions(
                     CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = ISO_MDOC,
-                            optionalAttributePaths = setOf(
-                                DCQLClaimsPathPointer(AtomicAttribute2023.CLAIM_FAMILY_NAME),
-                                DCQLClaimsPathPointer(AtomicAttribute2023.CLAIM_GIVEN_NAME)
+                        RequestedCredential.Mdoc(
+                            AtomicAttribute2023,
+                            claims = ClaimSelection.All(
+                                ifAvailable = setOf(
+                                    MdocClaimReference(AtomicAttribute2023, AtomicAttribute2023.CLAIM_FAMILY_NAME),
+                                    MdocClaimReference(AtomicAttribute2023, AtomicAttribute2023.CLAIM_GIVEN_NAME),
+                                ),
                             ),
                         )
                     ).toDCQLRequest(),
@@ -195,8 +195,8 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
             issueAndStoreSdJwt(it.holderAgent, it.holderKeyMaterial, AtomicAttribute2023)
 
             val sdJwtRequest = CredentialPresentationRequestBuilder(
-                RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
-            ).toDCQLRequest().shouldNotBeNull()
+                RequestedCredential.SdJwt(AtomicAttribute2023)
+            ).toDCQLRequest()
 
             val sdJwtMatches = it.holderAgent.matchDCQLRequest(sdJwtRequest)
                 .also {
@@ -212,7 +212,7 @@ val OpenId4VpCombinedProtocolTwoStepTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenId4VpRequestOptions(
                     CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
+                        RequestedCredential.Mdoc(AtomicAttribute2023)
                     ).toDCQLRequest(),
                 ),
                 creationOptions = CreationOptions.Query("https://example.com")
