@@ -48,7 +48,13 @@ val RequestedCredentialTest by matrixSuite {
             val givenName = JsonClaimReference("given_name")
             val familyName = JsonClaimReference("family_name")
             RequestedCredential.SdJwt("urn:example:vct", givenName, familyName).claims shouldBe
-                    ClaimSelection.All(required = listOf(givenName, familyName))
+                    ClaimSelection.All(required = setOf(givenName, familyName))
+        }
+
+        test("the order of claims does not matter") {
+            val givenName = JsonClaimReference("given_name")
+            val familyName = JsonClaimReference("family_name")
+            ClaimSelection.All(setOf(givenName, familyName)) shouldBe ClaimSelection.All(setOf(familyName, givenName))
         }
 
         test("a default ID is random, a given ID is kept") {
@@ -72,28 +78,21 @@ val RequestedCredentialTest by matrixSuite {
             failures.forEach { it.shouldBeInstanceOf<IllegalArgumentException>() }
         }
 
-        "a claim requested twice is rejected" - {
-            test("as required claim") {
-                shouldThrow<IllegalArgumentException> {
-                    ClaimSelection.All(listOf(JsonClaimReference("given_name"), JsonClaimReference("given_name")))
-                }
-            }
-            test("as required claim and if available") {
-                shouldThrow<IllegalArgumentException> {
-                    ClaimSelection.All(
-                        required = listOf(JsonClaimReference("credentialSubject", "given_name")),
-                        ifAvailable = listOf(JsonClaimReference("credentialSubject", "given_name")),
-                    )
-                }
-            }
-            test("as data element") {
-                shouldThrow<IllegalArgumentException> {
-                    RequestedCredential.Mdoc(
-                        "org.iso.18013.5.1.mDL",
-                        MdocClaimReference("org.iso.18013.5.1", "given_name"),
-                        MdocClaimReference("org.iso.18013.5.1", "given_name"),
-                    )
-                }
+        test("a claim passed twice as vararg is requested once") {
+            val givenName = JsonClaimReference("given_name")
+            RequestedCredential.SdJwt("urn:example:vct", givenName, givenName).claims shouldBe
+                    ClaimSelection.All(setOf(givenName))
+            val isoName = MdocClaimReference("org.iso.18013.5.1", "given_name")
+            RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", isoName, isoName).claims shouldBe
+                    ClaimSelection.All(setOf(isoName))
+        }
+
+        test("a claim both required and requested if available is rejected") {
+            shouldThrow<IllegalArgumentException> {
+                ClaimSelection.All(
+                    required = setOf(JsonClaimReference("credentialSubject", "given_name")),
+                    ifAvailable = setOf(JsonClaimReference("credentialSubject", "given_name")),
+                )
             }
         }
 
@@ -101,7 +100,7 @@ val RequestedCredentialTest by matrixSuite {
             val isoName = MdocClaimReference("org.iso.18013.5.1", "given_name")
             val aamvaName = MdocClaimReference("org.iso.18013.5.1.aamva", "given_name")
             RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", isoName, aamvaName).claims shouldBe
-                    ClaimSelection.All(required = listOf(isoName, aamvaName))
+                    ClaimSelection.All(required = setOf(isoName, aamvaName))
         }
 
         test("only requested data elements can be retained") {
@@ -115,6 +114,77 @@ val RequestedCredentialTest by matrixSuite {
         }
     }
 
+    "claim alternatives" - {
+        val lastName = JsonClaimReference("last_name")
+        val postalCode = JsonClaimReference("postal_code")
+        val locality = JsonClaimReference("locality")
+        val region = JsonClaimReference("region")
+
+        test("options are passed as varargs, in the order of preference, with the common claims") {
+            val selection = ClaimSelection.Alternatives(
+                setOf(postalCode),
+                setOf(locality, region),
+                common = setOf(lastName),
+            )
+            selection shouldBe ClaimSelection.Alternatives(
+                options = listOf(setOf(postalCode), setOf(locality, region)),
+                common = setOf(lastName),
+            )
+        }
+
+        test("the order of options matters") {
+            ClaimSelection.Alternatives(setOf(postalCode), setOf(locality)) shouldNotBe
+                    ClaimSelection.Alternatives(setOf(locality), setOf(postalCode))
+        }
+
+        test("a credential can request alternatives") {
+            val selection = ClaimSelection.Alternatives(setOf(JsonClaimReference("age_over_18")), setOf(lastName))
+            RequestedCredential.SdJwt("urn:example:vct", selection).claims shouldBe selection
+        }
+
+        test("one claim may occur in several options") {
+            ClaimSelection.Alternatives(setOf(lastName, postalCode), setOf(lastName, locality)).options shouldBe
+                    listOf(setOf(lastName, postalCode), setOf(lastName, locality))
+        }
+
+        test("an empty option accepts the credential with the common claims only") {
+            ClaimSelection.Alternatives(setOf(postalCode), setOf(), common = setOf(lastName)).options shouldBe
+                    listOf(setOf(postalCode), setOf())
+        }
+
+        "invalid alternatives are rejected" - {
+            test("without options") {
+                shouldThrow<IllegalArgumentException> {
+                    ClaimSelection.Alternatives(options = listOf(), common = setOf(lastName))
+                }
+            }
+            test("without any claim") {
+                shouldThrow<IllegalArgumentException> {
+                    ClaimSelection.Alternatives(setOf<JsonClaimReference>(), setOf())
+                }
+            }
+            test("with a claim in the common claims and an option") {
+                shouldThrow<IllegalArgumentException> {
+                    ClaimSelection.Alternatives(
+                        setOf(lastName, postalCode),
+                        setOf(locality),
+                        common = setOf(lastName),
+                    )
+                }
+            }
+        }
+
+        test("data elements of any option can be retained") {
+            val portrait = MdocClaimReference("org.iso.18013.5.1", "portrait")
+            val ageOver18 = MdocClaimReference("org.iso.18013.5.1", "age_over_18")
+            RequestedCredential.Mdoc(
+                docType = "org.iso.18013.5.1.mDL",
+                claims = ClaimSelection.Alternatives(setOf(ageOver18), setOf(portrait)),
+                intentToRetain = setOf(portrait),
+            ).intentToRetain shouldBe setOf(portrait)
+        }
+    }
+
     "ISO DocRequest" - {
         test("requests the required data elements by name space, with their intent to retain, none if available") {
             val familyName = MdocClaimReference("org.iso.18013.5.1", "family_name")
@@ -122,7 +192,7 @@ val RequestedCredentialTest by matrixSuite {
             val portrait = MdocClaimReference("org.iso.18013.5.1", "portrait")
             val mdoc = RequestedCredential.Mdoc(
                 docType = "org.iso.18013.5.1.mDL",
-                claims = ClaimSelection.All(required = listOf(familyName, compliance), ifAvailable = listOf(portrait)),
+                claims = ClaimSelection.All(required = setOf(familyName, compliance), ifAvailable = setOf(portrait)),
                 intentToRetain = setOf(compliance),
             )
 
@@ -139,10 +209,22 @@ val RequestedCredentialTest by matrixSuite {
             val portrait = MdocClaimReference("org.iso.18013.5.1", "portrait")
             val mdoc = RequestedCredential.Mdoc(
                 docType = "org.iso.18013.5.1.mDL",
-                claims = ClaimSelection.All(ifAvailable = listOf(portrait)),
+                claims = ClaimSelection.All(ifAvailable = setOf(portrait)),
             )
 
             shouldThrow<IllegalArgumentException> { mdoc.toDocRequest() }
+        }
+
+        test("alternative data elements can not be expressed in a DocRequest") {
+            shouldThrow<IllegalArgumentException> {
+                RequestedCredential.Mdoc(
+                    "org.iso.18013.5.1.mDL",
+                    ClaimSelection.Alternatives(
+                        setOf(MdocClaimReference("org.iso.18013.5.1", "age_over_18")),
+                        setOf(MdocClaimReference("org.iso.18013.5.1", "birth_date")),
+                    ),
+                ).toDocRequest()
+            }
         }
 
         test("without data elements, no DocRequest can be created") {
