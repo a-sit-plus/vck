@@ -55,7 +55,7 @@ sealed interface RequestedCredential {
             id: String = uuid4().toString()
         ) : this(
             vct = vct,
-            claims = ClaimSelection.All(claims.toList()),
+            claims = ClaimSelection.All(claims.toSet()),
             id = id
         )
 
@@ -79,7 +79,7 @@ sealed interface RequestedCredential {
             id: String = uuid4().toString()
         ) : this(
             vct = scheme.sdJwtType,
-            claims = ClaimSelection.All(claims.toList()),
+            claims = ClaimSelection.All(claims.toSet()),
             id = id
         )
     }
@@ -108,7 +108,7 @@ sealed interface RequestedCredential {
             id: String = uuid4().toString()
         ) : this(
             type = type,
-            claims = ClaimSelection.All(claims.toList()),
+            claims = ClaimSelection.All(claims.toSet()),
             id = id
         )
 
@@ -132,7 +132,7 @@ sealed interface RequestedCredential {
             id: String = uuid4().toString()
         ) : this(
             type = scheme.vcType,
-            claims = ClaimSelection.All(claims.toList()),
+            claims = ClaimSelection.All(claims.toSet()),
             id = id
         )
     }
@@ -159,7 +159,7 @@ sealed interface RequestedCredential {
             id: String = uuid4().toString(),
         ) : this(
             docType = docType,
-            claims = ClaimSelection.All(claims.toList()),
+            claims = ClaimSelection.All(claims.toSet()),
             intentToRetain = intentToRetain,
             id = id
         )
@@ -187,14 +187,14 @@ sealed interface RequestedCredential {
             id: String = uuid4().toString(),
         ) : this(
             docType = scheme.isoDocType,
-            claims = ClaimSelection.All(claims.toList()),
+            claims = ClaimSelection.All(claims.toSet()),
             intentToRetain = intentToRetain,
             id = id
         )
 
         init {
             requireCredentialQueryId(id)
-            val notRequested = intentToRetain - claims.claims.toSet()
+            val notRequested = intentToRetain - claims.claims
             require(notRequested.isEmpty()) { "Data elements to retain are not requested: $notRequested" }
         }
 
@@ -207,10 +207,14 @@ sealed interface RequestedCredential {
          * Fails without any required data element, as an `ItemsRequest` requests at least one name space with at
          * least one data element (`NameSpaces = {+ NameSpace => DataElements}`, `DataElements = {+ DataElement =>
          * IntentToRetain}`, ISO/IEC 18013-5:2021, 8.3.2.1.2.1).
+         * Fails for [ClaimSelection.Alternatives] too, which an `ItemsRequest` can not express,
+         * instead of requesting all data elements of all options.
          */
         fun toDocRequest(): DocRequest {
             val dataElements = when (val selection = claims) {
                 is ClaimSelection.All -> selection.required
+                is ClaimSelection.Alternatives ->
+                    throw IllegalArgumentException("An ISO DocRequest can not express alternative data elements")
             }
             require(dataElements.isNotEmpty()) { "An ISO DocRequest requests at least one data element" }
             val namespaces = dataElements
