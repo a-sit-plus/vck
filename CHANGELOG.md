@@ -149,9 +149,31 @@ processing.
       `StoreEntry.Vc` and `VerifiableCredentialJws`, without the flattened subject claims, the `vc` array, and the
       scheme identifier as `type`. VC-JWT queries with claims of VC-K 9.x verifiers (e.g. `["given_name"]`) no longer
       match, queries without claims are not affected
-    - `CredentialPresentationRequestBuilder` prefixes `credentialSubject` to the `attributePaths` and
-      `optionalAttributePaths` of a VC-JWT `RequestOptionsCredential`, unless they already start with it (see
-      `toVcJwtClaimPath`), so callers keep naming claims about the subject as for the other representations
+    - `RequestOptionsCredential.toRequestedCredential()` prefixes `credentialSubject` to the `attributePaths` and
+      `optionalAttributePaths` of a VC-JWT `RequestOptionsCredential`, unless they already start with it, so callers
+      keep naming claims about the subject as for the other representations; `RequestedCredential.VcJwt` takes paths
+      from the root of the VC
+    - Add typed requests: `RequestedCredential.SdJwt`, `VcJwt`, and `Mdoc`, each with a `ClaimSelection`
+      (`All` with required claims and claims requested `ifAvailable`, or `Alternatives` with `common` claims and
+      options in the order of preference), and `RequestedPresentation` with `RequestedCredentialSet`s (`oneOf`,
+      `optional`, `RequestedPresentation.allOf`). `CredentialPresentationRequestBuilder` builds them into the DCQL
+      `claims`, `claim_sets`, and `credential_sets` (OpenID4VP 1.0, 6.1 to 6.4). The claims requested `ifAvailable`
+      are one bundle: if the holder's credential lacks one of them, none of them is presented
+    - BREAKING: `CredentialPresentationRequestBuilder` holds a `RequestedPresentation` instead of
+      `credentials: Collection<RequestOptionsCredential>`. It takes `RequestedCredential`s as vararg or collection,
+      and `RequestOptionsCredential`s as vararg or with `fromRequestOptions(collection)`, converted with the new
+      `RequestOptionsCredential.toRequestedCredential()`. `toDCQLRequest()` returns a non-null `DCQLRequest`. It is a
+      plain class instead of a data class, without `equals`, `copy`, and `componentN`
+    - BREAKING: `optionalAttributePaths` of a `RequestOptionsCredential` are requested only if the holder's credential
+      contains them, as the claim combinations `[required + optional]` and `[required]` in `claim_sets`, instead of
+      being required too. They are one bundle: if the holder's credential lacks one optional path, none of them is
+      presented. A credential scheme without the type identifier of the requested representation fails
+      building the request, instead of its Credential Query being dropped. `toIsoDeviceRetrievalRequest()` and
+      `RequestOptionsCredential.toDocRequest()` request only the required data elements, as an ISO `ItemsRequest`
+      marks none as optional, and fail for an mdoc without any, which an `ItemsRequest` requires (ISO/IEC
+      18013-5:2021, 8.3.2.1.2.1), and `toIsoDeviceRetrievalRequest()` also for other credentials than mdocs and for
+      alternative or optional credentials. `RequestOptionsCredential.toDocRequest()` accepts any credential scheme
+      with an `isoDocType`, as the DCQL query does, not only an `IsoMdocCredentialScheme`
     - The required claims of a VC-JWT type (`CredentialScheme.requiredClaims`) are qualified with `credentialSubject`
       too, see `vcJwtQualifiedClaimDescriptions`, unless the new `VcJwtCredentialScheme.vcJwtClaimPathsAreQualified`
       is true. Schemes derived from type metadata (`ExtractedVcJwtCredentialScheme`) set it, so their claim paths

@@ -194,7 +194,7 @@ sealed interface RequestedCredential {
 
         init {
             requireCredentialQueryId(id)
-            val notRequested = intentToRetain - claims.claims
+            val notRequested = intentToRetain - claims.allClaims
             require(notRequested.isEmpty()) { "Data elements to retain are not requested: $notRequested" }
         }
 

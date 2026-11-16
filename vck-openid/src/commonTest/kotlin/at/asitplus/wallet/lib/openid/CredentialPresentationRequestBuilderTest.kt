@@ -50,7 +50,7 @@ val CredentialPresentationRequestBuilderTest by matrixSuite {
         }
     }
 
-    test("invalid credential scheme for ISO should not throw when creating query") {
+    test("an ISO request without data elements can be queried by DCQL, but not by an ISO DocRequest") {
         val credential = RequestOptionsCredential(
             credentialScheme = object : IsoMdocCredentialScheme {
                 override val isoDocType: String
@@ -62,7 +62,9 @@ val CredentialPresentationRequestBuilderTest by matrixSuite {
         )
         CredentialPresentationRequestBuilder(credential).apply {
             toDCQLRequest()
-            toIsoDeviceRetrievalRequest()
+            shouldThrow<IllegalArgumentException> {
+                toIsoDeviceRetrievalRequest()
+            }
         }
     }
 
