@@ -185,6 +185,13 @@ class DcApiVerifier @JvmOverloads constructor(
      * browser call, e.g. [DcApiCreationOptions.OpenId4VpSigned] and [DcApiCreationOptions.Iso180137AnnexC].
      * Do not combine [DcApiCreationOptions.OpenId4VpSigned] and [DcApiCreationOptions.OpenId4VpUnsigned],
      * as the stored requests to validate the response would overwrite each other.
+     *
+     * For [DcApiCreationOptions.Iso180137AnnexC], a [DCQLRequest] is converted to an ISO `DeviceRequest` with
+     * [toIso180137AnnexCDeviceRequest], which fails for what a `DeviceRequest` can not express. This conversion happens
+     * before any request is created, so a query that can not be converted creates no nonce, key, or stored request for
+     * any exchange protocol. Other failures, e.g. an invalid expected origin or a failing `readerAuth` signature, occur
+     * while the requests are created, and may leave the nonce, key, or stored request of an earlier exchange protocol
+     * behind.
      */
     suspend fun createAuthnRequest(
         requestOptions: OpenId4VpRequestOptions,
@@ -196,13 +203,22 @@ class DcApiVerifier @JvmOverloads constructor(
         require(creationOptions.isNotEmpty()) {
             "at least one creation option is required"
         }
+        val isoDeviceRequest = if (DcApiCreationOptions.Iso180137AnnexC in creationOptions)
+            requestOptions.toIsoDeviceRequest() else null
         CredentialRequestOptions.create(
-            creationOptions.map { it.toGetRequest(requestOptions) }
+            creationOptions.map { it.toGetRequest(requestOptions, isoDeviceRequest) }
         )
+    }
+
+    private fun OpenId4VpRequestOptions.toIsoDeviceRequest(): DeviceRequest = when (presentationRequest) {
+        is DCQLRequest -> presentationRequest.dcqlQuery.toIso180137AnnexCDeviceRequest()
+        is IsoDeviceRetrieval -> presentationRequest.deviceRequest
+        else -> throw IllegalArgumentException("ISO 18013-7 Annex C requires a Device Request or DCQL presentation")
     }
 
     private suspend fun DcApiCreationOptions.toGetRequest(
         requestOptions: OpenId4VpRequestOptions,
+        isoDeviceRequest: DeviceRequest?,
     ): DigitalCredentialGetRequest = when (this) {
         is DcApiCreationOptions.OpenId4VpUnsigned -> OpenId4VpUnsigned(
             // client_id MUST be omitted in unsigned requests, per OpenID4VP 1.0 Appendix A.3.1
@@ -228,13 +244,8 @@ class DcApiVerifier @JvmOverloads constructor(
                         .publicKey.toCoseKey().getOrThrow()
                 )
             )
-            val deviceRequest = when (requestOptions.presentationRequest) {
-                is DCQLRequest -> requestOptions.presentationRequest.dcqlQuery.toIso180137AnnexCDeviceRequest()
-                is IsoDeviceRetrieval -> requestOptions.presentationRequest.deviceRequest
-                else -> throw IllegalArgumentException(
-                    "ISO 18013-7 Annex C requires a Device Request or DCQL presentation"
-                )
-            }.withRegistrationCertificate(requestOptions.euWrprc)
+            val deviceRequest = requireNotNull(isoDeviceRequest) { "The ISO DeviceRequest has not been converted" }
+                .withRegistrationCertificate(requestOptions.euWrprc)
                 .withReaderAuthentication(encryptionInfo, requestOptions.expectedOrigins)
             IsoMdoc(
                 IsoMdocRequest(deviceRequest = deviceRequest, encryptionInfo = encryptionInfo)
