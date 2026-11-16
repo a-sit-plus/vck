@@ -20,7 +20,6 @@ import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -29,7 +28,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.CreatePresentationResult
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -45,7 +44,7 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthentication
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.utils.DefaultMapStore
@@ -81,13 +80,10 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
 
     val callingOrigin = "https://example.com"
 
-    val requestedCredential = RequestOptionsCredential(
-        credentialScheme = AtomicAttribute2023,
-        representation = ISO_MDOC,
-        attributePaths = setOf(
-            DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
-            DCQLClaimsPathPointer(CLAIM_DATE_OF_BIRTH),
-        ),
+    val requestedCredential = RequestedCredential.Mdoc(
+        AtomicAttribute2023,
+        MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
+        MdocClaimReference(AtomicAttribute2023, CLAIM_DATE_OF_BIRTH),
     )
     val deviceRequest = CredentialPresentationRequestBuilder(requestedCredential).toIsoDeviceRetrievalRequest()
 
@@ -503,7 +499,7 @@ private suspend fun createWalletResponse(
     holder: Holder,
     isoMdocRequest: IsoMdocRequest,
     origin: String,
-    requestedCredential: RequestOptionsCredential,
+    requestedCredential: RequestedCredential,
 ): DCAPIResponse = sealDeviceResponse(
     isoMdocRequest,
     origin,
@@ -523,7 +519,7 @@ private suspend fun createDeviceResponse(
     holder: Holder,
     isoMdocRequest: IsoMdocRequest,
     origin: String,
-    requestedCredential: RequestOptionsCredential,
+    requestedCredential: RequestedCredential,
 ): DeviceResponse {
     val sessionTranscript = sessionTranscriptFor(isoMdocRequest, origin)
     val calcIsoSessionTranscript = { sessionTranscript }
@@ -533,7 +529,7 @@ private suspend fun createDeviceResponse(
             audience = origin,
             calcIsoSessionTranscript = calcIsoSessionTranscript
         ),
-        credentialPresentationRequest = CredentialPresentationRequestBuilder(requestedCredential).toDCQLRequest()!!,
+        credentialPresentationRequest = CredentialPresentationRequestBuilder(requestedCredential).toDCQLRequest(),
     ).getOrThrow()
         .shouldBeInstanceOf<PresentationResponseParameters.DCQLParameters>()
         .verifiablePresentations.values.shouldBeSingleton().first().shouldBeSingleton().first()

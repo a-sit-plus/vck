@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.ClaimSelection
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -12,8 +12,8 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.supportedSdAlgorithms
 import com.benasher44.uuid.uuid4
@@ -84,16 +84,12 @@ val OpenId4VpComplexSdJwtProtocolTest by matrixSuite {
 
         "Nested paths with DCQL in request options" {
             val requestedClaims = setOf(
-                DCQLClaimsPathPointer(CLAIM_ADDRESS, CLAIM_ADDRESS_REGION),
-                DCQLClaimsPathPointer(CLAIM_ADDRESS, CLAIM_ADDRESS_COUNTRY),
+                JsonClaimReference(CLAIM_ADDRESS, CLAIM_ADDRESS_REGION),
+                JsonClaimReference(CLAIM_ADDRESS, CLAIM_ADDRESS_COUNTRY),
             )
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = AtomicAttribute2023,
-                        representation = SD_JWT,
-                        attributePaths = requestedClaims
-                    )
+                    RequestedCredential.SdJwt(AtomicAttribute2023, ClaimSelection.All(requestedClaims))
                 ).toDCQLRequest()
             ).apply {
                 (presentationRequest as? CredentialPresentationRequest.DCQLRequest)?.dcqlQuery.shouldNotBeNull().apply {

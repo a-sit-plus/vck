@@ -12,7 +12,6 @@ import at.asitplus.etsi.relyingParty.WrpSupervisoryAuthority
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsCompact
@@ -20,14 +19,14 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.TrustedCertificates
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderCertOrJwk
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -251,11 +250,7 @@ private class RelyingParty(val keyMaterial: KeyMaterial, certificate: X509Certif
         val created = verifier.createAuthnRequest(
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = AtomicAttribute2023,
-                        representation = SD_JWT,
-                        attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
-                    ),
+                    RequestedCredential.SdJwt(AtomicAttribute2023, JsonClaimReference(CLAIM_GIVEN_NAME)),
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
