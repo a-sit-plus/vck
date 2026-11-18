@@ -60,7 +60,6 @@ import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialValidator
 import at.asitplus.wallet.lib.validation.PresentationContext
 import at.asitplus.wallet.lib.validation.PresentationValidationInput
-import at.asitplus.wallet.lib.validation.PresentationValidationResult
 import at.asitplus.wallet.lib.validation.ProtocolResponseChecks
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import at.asitplus.wallet.lib.validation.ValidationPolicy
@@ -458,25 +457,17 @@ class DcApiVerifier @JvmOverloads constructor(
                     encryption = CheckOutcome.Passed,
                     expectedOrigin = CheckOutcome.Passed,
                     requestState = CheckOutcome.Passed,
-                    submissionRequirements = requestedDocTypes.submissionRequirements(presentationValidations),
+                    submissionRequirements = isoMdocRequest.deviceRequest.docRequests
+                        .map { it.itemsRequest.value }
+                        .submissionRequirements(
+                            presentationValidations.mapNotNull {
+                                (it.presentation as? ValidatedPresentation.MdocDocument)?.document
+                            }
+                        ),
                 ),
                 presentations = presentationValidations.map { it.report },
             ),
         )
-    }
-
-    /**
-     * Every requested document has to be answered by an accepted one: the mdoc may return only some of the requested
-     * documents (ISO/IEC 18013-5:2021, 8.3.2.1.2.2), which does not satisfy the request.
-     */
-    private fun Set<String>.submissionRequirements(presentations: List<PresentationValidationResult>): CheckOutcome {
-        val accepted = presentations.mapNotNull { it.presentation as? ValidatedPresentation.MdocDocument }
-            .map { it.document.docType }.toSet()
-        val missing = this - accepted
-        return if (missing.isEmpty())
-            CheckOutcome.Passed
-        else
-            CheckOutcome.Failed(IllegalArgumentException("No accepted document of the requested types $missing"))
     }
 
     /**

@@ -139,6 +139,11 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       can be registered with several identifiers (ETSI TS 119 475 V1.2.1, B.2.2). The shared subject stands in for
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
+    - Fix: `DcApiVerifier` accepts an ISO/IEC 18013-7 Annex C response only if every document request is answered by
+      its own accepted document that returns each requested data element issuer-signed, instead of by any accepted
+      document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,
+      8.3.2.1.2.2), but VC-K requests only those it requires. Documents are assigned to requests regardless of their
+      order, so two requests of one docType need two documents
     - Fix: `OpenId4VpRequestOptions` accepts transaction data whose `credential_ids` reference only some of the
       credential queries, e.g. not an optional one, as each of them only has to reference a requested credential
       "that can be used to authorize this transaction" (OpenID4VP 1.0, 5.1). It still rejects `credential_ids` that
