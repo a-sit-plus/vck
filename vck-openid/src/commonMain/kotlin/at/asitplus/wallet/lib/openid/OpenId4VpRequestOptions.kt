@@ -99,6 +99,11 @@ data class OpenId4VpRequestOptions(
 
     init {
         if (!transactionData.isNullOrEmpty()) {
+            // OpenID4VP 1.0, 5.1: credential_ids is a "Non-empty array of strings", checked per entry, as an empty one
+            // would vanish among the IDs of the others
+            require(transactionData.all { it.credentialIds.isNotEmpty() }) {
+                "credential_ids of every transaction data must be non-empty"
+            }
             val transactionIds = transactionData.map { it.credentialIds.toList() }.flatten().toSet()
             @Suppress("DEPRECATION") val credentialIds = when (presentationRequest) {
                 is DCQLRequest -> presentationRequest.dcqlQuery
@@ -107,8 +112,10 @@ data class OpenId4VpRequestOptions(
                 is IsoDeviceRetrieval -> setOf() // Transaction Data not supported for Device Retrieval
                 null -> setOf()
             }.toSet()
-            require(transactionIds == credentialIds) {
-                "TransactionIds must match the credentialIds"
+            // OpenID4VP 1.0, 5.1: credential_ids are "each referencing a Credential requested by the Verifier that can
+            // be used to authorize this transaction", so other requested credentials, e.g. optional ones, may be absent
+            require(credentialIds.containsAll(transactionIds)) {
+                "credential_ids of transaction data reference no credential query: ${transactionIds - credentialIds}"
             }
         }
         if (isAnyDcApi) {

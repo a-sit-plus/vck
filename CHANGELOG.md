@@ -139,6 +139,11 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       can be registered with several identifiers (ETSI TS 119 475 V1.2.1, B.2.2). The shared subject stands in for
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
+    - Fix: `OpenId4VpRequestOptions` accepts transaction data whose `credential_ids` reference only some of the
+      credential queries, e.g. not an optional one, as each of them only has to reference a requested credential
+      "that can be used to authorize this transaction" (OpenID4VP 1.0, 5.1). It still rejects `credential_ids` that
+      reference no credential query, and rejects empty `credential_ids` of any transaction data, a "Non-empty array"
+      (ibid.)
 - Trusted relying parties:
     - WRPRC authorization exempts, besides `vct`, every root claim of an SD-JWT VC that must not be selectively
       disclosed, with its sub-claims: `iss`, `nbf`, `exp`, `cnf`, `vct#integrity`, `aka_vcts`, and `status`
