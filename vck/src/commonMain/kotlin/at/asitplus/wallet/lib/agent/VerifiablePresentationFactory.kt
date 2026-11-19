@@ -133,11 +133,13 @@ class VerifiablePresentationFactory(
             namespace.value.entries.map { MdocClaimReference(namespace.key, it.value.elementIdentifier) }
         }
 
+        // each data element once, also if several claims queries select it, as an mdoc does not return a data element
+        // twice in one name space (ISO/IEC 18013-5:2021, 8.3.2.1.2.2)
         is ClaimsQueryResults -> claimsQueryResults.map {
             it as DCQLClaimsQueryResult.IsoMdocResult
         }.map {
             MdocClaimReference(it.namespace, it.claimName)
-        }
+        }.distinct()
     }
 
     private suspend fun createIsoPresentation(

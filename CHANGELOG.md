@@ -85,6 +85,13 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       Organization of the signing certificate to be a `SchemeOperatorName` of the list, rejects a list whose
       `NextUpdate` is in the past, and optionally one with a lower `LoTESequenceNumber` than the list in force
 - DCQL:
+    - Fix: `DCQLCredentialQueryIdentifier` and `DCQLClaimsQueryIdentifier` accept only ASCII letters and digits besides
+      `_` and `-`, reading the "alphanumeric" characters of OpenID4VP 1.0, 6.1 and 6.3 as ALPHA and DIGIT of RFC 5234,
+      instead of every Unicode letter and digit, e.g. `ä`
+    - Fix: Every claims query of a claim combination has to match, also several queries of one claim, e.g. with
+      different `values`, instead of only the first query of each claim: OpenID4VP 1.0 has no rule to ignore duplicate
+      claims queries, which its drafts had. An mdoc presentation returns a data element selected by several claims
+      queries once (ISO/IEC 18013-5:2021, 8.3.2.1.2.2)
     - Fix: A holder matches DCQL claims queries on the claims of an SD-JWT VC as RFC 9901, 7.1 processes them
       (`SdJwtDecoded.reconstructedJsonObject`), without `_sd` and `_sd_alg` and with empty objects and arrays, and
       presents the disclosures of exactly the selected claims with their ancestors and sub-claims (RFC 9901, 7.2;
@@ -99,17 +106,23 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
     - Fix: `DCQLQuery.toIso180137AnnexCDeviceRequest()` fails for what an ISO `DeviceRequest` can not express,
-      instead of requesting more or other than the query: `claim_sets` with several options, `credential_sets` other
-      than required sets with a single option that together request every credential query, expected claim `values`,
-      `multiple`, and `trusted_authorities`. `claim_sets` with a single option request the claims of that option, and
-      a data element queried twice is requested once, retained if any of its claims queries retains it.
-      `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC 18013-7 Annex C
-      before creating any request, so a query that can not be converted creates no nonce, ephemeral key, or stored
-      request for any exchange protocol
+      instead of requesting more or other than the query: `claim_sets` none of whose options is contained in every
+      other one, i.e. alternatives, `credential_sets` other than required sets with a single option that together
+      request every credential query, expected claim `values`, `multiple`, and `trusted_authorities`. Of `claim_sets`,
+      the option contained in every other one is requested, as the verifier accepts it, e.g. the required claims of
+      claims requested if available, or a single option. A data element queried twice is requested once, retained if
+      any of its claims queries retains it. `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC
+      18013-7 Annex C before creating any request, so a query that can not be converted creates no nonce, ephemeral
+      key, or stored request for any exchange protocol
     - BREAKING: `DCQLClaimsPathPointer.query` returns a `List<DCQLSelectedClaim>`, each selected claim with its
       `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
       a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
       `DCQLClaimsPathPointerSegment.query` is removed, as processing a claims path pointer needs the whole selection
+    - Add `HolderDCQLQueryMatchingResult.credentialSets(dcqlQuery)`, the credential sets of a DCQL query with
+      whether the holder can satisfy each option, for wallets to let the End-User choose options and optional sets
+      (OpenID4VP 1.0, 6.4.2, 6.4.3), and `toSubmission(dcqlQuery, selection)`, the submission of the chosen option of
+      each set, or of none for an optional set. `toDefaultSubmission` is the selection of the first satisfiable option
+      of each required set, as before
 - ISO mdoc:
     - BREAKING: Data elements to present are `MdocClaimReference`s (name space and data element identifier,
       ISO/IEC 18013-5:2021, 8.3.2.1.2.1) instead of JSONPath `NormalizedJsonPath`s of two names, in
@@ -139,6 +152,15 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       can be registered with several identifiers (ETSI TS 119 475 V1.2.1, B.2.2). The shared subject stands in for
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
+    - Fix: `OpenId4VpRequestOptions` rejects `verifier_info` whose `credential_ids` are empty or reference no credential
+      query, as they are, if present, "A non-empty array of strings each referencing a Credential requested by the
+      Verifier" (OpenID4VP 1.0, 5.1). The wallet's `AuthorizationRequestValidator` rejects such requests with
+      `invalid_request`
+    - Fix: `DcApiVerifier` accepts an ISO/IEC 18013-7 Annex C response only if every document request is answered by
+      its own accepted document that returns each requested data element issuer-signed, instead of by any accepted
+      document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,
+      8.3.2.1.2.2), but VC-K requests only those it requires. Documents are assigned to requests regardless of their
+      order, so two requests of one docType need two documents
     - Fix: `OpenId4VpRequestOptions` accepts transaction data whose `credential_ids` reference only some of the
       credential queries, e.g. not an optional one, as each of them only has to reference a requested credential
       "that can be used to authorize this transaction" (OpenID4VP 1.0, 5.1). It still rejects `credential_ids` that

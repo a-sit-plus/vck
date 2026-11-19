@@ -174,6 +174,7 @@ internal class AuthorizationRequestValidator(
             }
         } ?: throw InvalidRequest("response_type is null")
         parameters.validateTransactionData()
+        parameters.validateVerifierInfo()
         if (parameters.responseMode.isAnyDcApi()) {
             validateDcApi()
         }
@@ -199,6 +200,23 @@ internal class AuthorizationRequestValidator(
                 }
             } ?: Unit
         }.getOrElse { throw InvalidTransactionData("Invalid transaction_data", it) }
+
+    /**
+     * OpenID4VP 1.0, 5.1: the credential_ids of a verifier_info entry are optional, but if present "A non-empty array
+     * of strings each referencing a Credential requested by the Verifier", matching "the `id` field in a DCQL
+     * Credential Query".
+     */
+    @Throws(InvalidRequest::class)
+    private fun AuthenticationRequestParameters.validateVerifierInfo() {
+        val queryIds = dcqlQuery?.credentials?.map { it.id.string }?.toSet()
+        verifierInfo?.forEach { info ->
+            val ids = info.credentialIds ?: return@forEach
+            if (ids.isEmpty())
+                throw InvalidRequest("credential_ids of verifier_info must be non-empty if present")
+            if (queryIds != null && !queryIds.containsAll(ids))
+                throw InvalidRequest("credential_ids of verifier_info references an unknown DCQL query")
+        }
+    }
 
     // A client identifier names exactly one prefix, so these are mutually exclusive; whether its relying party is
     // trusted is up to the relying party validator, see RelyingPartyValidator.clientTrust

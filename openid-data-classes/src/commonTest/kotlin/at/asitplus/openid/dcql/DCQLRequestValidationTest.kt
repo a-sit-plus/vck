@@ -50,7 +50,7 @@ val DCQLRequestValidationTest by matrixSuite {
         }
     }
 
-    "a claims query pointing to the same claim again is ignored (6.1)" {
+    "a claims query pointing to the same claim again is matched too, as OpenID4VP 1.0 has no rule against it" {
         val credentialQuery = query(
             """[$sdJwt, "claims": [{"path": ["given_name"]}, {"path": ["family_name"]}, {"path": ["given_name"]}]}]"""
         ).credentials.single()
@@ -66,6 +66,6 @@ val DCQLRequestValidationTest by matrixSuite {
         result.shouldBeInstanceOf<DCQLCredentialQueryMatchingResult.ClaimsQueryResults>()
             .claimsQueryResults.map {
                 it.shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().selectedClaims.single().value
-            } shouldBe listOf(JsonPrimitive("Erika"), JsonPrimitive("Musterfrau"))
+            } shouldBe listOf(JsonPrimitive("Erika"), JsonPrimitive("Musterfrau"), JsonPrimitive("Erika"))
     }
 }
