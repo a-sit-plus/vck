@@ -1,8 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.catching
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialValidationContext
@@ -17,6 +22,8 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 
 val HolderAgentProofKeysTest by matrixSuite {
 
@@ -124,6 +131,31 @@ val HolderAgentProofKeysTest by matrixSuite {
 
         CredentialValidationContext(expectedHolderKey = first, expectedHolderKeys = setOf(second))
             .allExpectedHolderKeys shouldBe setOf(first, second)
+    }
+
+    "a VC-JWT bound by an expected key thumbprint is stored by a single-key holder" {
+        val issuance = issuance()
+        val issued = issuance.issuer.issueCredential(
+            CredentialToBeIssued.VcJwt(
+                subject = AtomicAttribute2023(
+                    issuance.holderKey.jsonWebKey.jwkThumbprint,
+                    ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME,
+                    "Susanne",
+                ).toJsonElement(),
+                expiration = Clock.System.now() + 1.days,
+                scheme = scheme,
+                subjectPublicKey = issuance.holderKey.publicKey,
+                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+            )
+        ).getOrThrow()
+        val holder = HolderAgent(issuance.holderKey, credentialValidator = issuance.validator())
+
+        val prepared = holder.prepareCredentialStorage(issued.input(), scheme, strictPolicy).getOrThrow()
+
+        prepared.validation.report.decision shouldBe ACCEPTED
+        prepared.holderKey shouldBe issuance.holderKey.publicKey
+        holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldNotBeNull()
+        holder.getCredentials().shouldNotBeNull().shouldHaveSize(1)
     }
 }
 

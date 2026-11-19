@@ -179,7 +179,10 @@ class HolderAgent private constructor(
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
     ): KmmResult<PreparedCredentialStorage> = catching {
-        validate(credential, policy).let { PreparedCredentialStorage(credential, it, renewalInfo, it.boundKey()) }
+        val expectedHolderKeys = setOfNotNull(singleKey?.publicKey)
+        validate(credential, policy).let {
+            PreparedCredentialStorage(credential, it, renewalInfo, it.boundKey(expectedHolderKeys))
+        }
     }
 
     /**
@@ -202,16 +205,17 @@ class HolderAgent private constructor(
         renewalInfo: CredentialRenewalInfo? = null,
         expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<PreparedCredentialStorage> = catching {
+        val resolvedExpectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) }
         val validation = credentialValidator.validate(
             input = input,
             policy = policy.boundToHolder(),
-            context = context(scheme.credentialIdentifier(input), expectedHolderKeys)
+            context = context(scheme.credentialIdentifier(input), resolvedExpectedHolderKeys)
         )
         PreparedCredentialStorage(
             credential = validation.unacceptedCredential?.let { input.toStoreCredentialInput(it, scheme) },
             validation = validation,
             renewalInfo = renewalInfo,
-            holderKey = validation.boundKey(),
+            holderKey = validation.boundKey(resolvedExpectedHolderKeys),
         )
     }
 
@@ -280,8 +284,13 @@ class HolderAgent private constructor(
     }
 
     /** The key of the intact credential, `null` if it isn't intact or isn't holder-bound. */
-    private fun CredentialValidationResult.boundKey(): CryptoPublicKey? = when (val credential = unacceptedCredential) {
+    private fun CredentialValidationResult.boundKey(
+        expectedHolderKeys: Set<CryptoPublicKey>,
+    ): CryptoPublicKey? = when (val credential = unacceptedCredential) {
         is ValidatedCredential.VcJwt -> credential.credential.holderKey()
+            ?: credential.credential.subject?.let { subject ->
+                expectedHolderKeys.firstOrNull { it.matchesIdentifier(subject) }
+            }
         is ValidatedCredential.SdJwtVc -> credential.credential.holderKey()
         is ValidatedCredential.IsoMdoc -> credential.issuerSigned.issuerAuth.payload?.holderKey()
         null -> null
