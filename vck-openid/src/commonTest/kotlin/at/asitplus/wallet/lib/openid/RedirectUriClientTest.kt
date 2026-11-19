@@ -105,7 +105,7 @@ val RedirectUriClientTest by matrixSuite {
 
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023, id = "id_card")
                 ).toDCQLRequest(),
                 verifierInfo = verifierInfo
             )
@@ -130,7 +130,7 @@ val RedirectUriClientTest by matrixSuite {
             ).toNonEmptyList()
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023, id = "id_card")
                 ).toDCQLRequest(),
                 verifierInfo = verifierInfo,
             )
@@ -143,6 +143,29 @@ val RedirectUriClientTest by matrixSuite {
                 .getOrThrow()
 
             preparationState.verifierInfo shouldBe verifierInfo
+        }
+
+        "verifier_info with credential_ids referencing no credential query is rejected by the wallet" {
+            val requestOptions = OpenId4VpRequestOptions(
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023, id = "id_card")
+                ).toDCQLRequest(),
+                verifierInfo = listOf(VerifierInfo("jwt", "eyJhbGciOiJFUzI1NiJ9", setOf("id_card"))).toNonEmptyList(),
+            )
+            val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, CreationOptions.Query(it.walletUrl))
+                .getOrThrow().url
+            val parameters: AuthenticationRequestParameters = Url(authnRequest).encodedQuery.decodeFromFormUrlEncoded()
+            val tampered = listOf(setOf("unknown"), setOf()).map { credentialIds ->
+                val info = listOf(VerifierInfo("jwt", "eyJhbGciOiJFUzI1NiJ9", credentialIds)).toNonEmptyList()
+                "${it.walletUrl}?${parameters.copy(verifierInfo = info).encodeToParameters().formUrlEncode()}"
+            }
+
+            val results = tampered.map { url -> it.holderOid4vp.prepareAuthorizationResponse(url) }
+
+            results.forEach { result ->
+                generateSequence(result.exceptionOrNull()) { failure -> failure.cause }
+                    .any { failure -> failure.message.orEmpty().contains("verifier_info") } shouldBe true
+            }
         }
 
         "certificateSanDnsFromPem parses PEM chain and builds client_id" {
