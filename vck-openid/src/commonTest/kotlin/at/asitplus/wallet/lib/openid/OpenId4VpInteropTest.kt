@@ -230,9 +230,9 @@ val OpenId4VpInteropTest by matrixSuite {
                 }
             }
 
-            SdJwtDecoded(sdJwt).reconstructedJsonObject.shouldNotBeNull().apply {
-                this["given_name"]!!.jsonPrimitive.content shouldBe "John"
-                this["family_name"]!!.jsonPrimitive.content shouldBe "Doe"
+            SdJwtDecoded(sdJwt).reconstructedJsonObject.apply {
+                this["given_name"].shouldNotBeNull().jsonPrimitive.content shouldBe "John"
+                this["family_name"].shouldNotBeNull().jsonPrimitive.content shouldBe "Doe"
             }
         }
     }

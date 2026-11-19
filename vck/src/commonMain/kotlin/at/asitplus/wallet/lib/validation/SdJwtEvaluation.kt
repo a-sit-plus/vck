@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.validation
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -57,10 +58,8 @@ internal suspend fun evaluateSdJwtVc(
         timeliness = parsed.credential.validityPeriod.timeliness(timeScope),
         status = parsed.credential.statusElement?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.SdJwtVc(
-            sdJwtSigned = parsed.sdJwtSigned,
             credential = parsed.credential,
-            reconstructedJsonObject = processed.payload,
-            disclosures = processed.disclosures,
+            decoded = SdJwtDecoded(parsed.sdJwtSigned, processed),
         ),
     )
 }

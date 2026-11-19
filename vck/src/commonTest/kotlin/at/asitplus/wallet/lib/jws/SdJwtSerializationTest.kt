@@ -6,6 +6,7 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.fromAnyValue
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -14,6 +15,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -166,7 +168,7 @@ val SdJwtSerializationTest by matrixSuite {
         val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(decoded)
         deserialized.claimName.shouldBeNull()
         deserialized.claimValue.jsonPrimitive.content shouldBe "FR"
-        deserialized.salt shouldBe "lklxF5jMYlGTPUovMNIvCA".decodeToByteArray(Base64UrlStrict)
+        deserialized.salt shouldBe "lklxF5jMYlGTPUovMNIvCA"
     }
 
     "Deserialize nested from spec" {
@@ -184,4 +186,34 @@ val SdJwtSerializationTest by matrixSuite {
         nestedSd.size shouldBe 4
     }
 
+    "Deserialize keeps a salt that is not base64url, as it only has to be a string (RFC 9901, 4.2.1)" {
+        val serialized = """["salt+with/padding==.", "family_name", "Möbius"]"""
+
+        val deserialized = joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(serialized)
+
+        deserialized.salt shouldBe "salt+with/padding==."
+        joseCompliantSerializer.encodeToString(deserialized) shouldBe
+                """["salt+with/padding==.","family_name","Möbius"]"""
+    }
+
+    listOf(
+        InvalidDisclosure("a number as salt", """[1234, "family_name", "Möbius"]"""),
+        InvalidDisclosure("a boolean as salt", """[true, "Möbius"]"""),
+        InvalidDisclosure("null as salt", """[null, "Möbius"]"""),
+        InvalidDisclosure("an object as salt", """[{}, "Möbius"]"""),
+        InvalidDisclosure("a number as claim name", """["c2FsdA", 5, "Möbius"]"""),
+        InvalidDisclosure("a boolean as claim name", """["c2FsdA", false, "Möbius"]"""),
+        InvalidDisclosure("null as claim name", """["c2FsdA", null, "Möbius"]"""),
+        InvalidDisclosure("one element", """["c2FsdA"]"""),
+        InvalidDisclosure("four elements", """["c2FsdA", "family_name", "Möbius", "extra"]"""),
+    ).forEach { case ->
+        "Deserialize rejects ${case.name} (RFC 9901, 4.2.1, 4.2.2)" {
+            shouldThrow<SerializationException> {
+                joseCompliantSerializer.decodeFromString<SelectiveDisclosureItem>(case.serialized)
+            }
+        }
+    }
+
 }
+
+private class InvalidDisclosure(val name: String, val serialized: String)

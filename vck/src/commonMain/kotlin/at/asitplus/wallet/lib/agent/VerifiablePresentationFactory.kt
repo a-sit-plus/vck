@@ -16,6 +16,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.DeviceAuth
 import at.asitplus.iso.DeviceNameSpaces
 import at.asitplus.iso.DeviceResponse
@@ -27,7 +28,6 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedList
 import at.asitplus.iso.ZkDocument
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.QesApprovalRequest
 import at.asitplus.openid.dcql.DCQLClaimsQueryResult
 import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
@@ -44,9 +44,6 @@ import at.asitplus.wallet.lib.cbor.CoseHeaderNone
 import at.asitplus.wallet.lib.cbor.SignCoseDetached
 import at.asitplus.wallet.lib.cbor.SignCoseDetachedFun
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.SdJwtConstants.NAME_SD
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.extensions.sdHashInput
@@ -61,10 +58,6 @@ import io.github.aakira.napier.Napier
 import io.github.z4kn4fein.semver.Version
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
@@ -128,24 +121,6 @@ class VerifiablePresentationFactory(
                     ).getOrThrow()
                 ),
             )
-        }
-    }
-
-    private fun DCQLCredentialQueryMatchingResult.toRequestedSdJwtClaims(
-        credential: StoreEntry.SdJwt
-    ): List<NormalizedJsonPath> = when (this) {
-        AllMandatoryClaimsMatchingResult -> emptyList()
-
-        AllClaimsMatchingResult -> credential.disclosures.entries.map {
-            NormalizedJsonPath() + it.value!!.claimName!!
-        }
-
-        is ClaimsQueryResults -> this.claimsQueryResults.map {
-            it as DCQLClaimsQueryResult.JsonResult
-        }.flatMap {
-            it.nodeList.map {
-                it.normalizedJsonPath
-            }
         }
     }
 
@@ -287,122 +262,30 @@ class VerifiablePresentationFactory(
         return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
     }
 
+    /**
+     * The serialized disclosures exactly as issued, whose digests match (RFC 9901, 4.2.3), of the claims DCQL selected,
+     * with their ancestors and sub-claims, see [SdJwtDecoded.disclosuresFor]. The claims were selected on
+     * [SdJwtDecoded.reconstructedJsonObject] (see [at.asitplus.wallet.lib.data.CredentialToJsonConverter]), so their
+     * positions are those of [SdJwtDecoded.disclosuresByPath].
+     */
     private fun StoreEntry.SdJwt.loadDisclosures(
-        disclosedAttributes: DCQLCredentialQueryMatchingResult
+        disclosedAttributes: DCQLCredentialQueryMatchingResult,
     ): Set<String> = when (disclosedAttributes) {
         AllMandatoryClaimsMatchingResult -> emptySet()
-        AllClaimsMatchingResult -> disclosures.keys
-        is ClaimsQueryResults -> loadDisclosures(disclosedAttributes.toRequestedSdJwtClaims(this))
+        AllClaimsMatchingResult -> decodedOrThrow().validDisclosures.keys
+        is ClaimsQueryResults -> decodedOrThrow().disclosuresFor(disclosedAttributes.selectedClaims())
     }
 
-    private fun StoreEntry.SdJwt.loadDisclosures(
-        requestedClaims: Collection<NormalizedJsonPath>
-    ): Set<String> {
-        val digest = sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
-        // Hash the original serialized disclosure (the map key): re-serializing the parsed item may
-        // produce different bytes than the issuer signed, e.g. for foreign issuers serializing with
-        // whitespace, and digests are computed over the exact bytes (RFC 9901, section 4.2.3)
-        val disclosuresByDigest = disclosures.entries.associateBy { it.key.hashDisclosure(digest) }
-        val issuerSignedJwsSerialized = vcSerialized.substringBefore("~")
-        val payload = JwsCompact(issuerSignedJwsSerialized).getPayload<JsonObject>()
-            .getOrElse { throw PresentationException(it) }
-        return requestedClaims.flatMapTo(mutableSetOf()) { claim ->
-            payload.loadDisclosuresForPath(claim, disclosuresByDigest)
-        }
+    private fun StoreEntry.SdJwt.decodedOrThrow(): SdJwtDecoded =
+        catchingUnwrapped { decoded }.getOrElse { throw PresentationException(it) }
+
+    /**
+     * The concrete positions of the claims DCQL selected, each element of an array on its own, so that the elements
+     * not matching `values` are treated as if they did not exist (OpenID4VP 1.0, 6.4.1).
+     */
+    private fun ClaimsQueryResults.selectedClaims() = claimsQueryResults.flatMap { result ->
+        (result as DCQLClaimsQueryResult.JsonResult).nodeList.map { it.normalizedJsonPath.toDCQLClaimsPathPointer() }
     }
-
-    private fun JsonElement.loadDisclosuresForPath(
-        segments: List<NormalizedJsonPathSegment>,
-        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
-    ): Set<String> = when {
-        segments.isEmpty() -> collectNestedDisclosures(disclosuresByDigest)
-        this is JsonObject -> loadObjectDisclosuresForPath(segments, disclosuresByDigest)
-        this is JsonArray -> loadArrayDisclosuresForPath(segments, disclosuresByDigest)
-        else -> emptySet()
-    }
-
-    private fun JsonObject.loadObjectDisclosuresForPath(
-        segments: List<NormalizedJsonPathSegment>,
-        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
-    ): Set<String> = when (val firstSegment = segments.first()) {
-        is NormalizedJsonPathSegment.NameSegment -> {
-            get(firstSegment.memberName)?.loadDisclosuresForPath(segments.drop(1), disclosuresByDigest)
-                ?: referencedDisclosures(disclosuresByDigest)
-                    .firstOrNull { it.value?.claimName == firstSegment.memberName }
-                    ?.let { disclosure ->
-                        setOf(disclosure.key) + disclosure.nested(segments, disclosuresByDigest)
-                    }
-                ?: emptySet()
-        }
-
-        is NormalizedJsonPathSegment.IndexSegment -> emptySet()
-    }
-
-    private fun JsonArray.loadArrayDisclosuresForPath(
-        segments: List<NormalizedJsonPathSegment>,
-        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
-    ): Set<String> = when (val firstSegment = segments.first()) {
-        is NormalizedJsonPathSegment.IndexSegment ->
-            getOrNull(firstSegment.index.toInt())?.let { element ->
-                element.asArrayDisclosureDigest()
-                    ?.let(disclosuresByDigest::get)
-                    ?.let { disclosure ->
-                        setOf(disclosure.key) + disclosure.nested(segments, disclosuresByDigest)
-                    }
-                    ?: element.loadDisclosuresForPath(segments.drop(1), disclosuresByDigest)
-            } ?: emptySet()
-
-        is NormalizedJsonPathSegment.NameSegment -> emptySet()
-    }
-
-    private fun Map.Entry<String, SelectiveDisclosureItem?>.nested(
-        segments: List<NormalizedJsonPathSegment>,
-        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>
-    ): Iterable<String> = value?.claimValue?.loadDisclosuresForPath(
-        segments.drop(1),
-        disclosuresByDigest,
-    ) ?: emptySet()
-
-    private fun JsonElement.collectNestedDisclosures(
-        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
-    ): Set<String> = when (this) {
-        is JsonObject -> {
-            val referencedDisclosures = referencedDisclosures(disclosuresByDigest)
-            val nestedCleartextDisclosures = entries
-                .filterNot { it.key == NAME_SD }
-                .flatMapTo(mutableSetOf()) { it.value.collectNestedDisclosures(disclosuresByDigest) }
-            val nestedReferencedDisclosures = referencedDisclosures.flatMapTo(mutableSetOf()) { disclosure ->
-                setOf(disclosure.key) + (
-                        disclosure.value?.claimValue?.collectNestedDisclosures(disclosuresByDigest) ?: emptySet()
-                        )
-            }
-            nestedCleartextDisclosures + nestedReferencedDisclosures
-        }
-
-        is JsonArray -> flatMapTo(mutableSetOf()) { element ->
-            element.asArrayDisclosureDigest()
-                ?.let(disclosuresByDigest::get)
-                ?.let { disclosure ->
-                    setOf(disclosure.key) + (
-                            disclosure.value?.claimValue?.collectNestedDisclosures(disclosuresByDigest) ?: emptySet()
-                            )
-                }
-                ?: element.collectNestedDisclosures(disclosuresByDigest)
-        }
-
-        else -> emptySet()
-    }
-
-    private fun JsonObject.referencedDisclosures(
-        disclosuresByDigest: Map<String, Map.Entry<String, SelectiveDisclosureItem?>>,
-    ) = sdElements()?.strings()?.mapNotNull(disclosuresByDigest::get).orEmpty()
-
-    private fun JsonElement.asArrayDisclosureDigest(): String? =
-        (this as? JsonObject)?.get("...")?.let { it as? JsonPrimitive }?.content
-
-    private fun JsonObject.sdElements(): JsonArray? = (get(NAME_SD) as? JsonArray?)
-
-    private fun JsonArray.strings(): List<String> = mapNotNull { (it as? JsonPrimitive?)?.content }
 
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,

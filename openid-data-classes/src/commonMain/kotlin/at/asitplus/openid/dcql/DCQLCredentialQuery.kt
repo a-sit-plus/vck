@@ -327,7 +327,8 @@ sealed interface DCQLCredentialQuery {
             }.toNonEmptyList()
         } ?: nonEmptyListOf(claimQueries)
 
-        val successCombination = requestedClaimsQueryCombinations.firstNotNullOf { claimQueryCombination ->
+        val failures = mutableListOf<Throwable>()
+        val successCombination = requestedClaimsQueryCombinations.firstNotNullOfOrNull { claimQueryCombination ->
             catching {
                 // OpenID4VP 1.0, 6.1: claims: "Verifiers MUST NOT point to the same claim more than once in a single
                 // query. Wallets SHOULD ignore such duplicate claim queries."
@@ -337,9 +338,13 @@ sealed interface DCQLCredentialQuery {
                     ).getOrThrow()
                 }
             }.onFailure {
+                failures += it
                 Napier.w("Failed to execute claims query", it)
             }.getOrNull()
-        }
+        } ?: throw IllegalArgumentException(
+            "Credential does not satisfy any combination of claims queries of credential query $id",
+            failures.first(),
+        ).apply { failures.drop(1).forEach(::addSuppressed) }
         DCQLCredentialQueryMatchingResult.ClaimsQueryResults(successCombination)
     }
 

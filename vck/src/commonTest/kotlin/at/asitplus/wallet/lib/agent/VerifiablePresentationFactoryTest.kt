@@ -342,7 +342,7 @@ private fun presentationRequest() = PresentationRequestParameters(
 )
 
 private fun CreatePresentationResult.SdJwt.disclosedClaimNames(): Set<String> =
-    SdJwtDecoded(sdJwt).reconstructedJsonObject?.keys ?: emptySet()
+    SdJwtDecoded(sdJwt).reconstructedJsonObject.keys
 
 private fun CreatePresentationResult.DeviceResponse.disclosedIsoClaimNames(namespace: String) =
     deviceResponse.documents.shouldNotBeNull().single()
@@ -351,7 +351,7 @@ private fun CreatePresentationResult.DeviceResponse.disclosedIsoClaimNames(names
         ?.entries
         ?.map { it.value.elementIdentifier }
         ?.toSet()
-        ?: emptySet()
+        .orEmpty()
 
 private val setOfDefaultSdJwtClaims = setOf("iss", "nbf", "exp", "cnf", "vct", "status", "sub", "iat")
 
