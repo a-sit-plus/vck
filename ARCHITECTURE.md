@@ -451,6 +451,12 @@ credential with a `HolderKeyResolver`, from the key the credential is bound to (
 each presentation with it, e.g. the KB-JWT with the key in `cnf` (SD-JWT VC, 2.2.2.3). `HolderKeyResolver.single`
 serves a holder with one key.
 
+For a VC-JWT, holder-key extraction recognizes a `did:key` in `sub`; other subject identifiers, including JWK
+thumbprints, do not produce a key in `StoreEntry.holderKey()`. Credential validation separately checks whether `sub`
+matches an expected key identifier, which also recognizes a JWK thumbprint. If such a credential is accepted, storage
+uses the matched expected key to verify that the holder owns it, while the stored entry still has no derivable holder
+key for matching or presentation.
+
 Use `KmmResult` for public multiplatform APIs that need Swift-friendly result handling. Avoid replacing it with
 Kotlin's inline `Result` in public APIs. Use `catching` to produce `KmmResult`, and `catchingUnwrapped` when an internal
 Kotlin `Result` is sufficient. Both let fatal exceptions and cancellation bubble up.
