@@ -64,6 +64,30 @@ val DCQLCredentialQueryTest by matrixSuite {
                 .shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>()
                 .selectedClaims.single().value shouldBe JsonPrimitive("Musterfrau")
         }
+        "present claims request the whole credential if it is not selectively disclosable" {
+            val queryWithClaims = query.copy(
+                claims = DCQLClaimsQueryList(DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer("family_name")))
+            )
+
+            val result = queryWithClaims.matchClaimsQueriesAgainstClaimStructure(
+                credentialStructure = claimStructure,
+                satisfiesSelectiveDisclosure = false,
+            )
+
+            result.getOrThrow() shouldBe DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult
+        }
+        "present claims still have to match a credential that is not selectively disclosable" {
+            val queryWithClaims = query.copy(
+                claims = DCQLClaimsQueryList(DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer("given_name")))
+            )
+
+            val result = queryWithClaims.matchClaimsQueriesAgainstClaimStructure(
+                credentialStructure = claimStructure,
+                satisfiesSelectiveDisclosure = false,
+            )
+
+            result.isFailure shouldBe true
+        }
     }
     "claim sets (OpenID4VP 1.0, 7.1.1 and 6.4.1)" - {
         val query = DCQLSdJwtCredentialQuery(
