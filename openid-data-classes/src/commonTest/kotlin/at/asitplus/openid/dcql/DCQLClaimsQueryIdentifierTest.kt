@@ -27,6 +27,9 @@ val DCQLClaimsQueryIdentifierTest by matrixSuite {
                 "invalid_character!exclamationMark",
                 "invalid_character\"doubleQuote",
                 "invalid_character'singleQuote",
+                "non_ascii_letter_\u00e4",
+                "non_ascii_letter_\u0434",
+                "non_ascii_digit_\u0663",
             ).asData() test {
             shouldThrow<IllegalArgumentException> {
                 DCQLClaimsQueryIdentifier(it)

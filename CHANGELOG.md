@@ -85,6 +85,9 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       Organization of the signing certificate to be a `SchemeOperatorName` of the list, rejects a list whose
       `NextUpdate` is in the past, and optionally one with a lower `LoTESequenceNumber` than the list in force
 - DCQL:
+    - Fix: `DCQLCredentialQueryIdentifier` and `DCQLClaimsQueryIdentifier` accept only ASCII letters and digits besides
+      `_` and `-`, reading the "alphanumeric" characters of OpenID4VP 1.0, 6.1 and 6.3 as ALPHA and DIGIT of RFC 5234,
+      instead of every Unicode letter and digit, e.g. `ä`
     - Fix: Every claims query of a claim combination has to match, also several queries of one claim, e.g. with
       different `values`, instead of only the first query of each claim: OpenID4VP 1.0 has no rule to ignore duplicate
       claims queries, which its drafts had. An mdoc presentation returns a data element selected by several claims
@@ -149,6 +152,10 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       can be registered with several identifiers (ETSI TS 119 475 V1.2.1, B.2.2). The shared subject stands in for
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
+    - Fix: `OpenId4VpRequestOptions` rejects `verifier_info` whose `credential_ids` are empty or reference no credential
+      query, as they are, if present, "A non-empty array of strings each referencing a Credential requested by the
+      Verifier" (OpenID4VP 1.0, 5.1). The wallet's `AuthorizationRequestValidator` rejects such requests with
+      `invalid_request`
     - Fix: `DcApiVerifier` accepts an ISO/IEC 18013-7 Annex C response only if every document request is answered by
       its own accepted document that returns each requested data element issuer-signed, instead of by any accepted
       document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,

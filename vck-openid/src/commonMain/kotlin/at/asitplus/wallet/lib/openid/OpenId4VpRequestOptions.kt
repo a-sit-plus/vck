@@ -98,6 +98,14 @@ data class OpenId4VpRequestOptions(
 ) : RequestOptions {
 
     init {
+        @Suppress("DEPRECATION") val credentialIds = when (presentationRequest) {
+            is DCQLRequest -> presentationRequest.dcqlQuery
+                .credentials.map { it.id.string }
+
+            // Transaction Data and Verifier Info for credentials not supported for Device Retrieval
+            is IsoDeviceRetrieval -> setOf()
+            null -> setOf()
+        }.toSet()
         if (!transactionData.isNullOrEmpty()) {
             // OpenID4VP 1.0, 5.1: credential_ids is a "Non-empty array of strings", checked per entry, as an empty one
             // would vanish among the IDs of the others
@@ -105,17 +113,19 @@ data class OpenId4VpRequestOptions(
                 "credential_ids of every transaction data must be non-empty"
             }
             val transactionIds = transactionData.map { it.credentialIds.toList() }.flatten().toSet()
-            @Suppress("DEPRECATION") val credentialIds = when (presentationRequest) {
-                is DCQLRequest -> presentationRequest.dcqlQuery
-                    .credentials.map { it.id.string }
-
-                is IsoDeviceRetrieval -> setOf() // Transaction Data not supported for Device Retrieval
-                null -> setOf()
-            }.toSet()
             // OpenID4VP 1.0, 5.1: credential_ids are "each referencing a Credential requested by the Verifier that can
             // be used to authorize this transaction", so other requested credentials, e.g. optional ones, may be absent
             require(credentialIds.containsAll(transactionIds)) {
                 "credential_ids of transaction data reference no credential query: ${transactionIds - credentialIds}"
+            }
+        }
+        // OpenID4VP 1.0, 5.1: credential_ids of verifier_info, if present, are "A non-empty array of strings each
+        // referencing a Credential requested by the Verifier for which the attestation is relevant"
+        verifierInfo?.forEach { info ->
+            val infoIds = info.credentialIds ?: return@forEach
+            require(infoIds.isNotEmpty()) { "credential_ids of verifier_info must be non-empty if present" }
+            require(credentialIds.containsAll(infoIds)) {
+                "credential_ids of verifier_info reference no credential query: ${infoIds - credentialIds}"
             }
         }
         if (isAnyDcApi) {

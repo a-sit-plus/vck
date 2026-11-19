@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QCertCreationAcceptance
+import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestedCredential
@@ -76,6 +78,34 @@ val OpenId4VpRequestOptionsTest by matrixSuite {
         }
 
         result.exceptionOrNull().shouldBeInstanceOf<IllegalArgumentException>()
+    }
+
+    "credential ids of verifier info" - {
+        val presentationRequest = CredentialPresentationRequestBuilder(
+            RequestedCredential.SdJwt(ConstantIndex.AtomicAttribute2023, id = "pid")
+        ).toDCQLRequest()
+        fun verifierInfo(credentialIds: Set<String>?) =
+            VerifierInfo(format = "jwt", data = "eyJhbGciOiJFUzI1NiJ9", credentialIds = credentialIds)
+
+        listOf(setOf("pid"), null).forEach { credentialIds ->
+            test("$credentialIds are accepted") {
+                val info = nonEmptyListOf(verifierInfo(credentialIds))
+
+                val result = runCatching { OpenId4VpRequestOptions(presentationRequest, verifierInfo = info) }
+
+                result.isSuccess shouldBe true
+            }
+        }
+
+        listOf(setOf("unknown"), setOf()).forEach { credentialIds ->
+            test("$credentialIds are rejected") {
+                val info = nonEmptyListOf(verifierInfo(credentialIds))
+
+                val result = runCatching { OpenId4VpRequestOptions(presentationRequest, verifierInfo = info) }
+
+                result.exceptionOrNull().shouldBeInstanceOf<IllegalArgumentException>()
+            }
+        }
     }
 
     test("dc api requires dcql and expected origins") {

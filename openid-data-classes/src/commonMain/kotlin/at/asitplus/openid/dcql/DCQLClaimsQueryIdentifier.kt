@@ -1,6 +1,8 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.data.validation.third_party.kotlin.requireIsNotEmpty
+import at.asitplus.rfc5234ABNF.Rfc5234ABNFCore.isAlpha
+import at.asitplus.rfc5234ABNF.Rfc5234ABNFCore.isDigit
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -14,7 +16,8 @@ import kotlin.jvm.JvmInline
 value class DCQLClaimsQueryIdentifier(val string: String) {
     init {
         string.requireIsNotEmpty()
-        require(string.all { it == '_' || it == '-' || it.isLetterOrDigit() }) {
+        // "alphanumeric" as the ASCII letters and digits, ALPHA and DIGIT of RFC 5234, B.1, not every Unicode letter
+        require(string.all { it == '_' || it == '-' || it.isAlpha() || it.isDigit() }) {
             "Claims query identifier must only contain alphanumeric, underscore (_) or hyphen (-) characters."
         }
     }
