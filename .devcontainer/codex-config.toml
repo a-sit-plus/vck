@@ -1,0 +1,13 @@
+# System-level Codex defaults for the Dev Container. The container is the
+# execution boundary, so Codex runs without its own sandbox and approvals.
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+# Root owns the npm installation, so Codex cannot update itself. Bump
+# CODEX_VERSION in the Dockerfile instead.
+check_for_update_on_startup = false
+
+[notice]
+hide_full_access_warning = true
+
+[projects."/workspaces/vck"]
+trust_level = "trusted"
