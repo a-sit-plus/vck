@@ -29,10 +29,31 @@ val HolderDCQLQueryMatchingResultTest by matrixSuite {
         """.trimIndent()
     )
 
-    /** Matches every credential to each query of [matchingQueries], and to no other query. */
-    fun matching(credentials: List<String>, matchingQueries: Set<String>) = HolderDCQLQueryMatchingResult(
+    // A PID as SD-JWT or ISO mdoc, and an optional loyalty card
+    val withOptionalSet = Json.decodeFromString<DCQLQuery>(
+        """
+        {
+          "credentials": [
+            { "id": "pid-sd-jwt", "format": "dc+sd-jwt", "meta": { "vct_values": ["urn:eudi:pid:1"] } },
+            { "id": "pid-mdoc", "format": "mso_mdoc", "meta": { "doctype_value": "eu.europa.ec.eudi.pid.1" } },
+            { "id": "loyalty", "format": "dc+sd-jwt", "meta": { "vct_values": ["urn:example:loyalty"] } }
+          ],
+          "credential_sets": [
+            { "options": [ ["pid-sd-jwt"], ["pid-mdoc"] ] },
+            { "required": false, "options": [ ["loyalty"] ] }
+          ]
+        }
+        """.trimIndent()
+    )
+
+    /** Matches every credential to each query of [matchingQueries] of [dcql], and to no other query. */
+    fun matching(
+        credentials: List<String>,
+        matchingQueries: Set<String>,
+        dcql: DCQLQuery = dcqlQuery,
+    ) = HolderDCQLQueryMatchingResult(
         dcqlQueryMatchingResult = DCQLQueryMatchingResult(
-            dcqlQuery.credentials.associate { query ->
+            dcql.credentials.associate { query ->
                 query.id to credentials.map {
                     if (query.id.string in matchingQueries) {
                         KmmResult.success(DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult)
@@ -56,5 +77,91 @@ val HolderDCQLQueryMatchingResultTest by matrixSuite {
     "default submission fails if no option of a required credential set is satisfiable" {
         matching(listOf("mdoc"), setOf())
             .toDefaultSubmission(dcqlQuery).isFailure.shouldBeTrue()
+    }
+
+    "credential sets" - {
+        test("each option tells whether the holder can satisfy it, optional sets included") {
+            val matching = matching(listOf("mdoc", "card"), setOf("pid-mdoc", "loyalty"), withOptionalSet)
+
+            val sets = matching.credentialSets(withOptionalSet)
+
+            sets shouldBe listOf(
+                HolderCredentialSet(
+                    required = true,
+                    options = listOf(
+                        HolderCredentialSetOption(listOf(DCQLCredentialQueryIdentifier("pid-sd-jwt")), false),
+                        HolderCredentialSetOption(listOf(DCQLCredentialQueryIdentifier("pid-mdoc")), true),
+                    ),
+                ),
+                HolderCredentialSet(
+                    required = false,
+                    options = listOf(HolderCredentialSetOption(listOf(DCQLCredentialQueryIdentifier("loyalty")), true)),
+                ),
+            )
+        }
+
+        test("a query without credential sets is one required set of all its credential queries") {
+            val query = Json.decodeFromString<DCQLQuery>(
+                """
+                {
+                  "credentials": [
+                    { "id": "pid", "format": "dc+sd-jwt", "meta": { "vct_values": ["urn:eudi:pid:1"] } },
+                    { "id": "loyalty", "format": "dc+sd-jwt", "meta": { "vct_values": ["urn:example:loyalty"] } }
+                  ]
+                }
+                """.trimIndent()
+            )
+            val matching = matching(listOf("pid"), setOf("pid"), query)
+
+            val sets = matching.credentialSets(query)
+
+            sets shouldBe listOf(
+                HolderCredentialSet(
+                    required = true,
+                    options = listOf(
+                        HolderCredentialSetOption(
+                            listOf(DCQLCredentialQueryIdentifier("pid"), DCQLCredentialQueryIdentifier("loyalty")),
+                            false,
+                        )
+                    ),
+                )
+            )
+        }
+    }
+
+    "submission of a selection" - {
+        val matching = matching(listOf("mdoc", "card"), setOf("pid-mdoc", "loyalty"), withOptionalSet)
+
+        test("presents the chosen option of an optional set") {
+            val selection = listOf(1, 0)
+
+            val submission = matching.toSubmission(withOptionalSet, selection).getOrThrow()
+
+            submission.keys shouldBe
+                    setOf(DCQLCredentialQueryIdentifier("pid-mdoc"), DCQLCredentialQueryIdentifier("loyalty"))
+        }
+
+        test("presents nothing for an optional set chosen with null") {
+            val selection = listOf(1, null)
+
+            val submission = matching.toSubmission(withOptionalSet, selection).getOrThrow()
+
+            submission.keys shouldBe setOf(DCQLCredentialQueryIdentifier("pid-mdoc"))
+        }
+
+        "fails" - {
+            listOf(
+                listOf(null, 0) to "for no option of a required set",
+                listOf(0, 0) to "for an option that can not be satisfied",
+                listOf(2, 0) to "for an option that does not exist",
+                listOf(1) to "without a choice for every set",
+            ).forEach { (selection, name) ->
+                test(name) {
+                    val result = matching.toSubmission(withOptionalSet, selection)
+
+                    result.isFailure.shouldBeTrue()
+                }
+            }
+        }
     }
 }
