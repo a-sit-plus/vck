@@ -71,8 +71,7 @@ sealed interface DCQLCredentialQuery {
 
     /**
      * OID4VP 1.0, 6.1: claims: OPTIONAL. A non-empty array of objects as defined in Section 6.3
-     * that specifies claims in the requested Credential. Verifiers MUST NOT point to the same claim more than once
-     * in a single query. Wallets SHOULD ignore such duplicate claim queries.
+     * that specifies claims in the requested Credential.
      *
      * Relevant References:
      * - DCQLClaimQuery: Within the particular claims array, the same id MUST NOT be present more
@@ -330,9 +329,9 @@ sealed interface DCQLCredentialQuery {
         val failures = mutableListOf<Throwable>()
         val successCombination = requestedClaimsQueryCombinations.firstNotNullOfOrNull { claimQueryCombination ->
             catching {
-                // OpenID4VP 1.0, 6.1: claims: "Verifiers MUST NOT point to the same claim more than once in a single
-                // query. Wallets SHOULD ignore such duplicate claim queries."
-                claimQueryCombination.distinctBy { it.path }.map { claimQuery ->
+                // every claims query is matched, also several of one claim, e.g. with different values, as OpenID4VP
+                // 1.0 dropped the rule to ignore duplicate claims queries
+                claimQueryCombination.map { claimQuery ->
                     claimQuery.executeClaimsQueryAgainstCredential(
                         credentialStructure = credentialStructure,
                     ).getOrThrow()
