@@ -4,10 +4,10 @@ import at.asitplus.KmmResult
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.ZkDocument
 import at.asitplus.iso.ZkSystemSpec
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.PresentationRequestParameters
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import kotlinx.serialization.KSerializer
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -80,7 +80,7 @@ interface IsoMdocZkBackend {
      *
      * @param request The parameters of the presentation request.
      * @param credential The ISO mDoc credential to prove statements about.
-     * @param requestedClaims The set of claims (as JSON Paths) to be disclosed in the proof.
+     * @param requestedClaims The data elements to be disclosed in the proof.
      * @param requestedZkSystemSpecs The list of ZK systems requested by the verifier to evaluate.
      * @param keyMaterial Key material used for holder binding purposes.
      * @return A [KmmResult] containing the generated [IsoMdocZkProof] on success, or an error if
@@ -89,7 +89,7 @@ interface IsoMdocZkBackend {
     suspend fun generate(
         request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry.Iso,
-        requestedClaims: Collection<NormalizedJsonPath>,
+        requestedClaims: Collection<MdocClaimReference>,
         requestedZkSystemSpecs: List<ZkSystemSpec>,
         keyMaterial: KeyMaterial,
         timestamp: Instant = Clock.System.now(),

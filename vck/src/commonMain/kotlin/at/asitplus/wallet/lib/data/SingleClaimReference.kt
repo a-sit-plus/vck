@@ -1,14 +1,12 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlin.jvm.JvmInline
 
 @Serializable
@@ -19,16 +17,6 @@ sealed interface SingleClaimReference
 value class JsonClaimReference(
     val path: DCQLClaimsPathPointer,
 ) : SingleClaimReference {
-
-    /** A concrete path, retained for callers that do not select array wildcards. */
-    constructor(normalizedJsonPath: NormalizedJsonPath) : this(
-        DCQLClaimsPathPointer(normalizedJsonPath.map { segment ->
-            when (segment) {
-                is NormalizedJsonPathSegment.NameSegment -> DCQLClaimsPathPointerSegment.NameSegment(segment.memberName)
-                is NormalizedJsonPathSegment.IndexSegment -> DCQLClaimsPathPointerSegment.IndexSegment(segment.index)
-            }
-        }.toNonEmptyList())
-    )
 
     /** Keeps the existing object and member name when serialized as a [SingleClaimReference]. */
     object Serializer : KSerializer<JsonClaimReference> by TransformingSerializerTemplate(
@@ -42,8 +30,28 @@ value class JsonClaimReference(
     internal class Surrogate(@SerialName("normalizedJsonPath") val path: DCQLClaimsPathPointer)
 }
 
+/**
+ * A data element of an ISO mdoc, requested and presented as a name space with a data element identifier
+ * (ISO/IEC 18013-5:2021, 8.3.2.1.2.1).
+ */
 @Serializable
 data class MdocClaimReference(
     val namespace: String,
     val claimName: String,
-) : SingleClaimReference
+) : SingleClaimReference {
+
+    /**
+     * Serializes the reference as the two-element array `[namespace, claimName]`, the form that
+     * [at.asitplus.wallet.lib.agent.DeviceRequestCredentialDisclosure.disclosedAttributes] keeps from its earlier
+     * representation as a JSONPath of two names.
+     */
+    object ArraySerializer : KSerializer<MdocClaimReference> by TransformingSerializerTemplate(
+        parent = ListSerializer(String.serializer()),
+        encodeAs = { listOf(it.namespace, it.claimName) },
+        decodeAs = {
+            require(it.size == 2) { "An mdoc data element has a name space and a data element identifier: $it" }
+            MdocClaimReference(it[0], it[1])
+        },
+        serialName = "at.asitplus.wallet.lib.data.MdocClaimReference.Array",
+    )
+}

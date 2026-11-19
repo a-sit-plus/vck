@@ -284,7 +284,7 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
-    "registered JSON paths cover only their selected claims and descendants" - {
+    "registered claim paths cover only their selected claims and descendants" - {
         listOf(
             Triple("[\"address\"]", "[\"address\"]", ACCEPTED),
             Triple("[\"address\"]", "[\"address\",\"locality\"]", ACCEPTED),

@@ -1,18 +1,14 @@
 package at.asitplus.wallet.sdjwt
 
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlin.jvm.JvmInline
@@ -25,37 +21,6 @@ value class SdJwtTypeMetadataClaimInformationPath(
     init {
         require(segments.isNotEmpty()) {
             "Expected at least 1 segment, but there were 0."
-        }
-    }
-
-    fun process(jsonElement: JsonElement) = segments.fold(
-        listOf(
-            NormalizedJsonPath() to jsonElement
-        )
-    ) { currentList, segment ->
-        when (segment) {
-            is SdJwtTypeMetadataClaimInformationPathSegmentName -> currentList.mapNotNull { (path, element) ->
-                element.jsonObject[segment.string]?.let {
-                    (path + segment.string) to it
-                }
-            }
-
-            is SdJwtTypeMetadataClaimInformationPathSegmentIndex -> currentList.mapNotNull { (path, element) ->
-                if (segment.ulong > Int.MAX_VALUE.toULong()) null
-                else element.jsonArray.getOrNull(segment.ulong.toInt())?.let {
-                    (path + segment.ulong.toUInt()) to it
-                }
-            }
-
-            null -> currentList.flatMap { (path, element) ->
-                element.jsonArray.mapIndexed { index, element ->
-                    (path + index.toUInt()) to element
-                }
-            }
-        }
-    }.also {
-        require(it.isNotEmpty()) {
-            "Expected at least one element to match the given path, but there were none."
         }
     }
 

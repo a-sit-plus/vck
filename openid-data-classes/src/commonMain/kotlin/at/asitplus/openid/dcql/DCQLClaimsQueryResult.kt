@@ -1,10 +1,9 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.jsonpath.core.NodeList
-
 sealed interface DCQLClaimsQueryResult {
+    /** [selectedClaims] are the claims the claims query selects, see [DCQLJsonClaimsQuery]. */
     data class JsonResult(
-        val nodeList: NodeList,
+        val selectedClaims: List<DCQLSelectedClaim>,
     ) : DCQLClaimsQueryResult
 
     /** [claimValue] is the JSON value of the data element, see [DCQLCredentialClaimStructure.IsoMdocStructure]. */
