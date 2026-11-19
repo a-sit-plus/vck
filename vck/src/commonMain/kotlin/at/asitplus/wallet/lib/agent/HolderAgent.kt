@@ -69,6 +69,9 @@ class HolderAgent private constructor(
      * cached tokens only, so that matching, and creating a presentation, never waits for the network. A status that
      * can not be resolved does not demote a credential. By default [credentialValidator].
      */
+    @Deprecated(
+        "Use the constructor taking a holderKeyResolver; for a single key, use HolderKeyResolver.single(keyMaterial)"
+    )
     @JvmOverloads
     constructor(
         keyMaterial: KeyMaterial,
