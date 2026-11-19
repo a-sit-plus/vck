@@ -14,6 +14,26 @@ val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
 
+val generatedVersionDirectory = layout.buildDirectory.dir("generated/sources/version/commonMain/kotlin")
+val generateVckVersion by tasks.registering {
+    inputs.property("artifactVersion", artifactVersion)
+    outputs.dir(generatedVersionDirectory)
+    doLast {
+        generatedVersionDirectory.get().file("at/asitplus/wallet/lib/BuildProperties.kt").asFile.apply {
+            parentFile.mkdirs()
+            writeText(
+                """
+                package at.asitplus.wallet.lib
+
+                /** Build information for the VC-K core library. */
+                object BuildProperties {
+                    const val vckVersion: String = "${inputs.properties.getValue("artifactVersion")}"
+                }
+                """.trimIndent() + "\n"
+            )
+        }
+    }
+}
 
 val disableAppleTargets by envExtra
 kotlin {
@@ -26,6 +46,7 @@ kotlin {
     }
     sourceSets {
         commonMain {
+            kotlin.srcDir(generateVckVersion)
             dependencies {
                 api(project(":openid-data-classes"))
                 api(project(":etsi-data-classes"))
