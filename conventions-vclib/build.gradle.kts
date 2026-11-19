@@ -10,6 +10,7 @@ dependencies {
     implementation(libs.agp)
     implementation(libs.asp)
     implementation(libs.tomlj)
+    implementation(libs.kotlinxResourcesPlugin)
 }
 
 repositories {

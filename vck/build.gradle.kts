@@ -35,6 +35,8 @@ kotlin {
             }
         }
         commonTest {
+            // Shares the lists of trusted entities in `etsi-data-classes/src/commonTest/resources/lote`
+            resources.srcDir(layout.projectDirectory.dir("../etsi-data-classes/src/commonTest/resources"))
             dependencies {
                 implementation("com.squareup.okio:okio:3.15.0")
             }

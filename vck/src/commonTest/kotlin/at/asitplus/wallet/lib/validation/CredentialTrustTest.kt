@@ -326,8 +326,8 @@ val CredentialTrustTest by matrixSuite {
 
     "adapters" - {
         "a scope from LoTEs takes issuance and revocation services of its profile only" {
-            val pidLote = lote(LoTETestData.pidProvidersPayload)
-            val wrpacLote = lote(LoTETestData.wrpacProvidersOriginal)
+            val pidLote = lote(LoTETestData.pidProviders)
+            val wrpacLote = lote(LoTETestData.wrpacProviders)
             val filter = LoTEFilterService()
             val scope = filter.credentialTrustScope(
                 credentialIdentifiers = setOf(PID_VCT),

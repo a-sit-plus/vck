@@ -62,16 +62,24 @@ class VcLibConventions : K2Conventions() {
             target.pluginManager.apply("org.jetbrains.kotlin.plugin.serialization")
             if (target.hasAndroidSdk()) {
                 target.pluginManager.apply("com.android.kotlin.multiplatform.library")
+                // Adds lintAndroidMain, configured in vckAndroid()
+                target.pluginManager.apply("com.android.lint")
             }
             target.pluginManager.apply("signing")
             target.pluginManager.apply("org.jetbrains.dokka")
             target.pluginManager.apply("de.infix.testBalloon")
+            // Reads test resources (`src/*Test/resources`) on every target, see DEVELOPMENT.md
+            target.pluginManager.apply("com.goncalossilva.resources")
             super.apply(target)
             //if we do this properly, cinterop (swift-klib) blows up, so we hack!
             target.afterEvaluate {
-                (project.kotlinExtension as KotlinMultiplatformExtension).sourceSets
+                val sourceSets = (project.kotlinExtension as KotlinMultiplatformExtension).sourceSets
+                sourceSets
                     .filter { it.name.endsWith("Test") }
                     .forEach { it.dependencies { addTestExtensions() } }
+                sourceSets.findByName("commonTest")?.dependencies {
+                    implementation("com.goncalossilva:resources:${project.VcLibVersions.kotlinxResources}")
+                }
 
                 tasks.withType<Test>().configureEach {
                     maxHeapSize = "8G"
@@ -105,6 +113,11 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
             minSdk = it
         }
         compileSdk = project.androidCompileSdk
+        lint {
+            // Fails on calls that need a newer API than minSdk, also in commonMain, e.g. MutableList.removeFirst()
+            // since compileSdk 35: https://youtrack.jetbrains.com/issue/KT-71375
+            checkOnly += "NewApi"
+        }
 
         withDeviceTestBuilder {
             sourceSetTreeName = "test"
