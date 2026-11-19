@@ -287,14 +287,14 @@ val OidvciCodeFlowTest by matrixSuite {
                 metadata = it.issuer.metadata,
                 credentialFormat = credentialFormat,
                 clientId = "https://wallet.a-sit.plus/app"
-            ).shouldNotBeNull()
+            )?.proofs.shouldNotBeNull()
             val differentProof = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
                 .createCredentialProof(
                     clientNonce = clientNonce,
                     metadata = it.issuer.metadata,
                     credentialFormat = credentialFormat,
                     clientId = "https://wallet.a-sit.plus/app"
-                ).shouldNotBeNull()
+                )?.proofs.shouldNotBeNull()
             val credentialRequest = CredentialRequestParameters(
                 credentialConfigurationId = scope,
                 proofs = CredentialRequestProofContainer(

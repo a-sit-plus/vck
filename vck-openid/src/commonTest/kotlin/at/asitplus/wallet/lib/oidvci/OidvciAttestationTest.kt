@@ -434,7 +434,7 @@ val OidvciAttestationTest by matrixSuite {
                 credentialFormat = credentialFormat,
                 clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
                 clientId = "https://wallet.a-sit.plus/app"
-            ).shouldNotBeNull()
+            )?.proofs.shouldNotBeNull()
 
             proof.attestation.shouldNotBeNull().shouldNotBeEmpty()
             proof.attestationParsed.shouldNotBeNull().first().payload.keyStorageStatus.shouldNotBeNull()
@@ -761,7 +761,7 @@ val OidvciAttestationTest by matrixSuite {
                     credentialFormat = credentialFormat,
                     clientNonce = it.issuer.nonceWithDpopNonce().getOrThrow().response.clientNonce,
                     clientId = "https://wallet.a-sit.plus/app"
-                )
+                )?.proofs
             }.shouldNotBeNull()
 
             // The resulting JWT set must be non-empty

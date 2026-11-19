@@ -49,8 +49,6 @@ class OpenId4VpKtorHolder(
      * presentation twice.
      */
     httpClient: HttpClient,
-    /** Key material used to encrypt responses and sign ID tokens. */
-    keyMaterial: KeyMaterial,
     /** Holds the credentials and creates the verifiable presentation. */
     holder: Holder,
     /** Encrypts the authn response to the verifier, if this has been requested. */
@@ -80,6 +78,70 @@ class OpenId4VpKtorHolder(
     /** Validates the relying party behind requests, see [OpenId4VpHolder]. */
     relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
 ) {
+
+    @Deprecated(
+        "keyMaterial is not used: use the constructor without it",
+        ReplaceWith(
+            "OpenId4VpKtorHolder(httpClient, holder, encryptJarm, supportedAlgorithms, clientId, authorizationEndpoint, " +
+                    "walletNonceMapStore, randomSource, lookupJsonWebKeysForClient, allowedDcApiOriginSchemes, " +
+                    "ephemeralEncryptionKeyService, supportedJweEncryptionAlgorithms, requireEncryptedRequests, " +
+                    "relyingPartyValidator)"
+        )
+    )
+    constructor(
+        /**
+         * The app's ktor client, i.e. with its engine and logging. This class sends its requests with a copy that
+         * does not follow redirects (see [HttpClient.config]), setting content type and status handling per request.
+         * Plugins must not re-send requests or react to error statuses: a re-sent authorization response submits the
+         * presentation twice.
+         */
+        httpClient: HttpClient,
+        /** Not used. */
+        @Suppress("UNUSED_PARAMETER") keyMaterial: KeyMaterial,
+        /** Holds the credentials and creates the verifiable presentation. */
+        holder: Holder,
+        /** Encrypts the authn response to the verifier, if this has been requested. */
+        encryptJarm: EncryptJweFun = EncryptJwe(),
+        /** Advertised in [OpenId4VpHolder.metadata] and compared against holder's requirements. */
+        supportedAlgorithms: Set<SignatureAlgorithm> = setOf(SignatureAlgorithm.ECDSAwithSHA256),
+        /** Advertised as `issuer` in [OpenId4VpHolder.metadata]. */
+        clientId: String = "https://wallet.a-sit.at/",
+        /** Advertised as `authorization_endpoint` in [OpenId4VpHolder.metadata]. */
+        authorizationEndpoint: String = "openid4vp:",
+        /** Stores our nonce used when fetching authn requests using POST. */
+        walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
+        /** Source for random bytes, i.e., nonces for encrypted responses. */
+        randomSource: RandomSource = RandomSource.Secure,
+        /** Callback to load encryption keys for pre-registered clients. */
+        lookupJsonWebKeysForClient: (OpenId4VpHolder.JsonWebKeyLookupInput) -> JsonWebKeySet? = { null },
+        /** Supplies the allowed schemes for origins received with OpenID4VP DC API requests. */
+        allowedDcApiOriginSchemes: suspend () -> Set<String> = {
+            OpenId4VpHolder.DEFAULT_ALLOWED_DC_API_ORIGIN_SCHEMES
+        },
+        /** Set to accept encrypted authorization requests fetched with a POST (when RP supports that). */
+        ephemeralEncryptionKeyService: EphemeralEncryptionKeyService? = null,
+        /** Advertised in `wallet_metadata` to encrypt authorization requests, see [ephemeralEncryptionKeyService]. */
+        supportedJweEncryptionAlgorithms: Set<JweEncryption> = JweEncryption.entries.toSet(),
+        /** Set to reject a plain request object we have fetched with POST (when RP supports that) */
+        requireEncryptedRequests: Boolean = false,
+        /** Validates the relying party behind requests, see [OpenId4VpHolder]. */
+        relyingPartyValidator: RelyingPartyValidator = RelyingPartyValidator(),
+    ) : this(
+        httpClient = httpClient,
+        holder = holder,
+        encryptJarm = encryptJarm,
+        supportedAlgorithms = supportedAlgorithms,
+        clientId = clientId,
+        authorizationEndpoint = authorizationEndpoint,
+        walletNonceMapStore = walletNonceMapStore,
+        randomSource = randomSource,
+        lookupJsonWebKeysForClient = lookupJsonWebKeysForClient,
+        allowedDcApiOriginSchemes = allowedDcApiOriginSchemes,
+        ephemeralEncryptionKeyService = ephemeralEncryptionKeyService,
+        supportedJweEncryptionAlgorithms = supportedJweEncryptionAlgorithms,
+        requireEncryptedRequests = requireEncryptedRequests,
+        relyingPartyValidator = relyingPartyValidator,
+    )
 
     sealed interface AuthenticationResult
 
@@ -112,12 +174,10 @@ class OpenId4VpKtorHolder(
     )
 
     val iso180137AnnexCHolder = Iso180137AnnexCHolder(
-        keyMaterial = keyMaterial,
         holder = holder,
     )
 
     val dcApiHolder = DcApiHolder(
-        keyMaterial = keyMaterial,
         holder = holder,
         openId4VpHolder = openId4VpHolder,
         iso180137AnnexCHolder = iso180137AnnexCHolder,

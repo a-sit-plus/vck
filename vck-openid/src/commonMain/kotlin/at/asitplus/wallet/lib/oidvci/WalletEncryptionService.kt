@@ -7,6 +7,7 @@ import at.asitplus.openid.CredentialResponseEncryption
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.SupportedAlgorithmsContainer
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
@@ -59,15 +60,17 @@ class WalletEncryptionService @JvmOverloads constructor(
 
     internal suspend fun wrapCredentialRequest(
         input: CredentialRequestParameters,
-        metadata: IssuerMetadata
+        metadata: IssuerMetadata,
+        proofKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<OpenId4VciClient.CredentialRequest> = catching {
         if (metadata.shouldEncryptRequest(input)) {
             OpenId4VciClient.CredentialRequest.Encrypted(
                 request = encryptRequest(input, metadata).getOrThrow(),
                 credentialResponseEncryptionKeyId = input.credentialResponseEncryption?.jsonWebKey?.keyId,
+                proofKeys = proofKeys,
             )
         } else {
-            OpenId4VciClient.CredentialRequest.Plain(input)
+            OpenId4VciClient.CredentialRequest.Plain(input, proofKeys)
         }
     }
 
