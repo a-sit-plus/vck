@@ -64,6 +64,27 @@ val DCQLCredentialQueryTest by matrixSuite {
                 .shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>()
                 .selectedClaims.single().value shouldBe JsonPrimitive("Musterfrau")
         }
+        "several claims queries of one claim all have to hold, e.g. with different values" {
+            val queryWithClaims = query.copy(
+                claims = DCQLClaimsQueryList(
+                    DCQLJsonClaimsQuery(
+                        path = DCQLClaimsPathPointer("family_name"),
+                        values = listOf(DCQLExpectedClaimValue.StringValue("Musterfrau")),
+                    ),
+                    DCQLJsonClaimsQuery(
+                        path = DCQLClaimsPathPointer("family_name"),
+                        values = listOf(DCQLExpectedClaimValue.StringValue("Mustermann")),
+                    ),
+                )
+            )
+
+            val result = queryWithClaims.matchClaimsQueriesAgainstClaimStructure(
+                credentialStructure = claimStructure,
+                satisfiesSelectiveDisclosure = true,
+            )
+
+            result.isFailure shouldBe true
+        }
         "present claims request the whole credential if it is not selectively disclosable" {
             val queryWithClaims = query.copy(
                 claims = DCQLClaimsQueryList(DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer("family_name")))

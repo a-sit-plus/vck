@@ -225,6 +225,26 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             }
         }
 
+        "iso createVerifiablePresentation returns a data element once, also if several claims queries select it" {
+            val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
+            val disclosedAttributes = ClaimsQueryResults(
+                listOf(
+                    IsoMdocResult(namespace, CLAIM_GIVEN_NAME, "Susanne"),
+                    IsoMdocResult(namespace, CLAIM_GIVEN_NAME, "Susanne"),
+                )
+            )
+
+            val result = it.verifiablePresentationFactory.createVerifiablePresentation(
+                request = presentationRequest(),
+                credential = it.isoCredential,
+                disclosedAttributes = disclosedAttributes,
+            ).getOrThrow()
+
+            result.shouldBeInstanceOf<CreatePresentationResult.DeviceResponse>().deviceResponse.documents
+                .shouldNotBeNull().single().issuerSigned.namespaces.shouldNotBeNull().getValue(namespace).entries
+                .map { item -> item.value.elementIdentifier } shouldBe listOf(CLAIM_GIVEN_NAME)
+        }
+
         "iso createVerifiablePresentation uses disclosedAttributes (dcql query results) and ZKP request with plain fallback" {
             val namespace = ConstantIndex.AtomicAttribute2023.isoNamespace.shouldNotBeNull()
 

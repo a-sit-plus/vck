@@ -85,6 +85,10 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       Organization of the signing certificate to be a `SchemeOperatorName` of the list, rejects a list whose
       `NextUpdate` is in the past, and optionally one with a lower `LoTESequenceNumber` than the list in force
 - DCQL:
+    - Fix: Every claims query of a claim combination has to match, also several queries of one claim, e.g. with
+      different `values`, instead of only the first query of each claim: OpenID4VP 1.0 has no rule to ignore duplicate
+      claims queries, which its drafts had. An mdoc presentation returns a data element selected by several claims
+      queries once (ISO/IEC 18013-5:2021, 8.3.2.1.2.2)
     - Fix: A holder matches DCQL claims queries on the claims of an SD-JWT VC as RFC 9901, 7.1 processes them
       (`SdJwtDecoded.reconstructedJsonObject`), without `_sd` and `_sd_alg` and with empty objects and arrays, and
       presents the disclosures of exactly the selected claims with their ancestors and sub-claims (RFC 9901, 7.2;
