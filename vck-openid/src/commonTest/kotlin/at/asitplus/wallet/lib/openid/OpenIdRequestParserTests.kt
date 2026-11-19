@@ -9,10 +9,9 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeaderNone
 import at.asitplus.wallet.lib.jws.SignJwt
@@ -49,8 +48,8 @@ val OpenIdRequestParserTests by matrixSuite {
         state = "af0ifjsldkj",
         // a structured parameter, so it has to survive the JSON-in-form encoding of URL parameters
         dcqlQuery = CredentialPresentationRequestBuilder(
-            RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
-        ).toDCQLRequest().shouldNotBeNull().dcqlQuery,
+            RequestedCredential.SdJwt(AtomicAttribute2023)
+        ).toDCQLRequest().dcqlQuery,
     )
 
     fun byValue(requestObject: String) = URLBuilder("https://wallet.example.com").apply {

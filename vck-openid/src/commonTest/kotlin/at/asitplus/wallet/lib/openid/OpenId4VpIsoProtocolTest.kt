@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -14,6 +15,8 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.openid.CreationOptions.Query
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
@@ -23,7 +26,6 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import com.benasher44.uuid.uuid4
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -37,6 +39,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
     fixture {
         runBlocking {
             val mdlScheme = AttributeIndex.resolveIdentifier(MDL_DOCTYPE, ISO_MDOC)
+                .shouldBeInstanceOf<IsoMdocCredentialScheme>()
             val material = EphemeralKeyWithoutCert()
             val agent = HolderAgent(material).also {
                 issueAndStoreIsoMdoc(it, material, mdlScheme)
@@ -68,11 +71,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
         "test with Fragment for mDL" {
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = it.mdlScheme,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(GIVEN_NAME))
-                    )
+                    RequestedCredential.Mdoc(it.mdlScheme, MdocClaimReference(it.mdlScheme, GIVEN_NAME))
                 ).toDCQLRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
@@ -89,11 +88,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
         "test with Fragment for custom attributes" {
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = AtomicAttribute2023,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(GIVEN_NAME))
-                    )
+                    RequestedCredential.Mdoc(AtomicAttribute2023, MdocClaimReference(AtomicAttribute2023, GIVEN_NAME))
                 ).toDCQLRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
@@ -111,11 +106,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val requestedClaim = FAMILY_NAME
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = it.mdlScheme,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(requestedClaim))
-                    )
+                    RequestedCredential.Mdoc(it.mdlScheme, MdocClaimReference(it.mdlScheme, requestedClaim))
                 ).toDCQLRequest(),
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(requestOptions, Query(it.walletUrl))
@@ -133,11 +124,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val requestedClaim = FAMILY_NAME
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = it.mdlScheme,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(requestedClaim))
-                    )
+                    RequestedCredential.Mdoc(it.mdlScheme, MdocClaimReference(it.mdlScheme, requestedClaim))
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
@@ -163,11 +150,7 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val requestedClaim = FAMILY_NAME
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = it.mdlScheme,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(requestedClaim))
-                    )
+                    RequestedCredential.Mdoc(it.mdlScheme, MdocClaimReference(it.mdlScheme, requestedClaim))
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",
@@ -195,15 +178,10 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
             val atomicGivenName = CLAIM_GIVEN_NAME
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = scope.mdlScheme,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(mdlFamilyName))
-                    ),
-                    RequestOptionsCredential(
-                        credentialScheme = AtomicAttribute2023,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(atomicGivenName))
+                    RequestedCredential.Mdoc(scope.mdlScheme, MdocClaimReference(scope.mdlScheme, mdlFamilyName)),
+                    RequestedCredential.Mdoc(
+                        AtomicAttribute2023,
+                        MdocClaimReference(AtomicAttribute2023, atomicGivenName),
                     ),
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
@@ -226,12 +204,13 @@ val OpenId4VpIsoProtocolTest by matrixSuite {
                 .acceptedPresentations().shouldHaveSize(2).apply {
                     values.first { it.first().hasDocType(AtomicAttribute2023.isoDocType) }.first()
                         .issuerSignedItems.shouldHaveSingleElement { it.elementIdentifier == atomicGivenName }
-                    values.first { it.first().hasDocType(scope.mdlScheme.isoDocType!!) }.first()
+                    values.first { it.first().hasDocType(scope.mdlScheme.isoDocType) }.first()
                         .issuerSignedItems.shouldHaveSingleElement { it.elementIdentifier == mdlFamilyName }
                 }
         }
 
         "Selective Disclosure with an mDL claims path pointer" {
+            @Suppress("DEPRECATION") // the claims path pointers of the deprecated RequestOptionsCredential
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
                     RequestOptionsCredential(

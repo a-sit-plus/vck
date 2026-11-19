@@ -1,8 +1,7 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.FixedTimePeriodProvider
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -17,6 +16,8 @@ import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.JsonClaimReference
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -162,16 +163,23 @@ private class TrustedIssuance(
         val authnRequest = verifier.createAuthnRequest(
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = AtomicAttribute2023,
-                        representation = representation,
+                    when (representation) {
                         // the claim name of the subject of a VC-JWT, see DummyCredentialDataProvider
-                        attributePaths = setOf(
-                            DCQLClaimsPathPointer(
-                                if (representation == CredentialRepresentation.PLAIN_JWT) "name" else CLAIM_GIVEN_NAME
-                            )
-                        ),
-                    )
+                        CredentialRepresentation.PLAIN_JWT -> RequestedCredential.VcJwt(
+                            AtomicAttribute2023,
+                            JsonClaimReference("credentialSubject", "name"),
+                        )
+
+                        CredentialRepresentation.SD_JWT -> RequestedCredential.SdJwt(
+                            AtomicAttribute2023,
+                            JsonClaimReference(CLAIM_GIVEN_NAME),
+                        )
+
+                        CredentialRepresentation.ISO_MDOC -> RequestedCredential.Mdoc(
+                            AtomicAttribute2023,
+                            MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
+                        )
+                    }
                 ).toDCQLRequest(),
             ),
             CreationOptions.Query("https://example.com/wallet/${uuid4()}")

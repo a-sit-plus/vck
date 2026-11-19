@@ -186,15 +186,10 @@ val verifier = OpenId4VpVerifier(
 val request = verifier.createAuthnRequest(
     requestOptions = OpenId4VpRequestOptions(
         presentationRequest = CredentialPresentationRequestBuilder(
-            credentials = setOf(
-                RequestOptionsCredential(
-                    credentialScheme = EuPidSdJwtScheme,
-                    representation = SD_JWT,
-                    attributePaths = setOf(
-                        DCQLClaimsPathPointer("given_name"),
-                        DCQLClaimsPathPointer("family_name"),
-                    ),
-                )
+            RequestedCredential.SdJwt(
+                EuPidSdJwtScheme,
+                JsonClaimReference("given_name"),
+                JsonClaimReference("family_name"),
             )
         ).toDCQLRequest(),
     ),

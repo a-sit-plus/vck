@@ -19,7 +19,6 @@ import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenId4VciClaimsPathPointer
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SecretExposure
@@ -28,7 +27,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -43,6 +42,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.validation.AccessCertificateChecks
@@ -185,17 +185,16 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
     test("encrypted Annex C response contains all requested documents") {
         val fixture = dcapiFixture(
             listOf(
-                RequestOptionsCredential(
-                    credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    attributePaths = setOf(
-                        DCQLClaimsPathPointer(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME)
+                RequestedCredential.Mdoc(
+                    ConstantIndex.AtomicAttribute2023,
+                    MdocClaimReference(
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME,
                     ),
                 ),
-                RequestOptionsCredential(
-                    credentialScheme = SecondAtomicAttribute,
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    attributePaths = setOf(DCQLClaimsPathPointer(SecondAtomicAttribute.CLAIM_FAMILY_NAME)),
+                RequestedCredential.Mdoc(
+                    SecondAtomicAttribute,
+                    MdocClaimReference(SecondAtomicAttribute, SecondAtomicAttribute.CLAIM_FAMILY_NAME),
                 ),
             )
         )
@@ -430,11 +429,10 @@ val IsoMdocDcapiResponseBuilderTest by matrixSuite {
 }
 
 private suspend fun dcapiFixture(
-    requestOptions: List<RequestOptionsCredential> = listOf(
-        RequestOptionsCredential(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            attributePaths = setOf(DCQLClaimsPathPointer(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME)),
+    requestedCredentials: List<RequestedCredential> = listOf(
+        RequestedCredential.Mdoc(
+            ConstantIndex.AtomicAttribute2023,
+            MdocClaimReference(ConstantIndex.AtomicAttribute2023, ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME),
         )
     ),
     euWrprc: ByteArray? = null,
@@ -450,7 +448,7 @@ private suspend fun dcapiFixture(
         ephemeralEncryptionKeyService = EphemeralEncryptionKeyService(ephemeralKeyStore),
         presentationPolicy = testPresentationPolicy,
     )
-    val presentationRequestBuilder = CredentialPresentationRequestBuilder.fromRequestOptions(requestOptions)
+    val presentationRequestBuilder = CredentialPresentationRequestBuilder(requestedCredentials)
     val isoRequest = verifier.createAuthnRequest(
         OpenId4VpRequestOptions(
             presentationRequest = presentationRequestBuilder.toIsoDeviceRetrievalRequest(),

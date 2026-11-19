@@ -12,7 +12,6 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JweHeader
@@ -25,7 +24,7 @@ import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.signum.supreme.sign.InvalidSignature
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
@@ -36,9 +35,8 @@ import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.jws.EncryptJwe
@@ -70,14 +68,13 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
     val credentialId = "credential-1"
 
     val dcqlRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(AtomicAttribute2023, SD_JWT),
+        RequestedCredential.SdJwt(AtomicAttribute2023),
     ).toDCQLRequest()
 
     val isoMdocDcqlRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(
-            credentialScheme = AtomicAttribute2023,
-            representation = ISO_MDOC,
-            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+        RequestedCredential.Mdoc(
+            AtomicAttribute2023,
+            MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
         ),
     ).toDCQLRequest()
 
@@ -226,10 +223,9 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API Annex C: createAuthnRequest renders the DCQL query as ISO device request") { f ->
             val reqOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = AtomicAttribute2023,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+                    RequestedCredential.Mdoc(
+                        AtomicAttribute2023,
+                        MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
                     ),
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
@@ -254,10 +250,9 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API Annex C: createAuthnRequest renders the Device Retrieval request as ISO device request") { f ->
             val reqOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(
-                        credentialScheme = AtomicAttribute2023,
-                        representation = ISO_MDOC,
-                        attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+                    RequestedCredential.Mdoc(
+                        AtomicAttribute2023,
+                        MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
                     ),
                 ).toIsoDeviceRetrievalRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
@@ -281,10 +276,9 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
         test("getMatchingCredentials matches ISO Device Retrieval requests") { f ->
             val request = CredentialPresentationRequestBuilder(
-                RequestOptionsCredential(
-                    credentialScheme = AtomicAttribute2023,
-                    representation = ISO_MDOC,
-                    attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+                RequestedCredential.Mdoc(
+                    AtomicAttribute2023,
+                    MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
                 ),
             ).toIsoDeviceRetrievalRequest()
 
@@ -300,10 +294,9 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
         test("createAuthnRequest combines several exchange protocols in one browser call") { f ->
             val isoDcqlRequest = CredentialPresentationRequestBuilder(
-                RequestOptionsCredential(
-                    credentialScheme = AtomicAttribute2023,
-                    representation = ISO_MDOC,
-                    attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+                RequestedCredential.Mdoc(
+                    AtomicAttribute2023,
+                    MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
                 ),
             ).toDCQLRequest()
 
@@ -318,7 +311,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             ).getOrThrow().digital.requests
                 .shouldHaveSize(2).shouldHaveSize(2).apply {
                     first().shouldBeInstanceOf<DigitalCredentialGetRequest.OpenId4VpUnsigned>()
-                        .data.dcqlQuery shouldBe isoDcqlRequest!!.dcqlQuery
+                        .data.dcqlQuery shouldBe isoDcqlRequest.dcqlQuery
                     last().shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>()
                         .data.deviceRequest.docRequests.single().itemsRequest.value.docType shouldBe
                             AtomicAttribute2023.isoDocType
