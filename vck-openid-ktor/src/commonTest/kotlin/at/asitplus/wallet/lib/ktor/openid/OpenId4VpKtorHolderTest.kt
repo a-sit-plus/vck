@@ -142,7 +142,7 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 redirectUriAfterPost: String? = null,
             ) {
                 val requestOptions = OpenId4VpRequestOptions(
-                    presentationRequest = CredentialPresentationRequestBuilder(
+                    presentationRequest = CredentialPresentationRequestBuilder.fromRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(
                                 credentialScheme = scheme,

@@ -194,7 +194,7 @@ val PreRegisteredClientTest by matrixSuite {
         "test with direct_post" {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
-                    presentationRequest = CredentialPresentationRequestBuilder(
+                    presentationRequest = CredentialPresentationRequestBuilder.fromRequestOptions(
                         credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
