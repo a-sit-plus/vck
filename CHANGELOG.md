@@ -45,49 +45,21 @@ Release 10.0.0 (unreleased):
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
 
-- Holder keys, so that a holder can use a different key for every credential:
-    - Add `HolderKeyResolver`, which finds the `KeyMaterial` of the key a credential is bound to, and
-      `HolderKeyResolver.single` for a holder with one key
-    - Add `StoreEntry.holderKey()`, the key a credential is bound to, `null` if none: the `cnf` key of an SD-JWT VC,
-      the `deviceKey` of an mdoc, and the `did:key` in the `sub` of a VC-JWT. DCQL matching uses this definition;
-      `CredentialValidator` still matches the `sub` of a VC-JWT
-    - Add `StoreEntry.isHolderBound()`, whether a credential is bound to a key at all: an SD-JWT VC with a `cnf`, every
-      mdoc, and a VC-JWT with a `did:key` in `sub`. Its `holderKey()` is `null` also if the key can't be read, e.g. a
-      `cnf` with a `kid` instead of a `jwk`, so DCQL matching uses `isHolderBound()`
-    - BREAKING: A VC-JWT whose `sub` is not a `did:key`, e.g. a JWK thumbprint, no longer counts as holder-bound in
-      DCQL matching. That was a VC-K convention without a basis in a specification: VCDM 1.1 defines `sub` as the `id`
-      of the `credentialSubject`, and only a `did:key` lets the key be derived from it. Issuers bind a VC-JWT to a key
-      with a `did:key` in `sub`
-- Presentation:
-    - Sign every presentation with the key its credential is bound to: `HolderAgent` and
-      `VerifiablePresentationFactory` get constructors taking a `HolderKeyResolver`, the factory with signer factories
-      such as `signKeyBinding: (KeyMaterial) -> SignJwtFun<KeyBindingJws>` instead of fixed signers
-    - Add `Holder.holderKeyResolver`. Deprecate `Holder.keyMaterial`, which fails for a `HolderAgent` with a resolver,
-      and the `VerifiablePresentationFactory` constructor taking one `KeyMaterial`
-    - BREAKING: Presenting a credential bound to a key the holder doesn't have fails instead of being signed with the
-      holder's key, as does a VC-JWT presentation of credentials bound to different keys or to none
-    - Add constructors without the unused `keyMaterial` to `OpenId4VpKtorHolder`, `DcApiHolder` and
-      `Iso180137AnnexCHolder`, and deprecate the ones with it
-- Issuance (wallet):
-    - Supply the holder key of every credential request with a `ProofKeySupplier`: `JwtProofCreator` and
-      `AttestationProofCreator` get constructors taking one. It is asked for every request, so a retry, e.g. after
-      `invalid_nonce`, gets a fresh key, with a `ProofKeyRequest` naming the proof type and the issuer's
-      `key_attestations_required`, so it can check them before creating a key
-    - A proof creator failing because the user cancelled the signature, e.g. unlocking the key, fails the credential
-      request instead of leaving the proof to the next creator, which would prove a new key the user has not approved
-    - Add `ProofCreator.createProof`, which returns a `CreatedProof`, the proofs together with their key, and which
-      `OpenId4VciClient` calls. By default it returns the proofs of `invoke` with an unknown key, so proof creators
-      that only implement `invoke` keep working with a holder of one key
-    - Check that a received credential is bound to a proof key of its request: `OpenId4VciClient.CredentialRequest`
-      records its `proofKeys`, which reach `HolderAgent.prepareCredentialStorage` as `expectedHolderKeys` through
-      `ReceivedCredential.Decoded.proofKeys`. `HolderBindingPolicy.RequireExpectedKey` accepts any of the new
-      `CredentialValidationContext.expectedHolderKeys`. Without expected keys, a `HolderAgent` with one key expects that
-      key, and one with a resolver blocks the check
-    - Deprecate `CredentialValidationContext.expectedHolderKey`, use `expectedHolderKeys`
-    - Add `KeyAttestationInput.keys`, the keys to attest
-    - BREAKING: New parameters change `copy` and `componentN` of the data classes `CredentialValidationContext`,
-      `ReceivedCredential.Decoded`, `OpenId4VciClient.CredentialRequest.Plain` and `.Encrypted`, and
-      `KeyAttestationInput`
+- Holder keys:
+    - Add `HolderKeyResolver` for resolving a credential's key, `HolderKeyResolver.single` for one-key holders, and
+      `StoreEntry.holderKey()` / `isHolderBound()` for identifying credential key binding. Keys come from an SD-JWT VC's
+      `cnf`, an mdoc's `deviceKey`, or a VC-JWT's `did:key` in `sub`.
+    - BREAKING: DCQL no longer treats a VC-JWT `sub` such as a JWK thumbprint as holder binding. VCDM 1.1 defines `sub`
+      as the credential subject identifier; VC-K derives a key from it only when it is a `did:key`.
+    - `HolderAgent` and `VerifiablePresentationFactory` resolve and use the key bound to each credential. Add
+      `holderKeyResolver` constructors; deprecate `Holder.keyMaterial`, the single-key `HolderAgent` constructor, and
+      the fixed-key `VerifiablePresentationFactory` constructor. Presentations fail if the holder lacks a credential's
+      key or a VC-JWT presentation combines different keys.
+    - OID4VCI proof creators obtain a key for each request, and `ProofCreator.createProof` returns the proofs with that
+      key. Received credentials are checked against their request's proof keys. Deprecate
+      `CredentialValidationContext.expectedHolderKey` in favor of `expectedHolderKeys`; add `KeyAttestationInput.keys`.
+      New fields change `copy` and `componentN` for `CredentialValidationContext`, `ReceivedCredential.Decoded`,
+      `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and `KeyAttestationInput`.
 
 Release 9.0.0:
 
