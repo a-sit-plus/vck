@@ -59,7 +59,8 @@ data class RequestedCredentialSet @JvmOverloads constructor(
     /**
      * Whether this set has to be satisfied; if not, the wallet may present it (OpenID4VP 1.0, 6.4.2). The default
      * submission of VC-K's holder (`HolderDCQLQueryMatchingResult.toDefaultSubmission`) presents only required sets: a
-     * wallet that offers an optional set to the End-User builds the submission itself.
+     * wallet that offers an optional set to the End-User shows `HolderDCQLQueryMatchingResult.credentialSets` and
+     * builds the submission of the chosen options with `HolderDCQLQueryMatchingResult.toSubmission`.
      */
     val required: Boolean = true,
 ) {

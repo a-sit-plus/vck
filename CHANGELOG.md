@@ -113,6 +113,11 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
       a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
       `DCQLClaimsPathPointerSegment.query` is removed, as processing a claims path pointer needs the whole selection
+    - Add `HolderDCQLQueryMatchingResult.credentialSets(dcqlQuery)`, the credential sets of a DCQL query with
+      whether the holder can satisfy each option, for wallets to let the End-User choose options and optional sets
+      (OpenID4VP 1.0, 6.4.2, 6.4.3), and `toSubmission(dcqlQuery, selection)`, the submission of the chosen option of
+      each set, or of none for an optional set. `toDefaultSubmission` is the selection of the first satisfiable option
+      of each required set, as before
 - ISO mdoc:
     - BREAKING: Data elements to present are `MdocClaimReference`s (name space and data element identifier,
       ISO/IEC 18013-5:2021, 8.3.2.1.2.1) instead of JSONPath `NormalizedJsonPath`s of two names, in
