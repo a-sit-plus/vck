@@ -552,20 +552,18 @@ class VerifiablePresentationFactory private constructor(
         )
         if (validCredentials.any { it.holderKey()?.equalsCryptographically(keyMaterial.publicKey) != true })
             throw PresentationException("A credential is not bound to the key of the presentation")
-        return with(
-            signers.verifiablePresentation(keyMaterial)(
-                JwsContentTypeConstants.JWT,
-                VerifiablePresentation(validCredentials.map { it.vcSerialized }).toJws(
-                    request.nonce,
-                    keyMaterial.publicKey.didEncoded,
-                    request.audience
-                ),
-                VerifiablePresentationJws.serializer(),
-            ).getOrElse {
-                throw PresentationException(it)
-            }) {
-            CreatePresentationResult.VpJws(toString(), this)
+        val presentation = signers.verifiablePresentation(keyMaterial)(
+            JwsContentTypeConstants.JWT,
+            VerifiablePresentation(validCredentials.map { it.vcSerialized }).toJws(
+                request.nonce,
+                keyMaterial.publicKey.didEncoded,
+                request.audience
+            ),
+            VerifiablePresentationJws.serializer(),
+        ).getOrElse {
+            throw PresentationException(it)
         }
+        return CreatePresentationResult.VpJws(presentation.toString(), presentation)
     }
 }
 
