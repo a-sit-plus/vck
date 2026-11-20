@@ -1,10 +1,13 @@
 package at.asitplus.openid.dcql
 
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.iso.AlternativeDataElementsSet
+import at.asitplus.iso.ElementReference
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 val DCQLQueryToIsoDeviceRequestTest by matrixSuite {
@@ -119,6 +122,54 @@ val DCQLQueryToIsoDeviceRequestTest by matrixSuite {
             )
         }
 
+        test("alternative claim combinations are requested as alternative data elements") {
+            val dcqlQuery = query(
+                mdocQuery(
+                    "mdl",
+                    element("family_name", id = "0"),
+                    element("age_over_18", id = "1"),
+                    element("birth_date", id = "2"),
+                    claimSets = listOf(listOf("0", "1"), listOf("0", "2")),
+                )
+            )
+
+            val deviceRequest = dcqlQuery.toIso180137AnnexCDeviceRequest()
+
+            deviceRequest.docRequests.single().itemsRequest.value.apply {
+                namespaces shouldBe mapOf(
+                    namespace to ItemsRequestList(
+                        listOf(
+                            SingleItemsRequest("family_name", false),
+                            SingleItemsRequest("age_over_18", false)
+                        )
+                    )
+                )
+                requestInfo.shouldNotBeNull().alternativeDataElements shouldBe listOf(
+                    AlternativeDataElementsSet(
+                        requestedElement = ElementReference(namespace, "age_over_18"),
+                        alternativeElementSets = listOf(listOf(ElementReference(namespace, "birth_date"))),
+                    )
+                )
+            }
+        }
+
+        test("expected claim values of a data element that is not requested are not in the way") {
+            val dcqlQuery = query(
+                mdocQuery(
+                    "mdl",
+                    element("family_name", id = "0"),
+                    element("issuing_country", id = "1", values = listOf(DCQLExpectedClaimValue.StringValue("AT"))),
+                    claimSets = listOf(listOf("0", "1"), listOf("0")),
+                )
+            )
+
+            val deviceRequest = dcqlQuery.toIso180137AnnexCDeviceRequest()
+
+            deviceRequest.docRequests.single().itemsRequest.value.namespaces shouldBe mapOf(
+                namespace to ItemsRequestList(listOf(SingleItemsRequest("family_name", false)))
+            )
+        }
+
         test("a data element queried twice is requested once, retained if any of its queries retains it") {
             val retained = DCQLIsoMdocClaimsQuery(
                 path = DCQLClaimsPathPointer(namespace, "portrait"),
@@ -135,12 +186,30 @@ val DCQLQueryToIsoDeviceRequestTest by matrixSuite {
     }
 
     "rejected instead of flattened" - {
-        test("alternative claim combinations, none contained in all others") {
+        test("expected claim values of an alternative data element") {
             val dcqlQuery = query(
                 mdocQuery(
                     "mdl",
                     element("age_over_18", id = "0"),
-                    element("birth_date", id = "1"),
+                    element("issuing_country", id = "1", values = listOf(DCQLExpectedClaimValue.StringValue("AT"))),
+                    claimSets = listOf(listOf("0"), listOf("1")),
+                )
+            )
+
+            shouldThrow<IllegalArgumentException> { dcqlQuery.toIso180137AnnexCDeviceRequest() }
+        }
+
+        test("alternative data elements retained differently than the one they are alternatives to") {
+            val retained = DCQLIsoMdocClaimsQuery(
+                id = DCQLClaimsQueryIdentifier("1"),
+                path = DCQLClaimsPathPointer(namespace, "birth_date"),
+                intentToRetain = true,
+            )
+            val dcqlQuery = query(
+                mdocQuery(
+                    "mdl",
+                    element("age_over_18", id = "0"),
+                    retained,
                     claimSets = listOf(listOf("0"), listOf("1")),
                 )
             )

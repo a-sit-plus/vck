@@ -108,12 +108,16 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
     - Fix: `DCQLQuery.toIso180137AnnexCDeviceRequest()` fails for what an ISO `DeviceRequest` can not express,
-      instead of requesting more or other than the query: `claim_sets` none of whose options is contained in every
-      other one, i.e. alternatives, `credential_sets` other than required sets with a single option that together
-      request every credential query, expected claim `values`, `multiple`, and `trusted_authorities`. Of `claim_sets`,
-      the option contained in every other one is requested, as the verifier accepts it, e.g. the required claims of
-      claims requested if available, or a single option. A data element queried twice is requested once, retained if
-      any of its claims queries retains it. `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC
+      instead of requesting more or other than the query: `credential_sets` other than required sets with a single
+      option that together request every credential query, expected claim `values` of a requested data element,
+      `multiple`, and `trusted_authorities`. `claim_sets` are requested as alternative data elements (ISO/IEC DIS
+      18013-5:2026, 10.2.4) with the new `ItemsRequest.ofCombinations`: the data elements all options share and the
+      first option are requested, each data element of the first option with the other options as its alternatives,
+      e.g. `age_over_18` with the alternative `birth_date`. An option contained in every other one is requested alone,
+      as the verifier accepts it, e.g. the required claims of claims requested if available, as ISO can not mark a
+      data element as optional. Alternative data elements are retained like the data element they are alternatives
+      to, so claims queries retaining them differently fail. A data element queried twice is requested once, retained
+      if any of its claims queries retains it. `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC
       18013-7 Annex C before creating any request, so a query that can not be converted creates no nonce, ephemeral
       key, or stored request for any exchange protocol
     - BREAKING: `DCQLClaimsPathPointer.query` returns a `List<DCQLSelectedClaim>`, each selected claim with its

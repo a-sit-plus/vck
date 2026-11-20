@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dcapi.request.IsoMdocRequest
+import at.asitplus.iso.AlternativeDataElementsSet
+import at.asitplus.iso.ElementReference
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.OpenIdConstants
@@ -10,6 +12,7 @@ import at.asitplus.wallet.lib.ClaimSelection
 import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
@@ -29,25 +32,44 @@ val DcApiVerifierIsoConversionTest by matrixSuite {
         test("a request the ISO conversion can express creates state for both exchange protocols") {
             val request = RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", ageOver18)
 
-            val result = it.createForBothProtocols(request)
+            it.createForBothProtocols(request).getOrThrow()
 
-            result.isSuccess shouldBe true
             it.storedAuthnRequests.putKeys.shouldNotBeEmpty()
             it.storedIsoMdocRequests.putKeys.shouldNotBeEmpty()
         }
 
         test("a request the ISO conversion can not express creates no state for any exchange protocol") {
+            val request = RequestedCredential.SdJwt("urn:eudi:pid:1", JsonClaimReference("given_name"))
+
+            it.createForBothProtocols(request).apply {
+                exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "mso_mdoc"
+            }
+
+            it.storedEphemeralKeys.putKeys.shouldBeEmpty()
+            it.storedAuthnRequests.putKeys.shouldBeEmpty()
+            it.storedIsoMdocRequests.putKeys.shouldBeEmpty()
+        }
+
+        test("an mdoc with alternative data elements is offered over both, ISO requesting them as alternatives") {
             val request = RequestedCredential.Mdoc(
                 "org.iso.18013.5.1.mDL",
                 ClaimSelection.Alternatives(setOf(ageOver18), setOf(birthDate)),
             )
 
-            val result = it.createForBothProtocols(request)
+            it.createForBothProtocols(request).getOrThrow()
 
-            result.exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "claim combinations"
-            it.storedEphemeralKeys.putKeys.shouldBeEmpty()
-            it.storedAuthnRequests.putKeys.shouldBeEmpty()
-            it.storedIsoMdocRequests.putKeys.shouldBeEmpty()
+            it.storedAuthnRequests.putKeys.shouldNotBeEmpty()
+            it.storedIsoMdocRequest().deviceRequest.docRequests.single().itemsRequest.value.apply {
+                namespaces shouldBe mapOf(
+                    "org.iso.18013.5.1" to ItemsRequestList(listOf(SingleItemsRequest("age_over_18", false)))
+                )
+                requestInfo.shouldNotBeNull().alternativeDataElements shouldBe listOf(
+                    AlternativeDataElementsSet(
+                        requestedElement = ElementReference("org.iso.18013.5.1", "age_over_18"),
+                        alternativeElementSets = listOf(listOf(ElementReference("org.iso.18013.5.1", "birth_date"))),
+                    )
+                )
+            }
         }
 
         test("an mdoc with data elements if available is offered over both, ISO requesting the required ones") {
@@ -56,9 +78,8 @@ val DcApiVerifierIsoConversionTest by matrixSuite {
                 ClaimSelection.All(required = setOf(ageOver18), ifAvailable = setOf(birthDate)),
             )
 
-            val result = it.createForBothProtocols(request)
+            it.createForBothProtocols(request).getOrThrow()
 
-            result.isSuccess shouldBe true
             it.storedAuthnRequests.putKeys.shouldNotBeEmpty()
             it.storedIsoMdocRequest().deviceRequest.docRequests.single().itemsRequest.value.namespaces shouldBe
                     mapOf("org.iso.18013.5.1" to ItemsRequestList(listOf(SingleItemsRequest("age_over_18", false))))
