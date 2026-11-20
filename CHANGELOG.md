@@ -146,6 +146,18 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       requested twice, e.g. once with and once without its name space, is requested once. It still requests only the
       data elements of `attributePaths`, as a `DocRequest` marks no data element as optional (ISO/IEC 18013-5:2021,
       8.3.2.1.2.1)
+    - BREAKING: The mdoc request classes reject what the CDDL of ISO/IEC DIS 18013-5:2026, 10.2 does not allow, also
+      when decoding: a `DeviceRequest` without `docRequests`, with an empty `readerAuthAll`, with `deviceRequestInfo`
+      or `readerAuthAll` in a version below 1.1, or with a use case referencing a document request that does not
+      exist; an `ItemsRequest` without name spaces, or with alternatives for a data element it does not request; an
+      `ItemsRequestList` without data elements; empty `alternativeDataElements` or `issuerIdentifiers` of
+      `DocRequestInfo`; an `AlternativeDataElementsSet` without alternative sets or with an empty one; empty
+      `useCases` of `DeviceRequestInfo`; a `UseCase` without document sets, with an empty one, or with empty
+      `purposeHints`. Add `IsoConstants.VERSION_1_0` and `VERSION_1_1`, and the purposes of
+      `UseCase.PURPOSE_CONTROLLER_ISO` (`PURPOSE_IDENTITY_VERIFICATION`, `PURPOSE_DRIVING_PRIVILEGE_VERIFICATION`,
+      `PURPOSE_AGE_VERIFICATION`)
+    - BREAKING: Fix: `DocRequestInfo.docResponseEncryption` is a `ByteStringWrapper<EncryptionParameters>`, encoded as
+      `EncryptionParametersBytes`, a tag-24 byte string (ISO/IEC DIS 18013-5:2026, 10.2.4), instead of a map
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no

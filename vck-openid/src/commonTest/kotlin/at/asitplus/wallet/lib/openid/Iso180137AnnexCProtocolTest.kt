@@ -14,6 +14,7 @@ import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceResponse
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.ItemsRequest
+import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.serializeOrigin
@@ -388,7 +389,18 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                     deviceRequest = DeviceRequest(
                         parsedVersion = Version(1, 0),
                         docRequests = arrayOf(
-                            DocRequest(ByteStringWrapper(ItemsRequest("org.iso.18013.5.1.mDL", emptyMap())))
+                            DocRequest(
+                                ByteStringWrapper(
+                                    ItemsRequest(
+                                        docType = "org.iso.18013.5.1.mDL",
+                                        namespaces = mapOf(
+                                            "org.iso.18013.5.1" to ItemsRequestList(
+                                                listOf(SingleItemsRequest("family_name", false))
+                                            )
+                                        ),
+                                    )
+                                )
+                            )
                         ),
                     )
                 )
