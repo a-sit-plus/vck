@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialValidator
@@ -20,7 +21,6 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -40,21 +40,34 @@ internal val statusCheckingPolicy = integrityOnlyPolicy.copy(
     status = StatusPolicy.ValidateIfPresent(signerTrust = TrustPolicy.IntegrityOnly),
 )
 
-/** Resolves the status list tokens of [statusListIssuer], as a JWT or a CWT at random. */
-internal fun randomCwtOrJwtResolver(statusListIssuer: StatusListAgent) = StatusListTokenResolver {
-    if (Random.nextBoolean()) StatusListJwt(
-        statusListIssuer.issueStatusListJwt(),
-        resolvedAt = Clock.System.now(),
-    ) else StatusListCwt(
-        statusListIssuer.issueStatusListCwt(),
-        resolvedAt = Clock.System.now(),
-    )
+/** The format in which a verifier resolves a status list or identifier list token: a JWT or a CWT. */
+internal enum class StatusListTokenFormat { JWT, CWT }
+
+/** Resolves the token of [kind] that [statusListIssuer] issues, in [format]. */
+internal fun statusListTokenResolver(
+    statusListIssuer: StatusListAgent,
+    format: StatusListTokenFormat,
+    kind: RevocationList.Kind = RevocationList.Kind.STATUS_LIST,
+) = StatusListTokenResolver {
+    when (format) {
+        StatusListTokenFormat.JWT -> StatusListJwt(
+            statusListIssuer.issueStatusListJwt(kind = kind),
+            resolvedAt = Clock.System.now(),
+        )
+
+        StatusListTokenFormat.CWT -> StatusListCwt(
+            statusListIssuer.issueStatusListCwt(kind = kind),
+            resolvedAt = Clock.System.now(),
+        )
+    }
 }
 
-/** A validator of credentials from issuers on no trust list, resolving their status from [statusListIssuer]. */
-internal fun statusCheckingValidator(statusListIssuer: StatusListAgent) = CredentialValidator(
-    statusValidator = StatusValidator(randomCwtOrJwtResolver(statusListIssuer)),
-)
+/**
+ * A validator of credentials from issuers on no trust list, resolving their status from [statusListIssuer] in
+ * [format].
+ */
+internal fun statusCheckingValidator(statusListIssuer: StatusListAgent, format: StatusListTokenFormat) =
+    CredentialValidator(statusValidator = StatusValidator(statusListTokenResolver(statusListIssuer, format)))
 
 /**
  * Validates [presentation] as received by a verifier in [context], under [policy]: one result, or one per document

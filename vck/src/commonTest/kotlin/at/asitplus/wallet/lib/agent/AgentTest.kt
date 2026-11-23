@@ -43,200 +43,202 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 val AgentTest by matrixSuite {
 
-    fixture {
-        object {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val holderCredentialStore = InMemorySubjectCredentialStore()
+    for (format in StatusListTokenFormat.entries) "status list token as $format" - {
+        fixture {
+            object {
+                val issuerCredentialStore = InMemoryIssuerCredentialStore()
+                val holderCredentialStore = InMemorySubjectCredentialStore()
 
-            val issuerIdentifier = "https://issuer.example.com/${uuid4()}"
-            val issuer = IssuerAgent(
-                issuerCredentialStore = issuerCredentialStore,
-                identifier = issuerIdentifier.toUri(),
-                randomSource = RandomSource.Default
-            )
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val validator = statusCheckingValidator(statusListIssuer)
-            val holderKeyMaterial = EphemeralKeyWithoutCert()
-            val verifierId = "urn:${uuid4()}"
-            val holder = HolderAgent(
-                keyMaterial = holderKeyMaterial,
-                subjectCredentialStore = holderCredentialStore,
-            )
-            val challenge = uuid4().toString()
-            val context = PresentationContext(challenge = challenge, audience = verifierId)
-        }
-    } - {
-        test("getting credentials when there are no credentials stored") {
-            val holderCredentials = it.holder.getCredentials()
-            holderCredentials.shouldNotBeNull()
-            holderCredentials.shouldBeEmpty()
-        }
+                val issuerIdentifier = "https://issuer.example.com/${uuid4()}"
+                val issuer = IssuerAgent(
+                    issuerCredentialStore = issuerCredentialStore,
+                    identifier = issuerIdentifier.toUri(),
+                    randomSource = RandomSource.Default
+                )
+                val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+                val validator = statusCheckingValidator(statusListIssuer, format)
+                val holderKeyMaterial = EphemeralKeyWithoutCert()
+                val verifierId = "urn:${uuid4()}"
+                val holder = HolderAgent(
+                    keyMaterial = holderKeyMaterial,
+                    subjectCredentialStore = holderCredentialStore,
+                )
+                val challenge = uuid4().toString()
+                val context = PresentationContext(challenge = challenge, audience = verifierId)
+            }
+        } - {
+            test("getting credentials when there are no credentials stored") {
+                val holderCredentials = it.holder.getCredentials()
+                holderCredentials.shouldNotBeNull()
+                holderCredentials.shouldBeEmpty()
+            }
 
-        test("getting credentials when they are valid") {
-            val credentials = it.issuer.issueCredential(
-                DummyCredentialDataProvider.getCredential(
-                    it.holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    PLAIN_JWT,
+            test("getting credentials when they are valid") {
+                val credentials = it.issuer.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        it.holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        PLAIN_JWT,
+                    ).getOrThrow()
                 ).getOrThrow()
-            ).getOrThrow()
-                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+                    .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
-                .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
+                it.holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+                    .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
 
-            it.holderCredentialStore.getCredentials().getOrThrow().shouldHaveSize(1)
-            it.holder.getCredentials()
-                .shouldNotBeNull()
-                .shouldHaveSize(1)
-        }
+                it.holderCredentialStore.getCredentials().getOrThrow().shouldHaveSize(1)
+                it.holder.getCredentials()
+                    .shouldNotBeNull()
+                    .shouldHaveSize(1)
+            }
 
-        val singularDCQLRequest = DCQLQuery(
-            credentials = DCQLCredentialQueryList(
-                DCQLJwtVcCredentialQuery(
-                    id = DCQLCredentialQueryIdentifier(uuid4().toString()),
-                    format = CredentialFormatEnum.JWT_VC,
-                    meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                        typeValues = nonEmptyListOf(
-                            listOf(
-                                VERIFIABLE_CREDENTIAL,
-                                ConstantIndex.AtomicAttribute2023.vcType
-                            )
-                        )
-                    ),
-                )
-            ),
-        )
-
-        test("dcql: simple walk-through success") {
-            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
-
-            it.holder.getCredentials()?.size shouldBe 1
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.verifierId
-                ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    singularDCQLRequest
-                )
-            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
-            val vp = presentationParameters.verifiablePresentations.values.flatten().first()
-                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-            it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
-                .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
-        }
-
-        test("dcql: wrong keyId in presentation leads to error") {
-            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
-
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.issuerIdentifier,
-                ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    singularDCQLRequest
-                )
-            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
-            val vp = presentationParameters.verifiablePresentations.values.flatten().first()
-                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-            it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
-                .presentation.shouldBeNull()
-        }
-
-        test("dcql: building presentation without necessary credentials") {
-            it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = "urn:${uuid4()}"
-                ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    singularDCQLRequest
-                ),
-            ).getOrNull() as PresentationResponseParameters.DCQLParameters? shouldBe null
-        }
-
-        test("dcql: valid presentation is valid") {
-            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.verifierId
-                ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    singularDCQLRequest
-                )
-            ).getOrNull() as PresentationResponseParameters.DCQLParameters?
-            presentationParameters.shouldNotBeNull()
-            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
-                .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-
-            it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
-                .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
-                .credentials shouldHaveSize 1
-        }
-
-        test("dcql: valid presentation is valid -- some other attributes revoked") {
-            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.verifierId
-                ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    singularDCQLRequest
-                )
-            ).getOrNull() as PresentationResponseParameters.DCQLParameters?
-            presentationParameters.shouldNotBeNull()
-            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
-                .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
-
-            val credentialToRevoke = issuePlainJwt(it.issuer, it.holderKeyMaterial)
-                .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-
-            it.statusListIssuer.revokeCredentialByIndex(
-                FixedTimePeriodProvider.timePeriod,
-                credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
-            ) shouldBe true
-
-            it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
-                .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
-        }
-
-        test("dcql: present raw vcjws when requiring no cryptographic holder binding") {
-            issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(
-                    nonce = it.challenge,
-                    audience = it.verifierId
-                ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = DCQLQuery(
-                        credentials = DCQLCredentialQueryList(
-                            DCQLJwtVcCredentialQuery(
-                                id = DCQLCredentialQueryIdentifier(uuid4().toString()),
-                                format = CredentialFormatEnum.JWT_VC,
-                                meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
-                                    typeValues = nonEmptyListOf(
-                                        listOf(
-                                            VERIFIABLE_CREDENTIAL,
-                                            ConstantIndex.AtomicAttribute2023.vcType
-                                        )
-                                    )
-                                ),
-                                requireCryptographicHolderBinding = false,
+            val singularDCQLRequest = DCQLQuery(
+                credentials = DCQLCredentialQueryList(
+                    DCQLJwtVcCredentialQuery(
+                        id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+                        format = CredentialFormatEnum.JWT_VC,
+                        meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                            typeValues = nonEmptyListOf(
+                                listOf(
+                                    VERIFIABLE_CREDENTIAL,
+                                    ConstantIndex.AtomicAttribute2023.vcType
+                                )
                             )
                         ),
                     )
-                )
-            ).getOrNull() as PresentationResponseParameters.DCQLParameters?
-            presentationParameters.shouldNotBeNull()
-            presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
-                .shouldNotBeNull()
-                .shouldBeInstanceOf<CreatePresentationResult.VcJws>()
+                ),
+            )
+
+            test("dcql: simple walk-through success") {
+                issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
+
+                it.holder.getCredentials()?.size shouldBe 1
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = PresentationRequestParameters(
+                        nonce = it.challenge,
+                        audience = it.verifierId
+                    ),
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        singularDCQLRequest
+                    )
+                ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+                val vp = presentationParameters.verifiablePresentations.values.flatten().first()
+                    .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
+                it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
+                    .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+            }
+
+            test("dcql: wrong keyId in presentation leads to error") {
+                issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
+
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = PresentationRequestParameters(
+                        nonce = it.challenge,
+                        audience = it.issuerIdentifier,
+                    ),
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        singularDCQLRequest
+                    )
+                ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+                val vp = presentationParameters.verifiablePresentations.values.flatten().first()
+                    .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
+                it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
+                    .presentation.shouldBeNull()
+            }
+
+            test("dcql: building presentation without necessary credentials") {
+                it.holder.createDefaultPresentation(
+                    request = PresentationRequestParameters(
+                        nonce = it.challenge,
+                        audience = "urn:${uuid4()}"
+                    ),
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        singularDCQLRequest
+                    ),
+                ).getOrNull() as PresentationResponseParameters.DCQLParameters? shouldBe null
+            }
+
+            test("dcql: valid presentation is valid") {
+                issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = PresentationRequestParameters(
+                        nonce = it.challenge,
+                        audience = it.verifierId
+                    ),
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        singularDCQLRequest
+                    )
+                ).getOrNull() as PresentationResponseParameters.DCQLParameters?
+                presentationParameters.shouldNotBeNull()
+                val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
+                    .shouldNotBeNull()
+                    .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
+
+                it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
+                    .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+                    .credentials shouldHaveSize 1
+            }
+
+            test("dcql: valid presentation is valid -- some other attributes revoked") {
+                issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = PresentationRequestParameters(
+                        nonce = it.challenge,
+                        audience = it.verifierId
+                    ),
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        singularDCQLRequest
+                    )
+                ).getOrNull() as PresentationResponseParameters.DCQLParameters?
+                presentationParameters.shouldNotBeNull()
+                val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
+                    .shouldNotBeNull()
+                    .shouldBeInstanceOf<CreatePresentationResult.VpJws>()
+
+                val credentialToRevoke = issuePlainJwt(it.issuer, it.holderKeyMaterial)
+                    .shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+
+                it.statusListIssuer.revokeCredentialByIndex(
+                    FixedTimePeriodProvider.timePeriod,
+                    credentialToRevoke.vc.credentialStatus.shouldBeInstanceOf<StatusListInfo>().index
+                ) shouldBe true
+
+                it.validator.validatePresentation(vp, it.context, statusCheckingPolicy).shouldBeSingleton().first()
+                    .acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.VpJwt>()
+            }
+
+            test("dcql: present raw vcjws when requiring no cryptographic holder binding") {
+                issueAndStorePlainJwt(it.holder, it.holderKeyMaterial, it.issuer)
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = PresentationRequestParameters(
+                        nonce = it.challenge,
+                        audience = it.verifierId
+                    ),
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        dcqlQuery = DCQLQuery(
+                            credentials = DCQLCredentialQueryList(
+                                DCQLJwtVcCredentialQuery(
+                                    id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+                                    format = CredentialFormatEnum.JWT_VC,
+                                    meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                                        typeValues = nonEmptyListOf(
+                                            listOf(
+                                                VERIFIABLE_CREDENTIAL,
+                                                ConstantIndex.AtomicAttribute2023.vcType
+                                            )
+                                        )
+                                    ),
+                                    requireCryptographicHolderBinding = false,
+                                )
+                            ),
+                        )
+                    )
+                ).getOrNull() as PresentationResponseParameters.DCQLParameters?
+                presentationParameters.shouldNotBeNull()
+                presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
+                    .shouldNotBeNull()
+                    .shouldBeInstanceOf<CreatePresentationResult.VcJws>()
+            }
         }
     }
 }

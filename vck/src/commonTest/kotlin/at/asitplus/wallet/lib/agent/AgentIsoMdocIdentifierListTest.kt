@@ -22,7 +22,7 @@ import kotlinx.coroutines.runBlocking
 
 val AgentIsoMdocIdentifierListTest by matrixSuite {
 
-    fixture { runBlocking { createIsoMdocFixture(IsoRevocationMode.IDENTIFIER_LIST) } } - {
+    fixture { runBlocking { createIsoMdocFixture(IsoRevocationMode.IDENTIFIER_LIST, StatusListTokenFormat.CWT) } } - {
         "identifier list: status info is encoded on issued ISO_MDOC credential" {
             val issuedCredential = it.issuer.issueIdentifierListIsoMdoc(it.holderKeyMaterial.publicKey)
 

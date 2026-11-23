@@ -11,22 +11,24 @@ import kotlinx.coroutines.runBlocking
 
 val AgentIsoMdocRevocationTest by matrixSuite {
 
-    for (mode in IsoRevocationMode.entries) {
-        fixture { runBlocking { createIsoMdocFixture(mode) } } - {
-            "dcql: simple walk-through success${mode.testNameSuffix}" {
-                val vp = it.createDcqlDeviceResponse(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
+    for (mode in IsoRevocationMode.entries) for (format in mode.formats) {
+        "${mode.description} token as $format" - {
+            fixture { runBlocking { createIsoMdocFixture(mode, format) } } - {
+                "dcql: simple walk-through success" {
+                    val vp = it.createDcqlDeviceResponse(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
 
-                it.verifyPresentation(vp).assertPresentedClaims(expectDateOfBirth = true)
-            }
+                    it.verifyPresentation(vp).assertPresentedClaims(expectDateOfBirth = true)
+                }
 
-            "dcql: revoked credential${mode.testNameSuffix}" {
-                val vp = it.createDcqlDeviceResponse(CLAIM_GIVEN_NAME)
+                "dcql: revoked credential" {
+                    val vp = it.createDcqlDeviceResponse(CLAIM_GIVEN_NAME)
 
-                it.revokeSingleStoredCredential() shouldBe true
+                    it.revokeSingleStoredCredential() shouldBe true
 
-                val verifyPresentation = it.verifyPresentation(vp)
-                verifyPresentation.presentation.shouldBeNull()
-                verifyPresentation.observedStatus shouldBe TokenStatus.Invalid
+                    val verifyPresentation = it.verifyPresentation(vp)
+                    verifyPresentation.presentation.shouldBeNull()
+                    verifyPresentation.observedStatus shouldBe TokenStatus.Invalid
+                }
             }
         }
     }

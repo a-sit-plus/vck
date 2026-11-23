@@ -34,7 +34,7 @@ import kotlin.random.Random
 
 val HolderIsoDeviceRetrievalTest by matrixSuite {
 
-    fixture { runBlocking { createIsoMdocFixture(IsoRevocationMode.STATUS_LIST) } } - {
+    fixture { runBlocking { createIsoMdocFixture(IsoRevocationMode.STATUS_LIST, StatusListTokenFormat.CWT) } } - {
         "device retrieval: creates one device response with the requested claim" {
             val request = it.verifier.createPresentationRequest(
                 calcIsoSessionTranscript = qrSessionTranscript,

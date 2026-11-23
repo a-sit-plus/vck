@@ -12,12 +12,10 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstrain
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreIsoMdoc
-import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
@@ -41,15 +39,19 @@ import kotlinx.datetime.LocalDate
 
 internal enum class IsoRevocationMode(
     val revocationKind: RevocationList.Kind,
-    val testNameSuffix: String,
+    val description: String,
+    /** The formats of its token: an identifier list exists only as a CWT (ISO/IEC DIS 18013-5:2026, 12.3.6.4). */
+    val formats: List<StatusListTokenFormat>,
 ) {
     STATUS_LIST(
         revocationKind = RevocationList.Kind.STATUS_LIST,
-        testNameSuffix = "",
+        description = "status list",
+        formats = StatusListTokenFormat.entries,
     ),
     IDENTIFIER_LIST(
         revocationKind = RevocationList.Kind.IDENTIFIER_LIST,
-        testNameSuffix = " with identifier list revocation",
+        description = "identifier list",
+        formats = listOf(StatusListTokenFormat.CWT),
     ),
 }
 
@@ -65,7 +67,8 @@ internal data class IsoMdocFixture(
     val verifierId: String,
 )
 
-internal suspend fun createIsoMdocFixture(mode: IsoRevocationMode): IsoMdocFixture {
+/** The fixture revoking by [mode], whose verifier resolves the status list or identifier list token in [format]. */
+internal suspend fun createIsoMdocFixture(mode: IsoRevocationMode, format: StatusListTokenFormat): IsoMdocFixture {
     val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
     val issuerCredentialStore = InMemoryIssuerCredentialStore()
     val holderCredentialStore = InMemorySubjectCredentialStore()
@@ -77,18 +80,7 @@ internal suspend fun createIsoMdocFixture(mode: IsoRevocationMode): IsoMdocFixtu
     )
     val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
     val validator = CredentialValidator(
-        statusValidator = StatusValidator(
-            when (mode) {
-                IsoRevocationMode.STATUS_LIST -> randomCwtOrJwtResolver(statusListIssuer)
-                IsoRevocationMode.IDENTIFIER_LIST ->
-                    StatusListTokenResolver {
-                        StatusListCwt(
-                            value = statusListIssuer.issueStatusListCwt(kind = RevocationList.Kind.IDENTIFIER_LIST),
-                            resolvedAt = null,
-                        )
-                    }
-            }
-        )
+        statusValidator = StatusValidator(statusListTokenResolver(statusListIssuer, format, mode.revocationKind))
     )
     val holder = HolderAgent(holderKeyMaterial, holderCredentialStore).also {
         issueAndStoreIsoMdoc(it, holderKeyMaterial, issuer, mode.revocationKind)
