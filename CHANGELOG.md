@@ -107,6 +107,11 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
+    - Fix: `trusted_authorities` of type `aki` match an mdoc whose `x5chain` is in the protected header of its
+      `IssuerAuth`, in the wallet's matching and in the verifier's check (`DCQLQueryAdapter`), instead of only one in
+      the unprotected header: "An mdoc reader should support the presence of the x5chain element in the protected
+      header" (ISO/IEC DIS 18013-5:2026, 12.3.4). The chain is read as signature validation reads it, from either
+      header, and not at all if both headers carry different chains
     - Fix: `DCQLQuery.toIso180137AnnexCDeviceRequest()` fails for what an ISO `DeviceRequest` can not express, instead
       of requesting more or other than the query: `credential_sets` that are all optional, a credential set with an
       option contained in another one, which ISO can not satisfy, as "Exactly one DocumentSet has to be satisfied",

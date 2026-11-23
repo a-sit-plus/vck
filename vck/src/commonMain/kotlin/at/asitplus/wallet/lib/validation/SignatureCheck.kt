@@ -7,10 +7,10 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.pki.CertificateChain
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.VerifySignature
 import at.asitplus.wallet.lib.agent.VerifySignatureFun
+import at.asitplus.wallet.lib.cbor.certificateChain
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
 import at.asitplus.wallet.lib.validation.CheckOutcome.Passed
 import kotlin.jvm.JvmOverloads
@@ -118,17 +118,4 @@ class SignatureCheck @JvmOverloads constructor(
     /** A `kid` is a key only if it is a `did:key`, otherwise it just names a key. */
     private fun String.toDidKey(): CryptoPublicKey? =
         takeIf { it.startsWith("did:key:") }?.let { CryptoPublicKey.fromDid(it) }
-
-    /** Certificates are transported DER-encoded in COSE headers; both headers have to agree if both carry one. */
-    private fun CoseSigned<*>.certificateChain(): CertificateChain? {
-        val protectedChain = protectedHeader.certificateChain?.takeIf { it.isNotEmpty() }
-        val unprotectedChain = unprotectedHeader?.certificateChain?.takeIf { it.isNotEmpty() }
-        if (protectedChain != null && unprotectedChain != null) {
-            require(protectedChain.size == unprotectedChain.size &&
-                    protectedChain.zip(unprotectedChain).all { (a, b) -> a.contentEquals(b) }) {
-                "The protected and unprotected header carry different certificate chains"
-            }
-        }
-        return (protectedChain ?: unprotectedChain)?.map { X509Certificate.decodeFromDer(it) }
-    }
 }
