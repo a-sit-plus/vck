@@ -187,11 +187,12 @@ class DcApiVerifier @JvmOverloads constructor(
      * as the stored requests to validate the response would overwrite each other.
      *
      * For [DcApiCreationOptions.Iso180137AnnexC], a [DCQLRequest] is converted to an ISO `DeviceRequest` with
-     * [toIso180137AnnexCDeviceRequest], which fails for what a `DeviceRequest` can not express. This conversion happens
-     * before any request is created, so a query that can not be converted creates no nonce, key, or stored request for
-     * any exchange protocol. Other failures, e.g. an invalid expected origin or a failing `readerAuth` signature, occur
-     * while the requests are created, and may leave the nonce, key, or stored request of an earlier exchange protocol
-     * behind.
+     * [toIso180137AnnexCDeviceRequest], which fails for what a `DeviceRequest` can not express. It fails for
+     * [OpenId4VpRequestOptions.transactionData] too, as the `DeviceRequest` of ISO/IEC 18013-7 Annex C carries none, so
+     * its response could not authorize the transaction (OpenID4VP 1.0, 5.1). These checks happen before any request is
+     * created, so a request that fails them creates no nonce, key, or stored request for any exchange protocol. Other
+     * failures, e.g. an invalid expected origin or a failing `readerAuth` signature, occur while the requests are
+     * created, and may leave the nonce, key, or stored request of an earlier exchange protocol behind.
      */
     suspend fun createAuthnRequest(
         requestOptions: OpenId4VpRequestOptions,
@@ -203,8 +204,11 @@ class DcApiVerifier @JvmOverloads constructor(
         require(creationOptions.isNotEmpty()) {
             "at least one creation option is required"
         }
-        val isoDeviceRequest = if (DcApiCreationOptions.Iso180137AnnexC in creationOptions)
-            requestOptions.toIsoDeviceRequest() else null
+        val annexC = DcApiCreationOptions.Iso180137AnnexC in creationOptions
+        require(!annexC || requestOptions.transactionData.isNullOrEmpty()) {
+            "Transaction data can not be requested over ISO/IEC 18013-7 Annex C, which can not authorize it"
+        }
+        val isoDeviceRequest = if (annexC) requestOptions.toIsoDeviceRequest() else null
         CredentialRequestOptions.create(
             creationOptions.map { it.toGetRequest(requestOptions, isoDeviceRequest) }
         )

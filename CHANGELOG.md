@@ -213,6 +213,9 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,
       8.3.2.1.2.2), but VC-K requests only those it requires. Documents are assigned to requests regardless of their
       order, so two requests of one docType need two documents
+    - BREAKING: `DcApiVerifier.createAuthnRequest` fails for `transactionData` offered over ISO/IEC 18013-7 Annex C,
+      whose `DeviceRequest` carries none, so that its response could not authorize the transaction (OpenID4VP 1.0,
+      5.1), before creating any request, instead of sending the Annex C request without it
     - `DcApiVerifier` checks an Annex C response against the extended request (ISO/IEC DIS 18013-5:2026, 10.2.4,
       10.2.5) with the new `DeviceRequestAdapter.checkAcceptedDocuments` in `vck`, the counterpart of
       `DCQLQueryAdapter.checkAcceptedSubmissions`: the accepted documents answer document requests that satisfy the use

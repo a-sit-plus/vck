@@ -6,6 +6,9 @@ import at.asitplus.iso.ElementReference
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.QCertCreationAcceptance
+import at.asitplus.openid.TransactionData
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.ClaimSelection
@@ -45,6 +48,23 @@ val DcApiVerifierIsoConversionTest by matrixSuite {
                 exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "mso_mdoc"
             }
 
+            it.storedEphemeralKeys.putKeys.shouldBeEmpty()
+            it.storedAuthnRequests.putKeys.shouldBeEmpty()
+            it.storedIsoMdocRequests.putKeys.shouldBeEmpty()
+        }
+
+        test("a request with transaction data offered over Annex C creates no state for any exchange protocol") {
+            val request = RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", ageOver18, id = "mdl")
+            val transactionData = QCertCreationAcceptance(
+                qcTermsConditionsUri = "https://example.com/terms",
+                qcHash = byteArrayOf(1, 2, 3),
+                qcHashAlgorithmOid = ObjectIdentifier("1.2.3.4"),
+                credentialIds = setOf("mdl"),
+            )
+
+            val result = it.createForBothProtocols(request, listOf(transactionData))
+
+            result.exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "Transaction data"
             it.storedEphemeralKeys.putKeys.shouldBeEmpty()
             it.storedAuthnRequests.putKeys.shouldBeEmpty()
             it.storedIsoMdocRequests.putKeys.shouldBeEmpty()
@@ -104,12 +124,16 @@ private class StoreRecordingVerifier {
         presentationPolicy = testPresentationPolicy,
     )
 
-    /** Offers [credential] over OpenID4VP and ISO/IEC 18013-7 Annex C in one browser call. */
-    suspend fun createForBothProtocols(credential: RequestedCredential) = verifier.createAuthnRequest(
+    /** Offers [credential], with [transactionData], over OpenID4VP and ISO/IEC 18013-7 Annex C in one browser call. */
+    suspend fun createForBothProtocols(
+        credential: RequestedCredential,
+        transactionData: List<TransactionData>? = null,
+    ) = verifier.createAuthnRequest(
         OpenId4VpRequestOptions(
             presentationRequest = CredentialPresentationRequestBuilder(credential).toDCQLRequest(),
             responseMode = OpenIdConstants.ResponseMode.DcApi,
             expectedOrigins = listOf("https://example.com"),
+            transactionData = transactionData,
         ),
         DcApiCreationOptions.OpenId4VpUnsigned,
         DcApiCreationOptions.Iso180137AnnexC,
