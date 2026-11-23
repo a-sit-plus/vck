@@ -6,6 +6,7 @@ import at.asitplus.iso.DeviceRequestInfo
 import at.asitplus.iso.ReaderAuthentication
 import at.asitplus.iso.ReaderAuthenticationAll
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.UseCase
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -266,7 +267,56 @@ val ReaderAuthenticationVerifierTest by matrixSuite {
         )
             .isFailure shouldBe true
     }
+
+    "readerAuthAll authenticates the deviceRequestInfo" {
+        val signer = EphemeralKeyWithSelfSignedCert()
+        val unsigned = DeviceRequest(
+            parsedVersion = Version(1, 1),
+            docRequests = arrayOf(mdocDocRequest()),
+            deviceRequestInfo = singleUseCaseInfo(),
+        )
+        val request = unsigned.copy(
+            readerAuthAll = arrayOf(signDetached(signer, ReaderAuthenticationAll.detachedPayload(unsigned, transcript)))
+        )
+
+        val reader = ReaderAuthenticationVerifier().authenticate(request, transcript).getOrThrow()
+
+        reader.deviceRequestInfoAuthenticated shouldBe true
+    }
+
+    "the readerAuth of document requests does not authenticate the deviceRequestInfo" {
+        val signer = EphemeralKeyWithSelfSignedCert()
+        val docRequest = mdocDocRequest().let {
+            it.copy(readerAuth = signDetached(signer, ReaderAuthentication.detachedPayload(it, transcript)))
+        }
+        val request = DeviceRequest(
+            parsedVersion = Version(1, 1),
+            docRequests = arrayOf(docRequest),
+            deviceRequestInfo = singleUseCaseInfo(),
+        )
+
+        val reader = ReaderAuthenticationVerifier().authenticate(request, transcript).getOrThrow()
+
+        reader.apply {
+            unauthenticatedDocRequests.shouldBeEmpty()
+            deviceRequestInfoAuthenticated shouldBe false
+        }
+    }
 }
+
+/** A `deviceRequestInfo` with one mandatory use case of the first document request. */
+private fun singleUseCaseInfo() = ByteStringWrapper(
+    DeviceRequestInfo(useCases = listOf(UseCase(mandatory = true, documentSets = listOf(listOf(0U)))))
+)
+
+/** A detached signature of [key] over [payload], with the certificate of [key] in its `x5chain`. */
+private suspend fun signDetached(key: EphemeralKeyWithSelfSignedCert, payload: ByteArray) =
+    SignCoseDetached<ByteArray>(key, unprotectedHeaderModifier = CoseHeaderCertificate())(
+        protectedHeader = null,
+        unprotectedHeader = CoseHeader(),
+        payload = payload,
+        serializer = ByteArraySerializer(),
+    ).getOrThrow()
 
 /** This encoded CBOR with the keys of all its maps reversed, which encodes the same value differently. */
 private fun ByteArray.withReversedKeys(): ByteArray =

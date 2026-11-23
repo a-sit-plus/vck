@@ -187,6 +187,10 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       satisfied", and the default submission takes a later choice to avoid satisfying several. It may disclose, for each
       requested data element, the element or one of its alternative element sets, e.g. a later one, instead of exactly
       those the holder selects itself, but nothing else
+    - BREAKING: `AuthenticatedReader` gains `deviceRequestInfoAuthenticated`: whether a `readerAuthAll` signature,
+      the only one whose payload contains the `deviceRequestInfo` (ISO/IEC DIS 18013-5:2026, 12.5.4), covers it.
+      `RelyingPartyValidator` fails `requestData` of a device request with a `deviceRequestInfo`, e.g. use cases, that
+      only the `readerAuth` of its document requests authenticates, like one with unauthenticated document requests
     - The WRPRC check of an ISO `DocRequest` also requires the data elements of its alternative element sets to be
       registered, as the mdoc may return any of them instead of the requested data element (ISO/IEC DIS
       18013-5:2026, 10.2.4)

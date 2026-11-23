@@ -14,6 +14,7 @@ import at.asitplus.etsi.relyingParty.WrpIntermediary
 import at.asitplus.etsi.relyingParty.WrpPayload
 import at.asitplus.iso.AlternativeDataElementsSet
 import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.DeviceRequestInfo
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.ElementReference
@@ -22,6 +23,7 @@ import at.asitplus.iso.EncryptionParameters
 import at.asitplus.iso.ReaderAuthentication
 import at.asitplus.iso.ReaderAuthenticationAll
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.UseCase
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
@@ -674,6 +676,43 @@ val RelyingPartyValidatorTest by matrixSuite {
         fixture.validator().validate(completely, transcript, policy).report.decision shouldBe ACCEPTED
     }
 
+    "a device request with a deviceRequestInfo but only readerAuth fails its request data, not the signature" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val docRequest = fixture.docRequestWithWrprc().let { it.copy(readerAuth = fixture.readerAuth(it, transcript)) }
+        val request = DeviceRequest(
+            parsedVersion = Version(1, 1),
+            docRequests = arrayOf(docRequest),
+            deviceRequestInfo = singleUseCaseInfo(),
+        )
+
+        val result = fixture.validator().validate(request, transcript, policy)
+
+        result.apply {
+            report.decision shouldBe REJECTED
+            accessChecks().signature shouldBe CheckOutcome.Passed
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<UnsupportedWrpRequestException>()
+        }
+    }
+
+    "a device request with a deviceRequestInfo covered by readerAuthAll is accepted" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val unsigned = DeviceRequest(
+            parsedVersion = Version(1, 1),
+            docRequests = arrayOf(fixture.docRequestWithWrprc()),
+            deviceRequestInfo = singleUseCaseInfo(),
+        )
+        val request = unsigned.copy(
+            readerAuthAll = arrayOf(readerAuthAll(unsigned, transcript, fixture.wrpKey, fixture.wrpacChain))
+        )
+
+        val result = fixture.validator().validate(request, transcript, policy)
+
+        result.report.decision shouldBe ACCEPTED
+    }
+
     "of several readerAuthAll signatures, the one of a trusted WRPAC linking to the WRPRCs is selected" {
         val fixture = buildWrpFixture()
         val other = buildWrpFixture()
@@ -1283,6 +1322,11 @@ private suspend fun WrpFixture.validateAccessCertificate(
     result.report.decision shouldBe REJECTED
     return result.accessChecks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>().throwable.message.shouldNotBeNull()
 }
+
+/** A `deviceRequestInfo` with one mandatory use case of the first document request. */
+private fun singleUseCaseInfo() = ByteStringWrapper(
+    DeviceRequestInfo(useCases = listOf(UseCase(mandatory = true, documentSets = listOf(listOf(0U)))))
+)
 
 private fun DocRequest.withEuWrprc(euWrprc: ByteArray) =
     copy(itemsRequest = ByteStringWrapper(itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = euWrprc))))
