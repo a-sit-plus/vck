@@ -12,9 +12,11 @@ import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpIntermediary
 import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.iso.AlternativeDataElementsSet
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.DocRequestInfo
+import at.asitplus.iso.ElementReference
 import at.asitplus.iso.EncryptionInfo
 import at.asitplus.iso.EncryptionParameters
 import at.asitplus.iso.ReaderAuthentication
@@ -354,6 +356,27 @@ val RelyingPartyValidatorTest by matrixSuite {
             val payload = buildWrpPayload(fixture.wrpIdentifier, credentials = listOf(credential))
             fixture.validate(fixture.request(payload, mdocDcqlRequest(claimNames = listOf("given_name"))))
                 .report.decision shouldBe decision
+        }
+    }
+
+    "alternative data elements of an mdoc request need to be registered, like the requested ones" - {
+        listOf(
+            "family_name" to ACCEPTED,
+            "portrait" to REJECTED,
+        ).asData() test { (alternative, decision) ->
+            val fixture = buildWrpFixture()
+            val transcript = nfcTranscript()
+            val docRequest = fixture.docRequestWithWrprc(claimNames = listOf("given_name")).withAlternatives(
+                AlternativeDataElementsSet(
+                    requestedElement = ElementReference(DEFAULT_DOCTYPE, "given_name"),
+                    alternativeElementSets = listOf(listOf(ElementReference(DEFAULT_DOCTYPE, alternative))),
+                )
+            )
+            val deviceRequest = fixture.isoRequest(docRequest, transcript).parameters.isoMdocRequest.deviceRequest
+
+            val result = fixture.validator().validate(deviceRequest, transcript, policy)
+
+            result.report.decision shouldBe decision
         }
     }
 
@@ -1263,3 +1286,10 @@ private suspend fun WrpFixture.validateAccessCertificate(
 
 private fun DocRequest.withEuWrprc(euWrprc: ByteArray) =
     copy(itemsRequest = ByteStringWrapper(itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = euWrprc))))
+
+/** This document request, with [alternatives] in its `DocRequestInfo`, keeping its other values. */
+private fun DocRequest.withAlternatives(vararg alternatives: AlternativeDataElementsSet): DocRequest {
+    val requestInfo = (itemsRequest.value.requestInfo ?: DocRequestInfo())
+        .copy(alternativeDataElements = alternatives.toList())
+    return copy(itemsRequest = ByteStringWrapper(itemsRequest.value.copy(requestInfo = requestInfo)))
+}

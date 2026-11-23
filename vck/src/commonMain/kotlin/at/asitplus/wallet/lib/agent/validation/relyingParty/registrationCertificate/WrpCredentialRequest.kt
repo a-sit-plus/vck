@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent.validation.relyingParty.registrationCertifi
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.etsi.relyingParty.WrpCredentialMetaDomain
 import at.asitplus.iso.DocRequest
+import at.asitplus.iso.ElementReference
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLAmbiguousClaimsQuery
 import at.asitplus.openid.dcql.DCQLCredentialQuery
@@ -65,11 +66,20 @@ sealed interface WrpCredentialRequest {
 
         override suspend fun getRepresentation(): CredentialRepresentation = ISO_MDOC
 
-        override suspend fun getAttributes(): Collection<SingleClaimReference> =
-            this.query.itemsRequest.value.namespaces.flatMap { (namespace, itemsRequestList) ->
-                itemsRequestList.entries.map {
-                    MdocClaimReference(namespace = namespace, claimName = it.dataElementIdentifier)
-                }
+        /**
+         * The data elements requested in the name spaces, and those of every alternative element set, as the mdoc
+         * may return any of them instead of the requested element (ISO/IEC DIS 18013-5:2026, 10.2.4).
+         */
+        override suspend fun getAttributes(): Collection<SingleClaimReference> {
+            val itemsRequest = this.query.itemsRequest.value
+            val requested = itemsRequest.namespaces.flatMap { (namespace, itemsRequestList) ->
+                itemsRequestList.entries.map { ElementReference(namespace, it.dataElementIdentifier) }
             }
+            val alternatives = itemsRequest.requestInfo?.alternativeDataElements.orEmpty()
+                .flatMap { it.alternativeElementSets.flatten() }
+            return (requested + alternatives).distinct().map {
+                MdocClaimReference(namespace = it.namespace, claimName = it.dataElementIdentifier)
+            }
+        }
     }
 }

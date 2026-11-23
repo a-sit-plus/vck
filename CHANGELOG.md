@@ -174,6 +174,9 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       its alternative element sets the credential has, each data element once, and matches only credentials with a
       certificate in the `x5chain` of their `IssuerAuth` whose authority key identifier is one of the
       `issuerIdentifiers`. `IsoDeviceRetrievalCredentialMatch.requestedClaims` are the data elements to disclose
+    - The WRPRC check of an ISO `DocRequest` also requires the data elements of its alternative element sets to be
+      registered, as the mdoc may return any of them instead of the requested data element (ISO/IEC DIS
+      18013-5:2026, 10.2.4)
     - BREAKING: Fix: `DocRequestInfo.docResponseEncryption` is a `ByteStringWrapper<EncryptionParameters>`, encoded as
       `EncryptionParametersBytes`, a tag-24 byte string (ISO/IEC DIS 18013-5:2026, 10.2.4), instead of a map
 - OpenID for Verifiable Presentations verifier
