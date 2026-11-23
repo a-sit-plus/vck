@@ -169,6 +169,11 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       `purposeHints`. Add `IsoConstants.VERSION_1_0` and `VERSION_1_1`, and the purposes of
       `UseCase.PURPOSE_CONTROLLER_ISO` (`PURPOSE_IDENTITY_VERIFICATION`, `PURPOSE_DRIVING_PRIVILEGE_VERIFICATION`,
       `PURPOSE_AGE_VERIFICATION`)
+    - The holder answers alternative data elements and issuer identifiers of an ISO `DocRequest` (ISO/IEC DIS
+      18013-5:2026, 10.2.4): it discloses each requested data element, or, if the credential lacks it, the first of
+      its alternative element sets the credential has, each data element once, and matches only credentials with a
+      certificate in the `x5chain` of their `IssuerAuth` whose authority key identifier is one of the
+      `issuerIdentifiers`. `IsoDeviceRetrievalCredentialMatch.requestedClaims` are the data elements to disclose
     - BREAKING: Fix: `DocRequestInfo.docResponseEncryption` is a `ByteStringWrapper<EncryptionParameters>`, encoded as
       `EncryptionParametersBytes`, a tag-24 byte string (ISO/IEC DIS 18013-5:2026, 10.2.4), instead of a map
 - OpenID for Verifiable Presentations verifier

@@ -1,8 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
+import at.asitplus.iso.AlternativeDataElementsSet
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DocRequest
+import at.asitplus.iso.DocRequestInfo
+import at.asitplus.iso.ElementReference
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SessionTranscript
@@ -17,16 +20,20 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstrain
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueAndStoreIsoMdoc
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.cbor.authorityKeyIdentifiers
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.IdentifierListInfo
@@ -34,12 +41,14 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.toUri
+import at.asitplus.wallet.lib.procedures.dcql.AuthorityKeyIdentifier
 import at.asitplus.wallet.lib.validation.CredentialValidator
 import at.asitplus.wallet.lib.validation.PresentationValidationResult
 import at.asitplus.wallet.lib.validation.StatusValidator
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import com.benasher44.uuid.uuid4
 import io.github.z4kn4fein.semver.Version
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -47,6 +56,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlin.random.Random
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 
@@ -118,6 +128,114 @@ val AgentIsoMdocTest by matrixSuite {
                         credentialPresentationRequest = request,
                     ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.DeviceRetrievalParameters>()
                         .deviceResponse.documents.shouldNotBeNull().shouldHaveSize(2)
+                }
+
+                "device retrieval: discloses the first alternative of a missing data element the credential has" {
+                    val alternatives = listOf(listOf(element("also_missing")), listOf(element(CLAIM_DATE_OF_BIRTH)))
+                    val request = isoRequestWith(
+                        "not_in_the_credential",
+                        requestInfo = DocRequestInfo(
+                            alternativeDataElements = listOf(
+                                AlternativeDataElementsSet(element("not_in_the_credential"), alternatives)
+                            )
+                        ),
+                    )
+
+                    val disclosures = it.holder.disclosuresFor(request)
+
+                    disclosures.shouldBeSingleton().single().disclosedAttributes shouldBe
+                            listOf(claim(CLAIM_DATE_OF_BIRTH))
+                }
+
+                "device retrieval: prefers a requested data element over its alternatives" {
+                    val request = isoRequestWith(
+                        CLAIM_GIVEN_NAME,
+                        requestInfo = DocRequestInfo(
+                            alternativeDataElements = listOf(
+                                AlternativeDataElementsSet(
+                                    element(CLAIM_GIVEN_NAME),
+                                    listOf(listOf(element(CLAIM_DATE_OF_BIRTH)))
+                                )
+                            )
+                        ),
+                    )
+
+                    val disclosures = it.holder.disclosuresFor(request)
+
+                    disclosures.shouldBeSingleton().single().disclosedAttributes shouldBe
+                            listOf(claim(CLAIM_GIVEN_NAME))
+                }
+
+                "device retrieval: discloses a data element replacing several requested ones once" {
+                    val request = isoRequestWith(
+                        "missing_a", "missing_b",
+                        requestInfo = DocRequestInfo(
+                            alternativeDataElements = listOf("missing_a", "missing_b").map {
+                                AlternativeDataElementsSet(element(it), listOf(listOf(element(CLAIM_DATE_OF_BIRTH))))
+                            }
+                        ),
+                    )
+
+                    val disclosures = it.holder.disclosuresFor(request)
+
+                    disclosures.shouldBeSingleton().single().disclosedAttributes shouldBe
+                            listOf(claim(CLAIM_DATE_OF_BIRTH))
+                }
+
+                "device retrieval: matches no credential lacking a data element and all its alternatives" {
+                    val request = isoRequestWith(
+                        "not_in_the_credential",
+                        requestInfo = DocRequestInfo(
+                            alternativeDataElements = listOf(
+                                AlternativeDataElementsSet(
+                                    element("not_in_the_credential"),
+                                    listOf(listOf(element(CLAIM_DATE_OF_BIRTH), element("also_missing")))
+                                )
+                            )
+                        ),
+                    )
+
+                    val disclosures = it.holder.disclosuresFor(request)
+
+                    disclosures.shouldBeEmpty()
+                }
+
+                "device retrieval: matches only credentials of the requested issuer identifiers" {
+                    val authorityKeyIdentifier = Random.nextBytes(20)
+                    val otherIssuer = IssuerAgent(
+                        keyMaterial = EphemeralKeyWithSelfSignedCert(
+                            extensions = listOf(
+                                X509CertificateExtension(
+                                    oid = AuthorityKeyIdentifier.oid,
+                                    value = Asn1EncapsulatingOctetString(
+                                        listOf(AuthorityKeyIdentifier(authorityKeyIdentifier).encodeToTlv())
+                                    ),
+                                )
+                            )
+                        ),
+                        identifier = "https://other-issuer.example.com/".toUri(),
+                        randomSource = RandomSource.Default,
+                    )
+                    it.holder.storeCredential(
+                        otherIssuer.issueCredential(
+                            DummyCredentialDataProvider.getCredential(
+                                subjectPublicKey = it.holderKeyMaterial.publicKey,
+                                credentialScheme = ConstantIndex.AtomicAttribute2023,
+                                representation = ISO_MDOC,
+                            ).getOrThrow()
+                        ).getOrThrow().toStoreCredentialInput()
+                    ).getOrThrow()
+                    val request = isoRequestWith(
+                        CLAIM_GIVEN_NAME,
+                        requestInfo = DocRequestInfo(issuerIdentifiers = listOf(authorityKeyIdentifier)),
+                    )
+
+                    val disclosures = it.holder.disclosuresFor(request)
+
+                    disclosures.shouldBeSingleton().single().credential
+                        .shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Iso>()
+                        .issuerSigned.issuerAuth.authorityKeyIdentifiers().shouldBeSingleton().single() shouldBe
+                            authorityKeyIdentifier
                 }
 
                 "device retrieval: matching keeps all credentials with the same docType" {
@@ -217,6 +335,39 @@ val AgentIsoMdocTest by matrixSuite {
         }
     }
 }
+
+private fun element(name: String) = ElementReference(ConstantIndex.AtomicAttribute2023.isoNamespace, name)
+
+private fun claim(name: String) = MdocClaimReference(ConstantIndex.AtomicAttribute2023.isoNamespace, name)
+
+/** A request for one mdoc of [claimNames] with [requestInfo]. */
+private fun isoRequestWith(vararg claimNames: String, requestInfo: DocRequestInfo) =
+    CredentialPresentationRequest.IsoDeviceRetrieval(
+        DeviceRequest(
+            parsedVersion = Version(1, 0),
+            docRequests = arrayOf(
+                DocRequest(
+                    ByteStringWrapper(
+                        ItemsRequest(
+                            docType = ConstantIndex.AtomicAttribute2023.isoDocType,
+                            namespaces = mapOf(
+                                ConstantIndex.AtomicAttribute2023.isoNamespace to ItemsRequestList(
+                                    claimNames.map { SingleItemsRequest(it, false) }
+                                )
+                            ),
+                            requestInfo = requestInfo,
+                        )
+                    )
+                )
+            ),
+        )
+    )
+
+/** The stored credentials matching the single document request of [request], with their disclosures. */
+private suspend fun HolderAgent.disclosuresFor(request: CredentialPresentationRequest.IsoDeviceRetrieval) =
+    matchPresentationRequestAgainstCredentialStore(request).getOrThrow()
+        .shouldBeInstanceOf<IsoDeviceRetrievalMatchingResult<SubjectCredentialStore.StoreEntry>>()
+        .matchingResult.documentMatches.shouldBeSingleton().single()
 
 private fun isoDeviceRequest(vararg claimNames: String) = DeviceRequest(
     parsedVersion = Version(1, 0),
