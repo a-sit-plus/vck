@@ -2,9 +2,9 @@ package at.asitplus.wallet.lib
 
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.DocRequestInfo
+import at.asitplus.iso.ElementReference
 import at.asitplus.iso.ItemsRequest
-import at.asitplus.iso.ItemsRequestList
-import at.asitplus.iso.SingleItemsRequest
+import at.asitplus.iso.ofCombinations
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -266,46 +266,45 @@ sealed interface RequestedCredential {
         }
 
         /**
-         * The `DocRequest` of ISO/IEC 18013-5:2021, 8.3.2.1.2.1 for this mdoc, requesting only the data elements of
-         * [ClaimSelection.All.required]: an `ItemsRequest` marks no data element as optional, so one of
-         * [ClaimSelection.All.ifAvailable] would be requested like a required one, and a holder lacking it would not
-         * present the mdoc at all. Data elements if available are requested by the DCQL query only.
-         *
-         * Fails without any required data element, as an `ItemsRequest` requests at least one name space with at
-         * least one data element (`NameSpaces = {+ NameSpace => DataElements}`, `DataElements = {+ DataElement =>
-         * IntentToRetain}`, ISO/IEC 18013-5:2021, 8.3.2.1.2.1).
-         * Fails for [ClaimSelection.Alternatives] too, which an `ItemsRequest` can not express,
-         * instead of requesting all data elements of all options.
+         * The `DocRequest` of this mdoc (ISO/IEC DIS 18013-5:2026, 10.2.3), see `ItemsRequest.ofCombinations`:
+         *  - for [ClaimSelection.All], the data elements of [ClaimSelection.All.required]: ISO has no optional data
+         *    element, so one of [ClaimSelection.All.ifAvailable], requested like a required one, would keep a holder
+         *    lacking it from presenting the mdoc at all; they are requested by the DCQL query only
+         *  - for [ClaimSelection.Alternatives], the common data elements and the first option, each data element of
+         *    which has the other options as its alternatives (ibid., 10.2.4)
          *
          * Its `DocRequestInfo` has `uniqueDocSetRequired = !`[multiple], always set, as its "Presence … is recommended
          * for the mdoc reader", and the subject key identifiers of [trustedAuthorities] as `issuerIdentifiers`
-         * (ISO/IEC DIS 18013-5:2026, 10.2.4).
+         * (ibid., 10.2.4).
+         *
+         * Fails if nothing is requested, e.g. without required data elements, as an `ItemsRequest` requests at least
+         * one data element (`NameSpaces = {+ NameSpace => DataElements}`, ibid., 10.2.3).
          */
         fun toDocRequest(): DocRequest {
-            val dataElements = when (val selection = claims) {
-                is ClaimSelection.All -> selection.required
-                is ClaimSelection.Alternatives ->
-                    throw IllegalArgumentException("An ISO DocRequest can not express alternative data elements")
+            val combinations = when (val selection = claims) {
+                is ClaimSelection.All -> Combinations(selection.required, listOf(selection.ifAvailable, setOf()))
+                is ClaimSelection.Alternatives -> Combinations(selection.common, selection.options)
             }
-            require(dataElements.isNotEmpty()) {
-                "An ISO DocRequest needs at least one data element, but none is requested"
-            }
-            val namespaces = dataElements
-                .groupBy(
-                    keySelector = { it.namespace },
-                    valueTransform = { SingleItemsRequest(it.claimName, it in intentToRetain) },
-                )
-                .mapValues { ItemsRequestList(it.value) }
-            val requestInfo = DocRequestInfo(
-                uniqueDocSetRequired = !multiple,
-                issuerIdentifiers = trustedAuthorityKeyIdentifiers().ifEmpty { null },
+            val itemsRequest = ItemsRequest.ofCombinations(
+                docType = docType,
+                common = combinations.common.toElementReferences(),
+                options = combinations.options.map { it.toElementReferences() },
+                intentToRetain = intentToRetain.toElementReferences(),
+                requestInfo = DocRequestInfo(
+                    uniqueDocSetRequired = !multiple,
+                    issuerIdentifiers = trustedAuthorityKeyIdentifiers().ifEmpty { null },
+                ),
             )
-            return DocRequest(
-                ByteStringWrapper(ItemsRequest(docType = docType, namespaces = namespaces, requestInfo = requestInfo))
-            )
+            return DocRequest(ByteStringWrapper(itemsRequest))
         }
     }
 }
+
+/** The [common] data elements and the [options] of which one is requested, see `ItemsRequest.ofCombinations`. */
+private class Combinations(val common: Set<MdocClaimReference>, val options: List<Set<MdocClaimReference>>)
+
+private fun Set<MdocClaimReference>.toElementReferences() =
+    mapTo(linkedSetOf()) { ElementReference(it.namespace, it.claimName) }
 
 /**
  * The subject key identifiers of the [RequestedCredential.trustedAuthorities], each the key identifier of the

@@ -1,26 +1,25 @@
 package at.asitplus.wallet.lib
 
-import at.asitplus.iso.DocRequestInfo
+import at.asitplus.iso.AlternativeDataElementsSet
+import at.asitplus.iso.ElementReference
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import at.asitplus.signum.indispensable.asn1.subjectKeyIdentifier
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
+import at.asitplus.wallet.mdl.MDL_DOCTYPE
+import at.asitplus.wallet.mdl.MDL_NAMESPACE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+
 
 val RequestedCredentialTest by matrixSuite {
 
@@ -67,8 +66,7 @@ val RequestedCredentialTest by matrixSuite {
         }
 
         test("a default ID is random, a given ID is kept") {
-            RequestedCredential.Mdoc("org.iso.18013.5.1.mDL").id shouldNotBe
-                    RequestedCredential.Mdoc("org.iso.18013.5.1.mDL").id
+            RequestedCredential.Mdoc(MDL_DOCTYPE).id shouldNotBe RequestedCredential.Mdoc(MDL_DOCTYPE).id
             val subjectName = JsonClaimReference("credentialSubject", "given_name")
             RequestedCredential.VcJwt("ExampleCredential", subjectName, id = "vc").id shouldBe "vc"
         }
@@ -78,9 +76,9 @@ val RequestedCredentialTest by matrixSuite {
 
             val failures = invalidIds.flatMap { id ->
                 listOf(
-                    { RequestedCredential.SdJwt("urn:eudi:pid:1", id = id) },
+                    { RequestedCredential.SdJwt(EU_PID_SD_JWT_VCT, id = id) },
                     { RequestedCredential.VcJwt("ExampleCredential", id = id) },
-                    { RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", id = id) },
+                    { RequestedCredential.Mdoc(MDL_DOCTYPE, id = id) },
                 ).map { runCatching(it).exceptionOrNull() }
             }
 
@@ -91,8 +89,8 @@ val RequestedCredentialTest by matrixSuite {
             val givenName = JsonClaimReference("given_name")
             RequestedCredential.SdJwt("urn:example:vct", givenName, givenName).claims shouldBe
                     ClaimSelection.All(setOf(givenName))
-            val isoName = MdocClaimReference("org.iso.18013.5.1", "given_name")
-            RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", isoName, isoName).claims shouldBe
+            val isoName = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.GIVEN_NAME)
+            RequestedCredential.Mdoc(MDL_DOCTYPE, isoName, isoName).claims shouldBe
                     ClaimSelection.All(setOf(isoName))
         }
 
@@ -106,18 +104,20 @@ val RequestedCredentialTest by matrixSuite {
         }
 
         test("the same name in different name spaces is two data elements") {
-            val isoName = MdocClaimReference("org.iso.18013.5.1", "given_name")
-            val aamvaName = MdocClaimReference("org.iso.18013.5.1.aamva", "given_name")
-            RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", isoName, aamvaName).claims shouldBe
+            val isoName = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.GIVEN_NAME)
+            val aamvaName = MdocClaimReference(AAMVA_NAMESPACE, "given_name")
+            RequestedCredential.Mdoc(MDL_DOCTYPE, isoName, aamvaName).claims shouldBe
                     ClaimSelection.All(required = setOf(isoName, aamvaName))
         }
 
         test("only requested data elements can be retained") {
             shouldThrow<IllegalArgumentException> {
                 RequestedCredential.Mdoc(
-                    "org.iso.18013.5.1.mDL",
-                    MdocClaimReference("org.iso.18013.5.1", "family_name"),
-                    intentToRetain = setOf(MdocClaimReference("org.iso.18013.5.1", "portrait")),
+                    docType = MDL_DOCTYPE,
+                    MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.FAMILY_NAME),
+                    intentToRetain = setOf(
+                        MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.PORTRAIT)
+                    ),
                 )
             }
         }
@@ -184,10 +184,10 @@ val RequestedCredentialTest by matrixSuite {
         }
 
         test("data elements of any option can be retained") {
-            val portrait = MdocClaimReference("org.iso.18013.5.1", "portrait")
-            val ageOver18 = MdocClaimReference("org.iso.18013.5.1", "age_over_18")
+            val portrait = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.PORTRAIT)
+            val ageOver18 = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.AGE_OVER_18)
             RequestedCredential.Mdoc(
-                docType = "org.iso.18013.5.1.mDL",
+                docType = MDL_DOCTYPE,
                 claims = ClaimSelection.Alternatives(setOf(ageOver18), setOf(portrait)),
                 intentToRetain = setOf(portrait),
             ).intentToRetain shouldBe setOf(portrait)
@@ -196,99 +196,73 @@ val RequestedCredentialTest by matrixSuite {
 
     "ISO DocRequest" - {
         test("requests the required data elements by name space, with their intent to retain, none if available") {
-            val familyName = MdocClaimReference("org.iso.18013.5.1", "family_name")
-            val compliance = MdocClaimReference("org.iso.18013.5.1.aamva", "DHS_compliance")
-            val portrait = MdocClaimReference("org.iso.18013.5.1", "portrait")
+            val familyName = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.FAMILY_NAME)
+            val compliance = MdocClaimReference(AAMVA_NAMESPACE, "DHS_compliance")
+            val portrait = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.PORTRAIT)
             val mdoc = RequestedCredential.Mdoc(
-                docType = "org.iso.18013.5.1.mDL",
+                docType = MDL_DOCTYPE,
                 claims = ClaimSelection.All(required = setOf(familyName, compliance), ifAvailable = setOf(portrait)),
                 intentToRetain = setOf(compliance),
             )
 
             val itemsRequest = mdoc.toDocRequest().itemsRequest.value
 
-            itemsRequest.docType shouldBe "org.iso.18013.5.1.mDL"
+            itemsRequest.docType shouldBe mdoc.docType
             itemsRequest.namespaces shouldBe mapOf(
-                "org.iso.18013.5.1" to ItemsRequestList(listOf(SingleItemsRequest("family_name", false))),
-                "org.iso.18013.5.1.aamva" to ItemsRequestList(listOf(SingleItemsRequest("DHS_compliance", true))),
+                MDL_NAMESPACE to ItemsRequestList(
+                    listOf(SingleItemsRequest(MobileDrivingLicenceDataElements.FAMILY_NAME, false))
+                ),
+                AAMVA_NAMESPACE to ItemsRequestList(listOf(SingleItemsRequest("DHS_compliance", true))),
             )
         }
 
         test("with only data elements if available, no DocRequest can be created") {
-            val portrait = MdocClaimReference("org.iso.18013.5.1", "portrait")
+            val portrait = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.PORTRAIT)
             val mdoc = RequestedCredential.Mdoc(
-                docType = "org.iso.18013.5.1.mDL",
+                docType = MDL_DOCTYPE,
                 claims = ClaimSelection.All(ifAvailable = setOf(portrait)),
             )
 
             shouldThrow<IllegalArgumentException> { mdoc.toDocRequest() }
         }
 
-        test("alternative data elements can not be expressed in a DocRequest") {
-            shouldThrow<IllegalArgumentException> {
-                RequestedCredential.Mdoc(
-                    "org.iso.18013.5.1.mDL",
-                    ClaimSelection.Alternatives(
-                        setOf(MdocClaimReference("org.iso.18013.5.1", "age_over_18")),
-                        setOf(MdocClaimReference("org.iso.18013.5.1", "birth_date")),
-                    ),
-                ).toDocRequest()
-            }
-        }
-
-        test("requests a unique document set from any issuer by default") {
+        test("requests alternative data elements as alternatives of the first option") {
+            val ageOver18 = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.AGE_OVER_18)
+            val birthDate = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.BIRTH_DATE)
             val mdoc = RequestedCredential.Mdoc(
-                "org.iso.18013.5.1.mDL",
-                MdocClaimReference("org.iso.18013.5.1", "family_name"),
+                docType = MDL_DOCTYPE,
+                claims = ClaimSelection.Alternatives(setOf(ageOver18), setOf(birthDate)),
             )
 
-            val docRequest = mdoc.toDocRequest()
+            val itemsRequest = mdoc.toDocRequest().itemsRequest.value
 
-            docRequest.itemsRequest.value.requestInfo shouldBe DocRequestInfo(uniqueDocSetRequired = true)
-        }
-
-        test("requests multiple documents from the issuers of the trusted authorities as set") {
-            val mdoc = RequestedCredential.Mdoc(
-                "org.iso.18013.5.1.mDL",
-                MdocClaimReference("org.iso.18013.5.1", "family_name"),
-                multiple = true,
-                trustedAuthorities = setOf(authority(byteArrayOf(1, 2, 3))),
-            )
-
-            val docRequest = mdoc.toDocRequest()
-
-            docRequest.itemsRequest.value.requestInfo shouldBe DocRequestInfo(
-                uniqueDocSetRequired = false,
-                issuerIdentifiers = listOf(byteArrayOf(1, 2, 3)),
-            )
-        }
-
-        test("a trusted authority without subject key identifier is rejected") {
-            val certificate = EphemeralKeyWithSelfSignedCert().getCertificate().shouldNotBeNull()
-
-            shouldThrow<IllegalArgumentException> {
-                RequestedCredential.Mdoc(
-                    "org.iso.18013.5.1.mDL",
-                    MdocClaimReference("org.iso.18013.5.1", "family_name"),
-                    trustedAuthorities = setOf(certificate),
+            itemsRequest.apply {
+                namespaces shouldBe mapOf(
+                    MDL_NAMESPACE to ItemsRequestList(
+                        listOf(SingleItemsRequest(MobileDrivingLicenceDataElements.AGE_OVER_18, false))
+                    )
+                )
+                requestInfo.shouldNotBeNull().alternativeDataElements shouldBe listOf(
+                    AlternativeDataElementsSet(
+                        requestedElement = ElementReference(
+                            MDL_NAMESPACE,
+                            MobileDrivingLicenceDataElements.AGE_OVER_18
+                        ),
+                        alternativeElementSets = listOf(
+                            listOf(ElementReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.BIRTH_DATE))
+                        ),
+                    )
                 )
             }
         }
 
         test("without data elements, no DocRequest can be created") {
             shouldThrow<IllegalArgumentException> {
-                RequestedCredential.Mdoc("org.iso.18013.5.1.mDL").toDocRequest()
+                RequestedCredential.Mdoc(MDL_DOCTYPE).toDocRequest()
             }
         }
     }
 }
 
-/** A self-signed certificate with the subject key identifier [keyIdentifier], as of a certificate authority. */
-private suspend fun authority(keyIdentifier: ByteArray): X509Certificate = EphemeralKeyWithSelfSignedCert(
-    extensions = listOf(
-        X509CertificateExtension(
-            oid = KnownOIDs.subjectKeyIdentifier,
-            value = Asn1EncapsulatingOctetString(listOf(Asn1.OctetString(keyIdentifier))),
-        )
-    )
-).getCertificate().shouldNotBeNull()
+
+private const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"

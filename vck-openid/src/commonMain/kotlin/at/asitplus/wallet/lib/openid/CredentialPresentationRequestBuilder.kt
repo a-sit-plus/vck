@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQuery
 import at.asitplus.openid.dcql.DCQLClaimsQueryIdentifier
@@ -36,14 +35,13 @@ import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SingleClaimReference
 import at.asitplus.wallet.lib.extensions.subjectKeyIdentifier
-import io.github.z4kn4fein.semver.Version
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.jvm.JvmStatic
 
 /**
  * Builds a [CredentialPresentationRequest] from the credentials of a [RequestedPresentation],
  * to be used in [OpenId4VpRequestOptions]: a DCQL query (OpenID4VP 1.0, 6) with [toDCQLRequest],
- * or an ISO `DeviceRequest` (ISO/IEC 18013-5:2021, 8.3.2.1.2.1) with [toIsoDeviceRetrievalRequest].
+ * or an ISO `DeviceRequest` (ISO/IEC DIS 18013-5:2026, 10.2) with [toIsoDeviceRetrievalRequest].
  */
 class CredentialPresentationRequestBuilder(
     val presentation: RequestedPresentation,
@@ -89,30 +87,12 @@ class CredentialPresentationRequestBuilder(
         DCQLCredentialQueryList(credentials.map { it.toQuery() }.toNonEmptyList())
 
     /**
-     * The ISO `DeviceRequest` of [presentation],
-     * with one `DocRequest` per credential, see [RequestedCredential.Mdoc.toDocRequest].
+     * The ISO `DeviceRequest` of [presentation], see [RequestedPresentation.toDeviceRequest]: converted directly, not
+     * from the DCQL query, so it keeps the purpose hints of the sets (ISO/IEC DIS 18013-5:2026, 10.2.5).
      *
-     * Fails for other credentials than ISO mdocs, and if not every credential is required, as a `DeviceRequest`
-     * requests every one of its `DocRequests` (ISO/IEC 18013-5:2021, 8.3.2.1.2.1), instead of silently requesting
-     * alternative or optional credentials.
+     * Fails for other credentials than ISO mdocs.
      */
-    fun toIsoDeviceRetrievalRequest(): IsoDeviceRetrieval {
-        require(presentation.requiresEveryCredential) {
-            "An ISO DeviceRequest requests every credential, but some are alternative or optional"
-        }
-        val docRequests = presentation.credentials.map {
-            require(it is RequestedCredential.Mdoc) { "An ISO DeviceRequest requests only mdocs, but not $it" }
-            it.toDocRequest()
-        }
-        return IsoDeviceRetrieval(
-            deviceRequest = DeviceRequest(
-                parsedVersion = Version(1, 0),
-                docRequests = docRequests.toTypedArray(),
-                deviceRequestInfo = null,
-                readerAuthAll = null,
-            )
-        )
-    }
+    fun toIsoDeviceRetrievalRequest(): IsoDeviceRetrieval = IsoDeviceRetrieval(presentation.toDeviceRequest())
 
     companion object {
         /** Requests every one of [credentials], see [RequestOptionsCredential.toRequestedCredential]. */

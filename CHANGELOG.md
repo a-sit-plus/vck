@@ -222,6 +222,13 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       `optional`, `RequestedPresentation.allOf`). `CredentialPresentationRequestBuilder` builds them into the DCQL
       `claims`, `claim_sets`, and `credential_sets` (OpenID4VP 1.0, 6.1 to 6.4). The claims requested `ifAvailable`
       are one bundle: if the holder's credential lacks one of them, none of them is presented
+    - Typed requests convert directly to an ISO `DeviceRequest` with the new `RequestedPresentation.toDeviceRequest()`,
+      which `CredentialPresentationRequestBuilder.toIsoDeviceRetrievalRequest()` uses: alternative and optional
+      credential sets are use cases (ISO/IEC DIS 18013-5:2026, 10.2.5), with the new
+      `RequestedCredentialSet.purposeHints`, which OpenID4VP can not express; a set with an option contained in another
+      one fails, as ISO can not satisfy it. `RequestedCredential.Mdoc.toDocRequest()` requests
+      `ClaimSelection.Alternatives` as alternative data elements (ibid., 10.2.4) with `ItemsRequest.ofCombinations`, as
+      `DCQLQuery.toIso180137AnnexCDeviceRequest()` does
     - Add `multiple` and `trustedAuthorities` to `RequestedCredential`: the DCQL `multiple`, and the certificates of
       the authorities that certify accepted issuers, requested by their subject key identifiers (RFC 5280, 4.2.1.2) as
       `trusted_authorities` of type `aki` (OpenID4VP 1.0, 6.1, 6.1.1). `RequestedCredential.Mdoc.toDocRequest()` sets
@@ -241,8 +248,8 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       building the request, instead of its Credential Query being dropped. `toIsoDeviceRetrievalRequest()` and
       `RequestOptionsCredential.toDocRequest()` request only the required data elements, as an ISO `ItemsRequest`
       marks none as optional, and fail for an mdoc without any, which an `ItemsRequest` requires (ISO/IEC
-      18013-5:2021, 8.3.2.1.2.1), and `toIsoDeviceRetrievalRequest()` also for other credentials than mdocs and for
-      alternative or optional credentials. `RequestOptionsCredential.toDocRequest()` accepts any credential scheme
+      18013-5:2021, 8.3.2.1.2.1), and `toIsoDeviceRetrievalRequest()` also for other credentials than mdocs.
+      `RequestOptionsCredential.toDocRequest()` accepts any credential scheme
       with an `isoDocType`, as the DCQL query does, not only an `IsoMdocCredentialScheme`
     - Deprecate `RequestOptionsCredential`, `RequestedAttributePaths`, the `CredentialPresentationRequestBuilder`
       constructor taking `RequestOptionsCredential`s, and `CredentialPresentationRequestBuilder.fromRequestOptions`.

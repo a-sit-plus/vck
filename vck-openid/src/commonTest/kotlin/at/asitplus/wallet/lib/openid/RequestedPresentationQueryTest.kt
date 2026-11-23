@@ -12,6 +12,7 @@ import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.openid.dcql.DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier
+import at.asitplus.openid.dcql.toIso180137AnnexCDeviceRequest
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
@@ -21,6 +22,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.lib.ClaimSelection
 import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.RequestedCredentialSet
@@ -28,6 +30,9 @@ import at.asitplus.wallet.lib.RequestedPresentation
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
+import at.asitplus.wallet.mdl.MDL_DOCTYPE
+import at.asitplus.wallet.mdl.MDL_NAMESPACE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
@@ -40,9 +45,12 @@ val RequestedPresentationQueryTest by matrixSuite {
     val givenName = JsonClaimReference("given_name")
     val address = JsonClaimReference("address", "street_address")
     val email = JsonClaimReference("email")
-    val pidSdJwt = RequestedCredential.SdJwt("urn:eudi:pid:1", givenName, id = "pid")
-    val mdlMdoc = RequestedCredential.Mdoc("org.iso.18013.5.1.mDL",
-        MdocClaimReference("org.iso.18013.5.1", "family_name"), id = "mdl")
+    val pidSdJwt = RequestedCredential.SdJwt(EU_PID_SD_JWT_VCT, givenName, id = "pid")
+    val mdlMdoc = RequestedCredential.Mdoc(
+        MDL_DOCTYPE,
+        MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.FAMILY_NAME),
+        id = "mdl"
+    )
     val loyaltyVcJwt = RequestedCredential.VcJwt("LoyaltyCredential", id = "loyalty")
 
     fun RequestedCredential.query() = CredentialPresentationRequestBuilder(this).toDCQLRequest().dcqlQuery
@@ -54,13 +62,13 @@ val RequestedPresentationQueryTest by matrixSuite {
     "credential queries" - {
         test("an SD-JWT VC is queried by its vct, with its claims paths, all required") {
             RequestedCredential.SdJwt(
-                "urn:eudi:pid:1",
+                EU_PID_SD_JWT_VCT,
                 givenName, address,
                 id = "pid"
             ).query()
                 .shouldBeInstanceOf<DCQLSdJwtCredentialQuery>().apply {
                     id shouldBe DCQLCredentialQueryIdentifier("pid")
-                    meta.vctValues shouldBe listOf("urn:eudi:pid:1")
+                    meta.vctValues shouldBe listOf(EU_PID_SD_JWT_VCT)
                     claims?.toList() shouldBe listOf(
                         DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer("given_name")),
                         DCQLJsonClaimsQuery(path = DCQLClaimsPathPointer("address", "street_address")),
@@ -80,7 +88,7 @@ val RequestedPresentationQueryTest by matrixSuite {
 
         test("multiple credentials from the issuers of trusted authorities are queried by their key identifiers") {
             val credential = RequestedCredential.SdJwt(
-                "urn:eudi:pid:1",
+                EU_PID_SD_JWT_VCT,
                 givenName,
                 id = "pid",
                 multiple = true,
@@ -114,18 +122,20 @@ val RequestedPresentationQueryTest by matrixSuite {
         }
 
         test("an mdoc is queried by its doctype, with its data elements and intent to retain") {
-            val familyName = MdocClaimReference("org.iso.18013.5.1", "family_name")
-            val portrait = MdocClaimReference("org.iso.18013.5.1", "portrait")
+            val familyName = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.FAMILY_NAME)
+            val portrait = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.PORTRAIT)
             RequestedCredential.Mdoc(
-                "org.iso.18013.5.1.mDL",
+                MDL_DOCTYPE,
                 familyName, portrait,
                 intentToRetain = setOf(portrait),
             ).query().shouldBeInstanceOf<DCQLIsoMdocCredentialQuery>().apply {
-                meta.doctypeValue shouldBe "org.iso.18013.5.1.mDL"
+                meta.doctypeValue shouldBe MDL_DOCTYPE
                 claims?.toList() shouldBe listOf(
-                    DCQLIsoMdocClaimsQuery(path = DCQLClaimsPathPointer("org.iso.18013.5.1", "family_name")),
                     DCQLIsoMdocClaimsQuery(
-                        path = DCQLClaimsPathPointer("org.iso.18013.5.1", "portrait"),
+                        path = DCQLClaimsPathPointer(MDL_NAMESPACE, MobileDrivingLicenceDataElements.FAMILY_NAME)
+                    ),
+                    DCQLIsoMdocClaimsQuery(
+                        path = DCQLClaimsPathPointer(MDL_NAMESPACE, MobileDrivingLicenceDataElements.PORTRAIT),
                         intentToRetain = true,
                     ),
                 )
@@ -133,7 +143,7 @@ val RequestedPresentationQueryTest by matrixSuite {
         }
 
         test("without claims, claims are absent") {
-            RequestedCredential.SdJwt("urn:eudi:pid:1").query().apply {
+            RequestedCredential.SdJwt(EU_PID_SD_JWT_VCT).query().apply {
                 claims.shouldBeNull()
                 claimSets.shouldBeNull()
             }
@@ -143,7 +153,7 @@ val RequestedPresentationQueryTest by matrixSuite {
     "claim combinations" - {
         test("claims if available are one bundle: all claims, or the required ones") {
             RequestedCredential.SdJwt(
-                "urn:eudi:pid:1",
+                EU_PID_SD_JWT_VCT,
                 ClaimSelection.All(required = setOf(givenName), ifAvailable = setOf(address, email)),
             ).query().apply {
                 claims?.map { it.id } shouldBe ids("0", "1", "2")
@@ -154,7 +164,7 @@ val RequestedPresentationQueryTest by matrixSuite {
 
         test("only claims if available fall back to no claim") {
             RequestedCredential.SdJwt(
-                "urn:eudi:pid:1",
+                EU_PID_SD_JWT_VCT,
                 ClaimSelection.All(ifAvailable = setOf(address))
             ).query()
                 .claimSets?.toList() shouldBe listOf(ids("0"), ids())
@@ -163,7 +173,7 @@ val RequestedPresentationQueryTest by matrixSuite {
         test("alternatives are claim combinations of the common claims and each option, in order") {
             val familyName = JsonClaimReference("family_name")
             RequestedCredential.SdJwt(
-                "urn:eudi:pid:1",
+                EU_PID_SD_JWT_VCT,
                 ClaimSelection.Alternatives(
                     setOf(address, email),
                     setOf(address, givenName),
@@ -237,30 +247,65 @@ val RequestedPresentationQueryTest by matrixSuite {
             )
             CredentialPresentationRequestBuilder(presentation).toIsoDeviceRetrievalRequest()
                 .deviceRequest.docRequests.map { it.itemsRequest.value.docType } shouldBe
-                    listOf("org.iso.18013.5.1.mDL", "org.example.doc")
+                    listOf(MDL_DOCTYPE, "org.example.doc")
+        }
+
+        "is the same as through DCQL, as both use one set of rules" - {
+            val familyName = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.FAMILY_NAME)
+            val portrait = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.PORTRAIT)
+            val ageOver18 = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.AGE_OVER_18)
+            val ageInYears = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.AGE_IN_YEARS)
+            val birthDate = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.BIRTH_DATE)
+            val other =
+                RequestedCredential.Mdoc("org.example.doc", MdocClaimReference("org.example", "x"), id = "other")
+            listOf(
+                SameRequest("for data elements if available, retained") {
+                    RequestedPresentation.allOf(
+                        RequestedCredential.Mdoc(
+                            MDL_DOCTYPE,
+                            ClaimSelection.All(required = setOf(familyName), ifAvailable = setOf(portrait)),
+                            intentToRetain = setOf(familyName),
+                        )
+                    )
+                },
+                SameRequest("for alternative data elements with common ones") {
+                    RequestedPresentation.allOf(
+                        RequestedCredential.Mdoc(
+                            MDL_DOCTYPE,
+                            ClaimSelection.Alternatives(
+                                setOf(ageOver18), setOf(ageInYears), setOf(birthDate),
+                                common = setOf(familyName),
+                            ),
+                        )
+                    )
+                },
+                SameRequest("for alternative and optional credentials") {
+                    RequestedPresentation(
+                        RequestedCredentialSet.oneOf(setOf(mdlMdoc), setOf(other)),
+                        RequestedCredentialSet.optional(setOf(mdlMdoc, other)),
+                    )
+                },
+                SameRequest("for multiple credentials from trusted authorities") {
+                    RequestedPresentation.allOf(
+                        RequestedCredential.Mdoc(
+                            MDL_DOCTYPE,
+                            familyName,
+                            multiple = true,
+                            trustedAuthorities = setOf(authority(byteArrayOf(1, 2, 3))),
+                        )
+                    )
+                },
+            ).asData(nameFn = { it.name }) test { case ->
+                val builder = CredentialPresentationRequestBuilder(case.presentation())
+
+                val direct = builder.toIsoDeviceRetrievalRequest().deviceRequest
+                val throughDcql = builder.toDCQLRequest().dcqlQuery.toIso180137AnnexCDeviceRequest()
+
+                direct shouldBe throughDcql
+            }
         }
 
         "can not express" - {
-            test("alternative credentials") {
-                val other = RequestedCredential.Mdoc("org.example.doc", MdocClaimReference("org.example", "x"))
-                shouldThrow<IllegalArgumentException> {
-                    CredentialPresentationRequestBuilder(
-                        RequestedPresentation(
-                            RequestedCredentialSet.oneOf(setOf(mdlMdoc), setOf(other))
-                        )
-                    ).toIsoDeviceRetrievalRequest()
-                }
-            }
-            test("optional credentials") {
-                shouldThrow<IllegalArgumentException> {
-                    CredentialPresentationRequestBuilder(
-                        RequestedPresentation(
-                            RequestedCredentialSet.oneOf(setOf(mdlMdoc)),
-                            RequestedCredentialSet.optional(setOf(mdlMdoc)),
-                        )
-                    ).toIsoDeviceRetrievalRequest()
-                }
-            }
             test("other credentials than mdocs") {
                 shouldThrow<IllegalArgumentException> {
                     CredentialPresentationRequestBuilder(mdlMdoc, pidSdJwt)
@@ -270,6 +315,9 @@ val RequestedPresentationQueryTest by matrixSuite {
         }
     }
 }
+
+/** A typed presentation whose ISO request is the same, whether converted directly or through DCQL. */
+private data class SameRequest(val name: String, val presentation: suspend () -> RequestedPresentation)
 
 /** A self-signed certificate with the subject key identifier [keyIdentifier], as of a certificate authority. */
 private suspend fun authority(keyIdentifier: ByteArray): X509Certificate = EphemeralKeyWithSelfSignedCert(
