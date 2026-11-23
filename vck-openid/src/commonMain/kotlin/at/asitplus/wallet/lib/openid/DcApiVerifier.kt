@@ -189,10 +189,12 @@ class DcApiVerifier @JvmOverloads constructor(
      * For [DcApiCreationOptions.Iso180137AnnexC], a [DCQLRequest] is converted to an ISO `DeviceRequest` with
      * [toIso180137AnnexCDeviceRequest], which fails for what a `DeviceRequest` can not express. It fails for
      * [OpenId4VpRequestOptions.transactionData] too, as the `DeviceRequest` of ISO/IEC 18013-7 Annex C carries none, so
-     * its response could not authorize the transaction (OpenID4VP 1.0, 5.1). These checks happen before any request is
-     * created, so a request that fails them creates no nonce, key, or stored request for any exchange protocol. Other
-     * failures, e.g. an invalid expected origin or a failing `readerAuth` signature, occur while the requests are
-     * created, and may leave the nonce, key, or stored request of an earlier exchange protocol behind.
+     * its response could not authorize the transaction (OpenID4VP 1.0, 5.1), and for an
+     * [OpenId4VpRequestOptions.registrationCertificate] without the encoding of an offered exchange protocol, the JWT
+     * for OpenID4VP or the CWT for Annex C. These checks happen before any request is created, so a request that
+     * fails them creates no nonce, key, or stored request for any exchange protocol. Other failures, e.g. an invalid
+     * expected origin or a failing `readerAuth` signature, occur while the requests are created, and may leave the
+     * nonce, key, or stored request of an earlier exchange protocol behind.
      */
     suspend fun createAuthnRequest(
         requestOptions: OpenId4VpRequestOptions,
@@ -207,6 +209,15 @@ class DcApiVerifier @JvmOverloads constructor(
         val annexC = DcApiCreationOptions.Iso180137AnnexC in creationOptions
         require(!annexC || requestOptions.transactionData.isNullOrEmpty()) {
             "Transaction data can not be requested over ISO/IEC 18013-7 Annex C, which can not authorize it"
+        }
+        requestOptions.registrationCertificate?.let { registrationCertificate ->
+            require(!annexC || requestOptions.registrationCertificateCwt != null) {
+                "An ISO/IEC 18013-7 Annex C request needs the CWT of the WRPRC"
+            }
+            val openId4Vp = creationOptions.any { it != DcApiCreationOptions.Iso180137AnnexC }
+            require(!openId4Vp || registrationCertificate.jwt != null) {
+                "An OpenID4VP request needs the JWT of the WRPRC"
+            }
         }
         val isoDeviceRequest = if (annexC) requestOptions.toIsoDeviceRequest() else null
         CredentialRequestOptions.create(
@@ -249,7 +260,7 @@ class DcApiVerifier @JvmOverloads constructor(
                 )
             )
             val deviceRequest = requireNotNull(isoDeviceRequest) { "The ISO DeviceRequest has not been converted" }
-                .withRegistrationCertificate(requestOptions.euWrprc)
+                .withRegistrationCertificate(requestOptions.registrationCertificateCwt)
                 .withReaderAuthentication(encryptionInfo, requestOptions.expectedOrigins)
             IsoMdoc(
                 IsoMdocRequest(deviceRequest = deviceRequest, encryptionInfo = encryptionInfo)

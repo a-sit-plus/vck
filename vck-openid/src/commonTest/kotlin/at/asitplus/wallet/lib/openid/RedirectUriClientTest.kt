@@ -121,18 +121,14 @@ val RedirectUriClientTest by matrixSuite {
         }
 
         "registration_cert verifier_info is exposed in preparation state" {
-            val verifierInfo = listOf(
-                VerifierInfo(
-                    format = OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT,
-                    data = "eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJ3cnAifQ.signature",
-                    credentialIds = setOf("id_card"),
-                )
-            ).toNonEmptyList()
+            val registrationCertificate = RelyingPartyRegistrationCertificate(
+                jwt = "eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJ3cnAifQ.signature",
+            )
             val requestOptions = OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
                     RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023, id = "id_card")
                 ).toDCQLRequest(),
-                verifierInfo = verifierInfo,
+                registrationCertificate = registrationCertificate,
             )
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 requestOptions, CreationOptions.Query(it.walletUrl)
@@ -142,7 +138,7 @@ val RedirectUriClientTest by matrixSuite {
                 .prepareAuthorizationResponse(authnRequest)
                 .getOrThrow()
 
-            preparationState.verifierInfo shouldBe verifierInfo
+            preparationState.verifierInfo shouldBe listOf(registrationCertificate.verifierInfo)
         }
 
         "verifier_info with credential_ids referencing no credential query is rejected by the wallet" {

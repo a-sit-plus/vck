@@ -30,6 +30,9 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 val DcApiVerifierIsoConversionTest by matrixSuite {
     val ageOver18 = MdocClaimReference("org.iso.18013.5.1", "age_over_18")
     val birthDate = MdocClaimReference("org.iso.18013.5.1", "birth_date")
+    // their content does not matter here, the wallet validates them
+    val wrprcJwt = "eyJhbGciOiJFUzI1NiJ9.e30.c2lnbmF0dXJl"
+    val wrprcCwt = byteArrayOf(0xD2.toByte(), 0x84.toByte(), 0x40, 0xA0.toByte(), 0xF6.toByte(), 0x40)
 
     fixture { StoreRecordingVerifier() } - {
         test("a request the ISO conversion can express creates state for both exchange protocols") {
@@ -65,6 +68,44 @@ val DcApiVerifierIsoConversionTest by matrixSuite {
             val result = it.createForBothProtocols(request, listOf(transactionData))
 
             result.exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "Transaction data"
+            it.storedEphemeralKeys.putKeys.shouldBeEmpty()
+            it.storedAuthnRequests.putKeys.shouldBeEmpty()
+            it.storedIsoMdocRequests.putKeys.shouldBeEmpty()
+        }
+
+        test("the CWT of the registration certificate is the euWrprc of every document request of Annex C") {
+            val request = RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", ageOver18)
+            val registrationCertificate = RelyingPartyRegistrationCertificate(jwt = wrprcJwt, cwt = wrprcCwt)
+
+            it.createForBothProtocols(request, registrationCertificate = registrationCertificate).getOrThrow()
+
+            it.storedIsoMdocRequest().deviceRequest.docRequests.single()
+                .itemsRequest.value.requestInfo.shouldNotBeNull().euWrprc shouldBe wrprcCwt
+        }
+
+        test("a registration certificate without the CWT offered over Annex C creates no state for any protocol") {
+            val request = RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", ageOver18)
+
+            val result = it.createForBothProtocols(
+                request,
+                registrationCertificate = RelyingPartyRegistrationCertificate(jwt = wrprcJwt),
+            )
+
+            result.exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "CWT"
+            it.storedEphemeralKeys.putKeys.shouldBeEmpty()
+            it.storedAuthnRequests.putKeys.shouldBeEmpty()
+            it.storedIsoMdocRequests.putKeys.shouldBeEmpty()
+        }
+
+        test("a registration certificate without the JWT offered over OpenID4VP creates no state for any protocol") {
+            val request = RequestedCredential.Mdoc("org.iso.18013.5.1.mDL", ageOver18)
+
+            val result = it.createForBothProtocols(
+                request,
+                registrationCertificate = RelyingPartyRegistrationCertificate(cwt = wrprcCwt),
+            )
+
+            result.exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain "JWT"
             it.storedEphemeralKeys.putKeys.shouldBeEmpty()
             it.storedAuthnRequests.putKeys.shouldBeEmpty()
             it.storedIsoMdocRequests.putKeys.shouldBeEmpty()
@@ -124,16 +165,21 @@ private class StoreRecordingVerifier {
         presentationPolicy = testPresentationPolicy,
     )
 
-    /** Offers [credential], with [transactionData], over OpenID4VP and ISO/IEC 18013-7 Annex C in one browser call. */
+    /**
+     * Offers [credential], with [transactionData] and [registrationCertificate], over OpenID4VP and ISO/IEC 18013-7
+     * Annex C in one browser call.
+     */
     suspend fun createForBothProtocols(
         credential: RequestedCredential,
         transactionData: List<TransactionData>? = null,
+        registrationCertificate: RelyingPartyRegistrationCertificate? = null,
     ) = verifier.createAuthnRequest(
         OpenId4VpRequestOptions(
             presentationRequest = CredentialPresentationRequestBuilder(credential).toDCQLRequest(),
             responseMode = OpenIdConstants.ResponseMode.DcApi,
             expectedOrigins = listOf("https://example.com"),
             transactionData = transactionData,
+            registrationCertificate = registrationCertificate,
         ),
         DcApiCreationOptions.OpenId4VpUnsigned,
         DcApiCreationOptions.Iso180137AnnexC,

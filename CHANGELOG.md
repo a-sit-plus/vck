@@ -213,6 +213,13 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,
       8.3.2.1.2.2), but VC-K requests only those it requires. Documents are assigned to requests regardless of their
       order, so two requests of one docType need two documents
+    - Add `OpenId4VpRequestOptions.registrationCertificate`, a `RelyingPartyRegistrationCertificate` with the JWT and
+      the CWT of the relying party's WRPRC (ETSI TS 119 475 V1.2.1, GEN-5.2.1-01), given in one place: the JWT is sent
+      in a `verifier_info` element of the format `registration_cert`, base64url-encoded (ETSI TS 119 472-2 V1.3.1,
+      OIDFVP-HAIP-COMMON-REQ-RO-15, RO-16), the CWT in the `euWrprc` of every document request of ISO/IEC 18013-7
+      Annex C. Requesting over a protocol without its encoding fails, as does a `registration_cert` in `verifierInfo`
+      or a CWT in `euWrprc` next to it. Deprecate `OpenId4VpRequestOptions.euWrprc` in favor of it, and
+      `OpenId4VpRequestOptions.verifierInfo`, as VC-K supports no other attestation in `verifier_info`
     - BREAKING: `DcApiVerifier.createAuthnRequest` fails for `transactionData` offered over ISO/IEC 18013-7 Annex C,
       whose `DeviceRequest` carries none, so that its response could not authorize the transaction (OpenID4VP 1.0,
       5.1), before creating any request, instead of sending the Annex C request without it

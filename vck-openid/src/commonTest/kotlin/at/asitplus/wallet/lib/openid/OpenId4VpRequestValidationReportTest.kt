@@ -138,9 +138,7 @@ val OpenId4VpRequestValidationReportTest by matrixSuite {
         val wrprc = SignJwt<WrpPayload>(EphemeralKeyWithSelfSignedCert(), JwsHeaderCertOrJwk())(
             "rc-wrp+jwt", payload, WrpPayload.serializer(),
         ).getOrThrow().toString()
-        val request = relyingParty.request(
-            claims = mapOf("verifier_info" to """[{"format":"registration_cert","data":"$wrprc"}]""")
-        )
+        val request = relyingParty.request(registrationCertificate = RelyingPartyRegistrationCertificate(jwt = wrprc))
 
         val validation = holder.startAuthorizationResponsePreparation(request, strictPolicy).getOrThrow()
 
@@ -245,7 +243,10 @@ private class RelyingParty(val keyMaterial: KeyMaterial, certificate: X509Certif
     val certificates = TrustedCertificates { setOf(certificate) }
     val validator = RelyingPartyValidator(trust = RelyingPartyTrustAnchors(accessCertificates = certificates))
 
-    suspend fun requestParameters(): AuthenticationRequestParameters {
+    /** The parameters of a request this relying party creates, with [registrationCertificate]. */
+    suspend fun requestParameters(
+        registrationCertificate: RelyingPartyRegistrationCertificate? = null,
+    ): AuthenticationRequestParameters {
         val requestUrl = "https://example.com/request"
         val created = verifier.createAuthnRequest(
             OpenId4VpRequestOptions(
@@ -254,15 +255,22 @@ private class RelyingParty(val keyMaterial: KeyMaterial, certificate: X509Certif
                 ).toDCQLRequest(),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
+                registrationCertificate = registrationCertificate,
             ),
             CreationOptions.SignedRequestByReference("haip://", requestUrl),
         ).getOrThrow()
         return JwsCompactTyped<AuthenticationRequestParameters>(created.loadRequestObject!!(null).getOrThrow()).payload
     }
 
-    /** A request object of this relying party, signed with its certificate in `x5c`, with additional [claims]. */
-    suspend fun request(claims: Map<String, Any> = emptyMap()): RequestParametersFrom<AuthenticationRequestParameters> {
-        val parameters = requestParameters()
+    /**
+     * A request object of this relying party, signed with its certificate in `x5c`, with [registrationCertificate] and
+     * additional [claims].
+     */
+    suspend fun request(
+        claims: Map<String, Any> = emptyMap(),
+        registrationCertificate: RelyingPartyRegistrationCertificate? = null,
+    ): RequestParametersFrom<AuthenticationRequestParameters> {
+        val parameters = requestParameters(registrationCertificate)
         val payload = JsonObject(
             joseCompliantSerializer.encodeToJsonElement(AuthenticationRequestParameters.serializer(), parameters)
                 .jsonObject + claims.mapValues { (_, value) ->
