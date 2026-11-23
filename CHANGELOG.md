@@ -107,19 +107,23 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
-    - Fix: `DCQLQuery.toIso180137AnnexCDeviceRequest()` fails for what an ISO `DeviceRequest` can not express,
-      instead of requesting more or other than the query: `credential_sets` other than required sets with a single
-      option that together request every credential query, expected claim `values` of a requested data element,
-      `multiple`, and `trusted_authorities`. `claim_sets` are requested as alternative data elements (ISO/IEC DIS
+    - Fix: `DCQLQuery.toIso180137AnnexCDeviceRequest()` fails for what an ISO `DeviceRequest` can not express, instead
+      of requesting more or other than the query: `credential_sets` that are all optional, a credential set with an
+      option contained in another one, which ISO can not satisfy, as "Exactly one DocumentSet has to be satisfied",
+      `trusted_authorities` of another type than `aki`, and expected claim `values` of a requested data element.
+      `credential_sets` are use cases (ISO/IEC DIS 18013-5:2026, 10.2.5) with the new `DeviceRequest.forUseCases`, in
+      version 1.1, unless they only require every credential query; credential queries no set requests are left out.
+      `multiple` is `uniqueDocSetRequired = !multiple`, which is always set, and `trusted_authorities` of type `aki` are
+      the `issuerIdentifiers` (ibid., 10.2.4). `claim_sets` are requested as alternative data elements (ISO/IEC DIS
       18013-5:2026, 10.2.4) with the new `ItemsRequest.ofCombinations`: the data elements all options share and the
-      first option are requested, each data element of the first option with the other options as its alternatives,
-      e.g. `age_over_18` with the alternative `birth_date`. An option contained in every other one is requested alone,
-      as the verifier accepts it, e.g. the required claims of claims requested if available, as ISO can not mark a
-      data element as optional. Alternative data elements are retained like the data element they are alternatives
-      to, so claims queries retaining them differently fail. A data element queried twice is requested once, retained
-      if any of its claims queries retains it. `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC
-      18013-7 Annex C before creating any request, so a query that can not be converted creates no nonce, ephemeral
-      key, or stored request for any exchange protocol
+      first option are requested, each data element of the first option with the other options as its alternatives, e.g.
+      `age_over_18` with the alternative `birth_date`. An option contained in every other one is requested alone, as the
+      verifier accepts it, e.g. the required claims of claims requested if available, as ISO can not mark a data element
+      as optional. Alternative data elements are retained like the data element they are alternatives to, so claims
+      queries retaining them differently fail. A data element queried twice is requested once, retained if any of its
+      claims queries retains it. `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC 18013-7 Annex C
+      before creating any request, so a query that can not be converted creates no nonce, ephemeral key, or stored
+      request for any exchange protocol
     - BREAKING: `DCQLClaimsPathPointer.query` returns a `List<DCQLSelectedClaim>`, each selected claim with its
       `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
       a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
