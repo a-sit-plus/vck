@@ -11,19 +11,30 @@ import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.openid.dcql.DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.asn1.subjectKeyIdentifier
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.ClaimSelection
 import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.RequestedCredentialSet
 import at.asitplus.wallet.lib.RequestedPresentation
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 val RequestedPresentationQueryTest by matrixSuite {
     val givenName = JsonClaimReference("given_name")
@@ -56,6 +67,37 @@ val RequestedPresentationQueryTest by matrixSuite {
                     )
                     claimSets.shouldBeNull()
                 }
+        }
+
+        test("a credential is queried once from any issuer by default") {
+            val credentials = listOf(pidSdJwt, mdlMdoc, loyaltyVcJwt)
+
+            val queries = credentials.map { it.query() }
+
+            queries.map { it.multiple } shouldBe listOf(false, false, false)
+            queries.map { it.trustedAuthorities } shouldBe listOf(null, null, null)
+        }
+
+        test("multiple credentials from the issuers of trusted authorities are queried by their key identifiers") {
+            val credential = RequestedCredential.SdJwt(
+                "urn:eudi:pid:1",
+                givenName,
+                id = "pid",
+                multiple = true,
+                trustedAuthorities = setOf(
+                    authority("s9tIpPmhxdiuNkHMEWNpYim8S8Y".decodeToByteArray(Base64UrlStrict)),
+                    authority(byteArrayOf(1, 2, 3)),
+                ),
+            )
+
+            val query = credential.query()
+
+            query.multiple shouldBe true
+            query.trustedAuthorities shouldBe nonEmptyListOf(
+                DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
+                    values = nonEmptyListOf("s9tIpPmhxdiuNkHMEWNpYim8S8Y", "AQID")
+                )
+            )
         }
 
         test("a VC-JWT is queried by its type, with claims paths from the root of the VC") {
@@ -228,3 +270,13 @@ val RequestedPresentationQueryTest by matrixSuite {
         }
     }
 }
+
+/** A self-signed certificate with the subject key identifier [keyIdentifier], as of a certificate authority. */
+private suspend fun authority(keyIdentifier: ByteArray): X509Certificate = EphemeralKeyWithSelfSignedCert(
+    extensions = listOf(
+        X509CertificateExtension(
+            oid = KnownOIDs.subjectKeyIdentifier,
+            value = Asn1EncapsulatingOctetString(listOf(Asn1.OctetString(keyIdentifier))),
+        )
+    )
+).getCertificate().shouldNotBeNull()

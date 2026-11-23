@@ -21,6 +21,9 @@ import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.openid.dcql.DCQLTrustedAuthorityQueryEntry
+import at.asitplus.openid.dcql.DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.ClaimSelection
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.RequestedCredential
@@ -32,7 +35,9 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.IsoDeviceRetrie
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SingleClaimReference
+import at.asitplus.wallet.lib.extensions.subjectKeyIdentifier
 import io.github.z4kn4fein.semver.Version
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.jvm.JvmStatic
 
 /**
@@ -139,6 +144,8 @@ private fun RequestedCredential.SdJwt.toSdJwtQuery(
     meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(vctValues = listOf(vct)),
     claims = queries.claims,
     claimSets = queries.claimSets,
+    multiple = multiple,
+    trustedAuthorities = toTrustedAuthorities(),
 )
 
 private fun RequestedCredential.VcJwt.toVcJwtQuery(
@@ -148,6 +155,7 @@ private fun RequestedCredential.VcJwt.toVcJwtQuery(
     meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(typeValues = nonEmptyListOf(listOf(type))),
     claims = queries.claims,
     claimSets = queries.claimSets,
+    multiple = multiple,
 )
 
 private fun RequestedCredential.Mdoc.toIsoMdocQuery(
@@ -157,7 +165,24 @@ private fun RequestedCredential.Mdoc.toIsoMdocQuery(
     meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(doctypeValue = docType),
     claims = queries.claims,
     claimSets = queries.claimSets,
+    multiple = multiple,
+    trustedAuthorities = toTrustedAuthorities(),
 )
+
+/**
+ * The `trusted_authorities` of type `aki` of [RequestedCredential.trustedAuthorities]: the subject key identifier of
+ * each, which the certificates it issues carry as their authority key identifier (RFC 5280, 4.2.1.2), "encoded as
+ * base64url" (OpenID4VP 1.0, 6.1.1), or none if there are none.
+ */
+private fun RequestedCredential.toTrustedAuthorities(): NonEmptyList<DCQLTrustedAuthorityQueryEntry>? =
+    if (trustedAuthorities.isEmpty()) null
+    else nonEmptyListOf(
+        DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
+            values = trustedAuthorities
+                .map { requireNotNull(it.subjectKeyIdentifier).encodeToString(Base64UrlStrict) }
+                .toNonEmptyList()
+        )
+    )
 
 private fun ClaimSelection<JsonClaimReference>.toJsonClaimsQueries() =
     toClaimsQueries { claim, id -> DCQLJsonClaimsQuery(id = id, path = claim.path) }

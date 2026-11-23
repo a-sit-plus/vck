@@ -1,14 +1,23 @@
 package at.asitplus.wallet.lib
 
+import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.asn1.subjectKeyIdentifier
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.IsoMdocFallbackCredentialScheme
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -227,6 +236,45 @@ val RequestedCredentialTest by matrixSuite {
             }
         }
 
+        test("requests a unique document set from any issuer by default") {
+            val mdoc = RequestedCredential.Mdoc(
+                "org.iso.18013.5.1.mDL",
+                MdocClaimReference("org.iso.18013.5.1", "family_name"),
+            )
+
+            val docRequest = mdoc.toDocRequest()
+
+            docRequest.itemsRequest.value.requestInfo shouldBe DocRequestInfo(uniqueDocSetRequired = true)
+        }
+
+        test("requests multiple documents from the issuers of the trusted authorities as set") {
+            val mdoc = RequestedCredential.Mdoc(
+                "org.iso.18013.5.1.mDL",
+                MdocClaimReference("org.iso.18013.5.1", "family_name"),
+                multiple = true,
+                trustedAuthorities = setOf(authority(byteArrayOf(1, 2, 3))),
+            )
+
+            val docRequest = mdoc.toDocRequest()
+
+            docRequest.itemsRequest.value.requestInfo shouldBe DocRequestInfo(
+                uniqueDocSetRequired = false,
+                issuerIdentifiers = listOf(byteArrayOf(1, 2, 3)),
+            )
+        }
+
+        test("a trusted authority without subject key identifier is rejected") {
+            val certificate = EphemeralKeyWithSelfSignedCert().getCertificate().shouldNotBeNull()
+
+            shouldThrow<IllegalArgumentException> {
+                RequestedCredential.Mdoc(
+                    "org.iso.18013.5.1.mDL",
+                    MdocClaimReference("org.iso.18013.5.1", "family_name"),
+                    trustedAuthorities = setOf(certificate),
+                )
+            }
+        }
+
         test("without data elements, no DocRequest can be created") {
             shouldThrow<IllegalArgumentException> {
                 RequestedCredential.Mdoc("org.iso.18013.5.1.mDL").toDocRequest()
@@ -234,3 +282,13 @@ val RequestedCredentialTest by matrixSuite {
         }
     }
 }
+
+/** A self-signed certificate with the subject key identifier [keyIdentifier], as of a certificate authority. */
+private suspend fun authority(keyIdentifier: ByteArray): X509Certificate = EphemeralKeyWithSelfSignedCert(
+    extensions = listOf(
+        X509CertificateExtension(
+            oid = KnownOIDs.subjectKeyIdentifier,
+            value = Asn1EncapsulatingOctetString(listOf(Asn1.OctetString(keyIdentifier))),
+        )
+    )
+).getCertificate().shouldNotBeNull()

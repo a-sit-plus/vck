@@ -1,17 +1,20 @@
 package at.asitplus.wallet.lib
 
 import at.asitplus.iso.DocRequest
+import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
+import at.asitplus.wallet.lib.extensions.subjectKeyIdentifier
 import com.benasher44.uuid.uuid4
 import kotlin.jvm.JvmOverloads
 
@@ -35,6 +38,26 @@ sealed interface RequestedCredential {
     val id: String
 
     /**
+     * Whether several credentials may be presented for this request: DCQL `multiple` (OpenID4VP 1.0, 6.1), and ISO
+     * `uniqueDocSetRequired = !multiple` (ISO/IEC DIS 18013-5:2026, 10.2.4).
+     */
+    val multiple: Boolean
+
+    /**
+     * Certificates of the authorities that certify the issuers the verifier accepts, e.g. the IACA certificates of
+     * mDL issuers, or empty for any issuer. They are requested by their subject key identifiers, which the certificates
+     * they issue carry as their authority key identifier (RFC 5280, 4.2.1.2): the DCQL `trusted_authorities` of type
+     * `aki` (OpenID4VP 1.0, 6.1.1), and the ISO `issuerIdentifiers` (ISO/IEC DIS 18013-5:2026, 10.2.4), so a
+     * credential matches if a certificate in its chain was issued by one of them. Constructing a request fails for a
+     * certificate without a subject key identifier, which RFC 5280, 4.2.1.2 requires of every CA certificate.
+     *
+     * The wallet uses them to not present credentials the verifier would reject, which does not replace the verifier's
+     * own trust validation: "Verifiers must verify that the issuer of a received presentation is trusted on their
+     * own" (OpenID4VP 1.0, 6.1).
+     */
+    val trustedAuthorities: Set<X509Certificate>
+
+    /**
      * An SD-JWT VC (format `dc+sd-jwt`) of the type [vct] (OpenID4VP 1.0, B.3.5). The paths of [claims] start at the
      * root of the processed SD-JWT VC payload.
      */
@@ -42,9 +65,12 @@ sealed interface RequestedCredential {
         val vct: String,
         val claims: ClaimSelection<JsonClaimReference> = ClaimSelection.All(),
         override val id: String = uuid4().toString(),
+        override val multiple: Boolean = false,
+        override val trustedAuthorities: Set<X509Certificate> = setOf(),
     ) : RequestedCredential {
         init {
             requireCredentialQueryId(id)
+            requireSubjectKeyIdentifiers(trustedAuthorities)
         }
 
         /** Requests every claim of [claims]. */
@@ -52,11 +78,15 @@ sealed interface RequestedCredential {
         constructor(
             vct: String,
             vararg claims: JsonClaimReference,
-            id: String = uuid4().toString()
+            id: String = uuid4().toString(),
+            multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             vct = vct,
             claims = ClaimSelection.All(claims.toSet()),
-            id = id
+            id = id,
+            multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
 
         /** Requests an SD-JWT VC of the [CredentialScheme.sdJwtType] of [scheme]. */
@@ -65,10 +95,14 @@ sealed interface RequestedCredential {
             scheme: SdJwtCredentialScheme,
             claims: ClaimSelection<JsonClaimReference> = ClaimSelection.All(),
             id: String = uuid4().toString(),
+            multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             vct = scheme.sdJwtType,
             claims = claims,
-            id = id
+            id = id,
+            multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
 
         /** Requests an SD-JWT VC of the [CredentialScheme.sdJwtType] of [scheme] with every claim of [claims]. */
@@ -76,11 +110,15 @@ sealed interface RequestedCredential {
         constructor(
             scheme: SdJwtCredentialScheme,
             vararg claims: JsonClaimReference,
-            id: String = uuid4().toString()
+            id: String = uuid4().toString(),
+            multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             vct = scheme.sdJwtType,
             claims = ClaimSelection.All(claims.toSet()),
-            id = id
+            id = id,
+            multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
     }
 
@@ -90,26 +128,36 @@ sealed interface RequestedCredential {
      * Claims of a VC-JWT are not selectively disclosable, so [claims] only decides which credential matches the
      * request, and the whole credential is presented (OpenID4VP 1.0, 6.4.1). The paths of [claims] start at the root
      * of the VC, e.g. `JsonClaimReference("credentialSubject", "given_name")` (OpenID4VP 1.0, B.1.2).
+     *
+     * A VC-JWT can not be requested with [trustedAuthorities]: VC-K's verifier keeps no certificate chain of a
+     * VC-JWT, so it could not check the authority key identifiers a wallet matches against.
      */
     data class VcJwt @JvmOverloads constructor(
         val type: String,
         val claims: ClaimSelection<JsonClaimReference> = ClaimSelection.All(),
         override val id: String = uuid4().toString(),
+        override val multiple: Boolean = false,
     ) : RequestedCredential {
         init {
             requireCredentialQueryId(id)
         }
+
+        /** Always empty, see [VcJwt]. */
+        override val trustedAuthorities: Set<X509Certificate>
+            get() = setOf()
 
         /** Requests every claim of [claims]. */
         @JvmOverloads
         constructor(
             type: String,
             vararg claims: JsonClaimReference,
-            id: String = uuid4().toString()
+            id: String = uuid4().toString(),
+            multiple: Boolean = false,
         ) : this(
             type = type,
             claims = ClaimSelection.All(claims.toSet()),
-            id = id
+            id = id,
+            multiple = multiple,
         )
 
         /** Requests a VC-JWT of the [CredentialScheme.vcType] of [scheme]. */
@@ -118,10 +166,12 @@ sealed interface RequestedCredential {
             scheme: VcJwtCredentialScheme,
             claims: ClaimSelection<JsonClaimReference> = ClaimSelection.All(),
             id: String = uuid4().toString(),
+            multiple: Boolean = false,
         ) : this(
             type = scheme.vcType,
             claims = claims,
-            id = id
+            id = id,
+            multiple = multiple,
         )
 
         /** Requests a VC-JWT of the [CredentialScheme.vcType] of [scheme] with every claim of [claims]. */
@@ -129,11 +179,13 @@ sealed interface RequestedCredential {
         constructor(
             scheme: VcJwtCredentialScheme,
             vararg claims: JsonClaimReference,
-            id: String = uuid4().toString()
+            id: String = uuid4().toString(),
+            multiple: Boolean = false,
         ) : this(
             type = scheme.vcType,
             claims = ClaimSelection.All(claims.toSet()),
-            id = id
+            id = id,
+            multiple = multiple,
         )
     }
 
@@ -148,6 +200,8 @@ sealed interface RequestedCredential {
          */
         val intentToRetain: Set<MdocClaimReference> = setOf(),
         override val id: String = uuid4().toString(),
+        override val multiple: Boolean = false,
+        override val trustedAuthorities: Set<X509Certificate> = setOf(),
     ) : RequestedCredential {
 
         /** Requests every data element of [claims]. */
@@ -157,11 +211,15 @@ sealed interface RequestedCredential {
             vararg claims: MdocClaimReference,
             intentToRetain: Set<MdocClaimReference> = setOf(),
             id: String = uuid4().toString(),
+            multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             docType = docType,
             claims = ClaimSelection.All(claims.toSet()),
             intentToRetain = intentToRetain,
-            id = id
+            id = id,
+            multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
 
         /** Requests an mdoc of the [CredentialScheme.isoDocType] of [scheme]. */
@@ -171,11 +229,15 @@ sealed interface RequestedCredential {
             claims: ClaimSelection<MdocClaimReference> = ClaimSelection.All(),
             intentToRetain: Set<MdocClaimReference> = setOf(),
             id: String = uuid4().toString(),
+            multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             docType = scheme.isoDocType,
             claims = claims,
             intentToRetain = intentToRetain,
-            id = id
+            id = id,
+            multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
 
         /** Requests an mdoc of the [CredentialScheme.isoDocType] of [scheme] with every data element of [claims]. */
@@ -185,15 +247,20 @@ sealed interface RequestedCredential {
             vararg claims: MdocClaimReference,
             intentToRetain: Set<MdocClaimReference> = setOf(),
             id: String = uuid4().toString(),
+            multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             docType = scheme.isoDocType,
             claims = ClaimSelection.All(claims.toSet()),
             intentToRetain = intentToRetain,
-            id = id
+            id = id,
+            multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
 
         init {
             requireCredentialQueryId(id)
+            requireSubjectKeyIdentifiers(trustedAuthorities)
             val notRequested = intentToRetain - claims.allClaims
             require(notRequested.isEmpty()) { "Data elements to retain are not requested: $notRequested" }
         }
@@ -209,6 +276,10 @@ sealed interface RequestedCredential {
          * IntentToRetain}`, ISO/IEC 18013-5:2021, 8.3.2.1.2.1).
          * Fails for [ClaimSelection.Alternatives] too, which an `ItemsRequest` can not express,
          * instead of requesting all data elements of all options.
+         *
+         * Its `DocRequestInfo` has `uniqueDocSetRequired = !`[multiple], always set, as its "Presence … is recommended
+         * for the mdoc reader", and the subject key identifiers of [trustedAuthorities] as `issuerIdentifiers`
+         * (ISO/IEC DIS 18013-5:2026, 10.2.4).
          */
         fun toDocRequest(): DocRequest {
             val dataElements = when (val selection = claims) {
@@ -225,8 +296,29 @@ sealed interface RequestedCredential {
                     valueTransform = { SingleItemsRequest(it.claimName, it in intentToRetain) },
                 )
                 .mapValues { ItemsRequestList(it.value) }
-            return DocRequest(ByteStringWrapper(ItemsRequest(docType = docType, namespaces = namespaces)))
+            val requestInfo = DocRequestInfo(
+                uniqueDocSetRequired = !multiple,
+                issuerIdentifiers = trustedAuthorityKeyIdentifiers().ifEmpty { null },
+            )
+            return DocRequest(
+                ByteStringWrapper(ItemsRequest(docType = docType, namespaces = namespaces, requestInfo = requestInfo))
+            )
         }
+    }
+}
+
+/**
+ * The subject key identifiers of the [RequestedCredential.trustedAuthorities], each the key identifier of the
+ * authority key identifier of the certificates they issue (RFC 5280, 4.2.1.2), in their order.
+ */
+private fun RequestedCredential.trustedAuthorityKeyIdentifiers(): List<ByteArray> =
+    trustedAuthorities.map { requireNotNull(it.subjectKeyIdentifier) { "A trusted authority has no key identifier" } }
+
+/** Requires a subject key identifier of each of [trustedAuthorities], see [RequestedCredential.trustedAuthorities]. */
+private fun requireSubjectKeyIdentifiers(trustedAuthorities: Set<X509Certificate>) {
+    val without = trustedAuthorities.filter { it.subjectKeyIdentifier == null }
+    require(without.isEmpty()) {
+        "Trusted authorities are requested by their subject key identifiers, but ${without.size} have none"
     }
 }
 

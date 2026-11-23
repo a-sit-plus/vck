@@ -217,6 +217,13 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       `optional`, `RequestedPresentation.allOf`). `CredentialPresentationRequestBuilder` builds them into the DCQL
       `claims`, `claim_sets`, and `credential_sets` (OpenID4VP 1.0, 6.1 to 6.4). The claims requested `ifAvailable`
       are one bundle: if the holder's credential lacks one of them, none of them is presented
+    - Add `multiple` and `trustedAuthorities` to `RequestedCredential`: the DCQL `multiple`, and the certificates of
+      the authorities that certify accepted issuers, requested by their subject key identifiers (RFC 5280, 4.2.1.2) as
+      `trusted_authorities` of type `aki` (OpenID4VP 1.0, 6.1, 6.1.1). `RequestedCredential.Mdoc.toDocRequest()` sets
+      `uniqueDocSetRequired = !multiple`, always, and the same key identifiers as `issuerIdentifiers` (ISO/IEC DIS
+      18013-5:2026, 10.2.4). A trusted authority without a subject key identifier fails constructing the request. A
+      `RequestedCredential.VcJwt` has none, as the verifier keeps no certificate chain of a VC-JWT to check them. Add
+      `X509Certificate.subjectKeyIdentifier`
     - BREAKING: `CredentialPresentationRequestBuilder` holds a `RequestedPresentation` instead of
       `credentials: Collection<RequestOptionsCredential>`. It takes `RequestedCredential`s as vararg or collection,
       and `RequestOptionsCredential`s as vararg or with `fromRequestOptions(collection)`, converted with the new
