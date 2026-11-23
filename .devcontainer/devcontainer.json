@@ -11,8 +11,8 @@
   "updateRemoteUserUID": true,
   "mounts": [
     "source=vck-gradle-${devcontainerId},target=/home/node/.gradle,type=volume",
-    "source=vck-codex,target=/home/node/.codex,type=volume",
-    "source=vck-claude,target=/home/node/.claude,type=volume"
+    "source=vck-codex-${devcontainerId},target=/home/node/.codex,type=volume",
+    "source=vck-claude-${devcontainerId},target=/home/node/.claude,type=volume"
   ],
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",

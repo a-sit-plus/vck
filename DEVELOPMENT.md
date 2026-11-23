@@ -59,7 +59,7 @@ the agents' work in one of these ways:
   prompt that you did not trigger yourself, and never let IDEA remember a key choice. IDEA also copies your
   global Git configuration, so commits in that container carry your name and email. Start the agents in
   the container of the Dev Container CLI instead of IDEA's terminal: that container has no SSH agent
-  socket, and both containers share the checkout and the agents' sign-ins.
+  socket, and both containers share the checkout.
 
   The IDE backend runs as the same user as the agents, so the agents can change it like any other file in
   the container. IDEA keeps its backends in the Docker volume `jb_devcontainers_shared_volume`, which every
@@ -74,10 +74,15 @@ primary checkout before you build, especially changes to `*.gradle.kts`, `gradle
 `gradlew`, and `conventions-vclib/`. Diffs shown inside the container come from the agents' environment,
 so this host-side review is the one to rely on.
 
-Docker volumes keep the Gradle cache and both agents' sign-ins across container rebuilds. The sign-in
-volumes `vck-codex` and `vck-claude` have fixed names, so the containers that the Dev Container CLI and IDEA
-create share them, and you sign in once per machine. Each container gets its own Gradle cache volume, so
-the CLI and IDEA containers each download the Gradle distribution and dependencies once.
+Docker volumes keep the Gradle cache and both agents' configuration directories, including their sign-ins,
+across container rebuilds. Each container gets its own volumes, named `vck-gradle-`, `vck-codex-`, and
+`vck-claude-` followed by the container's ID. You sign in once per clone, in the container of the Dev
+Container CLI where you run the agents, and the CLI and IDEA containers each download the Gradle
+distribution and dependencies once. The agents can write their own configuration, for example hooks or MCP
+servers that run commands, so no container shares it: what an agent stores in one container never runs in
+another, such as IDEA's container with its SSH agent. The volumes outlive a rebuild, so to start an agent
+from a clean configuration, remove its volume while no Dev Container runs, for example with
+`docker volume ls --quiet --filter name=vck-claude- | xargs docker volume rm`.
 
 Root owns the Android SDK in the image, so Gradle cannot install missing SDK packages. If a build reports
 that it could not install one, add the package to the `sdkmanager` command in the
