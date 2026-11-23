@@ -54,6 +54,7 @@ import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.jws.SignJwtFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.procedures.iso.DeviceRequestAdapter
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.utils.MapStore
 import at.asitplus.wallet.lib.validation.CheckOutcome
@@ -457,9 +458,8 @@ class DcApiVerifier @JvmOverloads constructor(
                     encryption = CheckOutcome.Passed,
                     expectedOrigin = CheckOutcome.Passed,
                     requestState = CheckOutcome.Passed,
-                    submissionRequirements = isoMdocRequest.deviceRequest.docRequests
-                        .map { it.itemsRequest.value }
-                        .submissionRequirements(
+                    submissionRequirements = DeviceRequestAdapter(isoMdocRequest.deviceRequest)
+                        .checkAcceptedDocuments(
                             presentationValidations.mapNotNull {
                                 (it.presentation as? ValidatedPresentation.MdocDocument)?.document
                             }

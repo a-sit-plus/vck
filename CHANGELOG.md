@@ -213,6 +213,13 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,
       8.3.2.1.2.2), but VC-K requests only those it requires. Documents are assigned to requests regardless of their
       order, so two requests of one docType need two documents
+    - `DcApiVerifier` checks an Annex C response against the extended request (ISO/IEC DIS 18013-5:2026, 10.2.4,
+      10.2.5) with the new `DeviceRequestAdapter.checkAcceptedDocuments` in `vck`, the counterpart of
+      `DCQLQueryAdapter.checkAcceptedSubmissions`: the accepted documents answer document requests that satisfy the use
+      cases, exactly one document set of each satisfied one, every mandatory one and at least one; a document answers a
+      document request with each requested data element or all data elements of one of its alternative element sets,
+      and, with `issuerIdentifiers`, only if a certificate in the `x5chain` of its `IssuerAuth` has one of them as its
+      authority key identifier, which is no evidence of its issuer
     - Fix: `OpenId4VpRequestOptions` accepts transaction data whose `credential_ids` reference only some of the
       credential queries, e.g. not an optional one, as each of them only has to reference a requested credential
       "that can be used to authorize this transaction" (OpenID4VP 1.0, 5.1). It still rejects `credential_ids` that

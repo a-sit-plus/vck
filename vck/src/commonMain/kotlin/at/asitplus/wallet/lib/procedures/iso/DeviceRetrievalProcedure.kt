@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.AlternativeDataElementsSet
 import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.Document
 import at.asitplus.iso.ElementReference
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
@@ -106,6 +107,16 @@ internal object DeviceRetrievalProcedure {
         }
     }
 
+    /**
+     * Whether [document] of a response answers [itemsRequest]: it is of the requested docType, matches its
+     * `issuerIdentifiers`, see [isIssuedByRequestedAuthority], and returns, issuer-signed, each requested data element
+     * or all data elements of one of its alternative element sets, see [isSatisfiedBy].
+     */
+    fun answers(document: Document, itemsRequest: ItemsRequest): Boolean =
+        document.docType == itemsRequest.docType &&
+                itemsRequest.isIssuedByRequestedAuthority(document.issuerSigned) &&
+                itemsRequest.isSatisfiedBy(document.issuerSigned.availableItems().keys)
+
     /** See [createPresentationParameters]. */
     private fun DeviceRequestCredentialDisclosure<StoreEntry>.validate(
         itemsRequest: ItemsRequest,
@@ -176,30 +187,56 @@ internal object DeviceRetrievalProcedure {
             .map { it.toClaimsMatch(availableItems) }
     }
 
-    /**
-     * Fails if `issuerIdentifiers` are requested, but none is the authority key identifier of a certificate in the
-     * `x5chain` of the `IssuerAuth` of [issuerSigned], as "An mdoc only satisfies the DocRequest if one of the
-     * IssuerIdentifier matches" (ISO/IEC DIS 18013-5:2026, 10.2.4).
-     */
-    private fun ItemsRequest.requireIssuedByRequestedAuthority(issuerSigned: IssuerSigned) {
-        requestInfo?.issuerIdentifiers?.let { issuerIdentifiers ->
-            val authorities = issuerSigned.issuerAuth.authorityKeyIdentifiers()
-            require(issuerIdentifiers.any { identifier -> authorities.any { it.contentEquals(identifier) } }) {
-                "Credential is not issued by an authority of the requested issuer identifiers"
-            }
-        }
-    }
-
-    private fun IssuerSigned.availableItems(): Map<ElementReference, IssuerSignedItem> =
-        namespaces.orEmpty().flatMap { (namespace, items) ->
-            items.entries.map { ElementReference(namespace, it.value.elementIdentifier) to it.value }
-        }.toMap()
-
     /** The data elements of the `NameSpaces` of this request, in their order. */
     private fun ItemsRequest.requestedElements(): List<ElementReference> =
         namespaces.flatMap { (namespace, requested) ->
             requested.entries.map { ElementReference(namespace, it.dataElementIdentifier) }
         }
+
+    /** The alternative element sets of this requested data element in [alternatives], in their order. */
+    private fun ElementReference.alternativeSets(
+        alternatives: List<AlternativeDataElementsSet>,
+    ): List<List<ElementReference>> = alternatives.filter { it.requestedElement == this }
+        .flatMap { it.alternativeElementSets }
+
+    /** The issuer-signed data elements of this mdoc, by their name space and identifier. */
+    private fun IssuerSigned.availableItems(): Map<ElementReference, IssuerSignedItem> =
+        namespaces.orEmpty().flatMap { (namespace, items) ->
+            items.entries.map { ElementReference(namespace, it.value.elementIdentifier) to it.value }
+        }.toMap()
+
+    /**
+     * Whether [issuerSigned] satisfies the `issuerIdentifiers` of this request, if it has any: one of them is the
+     * authority key identifier of a certificate in the `x5chain` of its `IssuerAuth`, as "An mdoc only satisfies the
+     * DocRequest if one of the IssuerIdentifier matches" (ISO/IEC DIS 18013-5:2026, 10.2.4).
+     *
+     * This is no evidence of the issuer: the `x5chain` of an `IssuerAuth` is in its unprotected header (ibid., 12.3.4),
+     * which the issuer's signature does not cover, so a presenter can add certificates to it. Only the validation of
+     * the credential establishes trust in its issuer.
+     */
+    private fun ItemsRequest.isIssuedByRequestedAuthority(issuerSigned: IssuerSigned): Boolean {
+        val issuerIdentifiers = requestInfo?.issuerIdentifiers ?: return true
+        val authorities = issuerSigned.issuerAuth.authorityKeyIdentifiers()
+        return issuerIdentifiers.any { identifier -> authorities.any { it.contentEquals(identifier) } }
+    }
+
+    /**
+     * Whether the data elements [available] satisfy this request: for each requested data element, the element itself,
+     * or all data elements of one of its alternative element sets (ISO/IEC DIS 18013-5:2026, 10.2.8 step 1d).
+     */
+    private fun ItemsRequest.isSatisfiedBy(available: Set<ElementReference>): Boolean {
+        val alternatives = requestInfo?.alternativeDataElements.orEmpty()
+        return requestedElements().all { element ->
+            element in available || element.alternativeSets(alternatives).any { available.containsAll(it) }
+        }
+    }
+
+    /** Fails unless [issuerSigned] matches the requested `issuerIdentifiers`, see [isIssuedByRequestedAuthority]. */
+    private fun ItemsRequest.requireIssuedByRequestedAuthority(issuerSigned: IssuerSigned) {
+        require(isIssuedByRequestedAuthority(issuerSigned)) {
+            "Credential is not issued by an authority of the requested issuer identifiers"
+        }
+    }
 
     /**
      * This requested data element if it is [available], otherwise the first of its alternative element sets in
@@ -242,12 +279,6 @@ internal object DeviceRetrievalProcedure {
         covered: Set<ElementReference>,
     ): Boolean = if (isEmpty()) covered == target
     else first().any { choice -> drop(1).coverExactly(target, covered + choice) }
-
-    /** The alternative element sets of this requested data element in [alternatives], in their order. */
-    private fun ElementReference.alternativeSets(
-        alternatives: List<AlternativeDataElementsSet>,
-    ): List<List<ElementReference>> = alternatives.filter { it.requestedElement == this }
-        .flatMap { it.alternativeElementSets }
 
     private fun ElementReference.toClaimsMatch(
         availableItems: Map<ElementReference, IssuerSignedItem>
