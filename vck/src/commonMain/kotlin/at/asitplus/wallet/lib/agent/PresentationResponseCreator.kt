@@ -43,7 +43,7 @@ internal class PresentationResponseCreator(
     ): PresentationResponseParameters.DCQLParameters {
         val dcqlQuery = presentation.presentationRequest.dcqlQuery
         val credentialSubmissions = presentation.credentialQuerySubmissions
-            ?: matchDCQLQuery(dcqlQuery).getOrThrow().toDefaultSubmission(dcqlQuery).getOrThrow()
+            ?: matchDCQLQuery(dcqlQuery).getOrThrow().toDefaultSubmission().getOrThrow()
 
         DCQLQuery.Procedures.checkCredentialSetQueryRequirements(
             credentialSubmissions = credentialSubmissions.keys,
@@ -174,7 +174,8 @@ internal class PresentationResponseCreator(
         val deviceRequest = presentation.presentationRequest.deviceRequest
         val submissions = presentation.submissions
             ?: matchDeviceRequest(deviceRequest).getOrThrow().toDefaultSubmission().getOrThrow()
-        val selectedCredentials = DeviceRetrievalProcedure.validateSubmission(deviceRequest, submissions).getOrThrow()
+        val selectedCredentials =
+            DeviceRetrievalProcedure.createPresentationParameters(deviceRequest, submissions).getOrThrow()
         val result = verifiablePresentationFactory.createVerifiablePresentation(
             request = request,
             isoPresentationParameters = selectedCredentials,

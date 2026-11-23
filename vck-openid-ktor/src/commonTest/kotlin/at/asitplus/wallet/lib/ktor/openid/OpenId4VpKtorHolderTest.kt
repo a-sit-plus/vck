@@ -778,7 +778,7 @@ val OpenId4VpKtorHolderTest by matrixSuite {
             // no option of the required credential set is satisfied by a stored credential.
             it.wallet.getMatchingCredentials(preparationState).getOrThrow()
                 .shouldBeInstanceOf<DCQLMatchingResult<*>>().apply {
-                    matchingResult.toDefaultSubmission(presentationRequest.dcqlQuery).isFailure shouldBe true
+                    matchingResult.toDefaultSubmission().isFailure shouldBe true
                 }
         }
     }
