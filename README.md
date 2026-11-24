@@ -527,11 +527,69 @@ val androidResponseJson = response.toAndroidDcApiResponseJson()
 val iosResponseBytes = response.toIosIsoMdocResponseBytes()
 ```
 
+For an ISO request with use cases (ISO/IEC DIS 18013-5:2026, 10.2.5), the `IsoDeviceRetrievalMatchingResult` lists them
+in `matchingResult.useCases`, with their purpose hints and which document sets the wallet can satisfy. The default
+submission presents a satisfiable document set of each mandatory use case, or, if every use case is optional, of the
+first one the wallet can satisfy, as at least one has to be. To present an optional use case, or another document set,
+pass the document set chosen for each use case to `matchingResult.toSubmission(selection)`.
+
 On iOS, `IosDcApiMdocPreRequestSummary` represents the system's pre-request disclosure summary without depending on
 Apple frameworks. It can be converted for early matching with `toDeviceRequest()`. Once the full Annex C
 request arrives, require `summary.isConsistentWith(request.parameters.isoMdocRequest)` before continuing so that the
 final request cannot ask for different data than the system showed. The iOS response encoder accepts Annex C
 responses only; OpenID4VP responses use a different platform return path.
+
+#### DC API Verifier integration
+
+Describe the request with `DcApiRequestOptions` and offer it over one or more exchange protocols in one browser call.
+`DcApiVerifier` builds the request of each offered protocol only: a typed `RequestedPresentation` becomes a DCQL query
+for OpenID4VP and an ISO `DeviceRequest` for ISO/IEC 18013-7 Annex C, whose use cases carry the purpose hints of the
+credential sets. Pass a raw DCQL query or `DeviceRequest` as `DcApiPresentationRequest.Raw` instead. The registration
+certificate (WRPRC) of the relying party is given once, in the encoding of each protocol.
+
+```kotlin
+// age_over_18, or else birth_date, of an mDL, and optionally the name of a PID
+val mdl = RequestedCredential.Mdoc(
+    MDL_DOCTYPE,
+    ClaimSelection.Alternatives(
+        setOf(MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.AGE_OVER_18)),
+        setOf(MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.BIRTH_DATE)),
+    ),
+)
+val pid = RequestedCredential.Mdoc(
+    EU_PID_DOCTYPE,
+    MdocClaimReference(EU_PID_DOCTYPE, EuPidDataElements.GIVEN_NAME),
+    MdocClaimReference(EU_PID_DOCTYPE, EuPidDataElements.FAMILY_NAME),
+)
+val requestOptions = DcApiRequestOptions(
+    RequestedPresentation(
+        RequestedCredentialSet(
+            options = listOf(setOf(mdl)),
+            purposeHints = mapOf(UseCase.PURPOSE_CONTROLLER_ISO to UseCase.PURPOSE_AGE_VERIFICATION),
+        ),
+        RequestedCredentialSet.optional(setOf(pid)),
+    ),
+    expectedOrigins = listOf("https://verifier.example"),
+    registrationCertificate = RelyingPartyRegistrationCertificate(jwt = wrprcJwt, cwt = wrprcCwt),
+)
+val dcApiVerifier = DcApiVerifier(
+    keyMaterial = wrpacKeyMaterial,
+    clientIdScheme = ClientIdScheme.CertificateHash(wrpacChain, "https://verifier.example/callback"),
+    credentialValidator = credentialValidator,
+)
+val browserRequest = dcApiVerifier.createAuthnRequest(
+    requestOptions,
+    DcApiCreationOptions.OpenId4VpSigned,
+    DcApiCreationOptions.Iso180137AnnexC,
+).getOrThrow()
+
+// Pass browserRequest to navigator.credentials.get(), and its result back:
+val result = dcApiVerifier.validateAuthnResponse(
+    input = browserResponseJson,
+    externalId = requestOptions.state,
+    expectedOrigin = "https://verifier.example",
+).getOrThrow()
+```
 
 ### Registering a Zero-Knowledge Proof backend for ISO mDoc
 On the wallet side use `IsoMdocZkBackendRegistry` to register a zero-knowledge backend capable of generating 

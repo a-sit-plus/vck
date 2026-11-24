@@ -4,7 +4,9 @@ Release 10.0.0 (unreleased):
 
 Removes JSONPath as a dependency, because OpenID4VP relies on DCQL paths only. Strengthens implementation of SD-JWT
 processing. Adds typed presentation requests (`RequestedCredential`, `RequestedPresentation`) with claims requested if
-available, claim alternatives, and credential sets, replacing the deprecated `RequestOptionsCredential`.
+available, claim alternatives, and credential sets, replacing the deprecated `RequestOptionsCredential`. Supports the
+extended device requests of ISO/IEC DIS 18013-5:2026 (use cases, alternative data elements, issuer identifiers) in the
+wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over the Digital Credentials API.
 
 - Core:
     - Add `at.asitplus.wallet.lib.BuildProperties.vckVersion`, a compile-time constant generated from `artifactVersion`.

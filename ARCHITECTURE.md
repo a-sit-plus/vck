@@ -175,6 +175,16 @@ parties use `DcApiVerifier`. They dispatch OpenID4VP and ISO/IEC 18013-7 Annex C
 operations. Keep the returned `DcApiPreparationState` through matching, consent, and finalization instead of
 duplicating protocol dispatch or reconstructing state in application code.
 
+Relying parties describe a DC API request with `DcApiRequestOptions`: a typed `RequestedPresentation` or a raw DCQL
+query or ISO `DeviceRequest` (`DcApiPresentationRequest`), with only the parameters the DC API supports. `DcApiVerifier`
+builds the request of each offered protocol only if it is offered, a typed one directly as DCQL and as ISO
+(`RequestedPresentation.toDeviceRequest()`, with purpose hints), and checks every combination before creating any nonce,
+key, or stored request. The registration certificate (WRPRC) is given once, as `RelyingPartyRegistrationCertificate`,
+whose JWT goes into `verifier_info` and whose CWT into `euWrprc`. If `DcApiVerifier` authenticates the reader, i.e. its
+key material has a certificate and the request exactly one expected origin, it signs `readerAuth` for each document
+request, and with a `deviceRequestInfo` `readerAuthAll` too, the only signature covering it. Otherwise wallets see the
+use cases as unauthenticated.
+
 OpenID4VP request construction shared by redirect and DC API transports belongs in `OpenId4VpRequestFactory`.
 Transport-specific request-object claims, response codecs, origin checks, encryption, and ISO session-transcript
 calculation remain in `vck-openid`. A direct ISO Device Retrieval response is a `DeviceResponse`, not an OpenID4VP
@@ -255,7 +265,12 @@ Claim paths are OpenID4VP claims path pointers (`DCQLClaimsPathPointer`, OpenID4
 and data element identifier), never paths. Verifiers request credentials as `RequestedCredential.SdJwt`, `VcJwt`, or
 `Mdoc`, each with a `ClaimSelection` of `JsonClaimReference`s (VC-JWT paths from the root of the VC) or
 `MdocClaimReference`s, combined into a `RequestedPresentation` of `RequestedCredentialSet`s;
-`CredentialPresentationRequestBuilder` turns them into a DCQL query or an ISO `DeviceRequest`. The deprecated
+`CredentialPresentationRequestBuilder` turns them into a DCQL query, and `RequestedPresentation.toDeviceRequest()` into
+an ISO `DeviceRequest` of ISO/IEC DIS 18013-5:2026: credential sets become use cases, claim alternatives become
+alternative data elements, `multiple` becomes `uniqueDocSetRequired = !multiple`, and trusted authorities become
+`issuerIdentifiers`. Both reduce to the same
+helpers in `openid-data-classes` (`ItemsRequest.ofCombinations`, `DeviceRequest.forUseCases`), which the DCQL to ISO
+conversion (`toIso180137AnnexCDeviceRequest`) uses too. The deprecated
 `RequestOptionsCredential` only converts to a `RequestedCredential` (`toRequestedCredential`). Read the claims and
 disclosures of an SD-JWT through `SdJwtDecoded`. Do not add JSONPath: no implemented specification uses it, and
 draft-ietf-oauth-sd-jwt-vc-19 §5.6.1.2 rejects it for its complexity and security concerns.
@@ -279,7 +294,15 @@ CredentialPresentationRequest (DCQL or ISO Device Retrieval)
 
 Wire/query models live in `openid-data-classes`; matching, submission validation, and presentation creation live in
 `vck`; OpenID protocol projection and validation live in `vck-openid`. Keep the request and its typed matching result
-together through user selection so repeated ISO document requests and DCQL submission rules are not lost.
+together through user selection so repeated ISO document requests and DCQL submission rules are not lost: both holder
+matching results hold their request, and offer its choices (`HolderDCQLQueryMatchingResult.credentialSets`,
+`HolderIsoDeviceRetrievalQueryMatchingResult.useCases`) and a `toSubmission` of the chosen ones.
+
+The rules of an extended ISO request (use cases, alternative data elements, issuer identifiers) live in
+`DeviceRetrievalProcedure`, shared by the wallet's matching and submission check and by the verifier's response check
+`DeviceRequestAdapter`, the counterpart of `DCQLQueryAdapter`. Change them there for both sides at once. ISO matching
+does not follow the module split of DCQL yet: its rules should move to `openid-data-classes` over a credential
+abstraction, with document requests identified by a typed position.
 
 
 ### ISO mDoc Zero-Knowledge Proofs
@@ -564,8 +587,10 @@ Useful focused tests:
 - Core agent and presentation flows:
   `vck/src/commonTest/kotlin/at/asitplus/wallet/lib/agent/Agent*Test.kt`
 - ISO Device Retrieval and Annex C:
-  `vck/src/commonTest/kotlin/at/asitplus/wallet/lib/agent/AgentIsoMdoc*Test.kt` and
-  `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/openid/{Iso180137AnnexCProtocolTest,IsoMdocDcapiResponseBuilderTest}.kt`
+  `vck/src/commonTest/kotlin/at/asitplus/wallet/lib/agent/{AgentIsoMdoc*,HolderIsoDeviceRetrieval}Test.kt`,
+  `vck/src/commonTest/kotlin/at/asitplus/wallet/lib/procedures/iso/DeviceRequestAdapterTest.kt`,
+  `openid-data-classes/src/commonTest/kotlin/at/asitplus/iso/{DeviceRequestUseCases,ItemsRequestCombinations}Test.kt`, and
+  `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/openid/{Iso180137AnnexCProtocolTest,IsoMdocDcapiResponseBuilderTest,DcApiVerifierIsoConversionTest,DcApiRequestOptionsTest}.kt`
 - OpenID4VP:
   `vck-openid/src/commonTest/kotlin/at/asitplus/wallet/lib/openid/OpenId4Vp*Test.kt`
 - OpenID4VCI:
