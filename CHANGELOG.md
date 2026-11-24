@@ -213,6 +213,16 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,
       8.3.2.1.2.2), but VC-K requests only those it requires. Documents are assigned to requests regardless of their
       order, so two requests of one docType need two documents
+    - Add `DcApiRequestOptions` for `DcApiVerifier.createAuthnRequest`, with a typed `RequestedPresentation` or a raw
+      DCQL query or ISO `DeviceRequest` (`DcApiPresentationRequest`), built for each offered exchange protocol only:
+      a typed request is its DCQL query for OpenID4VP, and its `RequestedPresentation.toDeviceRequest()` for ISO/IEC
+      18013-7 Annex C, with the purpose hints of its credential sets. `responseMode` is `dc_api.jwt` by default (HAIP
+      1.0, 5.2). Deprecate `DcApiVerifier.createAuthnRequest(OpenId4VpRequestOptions, …)`, which converts its options
+      with the new `DcApiRequestOptions.from`. That fails for a `responseUrl`, a `responseType` other than `vp_token`,
+      and `verifierInfo` other than a `registration_cert`, which the DC API does not support (OpenID4VP 1.0, A.2), and
+      moves the WRPRC of `euWrprc` and `verifierInfo` into `registrationCertificate`. `populateClientId` is ignored, as
+      only signed requests have a `client_id`. A raw ISO `DeviceRequest` offered over OpenID4VP fails, instead of
+      sending an OpenID4VP request without a query
     - Add `OpenId4VpRequestOptions.registrationCertificate`, a `RelyingPartyRegistrationCertificate` with the JWT and
       the CWT of the relying party's WRPRC (ETSI TS 119 475 V1.2.1, GEN-5.2.1-01), given in one place: the JWT is sent
       in a `verifier_info` element of the format `registration_cert`, base64url-encoded (ETSI TS 119 472-2 V1.3.1,

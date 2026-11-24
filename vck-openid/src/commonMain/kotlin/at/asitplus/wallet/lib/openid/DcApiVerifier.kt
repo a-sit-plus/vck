@@ -25,7 +25,6 @@ import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.openid.dcql.toIso180137AnnexCDeviceRequest
@@ -179,71 +178,132 @@ class DcApiVerifier @JvmOverloads constructor(
      * Creates a new authentication request for the W3C Digital Credentials API, i.e. the object that the
      * relying party's frontend needs to pass to the browser in `navigator.credentials.get()`.
      *
-     * [requestOptions] must use [OpenIdConstants.ResponseMode.DcApi] or [OpenIdConstants.ResponseMode.DcApiJwt].
-     *
      * Pass more than one [creationOptions] to offer the same request over several exchange protocols in one
      * browser call, e.g. [DcApiCreationOptions.OpenId4VpSigned] and [DcApiCreationOptions.Iso180137AnnexC].
      * Do not combine [DcApiCreationOptions.OpenId4VpSigned] and [DcApiCreationOptions.OpenId4VpUnsigned],
      * as the stored requests to validate the response would overwrite each other.
      *
-     * For [DcApiCreationOptions.Iso180137AnnexC], a [DCQLRequest] is converted to an ISO `DeviceRequest` with
-     * [toIso180137AnnexCDeviceRequest], which fails for what a `DeviceRequest` can not express. It fails for
-     * [OpenId4VpRequestOptions.transactionData] too, as the `DeviceRequest` of ISO/IEC 18013-7 Annex C carries none, so
-     * its response could not authorize the transaction (OpenID4VP 1.0, 5.1), and for an
-     * [OpenId4VpRequestOptions.registrationCertificate] without the encoding of an offered exchange protocol, the JWT
-     * for OpenID4VP or the CWT for Annex C. These checks happen before any request is created, so a request that
-     * fails them creates no nonce, key, or stored request for any exchange protocol. Other failures, e.g. an invalid
-     * expected origin or a failing `readerAuth` signature, occur while the requests are created, and may leave the
-     * nonce, key, or stored request of an earlier exchange protocol behind.
+     * Each offered exchange protocol gets the request it expresses, built from
+     * [DcApiRequestOptions.presentationRequest] only if the protocol is offered: OpenID4VP a DCQL query, see
+     * [CredentialPresentationRequestBuilder.toDCQLRequest] for a typed request; ISO/IEC 18013-7 Annex C an ISO
+     * `DeviceRequest`, see [at.asitplus.wallet.lib.RequestedPresentation.toDeviceRequest] for a typed request, with
+     * the purpose hints of its credential sets, and [toIso180137AnnexCDeviceRequest] for a DCQL query.
+     *
+     * Fails for what an offered protocol can not express:
+     * - an ISO `DeviceRequest` offered over OpenID4VP;
+     * - a request a `DeviceRequest` can not express offered over Annex C;
+     * - [DcApiRequestOptions.transactionData] offered over Annex C, as its `DeviceRequest` carries none, so its
+     * response could not authorize the transaction (OpenID4VP 1.0, 5.1);
+     * - a [DcApiRequestOptions.registrationCertificate] without the encoding of an offered protocol, the JWT for
+     * OpenID4VP or the CWT for Annex C.
+     *
+     * These checks happen before any request is created, so a request that fails them creates no nonce, key, or stored
+     * request for any exchange protocol. Other failures, e.g. an invalid expected origin or a failing `readerAuth`
+     * signature, occur while the requests are created, and may leave the nonce, key, or stored request of an earlier
+     * exchange protocol behind.
      */
     suspend fun createAuthnRequest(
-        requestOptions: OpenId4VpRequestOptions,
+        requestOptions: DcApiRequestOptions,
         vararg creationOptions: DcApiCreationOptions,
     ): KmmResult<CredentialRequestOptions> = catching {
-        require(requestOptions.isAnyDcApi) {
-            "responseMode must be ${OpenIdConstants.ResponseMode.DcApi} or ${OpenIdConstants.ResponseMode.DcApiJwt}"
-        }
         require(creationOptions.isNotEmpty()) {
             "at least one creation option is required"
         }
         val annexC = DcApiCreationOptions.Iso180137AnnexC in creationOptions
+        val openId4VpOptions = creationOptions.filter { it != DcApiCreationOptions.Iso180137AnnexC }
         require(!annexC || requestOptions.transactionData.isNullOrEmpty()) {
             "Transaction data can not be requested over ISO/IEC 18013-7 Annex C, which can not authorize it"
         }
         requestOptions.registrationCertificate?.let { registrationCertificate ->
-            require(!annexC || requestOptions.registrationCertificateCwt != null) {
+            require(!annexC || registrationCertificate.cwt != null) {
                 "An ISO/IEC 18013-7 Annex C request needs the CWT of the WRPRC"
             }
-            val openId4Vp = creationOptions.any { it != DcApiCreationOptions.Iso180137AnnexC }
-            require(!openId4Vp || registrationCertificate.jwt != null) {
+            require(openId4VpOptions.isEmpty() || registrationCertificate.jwt != null) {
                 "An OpenID4VP request needs the JWT of the WRPRC"
             }
         }
-        val isoDeviceRequest = if (annexC) requestOptions.toIsoDeviceRequest() else null
+        val deviceRequest = if (annexC) requestOptions.toDeviceRequest() else null
+        val dcqlRequest = if (openId4VpOptions.isNotEmpty()) requestOptions.toDCQLRequest() else null
+        // built here, as their checks may fail too
+        val openId4VpRequestOptions = openId4VpOptions.associateWith {
+            requestOptions.toOpenId4VpRequestOptions(
+                dcqlRequest = requireNotNull(dcqlRequest),
+                signed = it == DcApiCreationOptions.OpenId4VpSigned,
+            )
+        }
         CredentialRequestOptions.create(
-            creationOptions.map { it.toGetRequest(requestOptions, isoDeviceRequest) }
+            creationOptions.map { it.toGetRequest(requestOptions, openId4VpRequestOptions, deviceRequest) }
         )
     }
 
-    private fun OpenId4VpRequestOptions.toIsoDeviceRequest(): DeviceRequest = when (presentationRequest) {
-        is DCQLRequest -> presentationRequest.dcqlQuery.toIso180137AnnexCDeviceRequest()
-        is IsoDeviceRetrieval -> presentationRequest.deviceRequest
-        else -> throw IllegalArgumentException("ISO 18013-7 Annex C requires a Device Request or DCQL presentation")
+    /**
+     * Creates a new authentication request for the W3C Digital Credentials API, see the overload taking
+     * [DcApiRequestOptions], which [DcApiRequestOptions.from] converts [requestOptions] to.
+     */
+    @Deprecated(
+        "Pass DcApiRequestOptions, which can hold a typed request too",
+        ReplaceWith("createAuthnRequest(DcApiRequestOptions.from(requestOptions), *creationOptions)"),
+    )
+    suspend fun createAuthnRequest(
+        requestOptions: OpenId4VpRequestOptions,
+        vararg creationOptions: DcApiCreationOptions,
+    ): KmmResult<CredentialRequestOptions> = catching {
+        createAuthnRequest(DcApiRequestOptions.from(requestOptions), *creationOptions).getOrThrow()
     }
 
+    /** The ISO `DeviceRequest` of ISO/IEC 18013-7 Annex C, see [createAuthnRequest]. */
+    private fun DcApiRequestOptions.toDeviceRequest(): DeviceRequest = when (presentationRequest) {
+        is DcApiPresentationRequest.Typed -> presentationRequest.presentation.toDeviceRequest()
+        is DcApiPresentationRequest.Raw -> when (val request = presentationRequest.request) {
+            is DCQLRequest -> request.dcqlQuery.toIso180137AnnexCDeviceRequest()
+            is IsoDeviceRetrieval -> request.deviceRequest
+        }
+    }
+
+    /** The DCQL query of OpenID4VP, see [createAuthnRequest]. */
+    private fun DcApiRequestOptions.toDCQLRequest(): DCQLRequest = when (presentationRequest) {
+        is DcApiPresentationRequest.Typed ->
+            CredentialPresentationRequestBuilder(presentationRequest.presentation).toDCQLRequest()
+
+        is DcApiPresentationRequest.Raw -> when (val request = presentationRequest.request) {
+            is DCQLRequest -> request
+            is IsoDeviceRetrieval -> throw IllegalArgumentException(
+                "An ISO DeviceRequest can only be offered over ISO/IEC 18013-7 Annex C, not over OpenID4VP"
+            )
+        }
+    }
+
+    /**
+     * The options of the OpenID4VP request for [dcqlRequest], which has `client_id` only if [signed], as "The
+     * `client_id` parameter MUST be omitted in unsigned requests" (OpenID4VP 1.0, A.2).
+     */
+    private fun DcApiRequestOptions.toOpenId4VpRequestOptions(
+        dcqlRequest: DCQLRequest,
+        signed: Boolean,
+    ) = OpenId4VpRequestOptions(
+        presentationRequest = dcqlRequest,
+        responseMode = responseMode,
+        state = state,
+        transactionData = transactionData,
+        expectedOrigins = expectedOrigins,
+        populateClientId = signed,
+        verifierMetadataMode = verifierMetadataMode,
+        registrationCertificate = registrationCertificate,
+    )
+
     private suspend fun DcApiCreationOptions.toGetRequest(
-        requestOptions: OpenId4VpRequestOptions,
+        requestOptions: DcApiRequestOptions,
+        openId4VpRequestOptions: Map<DcApiCreationOptions, OpenId4VpRequestOptions>,
         isoDeviceRequest: DeviceRequest?,
     ): DigitalCredentialGetRequest = when (this) {
         is DcApiCreationOptions.OpenId4VpUnsigned -> OpenId4VpUnsigned(
-            // client_id MUST be omitted in unsigned requests, per OpenID4VP 1.0 Appendix A.3.1
-            requestFactory.createPlainAuthnRequest(requestOptions.copy(populateClientId = false))
+            requestFactory.createPlainAuthnRequest(openId4VpRequestOptions.getValue(this))
         )
 
         is DcApiCreationOptions.OpenId4VpSigned -> OpenId4VpSigned(
             SignedDataElement(
                 requestFactory.createSignedRequestObject(
-                    requestOptions,
+                    openId4VpRequestOptions.getValue(this),
                     RequestObjectSigning.DcApi,
                 ).getOrThrow().jws
             )
@@ -260,7 +320,7 @@ class DcApiVerifier @JvmOverloads constructor(
                 )
             )
             val deviceRequest = requireNotNull(isoDeviceRequest) { "The ISO DeviceRequest has not been converted" }
-                .withRegistrationCertificate(requestOptions.registrationCertificateCwt)
+                .withRegistrationCertificate(requestOptions.registrationCertificate?.cwt)
                 .withReaderAuthentication(encryptionInfo, requestOptions.expectedOrigins)
             IsoMdoc(
                 IsoMdocRequest(deviceRequest = deviceRequest, encryptionInfo = encryptionInfo)

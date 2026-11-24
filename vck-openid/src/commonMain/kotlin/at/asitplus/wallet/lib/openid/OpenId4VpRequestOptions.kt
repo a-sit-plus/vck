@@ -24,6 +24,9 @@ data class OpenId4VpRequestOptions(
     /**
      * Presentation mechanism to be used for requesting credentials.
      * Use [CredentialPresentationRequestBuilder] for simple requests.
+     *
+     * Over the Digital Credentials API, give a typed request in [DcApiRequestOptions] instead, which builds its ISO
+     * `DeviceRequest` for ISO/IEC 18013-7 Annex C directly, with the purpose hints of its credential sets.
      */
     val presentationRequest: CredentialPresentationRequest?,
 
@@ -189,11 +192,6 @@ data class OpenId4VpRequestOptions(
 
     val isAnyDcApi: Boolean
         get() = responseMode == ResponseMode.DcApi || responseMode == ResponseMode.DcApiJwt
-
-    /** The CWT of the WRPRC, from [registrationCertificate] or the deprecated [euWrprc]. */
-    internal val registrationCertificateCwt: ByteArray?
-        @Suppress("DEPRECATION")
-        get() = registrationCertificate?.cwt ?: euWrprc
 
     /** The `verifier_info` of an OpenID4VP request: [verifierInfo], and the element of [registrationCertificate]. */
     internal val verifierInfoWithRegistrationCertificate: NonEmptyList<VerifierInfo>?
