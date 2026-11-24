@@ -16,8 +16,8 @@ provided transitively via [Signum](https://github.com/a-sit-plus/signum) and the
 ## Dev Container
 
 The [Dev Container configuration](.devcontainer/devcontainer.json) provides JDK 17, the Android build SDK,
-Codex CLI, and Claude Code. Building the image automatically accepts the Android SDK license. You can run
-JVM tests and build the Android library in the container. The image disables Apple targets and does not
+Python 3, Codex CLI, and Claude Code. Building the image automatically accepts the Android SDK license. You
+can run JVM tests and build the Android library in the container. The image disables Apple targets and does not
 include an Android emulator. Android tasks need an x86-64 host: on ARM64 hosts, such as Apple silicon Macs,
 the container runs ARM64 Linux, for which Google ships no Android build tools, so Android tasks fail while
 JVM tests still work.

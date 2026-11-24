@@ -16,8 +16,8 @@ ENV PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        bubblewrap ca-certificates curl git jq less nano openjdk-17-jdk-headless procps ripgrep tzdata \
-        unzip vim \
+        bubblewrap ca-certificates curl git jq less nano openjdk-17-jdk-headless procps \
+        python-is-python3 python3 ripgrep tzdata unzip vim \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p "$ANDROID_HOME/cmdline-tools" \
