@@ -52,4 +52,7 @@ RUN npm install --global "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
 COPY --chmod=0644 claude-managed-settings.json /etc/claude-code/managed-settings.json
 COPY --chmod=0644 codex-config.toml /etc/codex/config.toml
 
+# Runs when the container is created, see onCreateCommand in devcontainer.json.
+COPY --chmod=0755 copy-gradle-distribution.sh /usr/local/bin/copy-gradle-distribution
+
 USER node

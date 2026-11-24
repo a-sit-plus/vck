@@ -88,12 +88,32 @@ so this host-side review is the one to rely on.
 Docker volumes keep the Gradle cache and both agents' configuration directories, including their sign-ins,
 across container rebuilds. Each container gets its own volumes, named `vck-gradle-`, `vck-codex-`, and
 `vck-claude-` followed by the container's ID. You sign in once per clone, in the container of the Dev
-Container CLI where you run the agents, and the CLI and IDEA containers each download the Gradle
-distribution and dependencies once. The agents can write their own configuration, for example hooks or MCP
-servers that run commands, so no container shares it: what an agent stores in one container never runs in
-another, such as IDEA's container with its SSH agent. The volumes outlive a rebuild, so to start an agent
-from a clean configuration, remove its volume while no Dev Container runs, for example with
+Container CLI where you run the agents, and the CLI and IDEA containers each download the dependencies that
+the shared read-only cache, described below, lacks. The agents can write their own configuration, for
+example hooks or MCP servers that run commands, so no container shares it: what an agent stores in one
+container never runs in another, such as IDEA's container with its SSH agent. The volumes outlive a rebuild,
+so to start an agent from a clean configuration, remove its volume while no Dev Container runs, for example
+with
 `docker volume ls --quiet --filter name=vck-claude- | xargs docker volume rm`.
+
+Every Dev Container mounts the Docker volume `gradle-ro-cache` read-only. It holds a copy of the dependency
+cache and the wrapper distributions of your host's Gradle User Home. Gradle looks up dependencies there first
+and downloads only the missing ones into the container's own cache, see the
+[read-only dependency cache](https://docs.gradle.org/current/userguide/dependency_caching.html#sec:shared-readonly-cache).
+The wrapper cannot run a read-only distribution, so a new container copies the distribution of the wrapper
+from the volume into its own Gradle User Home. Until you seed the volume, it is empty, and Gradle downloads
+everything. To seed or refresh it, stop every Dev Container and run the following command from the root of
+the primary checkout:
+
+```sh
+.devcontainer/seed-gradle-cache.sh
+```
+
+Gradle reads the volume without locks, so the script refuses to run while a Dev Container uses it. It copies
+only `caches/modules-2` and `wrapper/dists`, never your `gradle.properties`. The agents can read everything
+in the volume, which includes every dependency that a build on your host resolved, also from private
+repositories. Seed the volume only from your host, never from a container, because the agents can change the
+caches in their container.
 
 Root owns the Android SDK in the image, so Gradle cannot install missing SDK packages. If a build reports
 that it could not install one, add the package to the `sdkmanager` command in the
