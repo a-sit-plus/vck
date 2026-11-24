@@ -54,8 +54,7 @@ interface ProofCreator {
  * Creates proofs of the `jwt` proof type (OpenID4VCI 1.0, Appendix F.1): a JWT of type `openid4vci-proof+jwt`, signed
  * with [keyMaterial], the key the issued credential will be bound to, which the header references as `jwk` or `kid`,
  * see [selectProofJwtKeyBinding]. Its payload carries the `client_id` as `iss`, the Credential Issuer Identifier as
- * `aud`, the `c_nonce` as `nonce`, and as `iat` the time of [clock] three minutes ago, to tolerate the clock skew of
- * the issuer.
+ * `aud`, the `c_nonce` as `nonce`, and as `iat` the current time of [clock].
  *
  * If the issuer requires a key attestation for the `jwt` proof type (`key_attestations_required`), the proof carries
  * one in its `key_attestation` header (Appendix D), loaded with [loadKeyAttestation]. Then creating the proof fails
@@ -149,8 +148,7 @@ class JwtProofCreator(
                     payload = JsonWebToken(
                         issuer = clientId, // omit when token was pre-authn?
                         audience = credentialIssuer,
-                        // Apply a bit of clock skew to avoid getting rejected by the issuer
-                        issuedAt = clock.now().truncateToSeconds() - 3.minutes,
+                        issuedAt = clock.now().truncateToSeconds(),
                         nonce = clientNonce,
                     ),
                     serializer = JsonWebToken.serializer(),
