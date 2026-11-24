@@ -136,6 +136,7 @@ private fun RequestedCredential.VcJwt.toVcJwtQuery(
     claims = queries.claims,
     claimSets = queries.claimSets,
     multiple = multiple,
+    trustedAuthorities = toTrustedAuthorities(),
 )
 
 private fun RequestedCredential.Mdoc.toIsoMdocQuery(

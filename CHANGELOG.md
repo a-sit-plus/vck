@@ -294,8 +294,7 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       the authorities that certify accepted issuers, requested by their subject key identifiers (RFC 5280, 4.2.1.2) as
       `trusted_authorities` of type `aki` (OpenID4VP 1.0, 6.1, 6.1.1). `RequestedCredential.Mdoc.toDocRequest()` sets
       `uniqueDocSetRequired = !multiple`, always, and the same key identifiers as `issuerIdentifiers` (ISO/IEC DIS
-      18013-5:2026, 10.2.4). A trusted authority without a subject key identifier fails constructing the request. A
-      `RequestedCredential.VcJwt` has none, as the verifier keeps no certificate chain of a VC-JWT to check them. Add
+      18013-5:2026, 10.2.4). A trusted authority without a subject key identifier fails constructing the request. Add
       `X509Certificate.subjectKeyIdentifier`
     - BREAKING: `CredentialPresentationRequestBuilder` holds a `RequestedPresentation` instead of
       `credentials: Collection<RequestOptionsCredential>`. It takes `RequestedCredential`s as vararg or collection,

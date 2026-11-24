@@ -121,6 +121,20 @@ val RequestedPresentationQueryTest by matrixSuite {
                 }
         }
 
+        test("a VC-JWT from the issuers of trusted authorities is queried by their key identifiers") {
+            val credential = RequestedCredential.VcJwt(
+                "ExampleCredential",
+                JsonClaimReference("credentialSubject", "given_name"),
+                trustedAuthorities = setOf(authority(byteArrayOf(1, 2, 3))),
+            )
+
+            val query = credential.query()
+
+            query.trustedAuthorities shouldBe nonEmptyListOf(
+                DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(values = nonEmptyListOf("AQID"))
+            )
+        }
+
         test("an mdoc is queried by its doctype, with its data elements and intent to retain") {
             val familyName = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.FAMILY_NAME)
             val portrait = MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.PORTRAIT)

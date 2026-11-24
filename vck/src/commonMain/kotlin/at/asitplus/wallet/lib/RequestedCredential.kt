@@ -128,23 +128,18 @@ sealed interface RequestedCredential {
      * Claims of a VC-JWT are not selectively disclosable, so [claims] only decides which credential matches the
      * request, and the whole credential is presented (OpenID4VP 1.0, 6.4.1). The paths of [claims] start at the root
      * of the VC, e.g. `JsonClaimReference("credentialSubject", "given_name")` (OpenID4VP 1.0, B.1.2).
-     *
-     * A VC-JWT can not be requested with [trustedAuthorities]: VC-K's verifier keeps no certificate chain of a
-     * VC-JWT, so it could not check the authority key identifiers a wallet matches against.
      */
     data class VcJwt @JvmOverloads constructor(
         val type: String,
         val claims: ClaimSelection<JsonClaimReference> = ClaimSelection.All(),
         override val id: String = uuid4().toString(),
         override val multiple: Boolean = false,
+        override val trustedAuthorities: Set<X509Certificate> = setOf(),
     ) : RequestedCredential {
         init {
             requireCredentialQueryId(id)
+            requireSubjectKeyIdentifiers(trustedAuthorities)
         }
-
-        /** Always empty, see [VcJwt]. */
-        override val trustedAuthorities: Set<X509Certificate>
-            get() = setOf()
 
         /** Requests every claim of [claims]. */
         @JvmOverloads
@@ -153,11 +148,13 @@ sealed interface RequestedCredential {
             vararg claims: JsonClaimReference,
             id: String = uuid4().toString(),
             multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             type = type,
             claims = ClaimSelection.All(claims.toSet()),
             id = id,
             multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
 
         /** Requests a VC-JWT of the [CredentialScheme.vcType] of [scheme]. */
@@ -167,11 +164,13 @@ sealed interface RequestedCredential {
             claims: ClaimSelection<JsonClaimReference> = ClaimSelection.All(),
             id: String = uuid4().toString(),
             multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             type = scheme.vcType,
             claims = claims,
             id = id,
             multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
 
         /** Requests a VC-JWT of the [CredentialScheme.vcType] of [scheme] with every claim of [claims]. */
@@ -181,11 +180,13 @@ sealed interface RequestedCredential {
             vararg claims: JsonClaimReference,
             id: String = uuid4().toString(),
             multiple: Boolean = false,
+            trustedAuthorities: Set<X509Certificate> = setOf(),
         ) : this(
             type = scheme.vcType,
             claims = ClaimSelection.All(claims.toSet()),
             id = id,
             multiple = multiple,
+            trustedAuthorities = trustedAuthorities,
         )
     }
 
