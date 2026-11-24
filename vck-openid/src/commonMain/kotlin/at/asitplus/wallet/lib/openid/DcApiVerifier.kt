@@ -21,6 +21,7 @@ import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.EncryptionInfo
 import at.asitplus.iso.EncryptionParameters
 import at.asitplus.iso.ReaderAuthentication
+import at.asitplus.iso.ReaderAuthenticationAll
 import at.asitplus.iso.SessionTranscript
 import at.asitplus.iso.serializeOrigin
 import at.asitplus.iso.sha256
@@ -321,6 +322,7 @@ class DcApiVerifier @JvmOverloads constructor(
             )
             val deviceRequest = requireNotNull(isoDeviceRequest) { "The ISO DeviceRequest has not been converted" }
                 .withRegistrationCertificate(requestOptions.registrationCertificate?.cwt)
+                // after setting euWrprc, as the signatures cover the items request
                 .withReaderAuthentication(encryptionInfo, requestOptions.expectedOrigins)
             IsoMdoc(
                 IsoMdocRequest(deviceRequest = deviceRequest, encryptionInfo = encryptionInfo)
@@ -343,6 +345,11 @@ class DcApiVerifier @JvmOverloads constructor(
      * Signs `readerAuth` of every document request (ISO/IEC 18013-5, 12.5), bound to the DC API session transcript,
      * which the wallet calculates from [encryptionInfo] and the calling origin, i.e. the single entry of
      * [expectedOrigins]. Without a certificate in [keyMaterial] there is nothing to authenticate the reader with.
+     *
+     * With a `deviceRequestInfo`, e.g. use cases, signs `readerAuthAll` too, the only signature whose payload contains
+     * it (ISO/IEC DIS 18013-5:2026, 12.5.4), as a wallet would otherwise not accept the use cases as authenticated.
+     * The `readerAuth` of each document request stays, for mdocs of ISO/IEC 18013-5:2021, which know no
+     * `readerAuthAll`.
      */
     private suspend fun DeviceRequest.withReaderAuthentication(
         encryptionInfo: EncryptionInfo,
@@ -354,19 +361,27 @@ class DcApiVerifier @JvmOverloads constructor(
         val serializedOrigin = origin.serializeOrigin()
             ?: throw IllegalArgumentException("Expected origin invalid: $origin")
         val sessionTranscript = createDcApiSessionTranscriptAnnexC(DCAPIInfo(encryptionInfo, serializedOrigin))
-        return copy(
+        val withReaderAuth = copy(
             docRequests = docRequests.map { docRequest ->
                 docRequest.copy(
-                    readerAuth = signReaderAuth(
-                        protectedHeader = null,
-                        unprotectedHeader = CoseHeader(),
-                        payload = ReaderAuthentication.detachedPayload(docRequest, sessionTranscript),
-                        serializer = ByteArraySerializer(),
-                    ).getOrThrow()
+                    readerAuth = readerAuthOf(ReaderAuthentication.detachedPayload(docRequest, sessionTranscript))
                 )
             }.toTypedArray()
         )
+        if (deviceRequestInfo == null)
+            return withReaderAuth
+        return withReaderAuth.copy(
+            readerAuthAll = arrayOf(readerAuthOf(ReaderAuthenticationAll.detachedPayload(this, sessionTranscript)))
+        )
     }
+
+    /** The detached signature over [payload] by [keyMaterial], see [signReaderAuth]. */
+    private suspend fun readerAuthOf(payload: ByteArray) = signReaderAuth(
+        protectedHeader = null,
+        unprotectedHeader = CoseHeader(),
+        payload = payload,
+        serializer = ByteArraySerializer(),
+    ).getOrThrow()
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a signed or unsigned DC API response.

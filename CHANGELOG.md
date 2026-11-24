@@ -213,6 +213,9 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,
       8.3.2.1.2.2), but VC-K requests only those it requires. Documents are assigned to requests regardless of their
       order, so two requests of one docType need two documents
+    - `DcApiVerifier` signs `readerAuthAll` over an ISO/IEC 18013-7 Annex C request with a `deviceRequestInfo`, e.g.
+      use cases, the only signature that covers it (ISO/IEC DIS 18013-5:2026, 12.5.4), so that wallets accept the use
+      cases as authenticated, and keeps the `readerAuth` of every document request for mdocs of ISO/IEC 18013-5:2021
     - Add `DcApiRequestOptions` for `DcApiVerifier.createAuthnRequest`, with a typed `RequestedPresentation` or a raw
       DCQL query or ISO `DeviceRequest` (`DcApiPresentationRequest`), built for each offered exchange protocol only:
       a typed request is its DCQL query for OpenID4VP, and its `RequestedPresentation.toDeviceRequest()` for ISO/IEC

@@ -29,7 +29,10 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.asymmetric.HPKE
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.lib.ClaimSelection
 import at.asitplus.wallet.lib.RequestedCredential
+import at.asitplus.wallet.lib.RequestedCredentialSet
+import at.asitplus.wallet.lib.RequestedPresentation
 import at.asitplus.wallet.lib.agent.CreatePresentationResult
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -45,6 +48,7 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthentication
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreIsoMdoc
@@ -59,6 +63,9 @@ import at.asitplus.wallet.lib.validation.TrustPolicy
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import at.asitplus.wallet.lib.validation.ValidationDecision
 import at.asitplus.wallet.lib.validation.ValidationPolicy
+import at.asitplus.wallet.mdl.MDL_DOCTYPE
+import at.asitplus.wallet.mdl.MDL_NAMESPACE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.AGE_OVER_18
 import com.benasher44.uuid.uuid4
 import io.github.z4kn4fein.semver.Version
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -87,6 +94,24 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
         MdocClaimReference(AtomicAttribute2023, CLAIM_DATE_OF_BIRTH),
     )
     val deviceRequest = CredentialPresentationRequestBuilder(requestedCredential).toIsoDeviceRetrievalRequest()
+
+    // date_of_birth instead of age_over_18, which the mdoc lacks, and an mDL, which the holder lacks, only if available
+    val typedPresentation = RequestedPresentation(
+        RequestedCredentialSet.oneOf(
+            setOf(
+                RequestedCredential.Mdoc(
+                    AtomicAttribute2023,
+                    ClaimSelection.Alternatives(
+                        setOf(MdocClaimReference(AtomicAttribute2023, AGE_OVER_18)),
+                        setOf(MdocClaimReference(AtomicAttribute2023, CLAIM_DATE_OF_BIRTH)),
+                    ),
+                )
+            )
+        ),
+        RequestedCredentialSet.optional(
+            setOf(RequestedCredential.Mdoc(MDL_DOCTYPE, MdocClaimReference(MDL_NAMESPACE, AGE_OVER_18)))
+        ),
+    )
 
     fixture {
         runBlocking {
@@ -143,6 +168,29 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                     .digital.requests.shouldBeSingleton().first()
                     .shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>()
                     .data
+
+                /** Extracts the Annex C request of [options] from the browser-facing [CredentialRequestOptions]. */
+                suspend fun createIsoMdocRequest(options: DcApiRequestOptions): IsoMdocRequest = verifier
+                    .createAuthnRequest(options, DcApiCreationOptions.Iso180137AnnexC).getOrThrow()
+                    .digital.requests.shouldBeSingleton().first()
+                    .shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>()
+                    .data
+
+                /** The wallet's encrypted response to the `DeviceRequest` of [isoMdocRequest] itself. */
+                suspend fun walletResponseToDeviceRequest(isoMdocRequest: IsoMdocRequest): DCAPIResponse {
+                    val deviceResponse = holderAgent.createDefaultPresentation(
+                        request = PresentationRequestParameters(
+                            nonce = uuid4().toString(), // not relevant for mdoc device authentication
+                            audience = callingOrigin,
+                            calcIsoSessionTranscript = { sessionTranscriptFor(isoMdocRequest, callingOrigin) },
+                        ),
+                        credentialPresentationRequest = CredentialPresentationRequest.IsoDeviceRetrieval(
+                            isoMdocRequest.deviceRequest
+                        ),
+                    ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.DeviceRetrievalParameters>()
+                        .deviceResponse
+                    return sealDeviceResponse(isoMdocRequest, callingOrigin, deviceResponse)
+                }
 
                 /** The ephemeral encryption key the verifier created for the request identified by [state]. */
                 suspend fun storedEphemeralKey(state: String): CryptoPrivateKey.EC.WithPublicKey =
@@ -451,11 +499,61 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
             ).isFailure shouldBe true
         }
 
+        test("a typed request with an alternative and an optional set: the wallet's response validates") { f ->
+            val transactionId = uuid4().toString()
+            val isoMdocRequest = f.createIsoMdocRequest(
+                DcApiRequestOptions(
+                    typedPresentation,
+                    state = transactionId,
+                    expectedOrigins = listOf(callingOrigin),
+                    responseMode = OpenIdConstants.ResponseMode.DcApi,
+                )
+            )
+            val dcApiResponse = f.walletResponseToDeviceRequest(isoMdocRequest)
+
+            val result = f.verifier.validateIsoResponse(
+                receivedData = dcApiResponse,
+                externalId = transactionId,
+                expectedOrigin = callingOrigin,
+            ).getOrThrow()
+
+            result.shouldBeInstanceOf<Iso180137AnnexCWrapper>().apply {
+                validationReport.decision shouldBe ValidationDecision.ACCEPTED
+                acceptedDocuments().shouldBeSingleton().first().issuerSignedItems
+                    .map { it.elementIdentifier } shouldBe listOf(CLAIM_DATE_OF_BIRTH)
+            }
+        }
+
         test("without a certificate in the key material, document requests carry no readerAuth") { f ->
             f.createIsoMdocRequest(uuid4().toString()).deviceRequest.docRequests.forEach {
                 it.readerAuth.shouldBeNull()
             }
         }
+    }
+
+    test("a typed request with use cases is signed with readerAuthAll, which authenticates them for the wallet") {
+        val wrpac = EphemeralKeyWithSelfSignedCert()
+        val verifier = DcApiVerifier(
+            clientIdScheme = ClientIdScheme.CertificateHash(
+                chain = listOf(wrpac.getCertificate()!!),
+                redirectUri = "https://example.com/callback",
+            ),
+            keyMaterial = wrpac,
+        )
+        val options = DcApiRequestOptions(
+            typedPresentation,
+            expectedOrigins = listOf(callingOrigin),
+            responseMode = OpenIdConstants.ResponseMode.DcApi,
+        )
+        val isoMdocRequest = verifier.createAuthnRequest(options, DcApiCreationOptions.Iso180137AnnexC).getOrThrow()
+            .digital.requests.shouldBeSingleton().first()
+            .shouldBeInstanceOf<DigitalCredentialGetRequest.IsoMdoc>().data
+
+        val reader = ReaderAuthenticationVerifier()
+            .authenticate(isoMdocRequest.deviceRequest, sessionTranscriptFor(isoMdocRequest, callingOrigin))
+
+        reader.getOrThrow().deviceRequestInfoAuthenticated shouldBe true
+        isoMdocRequest.deviceRequest.docRequests.forEach { it.readerAuth.shouldNotBeNull() }
     }
 
     test("readerAuth binds the WRPAC and the WRPRC to the calling origin, as verified by the wallet") {
