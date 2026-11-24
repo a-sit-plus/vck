@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.AlternativeDataElementsSet
 import at.asitplus.iso.DeviceRequest
-import at.asitplus.iso.Document
 import at.asitplus.iso.ElementReference
 import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
@@ -107,16 +106,6 @@ internal object DeviceRetrievalProcedure {
         }
     }
 
-    /**
-     * Whether [document] of a response answers [itemsRequest]: it is of the requested docType, matches its
-     * `issuerIdentifiers`, see [isIssuedByRequestedAuthority], and returns, issuer-signed, each requested data element
-     * or all data elements of one of its alternative element sets, see [isSatisfiedBy].
-     */
-    fun answers(document: Document, itemsRequest: ItemsRequest): Boolean =
-        document.docType == itemsRequest.docType &&
-                itemsRequest.isIssuedByRequestedAuthority(document.issuerSigned) &&
-                itemsRequest.isSatisfiedBy(document.issuerSigned.availableItems().keys)
-
     /** See [createPresentationParameters]. */
     private fun DeviceRequestCredentialDisclosure<StoreEntry>.validate(
         itemsRequest: ItemsRequest,
@@ -218,17 +207,6 @@ internal object DeviceRetrievalProcedure {
         val issuerIdentifiers = requestInfo?.issuerIdentifiers ?: return true
         val authorities = issuerSigned.issuerAuth.authorityKeyIdentifiers()
         return issuerIdentifiers.any { identifier -> authorities.any { it.contentEquals(identifier) } }
-    }
-
-    /**
-     * Whether the data elements [available] satisfy this request: for each requested data element, the element itself,
-     * or all data elements of one of its alternative element sets (ISO/IEC DIS 18013-5:2026, 10.2.8 step 1d).
-     */
-    private fun ItemsRequest.isSatisfiedBy(available: Set<ElementReference>): Boolean {
-        val alternatives = requestInfo?.alternativeDataElements.orEmpty()
-        return requestedElements().all { element ->
-            element in available || element.alternativeSets(alternatives).any { available.containsAll(it) }
-        }
     }
 
     /** Fails unless [issuerSigned] matches the requested `issuerIdentifiers`, see [isIssuedByRequestedAuthority]. */

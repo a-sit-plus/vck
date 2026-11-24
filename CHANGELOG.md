@@ -257,7 +257,8 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       cases, exactly one document set of each satisfied one, every mandatory one and at least one; a document answers a
       document request with each requested data element or all data elements of one of its alternative element sets,
       and, with `issuerIdentifiers`, only if a certificate in the `x5chain` of its `IssuerAuth` has one of them as its
-      authority key identifier, which is no evidence of its issuer
+      authority key identifier, which is no evidence of its issuer. It adapts the documents to `IsoMdocCredential`s
+      and delegates to `DeviceRequest.checkAcceptedDocuments` in `openid-data-classes`
     - Fix: `OpenId4VpRequestOptions` accepts transaction data whose `credential_ids` reference only some of the
       credential queries, e.g. not an optional one, as each of them only has to reference a requested credential
       "that can be used to authorize this transaction" (OpenID4VP 1.0, 5.1). It still rejects `credential_ids` that
