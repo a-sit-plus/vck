@@ -22,12 +22,16 @@ include an Android emulator. Android tasks need an x86-64 host: on ARM64 hosts, 
 the container runs ARM64 Linux, for which Google ships no Android build tools, so Android tasks fail while
 JVM tests still work.
 
-From the root of a regular Git checkout, with Docker running and Node.js and npm installed on the host, run
-the following commands. The second command opens a shell in the container at `/workspaces/vck`.
+The agents work in a dedicated clone, described below, and can change every file in it, including its
+`.devcontainer/`. The Dev Container tools read that configuration on the host: they run its
+`initializeCommand` there on every start and apply its mounts. So always start the container of an agent
+clone with the configuration of your primary checkout. From the root of the primary checkout, with Docker
+running and Node.js and npm installed on the host, run the following commands for an agent clone in
+`../vck-agent`. The second command opens a shell in the container at `/workspaces/vck`.
 
 ```sh
-npx --yes @devcontainers/cli@0.90.0 up --workspace-folder .
-npx --yes @devcontainers/cli@0.90.0 exec --workspace-folder . bash
+npx --yes @devcontainers/cli@0.90.0 up --workspace-folder ../vck-agent --config .devcontainer/devcontainer.json
+npx --yes @devcontainers/cli@0.90.0 exec --workspace-folder ../vck-agent --config .devcontainer/devcontainer.json bash
 ```
 
 In that shell, run `./gradlew :vck:jvmTest` or launch either coding agent. The container is the execution
@@ -55,6 +59,11 @@ the agents' work in one of these ways:
   `devcontainer.json`, and mount the local sources. IDEA downloads an IDE backend into the container, and the
   backend and the Gradle sync run there. If you open the clone as a local project by mistake, choose
   **Preview in Safe Mode** when IDEA asks whether to trust it.
+
+  IDEA reads the `devcontainer.json` of the clone it opens. Before you open the clone, compare its
+  configuration with the one of your primary checkout, for example with
+  `diff -r .devcontainer ../vck-agent/.devcontainer` from the primary checkout, and open it only if both
+  match.
 
   IDEA forwards your SSH agent into the container and asks on the host which key to use whenever a process
   in the container requests one. Neither the agents nor Gradle need SSH keys there, so cancel every key
