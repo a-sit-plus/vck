@@ -109,6 +109,10 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
+    - BREAKING: Fix: `trusted_authorities` of type `aki` match a VC-JWT in the verifier's check (`DCQLQueryAdapter`)
+      too, by the `x5c` of its JWS header, as they do in the wallet's matching, instead of no VC-JWT at all.
+      `ValidatedCredential.VcJwt` holds the VC-JWT as received, `signed`, instead of only its payload, which
+      `credential` still returns
     - Fix: `trusted_authorities` of type `aki` match an mdoc whose `x5chain` is in the protected header of its
       `IssuerAuth`, in the wallet's matching and in the verifier's check (`DCQLQueryAdapter`), instead of only one in
       the unprotected header: "An mdoc reader should support the presence of the x5chain element in the protected

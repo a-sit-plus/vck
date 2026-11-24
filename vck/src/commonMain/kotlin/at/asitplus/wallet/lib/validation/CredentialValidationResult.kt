@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.iso.IssuerSigned
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
@@ -15,7 +16,17 @@ import kotlin.jvm.JvmOverloads
  * A credential that passed every check its validation policy requires.
  */
 sealed interface ValidatedCredential {
-    data class VcJwt(val credential: VerifiableCredentialJws) : ValidatedCredential
+    data class VcJwt(
+        /**
+         * The VC-JWT as received, with its JWS header, e.g. the `x5c` its signature was verified with, whose authority
+         * key identifiers DCQL `trusted_authorities` of type `aki` match (OpenID4VP 1.0, 6.1.1). Trusting that chain
+         * is a separate check.
+         */
+        val signed: JwsCompactTyped<VerifiableCredentialJws>,
+    ) : ValidatedCredential {
+        /** The payload of [signed]. */
+        val credential: VerifiableCredentialJws get() = signed.payload
+    }
 
     data class SdJwtVc(
         val credential: VerifiableCredentialSdJwt,
