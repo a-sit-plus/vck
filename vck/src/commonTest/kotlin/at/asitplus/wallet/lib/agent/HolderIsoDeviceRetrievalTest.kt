@@ -4,6 +4,7 @@ import at.asitplus.iso.AlternativeDataElementsSet
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceRequestInfo
 import at.asitplus.iso.DocRequest
+import at.asitplus.iso.DocRequestId
 import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.ElementReference
 import at.asitplus.iso.IsoConstants
@@ -100,8 +101,8 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
 
             val disclosures = it.holder.disclosuresFor(request)
 
-            disclosures.shouldBeSingleton().single().disclosedAttributes shouldBe
-                    listOf(claim(CLAIM_DATE_OF_BIRTH))
+            disclosures.shouldBeSingleton().single().disclosedElements shouldBe
+                    listOf(element(CLAIM_DATE_OF_BIRTH))
         }
 
         "device retrieval: prefers a requested data element over its alternatives" {
@@ -119,8 +120,8 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
 
             val disclosures = it.holder.disclosuresFor(request)
 
-            disclosures.shouldBeSingleton().single().disclosedAttributes shouldBe
-                    listOf(claim(CLAIM_GIVEN_NAME))
+            disclosures.shouldBeSingleton().single().disclosedElements shouldBe
+                    listOf(element(CLAIM_GIVEN_NAME))
         }
 
         "device retrieval: discloses a data element replacing several requested ones once" {
@@ -135,8 +136,8 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
 
             val disclosures = it.holder.disclosuresFor(request)
 
-            disclosures.shouldBeSingleton().single().disclosedAttributes shouldBe
-                    listOf(claim(CLAIM_DATE_OF_BIRTH))
+            disclosures.shouldBeSingleton().single().disclosedElements shouldBe
+                    listOf(element(CLAIM_DATE_OF_BIRTH))
         }
 
         "device retrieval: matches no credential lacking a data element and all its alternatives" {
@@ -209,7 +210,7 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
             it.holder.matchPresentationRequestAgainstCredentialStore(
                 IsoDeviceRetrieval(isoDeviceRequest(CLAIM_GIVEN_NAME))
             ).getOrThrow().shouldBeInstanceOf<IsoDeviceRetrievalMatchingResult<*>>()
-                .matchingResult.documentMatches.shouldBeSingleton().single().shouldHaveSize(2)
+                .matchingResult.docRequestMatches.values.shouldBeSingleton().single().shouldHaveSize(2)
         }
 
         "use cases: a request without use cases has one mandatory use case of all its document requests" {
@@ -225,7 +226,7 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
             result.useCases shouldBe listOf(
                 HolderUseCase(
                     mandatory = true,
-                    documentSets = listOf(HolderDocumentSet(docRequestIndices = listOf(0, 1), satisfiable = false)),
+                    documentSets = listOf(HolderDocumentSet(docRequestIds = ids(0, 1), satisfiable = false)),
                     purposeHints = mapOf(),
                 )
             )
@@ -244,8 +245,8 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
                 HolderUseCase(
                     mandatory = true,
                     documentSets = listOf(
-                        HolderDocumentSet(docRequestIndices = listOf(1), satisfiable = false),
-                        HolderDocumentSet(docRequestIndices = listOf(0), satisfiable = true),
+                        HolderDocumentSet(docRequestIds = ids(1), satisfiable = false),
+                        HolderDocumentSet(docRequestIds = ids(0), satisfiable = true),
                     ),
                     purposeHints = purposeHints,
                 )
@@ -296,7 +297,7 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
         "use cases: a selection rejects" - { fixture ->
             val otherUseCase = HolderUseCase(
                 mandatory = false,
-                documentSets = listOf(HolderDocumentSet(docRequestIndices = listOf(1), satisfiable = true)),
+                documentSets = listOf(HolderDocumentSet(docRequestIds = ids(1), satisfiable = true)),
                 purposeHints = mapOf(),
             )
             listOf(
@@ -485,6 +486,8 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
 
 private fun element(name: String) = ElementReference(ConstantIndex.AtomicAttribute2023.isoNamespace, name)
 
+private fun ids(vararg indices: Int) = indices.map { DocRequestId(it) }
+
 private fun claim(name: String) = MdocClaimReference(ConstantIndex.AtomicAttribute2023.isoNamespace, name)
 
 /** A request for one mdoc of [claimNames] with [requestInfo]. */
@@ -559,7 +562,7 @@ private suspend fun IsoMdocFixture.present(
 private suspend fun HolderAgent.disclosuresFor(request: IsoDeviceRetrieval) =
     matchPresentationRequestAgainstCredentialStore(request).getOrThrow()
         .shouldBeInstanceOf<IsoDeviceRetrievalMatchingResult<SubjectCredentialStore.StoreEntry>>()
-        .matchingResult.documentMatches.shouldBeSingleton().single()
+        .matchingResult.docRequestMatches.values.shouldBeSingleton().single()
 
 private fun isoDeviceRequest(vararg claimNames: String) = DeviceRequest(
     parsedVersion = Version(1, 0),

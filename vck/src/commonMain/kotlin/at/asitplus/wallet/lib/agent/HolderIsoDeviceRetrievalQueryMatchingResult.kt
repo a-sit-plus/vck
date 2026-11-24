@@ -3,35 +3,41 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.DeviceRequestMatchingResult
+import at.asitplus.iso.DocRequestId
+import at.asitplus.iso.DocRequestSubmissionOption
+import at.asitplus.iso.checkUseCaseRequirements
+import at.asitplus.iso.itemsRequest
+import at.asitplus.iso.requestedUseCases
 import at.asitplus.wallet.lib.data.MdocClaimReference
-import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure
 
 /**
  * Holder-facing view of an ISO device request match.
  *
- * [queryMatchingResult] identifies matches by their index in [credentials].
- * [documentMatches] resolves those indices
- * to the actual credentials and the data elements to disclose, and [useCases] shows which document requests the
- * holder can present together, to build a submission with [toSubmission] or [toDefaultSubmission].
+ * [deviceRequestMatchingResult] identifies matches by their index in [credentials]. [docRequestMatches] resolves
+ * those indices to the actual credentials and the data elements to disclose, and [useCases] shows which document
+ * requests the holder can present together, to build a submission with [toSubmission] or [toDefaultSubmission].
  */
 data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
+    val deviceRequestMatchingResult: DeviceRequestMatchingResult,
     override val credentials: List<Credential>,
-    val queryMatchingResult: IsoDeviceRetrievalQueryMatchingResult,
     /**
-     * The request [queryMatchingResult] matches, whose use cases (ISO/IEC DIS 18013-5:2026, 10.2.5) and
+     * The request [deviceRequestMatchingResult] matches, whose use cases (ISO/IEC DIS 18013-5:2026, 10.2.5) and
      * `uniqueDocSetRequired` (ibid., 10.2.4) the submissions follow.
      */
     val deviceRequest: DeviceRequest,
 ) : HolderPresentationRequestMatchingResult<Credential> {
 
-    /** Matching credentials and required disclosures, grouped in Device Request document order. */
-    val documentMatches: List<List<DeviceRequestCredentialDisclosure<Credential>>> =
-        queryMatchingResult.documentMatches.mapIndexed { docRequestIndex, matches ->
-            matches.map { match ->
-                DeviceRequestCredentialDisclosure(
-                    docRequestIndex = docRequestIndex,
-                    credential = credentials[match.credentialIndex],
-                    disclosedAttributes = match.requestedClaims.map { MdocClaimReference(it.namespace, it.claimName) },
+    /**
+     * Matching credentials and the data elements to disclose, by the document request they match, in [credentials]
+     * order. The values of the data elements are in the [deviceRequestMatchingResult].
+     */
+    val docRequestMatches: Map<DocRequestId, List<DocRequestSubmissionOption<Credential>>> =
+        deviceRequestMatchingResult.docRequestMatches.mapValues { (_, matches) ->
+            matches.map { (index, match) ->
+                DocRequestSubmissionOption(
+                    credential = credentials[index.toInt()],
+                    disclosedElements = match.disclosedElements,
                 )
             }
         }
@@ -43,17 +49,17 @@ data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
      * Wallets show these, with their purpose hints, to let the End-User choose a document set of each use case,
      * and whether to present an optional use case, then build the submission with [toSubmission].
      */
-    val useCases: List<HolderUseCase> = DeviceRetrievalProcedure.useCases(deviceRequest).map { useCase ->
+    val useCases: List<HolderUseCase> = deviceRequest.requestedUseCases.map { useCase ->
         HolderUseCase(
             mandatory = useCase.mandatory,
-            documentSets = useCase.documentSets.map { set -> documentSet(set.map { it.toInt() }) },
+            documentSets = useCase.documentSets.map { set -> documentSet(set.map { DocRequestId(it.toInt()) }) },
             purposeHints = useCase.purposeHints.orEmpty(),
         )
     }
 
-    private fun documentSet(docRequestIndices: List<Int>) = HolderDocumentSet(
-        docRequestIndices = docRequestIndices,
-        satisfiable = docRequestIndices.all { documentMatches.getOrNull(it).orEmpty().isNotEmpty() },
+    private fun documentSet(docRequestIds: List<DocRequestId>) = HolderDocumentSet(
+        docRequestIds = docRequestIds,
+        satisfiable = docRequestIds.all { docRequestMatches[it].orEmpty().isNotEmpty() },
     )
 
     /**
@@ -92,18 +98,22 @@ data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
                 "The use case at $useCaseIndex is mandatory, but no document set was chosen"
             }
         }
-        val docRequestIndices = selection.values.flatMap { it.docRequestIndices }.toSet()
-        DeviceRetrievalProcedure.requireUseCasesSatisfied(
-            useCases = DeviceRetrievalProcedure.useCases(deviceRequest),
-            submitted = docRequestIndices,
-        )
-        docRequestIndices.sorted().flatMap { docRequestIndex -> firstOrMultiple(docRequestIndex) }
+        val docRequestIds = selection.values.flatMap { it.docRequestIds }.toSet()
+        deviceRequest.checkUseCaseRequirements(docRequestIds).getOrThrow()
+        docRequestIds.sortedBy { it.index }.flatMap { id -> firstOrMultiple(id).map { it.toDisclosure(id) } }
     }
 
-    private fun firstOrMultiple(docRequestIndex: Int): List<DeviceRequestCredentialDisclosure<Credential>> {
-        val matches = documentMatches[docRequestIndex]
-        return if (allowsMultiple(docRequestIndex)) matches else matches.take(1)
+    private fun firstOrMultiple(id: DocRequestId): List<DocRequestSubmissionOption<Credential>> {
+        val matches = docRequestMatches[id].orEmpty()
+        return if (allowsMultiple(id)) matches else matches.take(1)
     }
+
+    private fun DocRequestSubmissionOption<Credential>.toDisclosure(id: DocRequestId) =
+        DeviceRequestCredentialDisclosure(
+            docRequestIndex = id.index,
+            credential = credential,
+            disclosedAttributes = disclosedElements.map { MdocClaimReference(it.namespace, it.dataElementIdentifier) },
+        )
 
     /**
      * Builds a valid automatic submission: [toSubmission] of the first selection that is valid, trying for each
@@ -140,8 +150,8 @@ data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
             drop(1).selections().map { mapOf(first() to documentSet) + it }
         }
 
-    private fun allowsMultiple(docRequestIndex: Int): Boolean =
-        deviceRequest.docRequests[docRequestIndex].itemsRequest.value.requestInfo?.uniqueDocSetRequired == false
+    private fun allowsMultiple(id: DocRequestId): Boolean =
+        deviceRequest.itemsRequest(id).requestInfo?.uniqueDocSetRequired == false
 }
 
 /**
@@ -159,8 +169,8 @@ data class HolderUseCase(
 
 /** A document set of a [HolderUseCase]: document requests to present together. */
 data class HolderDocumentSet(
-    /** The positions of the document requests in `DeviceRequest.docRequests`. */
-    val docRequestIndices: List<Int>,
-    /** Whether the holder has a matching credential for each of [docRequestIndices]. */
+    /** The document requests, by their position in `DeviceRequest.docRequests`. */
+    val docRequestIds: List<DocRequestId>,
+    /** Whether the holder has a matching credential for each of [docRequestIds]. */
     val satisfiable: Boolean,
 )

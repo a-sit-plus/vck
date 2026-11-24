@@ -182,7 +182,7 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       18013-5:2026, 10.2.4): it discloses each requested data element, or, if the credential lacks it, the first of
       its alternative element sets the credential has, each data element once, and matches only credentials with a
       certificate in the `x5chain` of their `IssuerAuth` whose authority key identifier is one of the
-      `issuerIdentifiers`. `IsoDeviceRetrievalCredentialMatch.requestedClaims` are the data elements to disclose
+      `issuerIdentifiers`. `DocRequestMatch.disclosedItems` are the data elements to disclose
     - BREAKING: The holder follows the use cases of an ISO `DeviceRequest` (ISO/IEC DIS 18013-5:2026, 10.2.5):
       `HolderIsoDeviceRetrievalQueryMatchingResult` holds the `deviceRequest` it matches, a new constructor parameter,
       which `HolderAgent` sets, and gains `useCases` with their purpose hints and whether the holder can satisfy each
@@ -211,6 +211,15 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       identified by `DocRequestId`, their position in `docRequests`; `DocRequestSubmissionOption` is a credential
       chosen for one, with the data elements to disclose, serialized as `[namespace, dataElementIdentifier]` arrays
       with the new `ElementReference.ArraySerializer`
+    - BREAKING: The holder matches an ISO `DeviceRequest` by `DocRequestId`, like a DCQL query by credential query
+      identifier: `HolderIsoDeviceRetrievalQueryMatchingResult(deviceRequestMatchingResult, credentials,
+      deviceRequest)` holds the `DeviceRequestMatchingResult` of the new `DeviceRequestAdapter.select`, which keeps a
+      failure for each credential that does not match, e.g. one that is not an ISO mdoc, instead of
+      `queryMatchingResult`, and `docRequestMatches`, a map of `DocRequestSubmissionOption`s by `DocRequestId`, instead
+      of the positional `documentMatches`. `HolderDocumentSet.docRequestIds` replaces `docRequestIndices`. Remove
+      `IsoDeviceRetrievalQueryMatchingResult`, `IsoDeviceRetrievalCredentialMatch` and `IsoDeviceRetrievalClaimMatch`:
+      the data elements to disclose and their values are the `ElementReference`s and `IssuerSignedItem`s of
+      `DocRequestMatch.disclosedItems`
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no

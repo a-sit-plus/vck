@@ -277,7 +277,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
             f.holderOid4vp.getMatchingCredentials(f.preparationStateFor(request)).getOrThrow()
                 .shouldBeInstanceOf<IsoDeviceRetrievalMatchingResult<*>>()
-                .matchingResult.documentMatches.shouldBeSingleton().single().shouldBeSingleton()
+                .matchingResult.docRequestMatches.values.shouldBeSingleton().single().shouldBeSingleton()
         }
 
         test("getMatchingCredentials rejects requests without a credential presentation") { f ->

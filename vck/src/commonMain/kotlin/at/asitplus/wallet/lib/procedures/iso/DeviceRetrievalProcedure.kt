@@ -10,30 +10,15 @@ import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.UseCase
 import at.asitplus.wallet.lib.agent.DeviceRequestCredentialDisclosure
-import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalClaimMatch
-import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalCredentialMatch
-import at.asitplus.wallet.lib.agent.IsoDeviceRetrievalQueryMatchingResult
 import at.asitplus.wallet.lib.agent.IsoPresentationParameters
 import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.agent.ZkMetadata
 import at.asitplus.wallet.lib.cbor.authorityKeyIdentifiers
-import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure.evaluateItemsRequestAgainstCredential
-import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure.match
 import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure.requireIssuedByRequestedAuthority
-import io.github.aakira.napier.Napier
 
-/** Matching and submission validation for ISO Device Retrieval requests. */
+/** Submission validation for ISO Device Retrieval requests. */
 internal object DeviceRetrievalProcedure {
-
-    fun match(
-        deviceRequest: DeviceRequest,
-        credentials: List<StoreEntry>,
-    ) = IsoDeviceRetrievalQueryMatchingResult(
-        documentMatches = deviceRequest.docRequests.map { docRequest ->
-            docRequest.itemsRequest.value.match(credentials)
-        },
-    )
 
     /**
      * The use cases of [deviceRequest] (ISO/IEC DIS 18013-5:2026, 10.2.5), or, if it has none, one mandatory use case
@@ -56,7 +41,7 @@ internal object DeviceRetrievalProcedure {
      *    mdoc reader [...] can receive multiple instances of responses to this exact DocRequest" (ibid., 10.2.4)
      *  - each submission presents an ISO mdoc of the requested docType, issued by an authority of the requested
      *    `issuerIdentifiers`, and discloses data elements of the credential that answer the document request exactly,
-     *    see [isAnsweredExactlyBy]. So a wallet may disclose a later alternative than [match] selects.
+     *    see [isAnsweredExactlyBy]. So a wallet may disclose a later alternative than [at.asitplus.iso.match] selects.
      */
     fun createPresentationParameters(
         deviceRequest: DeviceRequest,
@@ -128,54 +113,6 @@ internal object DeviceRetrievalProcedure {
         return IsoPresentationParameters.create(credential, disclosedAttributes, meta).getOrThrow()
     }
 
-    private fun ItemsRequest.match(
-        credentials: List<StoreEntry>,
-    ): List<IsoDeviceRetrievalCredentialMatch> = credentials.also {
-        Napier.d("Matching request for $docType against ${it.size} credential(s)")
-    }.mapIndexedNotNull { index, credential ->
-        (credential as? StoreEntry.Iso)
-            ?.takeIf { it.schemeIdentifier == docType }
-            ?.let {
-                evaluateItemsRequestAgainstCredential(
-                    itemsRequest = this,
-                    issuerSigned = it.issuerSigned,
-                ).onFailure { error ->
-                    Napier.w("Credential at index $index does not match request for $docType", error)
-                }.getOrNull()?.let { requestedClaims ->
-                    IsoDeviceRetrievalCredentialMatch(
-                        credentialIndex = index,
-                        requestedClaims = requestedClaims,
-                    )
-                }
-            }
-    }
-
-    /**
-     * The data elements of [issuerSigned] to disclose for [itemsRequest] (ISO/IEC DIS 18013-5:2026, 10.2.8 step 1):
-     *  - for each requested data element, the element itself if the credential has it, otherwise the first of its
-     *    alternative element sets (`alternativeDataElements`) whose data elements the credential all has, as "The
-     *    order of the data elements in AlternativeElementSets indicates the order of preference" (ibid., 10.2.4);
-     *    alternatives are not the End-User's choice, like DCQL claim combinations (OpenID4VP 1.0, 6.4.1)
-     *  - each data element once, also if it replaces several requested ones, as "that data element is still only
-     *    returned once in the response structure" (ISO/IEC DIS 18013-5:2026, 10.2.4)
-     *
-     * Fails if a requested data element is missing without an available alternative, and if the credential is not
-     * issued by an authority of the requested `issuerIdentifiers`, see [requireIssuedByRequestedAuthority].
-     * `intentToRetain` controls verifier retention and does not make an element optional.
-     */
-    private fun evaluateItemsRequestAgainstCredential(
-        itemsRequest: ItemsRequest,
-        issuerSigned: IssuerSigned,
-    ): KmmResult<List<IsoDeviceRetrievalClaimMatch>> = catching {
-        itemsRequest.requireIssuedByRequestedAuthority(issuerSigned)
-        val availableItems = issuerSigned.availableItems()
-        val alternatives = itemsRequest.requestInfo?.alternativeDataElements.orEmpty()
-        itemsRequest.requestedElements()
-            .flatMap { it.selectFrom(availableItems.keys, alternatives) }
-            .distinct()
-            .map { it.toClaimsMatch(availableItems) }
-    }
-
     /** The data elements of the `NameSpaces` of this request, in their order. */
     private fun ItemsRequest.requestedElements(): List<ElementReference> =
         namespaces.flatMap { (namespace, requested) ->
@@ -217,25 +154,6 @@ internal object DeviceRetrievalProcedure {
     }
 
     /**
-     * This requested data element if it is [available], otherwise the first of its alternative element sets in
-     * [alternatives] whose data elements are all [available], see [evaluateItemsRequestAgainstCredential].
-     */
-    private fun ElementReference.selectFrom(
-        available: Set<ElementReference>,
-        alternatives: List<AlternativeDataElementsSet>,
-    ): List<ElementReference> = if (this in available) listOf(this) else firstAlternative(available, alternatives)
-
-    private fun ElementReference.firstAlternative(
-        available: Set<ElementReference>,
-        alternatives: List<AlternativeDataElementsSet>
-    ): List<ElementReference> = alternativeSets(alternatives)
-        .firstOrNull { set -> set.all { it in available } }
-        ?: throw PresentationException(
-            "Credential does not contain requested data element $['$namespace']['$dataElementIdentifier'], " +
-                    "nor an alternative"
-        )
-
-    /**
      * Whether [disclosed] answers this request exactly: it is the union of one choice per requested data element, the
      * element itself or all data elements of one of its alternative element sets (ISO/IEC DIS 18013-5:2026, 10.2.4,
      * 10.2.8 step 1d), so that it satisfies the request and discloses nothing else, e.g. not a requested data element
@@ -257,12 +175,4 @@ internal object DeviceRetrievalProcedure {
         covered: Set<ElementReference>,
     ): Boolean = if (isEmpty()) covered == target
     else first().any { choice -> drop(1).coverExactly(target, covered + choice) }
-
-    private fun ElementReference.toClaimsMatch(
-        availableItems: Map<ElementReference, IssuerSignedItem>
-    ): IsoDeviceRetrievalClaimMatch = IsoDeviceRetrievalClaimMatch(
-        namespace = namespace,
-        claimName = dataElementIdentifier,
-        claimValue = availableItems.getValue(this).elementValue,
-    )
 }
