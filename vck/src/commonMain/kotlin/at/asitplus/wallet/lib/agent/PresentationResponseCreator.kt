@@ -12,7 +12,7 @@ import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.toTransactionData
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure
+import at.asitplus.wallet.lib.procedures.iso.DeviceRequestAdapter
 
 private typealias QesApprovalSubmission = Pair<DCQLCredentialQueryIdentifier, Int>
 
@@ -172,10 +172,10 @@ internal class PresentationResponseCreator(
         matchDeviceRequest: suspend (DeviceRequest) -> KmmResult<HolderIsoDeviceRetrievalQueryMatchingResult<StoreEntry>>,
     ): PresentationResponseParameters.DeviceRetrievalParameters {
         val deviceRequest = presentation.presentationRequest.deviceRequest
-        val submissions = presentation.submissions
+        val submissions = presentation.docRequestSubmissions
             ?: matchDeviceRequest(deviceRequest).getOrThrow().toDefaultSubmission().getOrThrow()
         val selectedCredentials =
-            DeviceRetrievalProcedure.createPresentationParameters(deviceRequest, submissions).getOrThrow()
+            DeviceRequestAdapter(deviceRequest).createPresentationParameters(submissions).getOrThrow()
         val result = verifiablePresentationFactory.createVerifiablePresentation(
             request = request,
             isoPresentationParameters = selectedCredentials,

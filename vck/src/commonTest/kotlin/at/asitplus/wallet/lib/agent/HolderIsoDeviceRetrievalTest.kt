@@ -6,6 +6,7 @@ import at.asitplus.iso.DeviceRequestInfo
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.DocRequestId
 import at.asitplus.iso.DocRequestInfo
+import at.asitplus.iso.DocRequestSubmissionOption
 import at.asitplus.iso.ElementReference
 import at.asitplus.iso.IsoConstants
 import at.asitplus.iso.ItemsRequest
@@ -25,7 +26,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.IsoDeviceRetrieval
-import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.AuthorityKeyIdentifier
 import io.github.z4kn4fein.semver.Version
@@ -263,7 +263,7 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
 
             val submission = result.toDefaultSubmission().getOrThrow()
 
-            submission.map { it.docRequestIndex } shouldBe listOf(0)
+            submission.keys.toList() shouldBe ids(0)
         }
 
         "use cases: without a mandatory use case, the default submission presents the first satisfiable one" {
@@ -276,7 +276,7 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
 
             val submission = result.toDefaultSubmission().getOrThrow()
 
-            submission.map { it.docRequestIndex } shouldBe listOf(1)
+            submission.keys.toList() shouldBe ids(1)
         }
 
         "use cases: a selection presents the chosen optional use case too" {
@@ -291,7 +291,7 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
 
             val submission = result.toSubmission(selection).getOrThrow()
 
-            submission.map { it.docRequestIndex } shouldBe listOf(0, 1)
+            submission.keys.toList() shouldBe ids(0, 1)
         }
 
         "use cases: a selection rejects" - { fixture ->
@@ -342,7 +342,7 @@ val HolderIsoDeviceRetrievalTest by matrixSuite {
 
             val submission = result.toDefaultSubmission().getOrThrow()
 
-            submission.map { it.docRequestIndex } shouldBe listOf(1)
+            submission.keys.toList() shouldBe ids(1)
         }
 
         "use cases: a selection satisfying several document sets of a use case is rejected" {
@@ -488,8 +488,6 @@ private fun element(name: String) = ElementReference(ConstantIndex.AtomicAttribu
 
 private fun ids(vararg indices: Int) = indices.map { DocRequestId(it) }
 
-private fun claim(name: String) = MdocClaimReference(ConstantIndex.AtomicAttribute2023.isoNamespace, name)
-
 /** A request for one mdoc of [claimNames] with [requestInfo]. */
 private fun isoRequestWith(vararg claimNames: String, requestInfo: DocRequestInfo) = IsoDeviceRetrieval(
     DeviceRequest(
@@ -542,20 +540,22 @@ private suspend fun HolderAgent.matchingResultFor(request: IsoDeviceRetrieval) =
 
 /** A disclosure of [claimNames] of the single stored mdoc for the document request at [docRequestIndex]. */
 private suspend fun IsoMdocFixture.disclosure(docRequestIndex: Int, vararg claimNames: String) =
-    DeviceRequestCredentialDisclosure<SubjectCredentialStore.StoreEntry>(
-        docRequestIndex = docRequestIndex,
+    DocRequestId(docRequestIndex) to DocRequestSubmissionOption<SubjectCredentialStore.StoreEntry>(
         credential = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Iso>().single(),
-        disclosedAttributes = claimNames.map { claim(it) },
+        disclosedElements = claimNames.map { element(it) },
     )
 
 /** Presents [submissions], which the wallet built itself, for [request]. */
 private suspend fun IsoMdocFixture.present(
     request: IsoDeviceRetrieval,
-    vararg submissions: DeviceRequestCredentialDisclosure<SubjectCredentialStore.StoreEntry>,
+    vararg submissions: Pair<DocRequestId, DocRequestSubmissionOption<SubjectCredentialStore.StoreEntry>>,
 ) = holder.createPresentation(
     request = verifier.createPresentationRequest(calcIsoSessionTranscript = qrSessionTranscript),
-    credentialPresentation = CredentialPresentation.IsoDeviceRetrievalPresentation(request, submissions.toList()),
+    credentialPresentation = CredentialPresentation.IsoDeviceRetrievalPresentation(
+        presentationRequest = request,
+        docRequestSubmissions = submissions.groupBy({ it.first }, { it.second }),
+    ),
 )
 
 /** The stored credentials matching the single document request of [request], with their disclosures. */

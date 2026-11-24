@@ -9,6 +9,7 @@ import at.asitplus.iso.DeviceSigned
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.DocRequestId
 import at.asitplus.iso.DocRequestInfo
+import at.asitplus.iso.DocRequestSubmissionOption
 import at.asitplus.iso.Document
 import at.asitplus.iso.ElementReference
 import at.asitplus.iso.IsoConstants
@@ -17,6 +18,7 @@ import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.UseCase
+import at.asitplus.iso.ZkRequest
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
@@ -29,11 +31,13 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.RandomSource
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.agent.ZkMetadata
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc3986.toUri
 import at.asitplus.wallet.lib.procedures.dcql.AuthorityKeyIdentifier
@@ -108,6 +112,17 @@ val DeviceRequestAdapterTest by matrixSuite {
     fun stored(issuerSigned: IssuerSigned, docType: String = AtomicAttribute2023.isoDocType) =
         SubjectCredentialStore.StoreEntry.Iso(issuerSigned = issuerSigned, schemeIdentifier = docType)
 
+    /** A stored SD-JWT, which no document request matches. */
+    fun storedSdJwt() = SubjectCredentialStore.StoreEntry.SdJwt(
+        vcSerialized = "",
+        sdJwt = VerifiableCredentialSdJwt(verifiableCredentialType = AtomicAttribute2023.sdJwtType),
+        disclosures = mapOf(),
+        schemeIdentifier = AtomicAttribute2023.sdJwtType,
+    )
+
+    fun option(credential: SubjectCredentialStore.StoreEntry, vararg elements: String) =
+        DocRequestSubmissionOption(credential, elements.map { element(it) })
+
     "holder credentials" - {
         "select matches each credential, keeping a failure for each one that does not match" {
             val issuerSigned = issued()
@@ -132,14 +147,9 @@ val DeviceRequestAdapterTest by matrixSuite {
         "select keeps a failure for a credential that is not an ISO mdoc" {
             val issuerSigned = issued()
             val request = deviceRequest(docRequest(CLAIM_GIVEN_NAME))
-            val sdJwt = SubjectCredentialStore.StoreEntry.SdJwt(
-                vcSerialized = "",
-                sdJwt = VerifiableCredentialSdJwt(verifiableCredentialType = AtomicAttribute2023.sdJwtType),
-                disclosures = mapOf(),
-                schemeIdentifier = AtomicAttribute2023.sdJwtType,
-            )
+            val credentials = listOf(storedSdJwt(), stored(issuerSigned))
 
-            val result = DeviceRequestAdapter(request).select(listOf(sdJwt, stored(issuerSigned)))
+            val result = DeviceRequestAdapter(request).select(credentials)
 
             result.apply {
                 docRequestMatchingResults.getValue(DocRequestId(0)).map { it.isSuccess } shouldBe listOf(false, true)
@@ -157,6 +167,82 @@ val DeviceRequestAdapterTest by matrixSuite {
                 .disclosedItems.getValue(element(CLAIM_GIVEN_NAME)) shouldBe
                     issuerSigned.namespaces.orEmpty().getValue(namespace).entries
                         .map { it.value }.single { it.elementIdentifier == CLAIM_GIVEN_NAME }
+        }
+    }
+
+    "holder submissions" - {
+        "the parameters are in the order of the document requests, with the ZK metadata of their zkRequest" {
+            val credential = stored(issued())
+            val zkRequest = ZkRequest(zkRequired = false, systemSpecs = listOf())
+            val request = deviceRequest(
+                docRequest(CLAIM_GIVEN_NAME),
+                docRequest(CLAIM_DATE_OF_BIRTH, requestInfo = DocRequestInfo(zkRequest = zkRequest)),
+            )
+            val submission = mapOf(
+                DocRequestId(1) to listOf(option(credential, CLAIM_DATE_OF_BIRTH)),
+                DocRequestId(0) to listOf(option(credential, CLAIM_GIVEN_NAME)),
+            )
+
+            val parameters = DeviceRequestAdapter(request).createPresentationParameters(submission)
+
+            parameters.getOrThrow().map { it.claims to it.zkMetadata } shouldBe listOf(
+                listOf(MdocClaimReference(namespace, CLAIM_GIVEN_NAME)) to null,
+                listOf(MdocClaimReference(namespace, CLAIM_DATE_OF_BIRTH)) to ZkMetadata.IsoMdocZk(zkRequest),
+            )
+        }
+
+        "a document request submitted without a credential is rejected" {
+            val request = deviceRequest(docRequest(CLAIM_GIVEN_NAME))
+            val submission = mapOf(DocRequestId(0) to listOf<DocRequestSubmissionOption<SubjectCredentialStore.StoreEntry>>())
+
+            val parameters = DeviceRequestAdapter(request).createPresentationParameters(submission)
+
+            parameters.isFailure shouldBe true
+        }
+
+        "a document request is submitted with one credential" {
+            val credential = stored(issued())
+            val request = deviceRequest(docRequest(CLAIM_GIVEN_NAME))
+            val submission = mapOf(
+                DocRequestId(0) to listOf(option(credential, CLAIM_GIVEN_NAME), option(credential, CLAIM_GIVEN_NAME))
+            )
+
+            val parameters = DeviceRequestAdapter(request).createPresentationParameters(submission)
+
+            parameters.isFailure shouldBe true
+        }
+
+        "a document request is submitted with several credentials if a unique document set is not required" {
+            val credential = stored(issued())
+            val request = deviceRequest(
+                docRequest(CLAIM_GIVEN_NAME, requestInfo = DocRequestInfo(uniqueDocSetRequired = false))
+            )
+            val submission = mapOf(
+                DocRequestId(0) to listOf(option(credential, CLAIM_GIVEN_NAME), option(credential, CLAIM_GIVEN_NAME))
+            )
+
+            val parameters = DeviceRequestAdapter(request).createPresentationParameters(submission)
+
+            parameters.getOrThrow().size shouldBe 2
+        }
+
+        "a credential that is not an ISO mdoc is rejected" {
+            val request = deviceRequest(docRequest(CLAIM_GIVEN_NAME))
+            val submission = mapOf(DocRequestId(0) to listOf(option(storedSdJwt(), CLAIM_GIVEN_NAME)))
+
+            val parameters = DeviceRequestAdapter(request).createPresentationParameters(submission)
+
+            parameters.isFailure shouldBe true
+        }
+
+        "a submission not satisfying the use cases is rejected" {
+            val credential = stored(issued())
+            val request = deviceRequest(docRequest(CLAIM_GIVEN_NAME), docRequest(CLAIM_DATE_OF_BIRTH))
+            val submission = mapOf(DocRequestId(0) to listOf(option(credential, CLAIM_GIVEN_NAME)))
+
+            val parameters = DeviceRequestAdapter(request).createPresentationParameters(submission)
+
+            parameters.isFailure shouldBe true
         }
     }
 

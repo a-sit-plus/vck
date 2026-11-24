@@ -150,9 +150,7 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
 - ISO mdoc:
     - BREAKING: Data elements to present are `MdocClaimReference`s (name space and data element identifier,
       ISO/IEC 18013-5:2021, 8.3.2.1.2.1) instead of JSONPath `NormalizedJsonPath`s of two names, in
-      `IsoPresentationParameters.claims`, `DeviceRequestCredentialDisclosure.disclosedAttributes`, and
-      `IsoMdocZkBackend.generate(requestedClaims)`. `DeviceRequestCredentialDisclosure` is serialized as before, each
-      data element as a `[namespace, claimName]` array (`MdocClaimReference.ArraySerializer`)
+      `IsoPresentationParameters.claims` and `IsoMdocZkBackend.generate(requestedClaims)`
     - BREAKING: Remove `NormalizedJsonPath.toIsoNamespaceAttribute()`. A requested claim can no longer have another
       shape than a name space and a data element identifier, so none is ignored with a warning any more
     - BREAKING: `RequestOptionsCredential` with the representation `ISO_MDOC` reads its `attributePaths` and
@@ -220,6 +218,16 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       `IsoDeviceRetrievalQueryMatchingResult`, `IsoDeviceRetrievalCredentialMatch` and `IsoDeviceRetrievalClaimMatch`:
       the data elements to disclose and their values are the `ElementReference`s and `IssuerSignedItem`s of
       `DocRequestMatch.disclosedItems`
+    - BREAKING: The holder submits an ISO Device Retrieval presentation by `DocRequestId`, like a DCQL presentation by
+      credential query identifier: `HolderIsoDeviceRetrievalQueryMatchingResult.toSubmission` and
+      `toDefaultSubmission` return a `Map<DocRequestId, List<DocRequestSubmissionOption<Credential>>>`, which
+      `CredentialPresentation.IsoDeviceRetrievalPresentation.docRequestSubmissions` and
+      `CredentialPresentationRequest.IsoDeviceRetrieval.toCredentialPresentation(docRequestSubmissions)` take instead
+      of `submissions`, a flat list of `DeviceRequestCredentialDisclosure`s, which is removed. Its JSON is an object
+      of the document request positions, each with its options, their data elements as
+      `[namespace, dataElementIdentifier]` arrays. `DeviceRequestAdapter.createPresentationParameters` checks the
+      submission, now also rejecting a document request submitted without a credential. Remove
+      `MdocClaimReference.ArraySerializer`, see `ElementReference.ArraySerializer`
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no

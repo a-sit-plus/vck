@@ -1,27 +1,37 @@
 package at.asitplus.wallet.lib.procedures.iso
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceRequestMatchingResult
+import at.asitplus.iso.DocRequestId
 import at.asitplus.iso.DocRequestMatch
+import at.asitplus.iso.DocRequestSubmissionOption
 import at.asitplus.iso.Document
 import at.asitplus.iso.IsoMdocCredential
+import at.asitplus.iso.ItemsRequest
 import at.asitplus.iso.checkAcceptedDocuments
+import at.asitplus.iso.checkDisclosure
+import at.asitplus.iso.checkUseCaseRequirements
 import at.asitplus.iso.docRequestIds
 import at.asitplus.iso.findDocRequestMatches
 import at.asitplus.iso.itemsRequest
 import at.asitplus.iso.match
+import at.asitplus.wallet.lib.agent.IsoPresentationParameters
+import at.asitplus.wallet.lib.agent.PresentationException
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
+import at.asitplus.wallet.lib.agent.ZkMetadata
 import at.asitplus.wallet.lib.cbor.authorityKeyIdentifiers
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import kotlin.jvm.JvmInline
 
 /**
- * Adapts the credentials of a holder and the documents of a response to the rules of the ISO/IEC 18013-5
- * [deviceRequest], see [DeviceRequest.findDocRequestMatches] and [DeviceRequest.checkAcceptedDocuments], as
- * [DCQLQueryAdapter] adapts them to a DCQL query.
+ * Adapts the credentials and submissions of a holder and the documents of a response to the rules of the ISO/IEC
+ * 18013-5 [deviceRequest], see [DeviceRequest.findDocRequestMatches], [DeviceRequest.checkUseCaseRequirements] and
+ * [DeviceRequest.checkAcceptedDocuments], as [DCQLQueryAdapter] adapts them to a DCQL query.
  */
 @JvmInline
 value class DeviceRequestAdapter(val deviceRequest: DeviceRequest) {
@@ -42,6 +52,48 @@ value class DeviceRequestAdapter(val deviceRequest: DeviceRequest) {
                 )
             }
         })
+    }
+
+    /**
+     * Checks the holder's [submission] against [deviceRequest], also one a wallet builds itself, and creates the
+     * parameters to present it, in the order of the document requests. The checks:
+     *  - the submitted document requests satisfy the use cases, see [DeviceRequest.checkUseCaseRequirements]
+     *  - a document request is submitted with one credential, unless its `uniqueDocSetRequired` is `false`, which
+     *    indicates that "the mdoc reader [...] can receive multiple instances of responses to this exact DocRequest"
+     *    (ISO/IEC DIS 18013-5:2026, 10.2.4), and never without a credential
+     *  - each credential is an ISO mdoc of the requested docType, issued by an authority of the requested
+     *    `issuerIdentifiers`, whose disclosed data elements answer the document request exactly, see
+     *    [ItemsRequest.checkDisclosure]. So a wallet may disclose a later alternative than [ItemsRequest.match] selects.
+     *
+     * The parameters carry the ZK metadata of the `zkRequest` of the document request, if it has one.
+     */
+    fun createPresentationParameters(
+        submission: Map<DocRequestId, List<DocRequestSubmissionOption<StoreEntry>>>,
+    ): KmmResult<List<IsoPresentationParameters>> = catching {
+        deviceRequest.checkUseCaseRequirements(submission.keys).getOrThrow()
+        submission.entries.sortedBy { it.key.index }.flatMap { (id, options) ->
+            val itemsRequest = deviceRequest.itemsRequest(id)
+            require(options.isNotEmpty()) { "The document request $id is submitted without a credential" }
+            require(options.size == 1 || itemsRequest.requestInfo?.uniqueDocSetRequired == false) {
+                "The document request $id may only be submitted once"
+            }
+            options.map { it.toPresentationParameters(id, itemsRequest) }
+        }
+    }
+
+    /** See [createPresentationParameters]. */
+    private fun DocRequestSubmissionOption<StoreEntry>.toPresentationParameters(
+        id: DocRequestId,
+        itemsRequest: ItemsRequest,
+    ): IsoPresentationParameters {
+        val credential = credential as? StoreEntry.Iso
+            ?: throw PresentationException("The document request $id requires an ISO mdoc credential")
+        itemsRequest.checkDisclosure(credential.toIsoMdocCredential(), disclosedElements.toSet()).getOrThrow()
+        return IsoPresentationParameters.create(
+            credential = credential,
+            claims = disclosedElements.map { MdocClaimReference(it.namespace, it.dataElementIdentifier) },
+            zkMetadata = itemsRequest.requestInfo?.zkRequest?.let { ZkMetadata.IsoMdocZk(it) },
+        ).getOrThrow()
     }
 
     /**

@@ -9,7 +9,6 @@ import at.asitplus.iso.DocRequestSubmissionOption
 import at.asitplus.iso.checkUseCaseRequirements
 import at.asitplus.iso.itemsRequest
 import at.asitplus.iso.requestedUseCases
-import at.asitplus.wallet.lib.data.MdocClaimReference
 
 /**
  * Holder-facing view of an ISO device request match.
@@ -65,8 +64,8 @@ data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
     /**
      * The submission of the document set [selection] chooses for each use case to present, both taken from [useCases];
      * an optional use case without an entry is not presented.
-     * For each document request of the chosen document sets, in the order of the document requests,
-     * this submits its first matching credential,
+     * For each document request of the chosen document sets, by its [DocRequestId], in the order of the document
+     * requests, this submits its first matching credential,
      * or every match when its `uniqueDocSetRequired` is `false` (ISO/IEC DIS 18013-5:2026, 10.2.4).
      *
      * Fails if [selection] chooses no document set at all, or none for a mandatory use case,
@@ -78,7 +77,7 @@ data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
      */
     fun toSubmission(
         selection: Map<HolderUseCase, HolderDocumentSet>,
-    ): KmmResult<List<DeviceRequestCredentialDisclosure<Credential>>> = catching {
+    ): KmmResult<Map<DocRequestId, List<DocRequestSubmissionOption<Credential>>>> = catching {
         require(selection.isNotEmpty()) {
             "At least one use case has to be satisfied, but none was chosen"
         }
@@ -100,20 +99,13 @@ data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
         }
         val docRequestIds = selection.values.flatMap { it.docRequestIds }.toSet()
         deviceRequest.checkUseCaseRequirements(docRequestIds).getOrThrow()
-        docRequestIds.sortedBy { it.index }.flatMap { id -> firstOrMultiple(id).map { it.toDisclosure(id) } }
+        docRequestIds.sortedBy { it.index }.associateWith { id -> firstOrMultiple(id) }
     }
 
     private fun firstOrMultiple(id: DocRequestId): List<DocRequestSubmissionOption<Credential>> {
         val matches = docRequestMatches[id].orEmpty()
         return if (allowsMultiple(id)) matches else matches.take(1)
     }
-
-    private fun DocRequestSubmissionOption<Credential>.toDisclosure(id: DocRequestId) =
-        DeviceRequestCredentialDisclosure(
-            docRequestIndex = id.index,
-            credential = credential,
-            disclosedAttributes = disclosedElements.map { MdocClaimReference(it.namespace, it.dataElementIdentifier) },
-        )
 
     /**
      * Builds a valid automatic submission: [toSubmission] of the first selection that is valid, trying for each
@@ -125,7 +117,7 @@ data class HolderIsoDeviceRetrievalQueryMatchingResult<Credential : Any>(
      * Fails if a mandatory use case, or, without one, every use case can not be satisfied, or no selection is valid.
      * Wallets that obtain a different choice from the End-User use [useCases] and [toSubmission].
      */
-    fun toDefaultSubmission(): KmmResult<List<DeviceRequestCredentialDisclosure<Credential>>> = catching {
+    fun toDefaultSubmission(): KmmResult<Map<DocRequestId, List<DocRequestSubmissionOption<Credential>>>> = catching {
         useCases.forEachIndexed { useCaseIndex, useCase ->
             if (useCase.mandatory && useCase.documentSets.none { it.satisfiable })
                 throw PresentationException("No document set of the mandatory use case at $useCaseIndex is satisfiable")
