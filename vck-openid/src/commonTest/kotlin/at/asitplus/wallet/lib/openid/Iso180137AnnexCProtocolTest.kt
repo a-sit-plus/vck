@@ -157,8 +157,8 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
                 /** Extracts the Annex C request from the browser-facing [CredentialRequestOptions]. */
                 suspend fun createIsoMdocRequest(transactionId: String): IsoMdocRequest = verifier
                     .createAuthnRequest(
-                        OpenId4VpRequestOptions(
-                            presentationRequest = deviceRequest,
+                        DcApiRequestOptions(
+                            presentationRequest = DcApiPresentationRequest.Raw(deviceRequest),
                             responseMode = OpenIdConstants.ResponseMode.DcApi,
                             expectedOrigins = listOf(callingOrigin),
                             state = transactionId,
@@ -567,11 +567,11 @@ val Iso180137AnnexCProtocolTest by matrixSuite {
         )
         val euWrprc = byteArrayOf(0xD2.toByte(), 0x84.toByte(), 0x40, 0xA0.toByte(), 0xF6.toByte(), 0x40)
         val requestOptions = verifier.createAuthnRequest(
-            OpenId4VpRequestOptions(
-                presentationRequest = deviceRequest,
+            DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(deviceRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
-                euWrprc = euWrprc,
+                registrationCertificate = RelyingPartyRegistrationCertificate(cwt = euWrprc),
             ),
             DcApiCreationOptions.Iso180137AnnexC,
         ).getOrThrow()
