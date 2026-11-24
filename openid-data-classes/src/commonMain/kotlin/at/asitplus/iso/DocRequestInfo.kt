@@ -1,8 +1,12 @@
 package at.asitplus.iso
 
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.CborArray
 import kotlinx.serialization.cbor.ValueTags
@@ -121,4 +125,18 @@ data class AlternativeDataElementsSet(
 data class ElementReference(
     val namespace: String,
     val dataElementIdentifier: String,
-)
+) {
+    /**
+     * Serializes the reference as the array `[namespace, dataElementIdentifier]` in every format, as its CDDL defines
+     * it (ISO/IEC DIS 18013-5:2026, 10.2.4), also in JSON, where its default serializer encodes an object.
+     */
+    object ArraySerializer : KSerializer<ElementReference> by TransformingSerializerTemplate(
+        parent = ListSerializer(String.serializer()),
+        encodeAs = { listOf(it.namespace, it.dataElementIdentifier) },
+        decodeAs = {
+            require(it.size == 2) { "An ElementReference has a name space and a data element identifier: $it" }
+            ElementReference(it[0], it[1])
+        },
+        serialName = "at.asitplus.iso.ElementReference.Array",
+    )
+}

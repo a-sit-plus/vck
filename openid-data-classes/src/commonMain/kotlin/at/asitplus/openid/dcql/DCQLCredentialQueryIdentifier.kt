@@ -21,5 +21,7 @@ value class DCQLCredentialQueryIdentifier(val string: String) {
             "Credential query identifier must only contain alphanumeric, underscore (_) or hyphen (-) characters."
         }
     }
+
+    override fun toString() = string
 }
 

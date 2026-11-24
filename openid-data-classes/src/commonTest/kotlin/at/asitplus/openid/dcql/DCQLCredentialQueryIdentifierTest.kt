@@ -3,6 +3,7 @@ package at.asitplus.openid.dcql
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.shouldBe
 
 val DCQLCredentialQueryIdentifierTest by matrixSuite {
     "success" - {
@@ -35,5 +36,12 @@ val DCQLCredentialQueryIdentifierTest by matrixSuite {
                 DCQLCredentialQueryIdentifier(it)
             }
         }
+    }
+    test("is shown as its string") {
+        val identifier = DCQLCredentialQueryIdentifier("pid-mdoc")
+
+        val shown = "$identifier"
+
+        shown shouldBe "pid-mdoc"
     }
 }

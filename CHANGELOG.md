@@ -92,6 +92,7 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
     - Fix: `DCQLCredentialQueryIdentifier` and `DCQLClaimsQueryIdentifier` accept only ASCII letters and digits besides
       `_` and `-`, reading the "alphanumeric" characters of OpenID4VP 1.0, 6.1 and 6.3 as ALPHA and DIGIT of RFC 5234,
       instead of every Unicode letter and digit, e.g. `ä`
+    - `DCQLCredentialQueryIdentifier.toString()` is the identifier itself, e.g. in error messages
     - Fix: Every claims query of a claim combination has to match, also several queries of one claim, e.g. with
       different `values`, instead of only the first query of each claim: OpenID4VP 1.0 has no rule to ignore duplicate
       claims queries, which its drafts had. An mdoc presentation returns a data element selected by several claims
@@ -202,6 +203,14 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       18013-5:2026, 10.2.4)
     - BREAKING: Fix: `DocRequestInfo.docResponseEncryption` is a `ByteStringWrapper<EncryptionParameters>`, encoded as
       `EncryptionParametersBytes`, a tag-24 byte string (ISO/IEC DIS 18013-5:2026, 10.2.4), instead of a map
+    - Add the rules of an ISO `DeviceRequest` to `openid-data-classes`, like those of a `DCQLQuery`, over the new
+      `IsoMdocCredential` (docType, issuer-signed items by `ElementReference`, authority key identifiers):
+      `DeviceRequest.findDocRequestMatches` (a `DeviceRequestMatchingResult` of one `KmmResult<DocRequestMatch>` per
+      credential and document request, failures included), `requestedUseCases`, `checkUseCaseRequirements`,
+      `checkAcceptedDocuments`, and `ItemsRequest.match`, `checkDisclosure`, `isAnsweredBy`. Document requests are
+      identified by `DocRequestId`, their position in `docRequests`; `DocRequestSubmissionOption` is a credential
+      chosen for one, with the data elements to disclose, serialized as `[namespace, dataElementIdentifier]` arrays
+      with the new `ElementReference.ArraySerializer`
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
