@@ -62,7 +62,8 @@ Important areas:
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/dcql`
   DCQL matching and submission logic over stored credentials.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/procedures/iso`
-  ISO Device Retrieval matching and submission validation.
+  `DeviceRequestAdapter`, which adapts stored credentials, submissions, and response documents to the ISO Device
+  Retrieval rules in `openid-data-classes`.
 - `vck/src/commonMain/kotlin/at/asitplus/wallet/lib/data`
   Core data structures used by the agents, including credential metadata registries and the protocol-neutral
   presentation request/selection model.
@@ -151,7 +152,8 @@ Use data-class modules for published wire models and serializers:
 - `openid-data-classes`
   OpenID/OAuth2/OIDC, DCQL, DCAPI, token status list, and related wire models. Also owns the complete ISO mDoc
   CBOR/COSE model in `at.asitplus.iso`: device request/response, `MobileSecurityObject`, session transcript and
-  OpenID4VP handover, and the ZKP request types.
+  OpenID4VP handover, the ZKP request types, and the rules of a `DeviceRequest` over `IsoMdocCredential`, like those
+  of a DCQL query in `at.asitplus.openid.dcql`.
 - `csc-data-classes`
   Cloud Signature Consortium REST API v2.* models.
 - `etsi-data-classes`
@@ -298,11 +300,16 @@ together through user selection so repeated ISO document requests and DCQL submi
 matching results hold their request, and offer its choices (`HolderDCQLQueryMatchingResult.credentialSets`,
 `HolderIsoDeviceRetrievalQueryMatchingResult.useCases`) and a `toSubmission` of the chosen ones.
 
-The rules of an extended ISO request (use cases, alternative data elements, issuer identifiers) live in
-`DeviceRetrievalProcedure`, shared by the wallet's matching and submission check and by the verifier's response check
-`DeviceRequestAdapter`, the counterpart of `DCQLQueryAdapter`. Change them there for both sides at once. ISO matching
-does not follow the module split of DCQL yet: its rules should move to `openid-data-classes` over a credential
-abstraction, with document requests identified by a typed position.
+ISO Device Retrieval follows the module split of DCQL. The rules of a `DeviceRequest` (use cases, alternative data
+elements, issuer identifiers) live in `openid-data-classes` (`DeviceRequestMatching.kt` in `at.asitplus.iso`), over
+`IsoMdocCredential`, the counterpart of `DCQLCredential`: matching (`findDocRequestMatches`, keeping a failure per
+credential and document request), the use cases (`checkUseCaseRequirements`), the exact disclosure a holder submits
+(`ItemsRequest.checkDisclosure`), and the verifier's response check (`checkAcceptedDocuments`). Change them there for
+both sides at once. Document requests are identified by `DocRequestId`, their position in `docRequests`, above the
+wire only: `UseCase.documentSets` keeps the CDDL's unsigned integers. In `vck`, `DeviceRequestAdapter`, the
+counterpart of `DCQLQueryAdapter`, only adapts stored credentials and response documents to `IsoMdocCredential`
+(computing the authority key identifiers of their `x5chain`), and turns a submission into `IsoPresentationParameters`
+with their ZK metadata.
 
 
 ### ISO mDoc Zero-Knowledge Proofs

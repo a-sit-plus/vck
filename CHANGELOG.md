@@ -6,7 +6,8 @@ Removes JSONPath as a dependency, because OpenID4VP relies on DCQL paths only. S
 processing. Adds typed presentation requests (`RequestedCredential`, `RequestedPresentation`) with claims requested if
 available, claim alternatives, and credential sets, replacing the deprecated `RequestOptionsCredential`. Supports the
 extended device requests of ISO/IEC DIS 18013-5:2026 (use cases, alternative data elements, issuer identifiers) in the
-wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over the Digital Credentials API.
+wallet and the verifier, with their rules in `openid-data-classes` and matches and submissions keyed by `DocRequestId`,
+like DCQL, and adds `DcApiRequestOptions` for typed requests over the Digital Credentials API.
 
 - Core:
     - Add `at.asitplus.wallet.lib.BuildProperties.vckVersion`, a compile-time constant generated from `artifactVersion`.
@@ -228,6 +229,20 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       `[namespace, dataElementIdentifier]` arrays. `DeviceRequestAdapter.createPresentationParameters` checks the
       submission, now also rejecting a document request submitted without a credential. Remove
       `MdocClaimReference.ArraySerializer`, see `ElementReference.ArraySerializer`
+    - BREAKING: ISO Device Retrieval matching and submission follow DCQL; migrate the released ISO types:
+        - `IsoDeviceRetrievalQueryMatchingResult.documentMatches` is
+          `DeviceRequestMatchingResult.docRequestMatchingResults`, or `docRequestMatches` for the matches only
+        - `IsoDeviceRetrievalCredentialMatch(credentialIndex, requestedClaims)` is a `Pair<UInt, DocRequestMatch>` of
+          the index of the credential and its match in `DeviceRequestMatchingResult.docRequestMatches`
+        - `IsoDeviceRetrievalClaimMatch(namespace, claimName, claimValue)` is an `ElementReference` and its
+          `IssuerSignedItem` in `DocRequestMatch.disclosedItems`
+        - `HolderIsoDeviceRetrievalQueryMatchingResult.queryMatchingResult` and `documentMatches` are
+          `deviceRequestMatchingResult` and `docRequestMatches`, its first constructor parameter is
+          `deviceRequestMatchingResult`
+        - `DeviceRequestCredentialDisclosure(docRequestIndex, credential, disclosedAttributes)` is a
+          `DocRequestSubmissionOption(credential, disclosedElements)` under `DocRequestId(docRequestIndex)` in a map
+        - `HolderDocumentSet.docRequestIndices` is `docRequestIds`
+        - `CredentialPresentation.IsoDeviceRetrievalPresentation.submissions` is `docRequestSubmissions`
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no

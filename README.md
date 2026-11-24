@@ -533,6 +533,12 @@ submission presents a satisfiable document set of each mandatory use case, or, i
 first one the wallet can satisfy, as at least one has to be. To present an optional use case, or another document set,
 pass the document set chosen for each use case to `matchingResult.toSubmission(selection)`.
 
+Like DCQL matches by credential query, ISO matches are keyed by `DocRequestId`, the position of a document request in
+the `DeviceRequest`: `matchingResult.docRequestMatches` lists the matching credentials with the data elements to
+disclose, `matchingResult.deviceRequestMatchingResult` also the values of these data elements and, for each credential
+that does not match, why. A submission maps each presented `DocRequestId` to its `DocRequestSubmissionOption`s, as
+`toSubmission` returns it, and is passed to `IsoDeviceRetrieval.toCredentialPresentation(docRequestSubmissions)`.
+
 On iOS, `IosDcApiMdocPreRequestSummary` represents the system's pre-request disclosure summary without depending on
 Apple frameworks. It can be converted for early matching with `toDeviceRequest()`. Once the full Annex C
 request arrives, require `summary.isConsistentWith(request.parameters.isoMdocRequest)` before continuing so that the
