@@ -12,6 +12,7 @@ plugins {
     kotlin("plugin.serialization") version kotlinVer apply false
     id("com.android.kotlin.multiplatform.library") version libs.versions.agp.get() apply (false)
     alias(libs.plugins.asp)
+    alias(libs.plugins.skie) apply false
 }
 
 val dokkaDir = rootProject.layout.buildDirectory.dir("docs")

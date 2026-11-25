@@ -60,7 +60,7 @@ class VcLibConventions : K2Conventions() {
         if (target.rootProject != target) {
             target.pluginManager.apply("org.jetbrains.kotlin.multiplatform")
             target.pluginManager.apply("org.jetbrains.kotlin.plugin.serialization")
-            if (target.hasAndroidSdk()) {
+            if (target.hasAndroidSdk() && !target.skipsAndroid()) {
                 target.pluginManager.apply("com.android.kotlin.multiplatform.library")
             }
             target.pluginManager.apply("signing")
@@ -159,6 +159,12 @@ fun KotlinMultiplatformExtension.vckAndroid(minSdkOverride: Int? = null) {
         }
     }
 }
+
+/**
+ * Whether the project opts out of Android with `vck.skipAndroid=true` in its own `gradle.properties`, e.g. iOS-only
+ * modules: the Android plugin would otherwise create an Android target without a namespace.
+ */
+fun Project.skipsAndroid() = findProperty("vck.skipAndroid")?.toString()?.toBoolean() == true
 
 fun Project.hasAndroidSdk() = resolveAndroidSdk(this)?.let { it -> isValidAndroidSdk(it) } == true
 
