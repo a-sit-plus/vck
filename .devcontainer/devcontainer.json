@@ -1,0 +1,31 @@
+{
+  "name": "VCK Agent",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/vck,type=bind",
+  "workspaceFolder": "/workspaces/vck",
+  "containerUser": "node",
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+  "mounts": [
+    "source=vck-gradle-${devcontainerId},target=/home/node/.gradle,type=volume",
+    "source=gradle-ro-cache,target=/opt/gradle-ro-cache,type=volume,readonly",
+    "source=vck-codex-${devcontainerId},target=/home/node/.codex,type=volume",
+    "source=vck-claude-${devcontainerId},target=/home/node/.claude,type=volume"
+  ],
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "GRADLE_RO_DEP_CACHE": "/opt/gradle-ro-cache",
+    "TZ": "${localEnv:TZ:UTC}",
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "runArgs": ["--security-opt=no-new-privileges"],
+  "onCreateCommand": "copy-gradle-distribution",
+  "customizations": {
+    "jetbrains": {
+      "backend": "IntelliJ"
+    }
+  }
+}
