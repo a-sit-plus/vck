@@ -9,6 +9,13 @@ API or mixing model, protocol, and transport concerns.
 VC-K is a Kotlin Multiplatform library split into small published modules. The direct project dependencies are:
 
 ```text
+vck-ios (iOS only, not published to Maven)
+    -> vck-openid-ktor
+    -> vck-openid
+    -> vck
+    -> openid-data-classes
+    -> csc-data-classes
+
 vck-openid-ktor
     -> vck-openid
     -> vck
@@ -39,7 +46,7 @@ Keep them limited to data models, serializers, parsing helpers, and small value-
 persistence, credential issuance, credential presentation, and protocol state machines belong in `vck` or
 `vck-openid`; transport integration belongs in `vck-openid-ktor`.
 
-The root build contains the nine modules listed in `settings.gradle.kts`. EU PID, EU PID SD-JWT, and mDL credential
+The root build contains the ten modules listed in `settings.gradle.kts`. EU PID, EU PID SD-JWT, and mDL credential
 definitions that used to live in separate credential repositories are now source packages inside `vck`; they are not
 additional Gradle modules or Git submodules.
 
@@ -144,6 +151,31 @@ Important areas:
   instances.
 
 
+### `vck-ios`
+
+`vck-ios` is the Swift-facing bridge for iOS apps, built into `VckIos.xcframework` that exports all VC-K modules and
+Signum, and distributed as the Swift package defined in the root `Package.swift`. It has iOS targets only, uses
+[SKIE](https://skie.touchlab.co/) for Swift interop, and is not published to Maven.
+
+Important areas:
+
+- `vck-ios/src/iosMain/kotlin/at/asitplus/wallet/ios`
+  Adapters from Apple framework types to Signum and VC-K (`SignerAdapter` and `KeyMaterialAdapter` for `SecKey`,
+  `CertificateAdapter` for `SecCertificate`, `ByteArrayBridge` for `NSData`), Swift-friendly builders for agents with
+  many constructor parameters (`HolderAgentBuilder`, `OpenId4VpHolderBuilder`), Kotlin defaults and `Duration`
+  conversions Swift can not express (`SwiftBridgeDefaults`, `ValidationBridge`), `HttpExchangeBridge` to send the
+  requests of `HttpExchange`s with `URLSession`, `SuspendFunctionBridge` to call Kotlin suspend lambdas from Swift,
+  and `JoseCodec` and `CoseCodec` to encode and decode any serializable type as `NSData`. `VckSerializer` only keeps
+  parsing that the codecs can not express, e.g. of a typed compact JWS.
+- `vck-ios/src/iosMain/swift`
+  Swift code that SKIE bundles into the framework, for what Kotlin can not export: initializers and factories with
+  Swift default arguments (`OpenId4VciClientAdapter`, `ValidationPolicy.create`, `OAuth2Client.create`, ...),
+  `HttpExchange.run(as:)` with `URLSessionTransport`, `SwiftCredentialStore` with its `SubjectCredentialStoreAdapter`,
+  `SwiftSuspendFunction0`-`2` for Kotlin suspend callbacks, and `kotlinValue`/`swiftResult` to unwrap `KmmResult`s.
+
+Keep protocol and credential logic out of this module: it only adapts existing VC-K APIs for Swift callers. Add Apple
+framework adapters here rather than in the other modules.
+
 ### Data-Class Modules
 
 Use data-class modules for published wire models and serializers:
@@ -182,7 +214,8 @@ calculation remain in `vck-openid`. A direct ISO Device Retrieval response is a 
 
 Platform-neutral request/response models and codecs belong in `openid-data-classes`. Android `Bundle` conversion,
 Apple framework objects, activity/extension lifecycle, and other SDK-specific adaptation stay in wallet applications.
-In particular, do not add Android or Apple framework dependencies to VC-K for DC API integration. The iOS-specific
+In particular, do not add Android or Apple framework dependencies to VC-K for DC API integration; generic Apple
+framework adapters (keys, certificates) live only in `vck-ios`. The iOS-specific
 pre-request summary is a serializable wire model rather than an Apple framework type, so it remains common code while
 being explicitly named `IosDcApiMdocPreRequestSummary`.
 

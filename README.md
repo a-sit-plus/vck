@@ -127,6 +127,7 @@ VC-K uses a modular structure to separate concerns. Hence, depending on the use 
 |      `vck-openid`      | OAuth 2.0, OpenID4VCI, and OpenID4VP for wallets, issuers, and verifiers, with protocol clients returning `HttpExchange`s for any HTTP stack, and servers returning `PreparedHttpResponse`s.                             |
 |   `vck-openid-ktor`    | Contains ktor-based OAuth 2.0 and OpenID4VCI client and OpenID4VP holder implementations.                                                                                                                               |
 |    `vck-longfellow`    | Implementation of a registerable backend for ISO mDoc zero-knowledge proofs using [LongfellowZk](https://github.com/longfellow-zk/longfellow-zk)                                                                        |
+|       `vck-ios`        | Swift package for iOS apps with all of the above, plus adapters for `SecKey` and `SecCertificate`. Not published to Maven, see [Swift Package](#swift-package).                                                         |
 | `openid-data-classes`  | OpenID data classes. **Only depends on `csc-data-classes`, `etsi-data-classes` and `rfc3986-uri-syntax`** and can hence be used independently of VC-K!                                                                  |
 |   `csc-data-classes`   | [CSC](https://cloudsignatureconsortium.org/wp-content/uploads/2025/01/csc-api-2.1.0.1.pdf) API and data model data classes. **Does not depend on any other vck artefact** and can hence be used independently of VC-K!  |
 |  `etsi-data-classes`   | [ETSI TS 119 602](https://www.etsi.org/deliver/etsi_ts/119600_119699/119602/01.01.01_60/ts_119602v010101p.pdf) (LoTE) and ETSI TS 119 475 (WRPAC, WRPRC) data classes. **Only depends on `rfc3986-uri-syntax`** and can hence be used independently of VC-K! |
@@ -555,6 +556,45 @@ IsoMdocZkBackendRegistry.Default.register(LongfellowBackend()).fold(
     onFailure = { Napier.e { "Registration failed with ${it.message}" }}
 )
 ```
+
+### Swift Package
+
+iOS apps can use VC-K as a Swift package, without a Kotlin toolchain: In Xcode, add the package
+`https://github.com/a-sit-plus/vck` and select the product `VckIos`, or in your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/a-sit-plus/vck", from: "10.0.0"),
+],
+targets: [
+    .target(name: "MyWallet", dependencies: [.product(name: "VckIos", package: "vck")]),
+]
+```
+
+It ships `VckIos.xcframework`, which exports all VC-K modules and Signum to Swift via `import VckIos`, and adds
+helpers for Swift callers, e.g. `KeyMaterialAdapter.fromSecKey` to sign with a key held in the Keychain or Secure
+Enclave, `HolderAgentBuilder` and `OpenId4VpHolderBuilder`, factories with Swift default arguments like
+`ValidationPolicy.create` and `OpenId4VciClientAdapter`, `SwiftCredentialStore` to implement a credential store in
+Swift, and `HttpExchange.run(as:)` to send the requests of the protocol clients with `URLSession`:
+
+```swift
+let keyMaterial = try kotlinValue(KeyMaterialAdapter.shared.fromSecKey(privateKey: Unmanaged.passUnretained(secKey).toOpaque()))!
+let store = SubjectCredentialStoreAdapter(mySwiftCredentialStore)
+let holder = OpenId4VpHolderBuilder(keyMaterial: keyMaterial, subjectCredentialStore: store).build()
+let client = OpenId4VpProtocolClient(openId4VpHolder: holder)
+let state = try await client.prepareAuthorizationResponse(input: requestUrl).run(as: AuthorizationResponsePreparationState.self)
+```
+
+Encode and decode any serializable type with `JoseCodec` (JSON) or `CoseCodec` (CBOR), e.g. to persist store entries
+or the state of a flow interrupted by the browser:
+
+```swift
+let codec = JoseCodec<ProvisioningContext>(serializer: ProvisioningContext.companion.serializer())
+let data = try codec.encode(value: context)
+```
+
+The demo app in [a-sit-plus/vck-ios](https://github.com/a-sit-plus/vck-ios) shows issuance and presentation with this
+package.
 
 ## Limitations
 
