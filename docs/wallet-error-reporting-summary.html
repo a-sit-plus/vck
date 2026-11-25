@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VC-K Error Handling</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --surface-2: #f1f1ee;
+    --text: #1d1d1b;
+    --muted: #5e5e58;
+    --border: #e2e2dc;
+    --code-bg: #efefea;
+    --accent: #0b5cad;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+
+    --c-cancel: #6b7280;
+    --c-network: #0e7490;
+    --c-remote: #c2410c;
+    --c-wallet: #7c3aed;
+    --c-validation: #b91c1c;
+    --c-http: #b45309;
+    --c-presentation: #1d4ed8;
+    --c-unsupported: #4d7c0f;
+    --c-other: #374151;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413;
+      --surface: #1d1d1b;
+      --surface-2: #252522;
+      --text: #ececE8;
+      --muted: #a3a39b;
+      --border: #34342f;
+      --code-bg: #2a2a26;
+      --accent: #6aa9ef;
+      --shadow: none;
+
+      --c-cancel: #9ca3af;
+      --c-network: #22d3ee;
+      --c-remote: #fb923c;
+      --c-wallet: #a78bfa;
+      --c-validation: #f87171;
+      --c-http: #fbbf24;
+      --c-presentation: #60a5fa;
+      --c-unsupported: #a3e635;
+      --c-other: #d1d5db;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413;
+    --surface: #1d1d1b;
+    --surface-2: #252522;
+    --text: #ececE8;
+    --muted: #a3a39b;
+    --border: #34342f;
+    --code-bg: #2a2a26;
+    --accent: #6aa9ef;
+    --shadow: none;
+
+    --c-cancel: #9ca3af;
+    --c-network: #22d3ee;
+    --c-remote: #fb923c;
+    --c-wallet: #a78bfa;
+    --c-validation: #f87171;
+    --c-http: #fbbf24;
+    --c-presentation: #60a5fa;
+    --c-unsupported: #a3e635;
+    --c-other: #d1d5db;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 48px 16px 80px; }
+  h1, h2, h3 { line-height: 1.2; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); margin: 0 0 12px; }
+  h2 { font-size: 1.45rem; margin: 56px 0 8px; }
+  h3 { font-size: 1.05rem; margin: 0; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 1.1rem; color: var(--muted); max-width: 70ch; }
+  .section-intro { color: var(--muted); max-width: 75ch; }
+  code {
+    font: 0.88em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    overflow-wrap: anywhere;
+  }
+  .badge {
+    display: inline-block;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 2px 10px;
+    margin-bottom: 16px;
+  }
+
+  .principle {
+    margin: 28px 0 0;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  .principle strong { font-size: 1.15rem; display: block; margin-bottom: 4px; }
+  .principle p { margin: 0; color: var(--muted); }
+
+  /* Decision ladder */
+  .ladder { list-style: none; margin: 24px 0 0; padding: 0; position: relative; }
+  .ladder::before {
+    content: "";
+    position: absolute;
+    left: 19px; top: 20px; bottom: 20px;
+    width: 2px;
+    background: var(--border);
+  }
+  .step { position: relative; padding-left: 56px; margin-bottom: 14px; }
+  .step-num {
+    position: absolute; left: 0; top: 14px;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-weight: 700;
+    color: #fff;
+    background: var(--c);
+    box-shadow: 0 0 0 4px var(--bg);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .step-num { color: #141413; } }
+  :root[data-theme="dark"] .step-num { color: #141413; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--c);
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+  }
+  .card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 6px; }
+  .card-head .q { color: var(--muted); font-size: .9rem; }
+  .card .when { color: var(--muted); margin-bottom: 12px; }
+  .say-do { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .say, .do {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .label {
+    display: block;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .say q { quotes: "\201C" "\201D"; font-style: italic; }
+  .subs { margin-top: 12px; border-top: 1px dashed var(--border); }
+  .sub {
+    display: grid;
+    grid-template-columns: minmax(170px, 0.9fr) 1.6fr 1fr;
+    gap: 4px 14px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: .94rem;
+  }
+  .sub:last-child { border-bottom: none; padding-bottom: 0; }
+  .sub .what { color: var(--muted); font-size: .86rem; display: block; margin-top: 2px; }
+  .sub q { font-style: italic; }
+  .sub .act { color: var(--muted); }
+  .fallthrough { color: var(--muted); font-size: .85rem; margin: 4px 0 14px 56px; }
+
+  /* Validation reports */
+  .sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 20px; }
+  .source { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .source h3 { margin-bottom: 10px; }
+  .source dl { margin: 0; display: grid; gap: 10px; }
+  .source dt { font-size: .9rem; }
+  .source dd { margin: 2px 0 0; color: var(--muted); font-size: .88rem; }
+  .relation { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: stretch; margin-top: 20px; }
+  .rel-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .rel-box h3 { margin-bottom: 8px; }
+  .rel-box ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: .94rem; }
+  .rel-box li { margin-bottom: 6px; }
+  .rel-mid { display: grid; place-items: center; text-align: center; color: var(--muted); font-size: .82rem; max-width: 170px; }
+  .rel-mid .arrow { font-size: 1.6rem; color: var(--accent); line-height: 1; }
+  .outcomes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+  .outcome { border-radius: 10px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--c); box-shadow: var(--shadow); font-size: .94rem; }
+  .outcome strong { display: block; margin-bottom: 4px; }
+  .outcome p { margin: 0; color: var(--muted); }
+  .anatomy { margin-top: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .tree { list-style: none; margin: 0; padding: 0; font-size: .94rem; }
+  .tree ul { list-style: none; margin: 6px 0 0 10px; padding-left: 16px; border-left: 2px solid var(--border); }
+  .tree li { margin: 6px 0; }
+  .tree .hint { color: var(--muted); font-size: .86rem; }
+  .pill { display: inline-block; font-size: .74rem; font-weight: 600; border-radius: 999px; padding: 1px 8px; margin-right: 4px; border: 1px solid currentColor; }
+  .pill.pass { color: #15803d; } .pill.fail { color: var(--c-validation); } .pill.block { color: var(--c-http); } .pill.na { color: var(--c-cancel); }
+  .guide { margin: 20px 0 0; padding-left: 20px; }
+  .guide li { margin-bottom: 8px; }
+  pre {
+    margin: 16px 0 0;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow-x: auto;
+    font: 0.84rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  pre .c { color: var(--muted); font-style: italic; }
+  pre .k { color: var(--c-wallet); font-weight: 600; }
+  pre .s { color: var(--c-network); }
+  a { color: var(--accent); }
+  .code-title { margin-top: 24px; font-size: .9rem; font-weight: 600; }
+  @media (max-width: 720px) {
+    .relation { grid-template-columns: 1fr; }
+    .rel-mid { max-width: none; }
+    .rel-mid .arrow { transform: rotate(90deg); }
+    .outcomes { grid-template-columns: 1fr; }
+  }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin-top: 20px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: .94rem; }
+  th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+  td.before { color: var(--muted); }
+
+  /* Why section */
+  .reasons { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 20px; }
+  .reason { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .reason h3 { margin-bottom: 6px; }
+  .reason p { color: var(--muted); font-size: .94rem; margin: 0; }
+
+  .rely { counter-reset: rely; list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 10px; }
+  .rely li {
+    counter-increment: rely;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px 14px 58px; position: relative; box-shadow: var(--shadow);
+  }
+  .rely li::before {
+    content: counter(rely);
+    position: absolute; left: 16px; top: 12px;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: .9rem;
+    background: var(--accent); color: var(--surface);
+  }
+  .note { margin-top: 24px; padding: 14px 18px; border-radius: 10px; background: var(--surface-2); color: var(--muted); font-size: .94rem; }
+  footer { margin-top: 56px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--border); padding-top: 16px; }
+
+  @media (max-width: 720px) {
+    main { padding-top: 32px; }
+    .say-do { grid-template-columns: 1fr; }
+    .sub { grid-template-columns: 1fr; }
+    .step { padding-left: 0; }
+    .step-num { position: static; margin-bottom: 8px; width: 34px; height: 34px; box-shadow: none; }
+    .ladder::before { display: none; }
+    .fallthrough { margin-left: 0; }
+  }
+  @media print {
+    body { background: #fff; }
+    .card, .reason, .rely li, .table-wrap, .principle { box-shadow: none; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge">Planned for VC-K 10.0.0</span>
+  <h1>Error handling for wallet app integrators</h1>
+  <p class="lead">When a wallet flow fails (issuance, presentation or DC API), the failed <code>KmmResult</code> holds one
+    of a small set of documented exception types. This page lists them, in the order to check them, with what to
+    tell the user.</p>
+
+  <div class="principle">
+    <strong>Decide on the type, never on the message.</strong>
+    <p>Exception messages are English text for developers, meant for logs and bug reports. They may change in any
+      release and are never meant to be shown to users.</p>
+  </div>
+
+  <h2>Classify a failure: check top to bottom</h2>
+  <p class="section-intro">Take <code>result.exceptionOrNull()</code> and stop at the first type that matches. The user
+    messages are suggestions for the app to word and localize. Where a type carries data, such as dates or the issuer,
+    use it to make the message more specific. Validation reports of credentials (<code>prepareCredentialStorage</code>)
+    and of presentation requests (<code>startAuthorizationResponsePreparation</code> with a policy) are not failures:
+    they are returned as values, to show before the user decides.</p>
+
+  <ol class="ladder">
+    <li class="step" style="--c: var(--c-cancel)">
+      <span class="step-num">1</span>
+      <div class="card">
+        <div class="card-head"><h3><code>UserInitiatedCancellationReason</code></h3><span class="q">from Signum</span></div>
+        <p class="when">The user cancelled the biometric or PIN unlock of the key.</p>
+        <div class="say-do">
+          <div class="say"><span class="label">Tell the user</span>Nothing, or <q>Cancelled.</q></div>
+          <div class="do"><span class="label">App action</span>Allow a retry.</div>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" style="--c: var(--c-network)">
+      <span class="step-num">2</span>
+      <div class="card">
+        <div class="card-head"><h3>Ktor exceptions, <code>IOException</code></h3><span class="q">passed through unchanged</span></div>
+        <p class="when">No network, timeout, DNS or TLS failure.</p>
+        <div class="say-do">
+          <div class="say"><span class="label">Tell the user</span><q>No connection to the service. Check your internet connection and try again.</q></div>
+          <div class="do"><span class="label">App action</span>Offer a retry.</div>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" style="--c: var(--c-remote)">
+      <span class="step-num">3</span>
+      <div class="card">
+        <div class="card-head"><h3><code>OAuth2Exception</code> with <code>receivedFrom != null</code></h3><span class="q">the server said no</span></div>
+        <p class="when">The issuer, authorization server or verifier answered with an OAuth error. HTTP details are in
+          <code>cause</code>; log them together with <code>receivedFrom</code>.</p>
+        <div class="subs">
+          <div class="sub">
+            <div><code>AccessDenied</code><span class="what">The user declined at the authorization server, or it refused.</span></div>
+            <div><q>The request was declined at {issuer}.</q></div>
+            <div class="act">Back to the start.</div>
+          </div>
+          <div class="sub">
+            <div><code>ServerError</code>, <code>TemporarilyUnavailable</code><span class="what">The server is down or overloaded.</span></div>
+            <div><q>The service is temporarily unavailable. Please try again later.</q></div>
+            <div class="act">Offer a retry later.</div>
+          </div>
+          <div class="sub">
+            <div><code>InvalidGrant</code>, <code>InvalidToken</code><span class="what">Authorization code or token expired or already used.</span></div>
+            <div><q>Your session has expired. Please start again.</q></div>
+            <div class="act">Restart the flow.</div>
+          </div>
+          <div class="sub">
+            <div><code>CredentialRequestDenied</code><span class="what">The issuer refuses to issue this credential.</span></div>
+            <div><q>{issuer} did not issue the credential.</q></div>
+            <div class="act">—</div>
+          </div>
+          <div class="sub">
+            <div>any other, incl. <code>Other(error)</code><span class="what">The server rejected the request, e.g. <code>invalid_proof</code>.</span></div>
+            <div><q>The service could not process the request.</q></div>
+            <div class="act">Offer a bug report.</div>
+          </div>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" style="--c: var(--c-wallet)">
+      <span class="step-num">4</span>
+      <div class="card">
+        <div class="card-head"><h3><code>OAuth2Exception</code> with <code>receivedFrom == null</code></h3><span class="q">the wallet said no</span></div>
+        <p class="when">The wallet refused a verifier's request, and has already told the verifier.</p>
+        <div class="say-do">
+          <div class="say"><span class="label">Tell the user</span><q>This request can't be answered. The requesting service has been informed.</q></div>
+          <div class="do"><span class="label">App action</span>Open <code>redirectUri</code> if it is set; OpenID4VP&nbsp;1.0, 8.2 requires it.</div>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" style="--c: var(--c-validation)">
+      <span class="step-num">5</span>
+      <div class="card">
+        <div class="card-head"><h3><code>ValidationException</code></h3><span class="q">sealed</span></div>
+        <p class="when">A credential, an issuer or a relying party did not pass validation.</p>
+        <div class="subs">
+          <div class="sub">
+            <div><code>Rejected</code><span class="what">An operation needed an accepted report, see <a href="#reports">validation reports</a>.</span></div>
+            <div>Derive it from <code>report</code>, e.g. <q>The issuer is not trusted.</q></div>
+            <div class="act">Show the report; offer <em>store anyway</em> where the policy allows.</div>
+          </div>
+          <div class="sub">
+            <div><code>Timeliness</code><span class="what">Expired, or not yet valid.</span></div>
+            <div><q>The credential expired on {notAfter}.</q></div>
+            <div class="act">—</div>
+          </div>
+          <div class="sub">
+            <div><code>TokenStatus</code><span class="what">Revoked or suspended by its issuer.</span></div>
+            <div><q>The issuer has revoked this credential.</q></div>
+            <div class="act">—</div>
+          </div>
+          <div class="sub">
+            <div><code>MissingRequiredClaims</code><span class="what">The issuer left out claims the type requires.</span></div>
+            <div><q>The credential is incomplete.</q></div>
+            <div class="act">Offer a bug report to the issuer.</div>
+          </div>
+          <div class="sub">
+            <div><code>UnexpectedCredentialType</code><span class="what">The issuer sent another credential than requested.</span></div>
+            <div><q>The issuer sent a different credential than requested.</q></div>
+            <div class="act">—</div>
+          </div>
+          <div class="sub">
+            <div><code>RelyingParty.*</code><span class="what">The verifier is not registered for this data, or can't be identified.</span></div>
+            <div><q>{verifier} is not registered to request this data.</q></div>
+            <div class="act">Don't present.</div>
+          </div>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" style="--c: var(--c-http)">
+      <span class="step-num">6</span>
+      <div class="card">
+        <div class="card-head"><h3><code>HttpErrorResponseException</code></h3></div>
+        <p class="when">The server failed without an OAuth error.</p>
+        <div class="say-do">
+          <div class="say"><span class="label">Tell the user</span><q>The service reported an error. Please try again later.</q></div>
+          <div class="do"><span class="label">App action</span>Log <code>status</code> and <code>problemDetails</code>.</div>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" style="--c: var(--c-presentation)">
+      <span class="step-num">7</span>
+      <div class="card">
+        <div class="card-head"><h3><code>PresentationException</code></h3></div>
+        <p class="when">The wallet could not create the presentation.</p>
+        <div class="say-do">
+          <div class="say"><span class="label">Tell the user</span><q>The credential could not be presented.</q></div>
+          <div class="do"><span class="label">App action</span>Offer a bug report.</div>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" style="--c: var(--c-unsupported)">
+      <span class="step-num">8</span>
+      <div class="card">
+        <div class="card-head"><h3><code>UnsupportedOperationException</code></h3></div>
+        <p class="when">A feature VC-K does not support.</p>
+        <div class="say-do">
+          <div class="say"><span class="label">Tell the user</span><q>This isn't supported by your wallet.</q></div>
+          <div class="do"><span class="label">App action</span>—</div>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" style="--c: var(--c-other)">
+      <span class="step-num">9</span>
+      <div class="card">
+        <div class="card-head"><h3>Anything else</h3><span class="q">e.g. <code>IllegalArgumentException</code>, <code>IllegalStateException</code></span></div>
+        <p class="when">Malformed data, a bug, or a misconfigured wallet.</p>
+        <div class="say-do">
+          <div class="say"><span class="label">Tell the user</span><q>Something went wrong.</q></div>
+          <div class="do"><span class="label">App action</span>Offer a bug report with the message and the cause chain.</div>
+        </div>
+      </div>
+    </li>
+  </ol>
+
+  <h2 id="reports">Validation reports: show them, then let the user decide</h2>
+  <p class="section-intro">Before the wallet stores a credential or answers a verifier, VC-K validates what it received
+    and returns a <code>ValidationReport</code>: every check with its outcome, and an overall <code>decision</code>
+    under the <code>ValidationPolicy</code> the app passed. A rejected report is <strong>not a failure</strong>: the call
+    succeeds, and the app shows the report and decides with the user.</p>
+
+  <div class="sources">
+    <div class="source">
+      <h3>Issuance</h3>
+      <dl>
+        <dt><code>OpenId4VciKtorClient.loadIssuerMetadata(issuer, policy)</code></dt>
+        <dd>Signed issuer metadata: <code>LoadedIssuerMetadata.Signed.validation.report</code>. Show
+          <code>untrustedRegistration</code> only marked as unverified.</dd>
+        <dt><code>CredentialIssuanceResult.Success.prepareCredentialStorage(holder, policy)</code></dt>
+        <dd>Each received credential: <code>PreparedCredentialStorage.validation.report</code>. Also on
+          <code>HolderAgent.prepareCredentialStorage</code>.</dd>
+      </dl>
+    </div>
+    <div class="source">
+      <h3>Presentation</h3>
+      <dl>
+        <dt><code>OpenId4VpKtorHolder.startAuthorizationResponsePreparation(input, policy)</code></dt>
+        <dd>The verifier's request: <code>AuthorizationRequestValidation.validationReport</code>, and its relying party
+          in <code>relyingParty</code>. Show <code>relyingParty.untrustedRegistrations</code> only marked as
+          unverified.</dd>
+        <dt><code>OpenId4VpKtorHolder.prepareDcApiRequest(request, policy)</code></dt>
+        <dd>The same for a request over the Digital Credentials API: <code>DcApiRequestValidation</code>.</dd>
+      </dl>
+    </div>
+    <div class="source">
+      <h3>From a thrown error</h3>
+      <dl>
+        <dt><code>ValidationException.Rejected.report</code></dt>
+        <dd>When an operation needs an accepted report and gets a rejected one, the report comes with the error. Show
+          it the same way.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <h3 style="margin-top:32px">How reports relate to errors</h3>
+  <div class="relation">
+    <div class="rel-box">
+      <h3>Report (returned)</h3>
+      <ul>
+        <li>The call succeeds; <code>decision</code> is <code>ACCEPTED</code> or <code>REJECTED</code>.</li>
+        <li>A check that didn't pass holds its reason as <code>CheckOutcome.Failed(throwable)</code> or
+          <code>Blocked(cause)</code>; read it with <code>outcome.cause()</code>.</li>
+        <li>The user may accept what the policy lets them: an untrusted issuer, an expired or revoked credential, missing
+          claims.</li>
+      </ul>
+    </div>
+    <div class="rel-mid"><div><div class="arrow">⇄</div>same exception types, same user messages</div></div>
+    <div class="rel-box">
+      <h3>Error (thrown)</h3>
+      <ul>
+        <li>The <code>KmmResult</code> fails.</li>
+        <li>The reasons are the same <code>ValidationException</code> subtypes as in reports:
+          <code>Timeliness</code>, <code>TokenStatus</code>, <code>MissingRequiredClaims</code>,
+          <code>RelyingParty.*</code>, ...</li>
+        <li>Happens only when the app goes on without an accepted report, or the user can't accept it:
+          <code>ValidationException.Rejected</code> carries the report.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="section-intro" style="margin-top:14px">So one function that turns a <code>ValidationException</code> into a
+    user message serves both: the causes inside a report and the errors in the table above.</p>
+
+  <h3 style="margin-top:32px">Storing a credential: three outcomes</h3>
+  <div class="outcomes">
+    <div class="outcome" style="--c: #15803d">
+      <strong>Accepted</strong>
+      <p><code>report.decision == ACCEPTED</code>. Store it with <code>HolderAgent.storeAccepted</code>, no question
+        needed.</p>
+    </div>
+    <div class="outcome" style="--c: var(--c-http)">
+      <strong>Rejected, but intact</strong>
+      <p><code>validation.unacceptedCredential != null</code>: e.g. an untrusted issuer, expired, revoked, or missing
+        claims. Show the report; if the user accepts, store it with <code>storeAfterUserConsent</code>.</p>
+    </div>
+    <div class="outcome" style="--c: var(--c-validation)">
+      <strong>Not intact</strong>
+      <p>e.g. an invalid signature or bound to another key. No user can accept it, so
+        <code>storeAfterUserConsent</code> fails with <code>ValidationException.Rejected</code>. Explain why it can't
+        be stored.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:32px">How to display a report</h3>
+  <div class="anatomy">
+    <ul class="tree">
+      <li><code>ValidationReport</code> <span class="hint">— <code>decision</code>: the headline, accepted or rejected</span>
+        <ul>
+          <li><code>checks</code> <span class="hint">— the typed checks of this artifact, e.g. <code>CredentialChecks</code>, <code>RequestObjectChecks</code></span></li>
+          <li><code>namedChecks</code> <span class="hint">— each check by <code>name</code>, with its <code>requirement</code>, <code>outcome</code> and <code>satisfied</code></span>
+            <ul>
+              <li><span class="pill pass">Passed</span><span class="pill fail">Failed</span><span class="pill block">Blocked</span><span class="pill na">NotApplicable</span></li>
+              <li><span class="hint">data for the message: <code>trust</code> (trust source), <code>statusMechanism</code> (observed status), <code>claims</code> (missing claim paths), <code>outcome.cause()</code></span></li>
+            </ul>
+          </li>
+          <li><code>children</code> <span class="hint">— nested reports, e.g. status list tokens, the relying party and its certificates, presented credentials</span></li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+  <ol class="guide">
+    <li><strong>Headline from <code>decision</code>.</strong> Accepted: nothing to ask. Rejected: show what didn't pass.</li>
+    <li><strong>List every check that is not <code>satisfied</code></strong>, in this report and, recursively, in its
+      <code>children</code>.</li>
+    <li><strong>Tell <em>Failed</em> from <em>Blocked</em>.</strong> Failed: the check ran and failed ("The issuer is
+      not trusted"). Blocked: it couldn't run, e.g. the status list was unreachable or the wallet has no trust anchors
+      for this type ("The status could not be checked").</li>
+    <li><strong>Key labels by the type of <code>checks</code> and the check's <code>name</code>.</strong> Names are
+      field names, e.g. <code>issuerTrust</code>, <code>timeliness</code>, <code>status.mechanisms[0]</code>; a rename
+      is a breaking change in the CHANGELOG.</li>
+    <li><strong>Show <code>OPTIONAL</code> checks as notes</strong>: they never change the decision.</li>
+    <li><strong>Never expect claim values in a report.</strong> Reports name claims by path only; show values from
+      the credential itself.</li>
+  </ol>
+
+  <div class="code-title">Example: issuance (Kotlin, with the types of 10.0.0)</div>
+<pre><code><span class="c">// After the redirect back from the authorization server</span>
+<span class="k">val</span> success = vciClient.resumeWithAuthCode(redirectUrl, context).getOrThrow()
+<span class="k">val</span> prepared = success.prepareCredentialStorage(holderAgent, policy).getOrThrow()
+
+<span class="k">for</span> (credential <span class="k">in</span> prepared) {
+    <span class="k">val</span> validation = credential.validation
+    <span class="k">when</span> {
+        validation.report.decision == ValidationDecision.ACCEPTED -&gt;
+            holderAgent.storeAccepted(credential)
+        validation.unacceptedCredential != <span class="k">null</span> -&gt;   <span class="c">// untrusted issuer, expired, revoked, ...</span>
+            <span class="k">if</span> (askUser(findings(validation.report))) holderAgent.storeAfterUserConsent(credential)
+        <span class="k">else</span> -&gt;                                       <span class="c">// not intact: can never be stored</span>
+            showCannotStore(findings(validation.report))
+    }
+}</code></pre>
+
+  <div class="code-title">Example: presentation</div>
+<pre><code><span class="k">val</span> validation = vpHolder.startAuthorizationResponsePreparation(requestUrl, policy).getOrThrow()
+showRequest(
+    findings = findings(validation.validationReport),
+    registrations = validation.relyingParty?.untrustedRegistrations.orEmpty(), <span class="c">// mark as unverified</span>
+)
+<span class="c">// User agrees:</span>
+vpHolder.finalizeAuthorizationResponse(validation.preparationState, presentation)
+<span class="c">// User declines (OpenID4VP 1.0, 8.5: access_denied):</span>
+vpHolder.sendAuthnErrorResponse(OAuth2Exception.AccessDenied(<span class="s">"declined by the user"</span>), validation.preparationState)</code></pre>
+
+  <div class="code-title">Example: findings and their messages</div>
+<pre><code><span class="c">// One finding per check that is not satisfied, in this report and its children</span>
+<span class="k">data class</span> Finding(<span class="k">val</span> checks: ValidationChecks, <span class="k">val</span> check: NamedCheck)
+
+<span class="k">fun</span> findings(report: ValidationReport): List&lt;Finding&gt; =
+    report.namedChecks.filterNot { it.satisfied }.map { Finding(report.checks, it) } +
+        report.children.flatMap { findings(it) }
+
+<span class="c">// The same messages as for thrown errors, from the cause of the check</span>
+<span class="k">fun</span> Finding.userMessage(): String = <span class="k">when</span> (<span class="k">val</span> cause = check.outcome.cause()) {
+    <span class="k">is</span> ValidationException.Timeliness -&gt;
+        cause.notAfter?.let { <span class="s">"Expired on $it."</span> } ?: <span class="s">"Not valid yet."</span>
+    <span class="k">is</span> ValidationException.TokenStatus -&gt; <span class="s">"Revoked or suspended by its issuer."</span>
+    <span class="k">is</span> ValidationException.MissingRequiredClaims -&gt; <span class="s">"The credential is incomplete."</span>
+    <span class="k">is</span> ValidationException.RelyingParty.UnregisteredRequest -&gt; <span class="s">"Not registered to request this data."</span>
+    <span class="k">else</span> -&gt; <span class="k">when</span> {
+        check.outcome <span class="k">is</span> CheckOutcome.Blocked -&gt; <span class="s">"Could not be checked."</span>
+        check.trust != <span class="k">null</span> -&gt; <span class="s">"Not trusted."</span>           <span class="c">// trust, issuerTrust, signerTrust</span>
+        <span class="k">else</span> -&gt; <span class="s">"The credential did not pass a check."</span> <span class="c">// log check.name</span>
+    }
+}</code></pre>
+
+  <h2>What changes from 9.x</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Situation</th><th>Until 9.x</th><th>From 10.0.0</th></tr></thead>
+      <tbody>
+        <tr><td>User declines at the authorization server</td><td class="before"><code>Exception("No authn code in ...")</code></td><td><code>OAuth2Exception.AccessDenied</code>, <code>receivedFrom</code> = authorization server</td></tr>
+        <tr><td>Issuer or authorization server answers with an OAuth error</td><td class="before"><code>HttpErrorResponseException</code>, code as a string in <code>oauth2Error.error</code></td><td><code>OAuth2Exception</code> subclass, e.g. <code>InvalidProof</code>; HTTP details in <code>cause</code></td></tr>
+        <tr><td>Server is down or overloaded</td><td class="before">String code <code>server_error</code> / <code>temporarily_unavailable</code></td><td><code>OAuth2Exception.ServerError</code> / <code>TemporarilyUnavailable</code></td></tr>
+        <tr><td>Presentation fails, wallet sends an error to the verifier</td><td class="before">The original exception; the verifier's <code>redirect_uri</code> is ignored</td><td>The <code>OAuth2Exception</code> that was sent; original in <code>cause</code>; <code>redirectUri</code> to open</td></tr>
+        <tr><td>A credential can't be stored: <code>storeAfterUserConsent</code> of a credential that isn't intact, or the legacy <code>storeCredential</code></td><td class="before">Cause of the first failed check; report lost</td><td><code>ValidationException.Rejected</code> with the whole <code>ValidationReport</code></td></tr>
+        <tr><td>Expired, revoked, missing claims, relying party not registered</td><td class="before">Seven unrelated exception classes</td><td>Nested under <code>ValidationException</code>; old names deprecated</td></tr>
+        <tr><td>Network failure</td><td class="before">Ktor exception, undocumented</td><td>Ktor exception, unchanged, documented and tested</td></tr>
+        <tr><td>User cancels the biometric unlock</td><td class="before">Signum exception, sometimes wrapped</td><td>Signum <code>UserInitiatedCancellationReason</code>, never wrapped</td></tr>
+        <tr><td>Verifier receives the wallet's error</td><td class="before">Internal exception message as <code>error_description</code></td><td>No description unless it is a protocol error</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Migration: old exception names stay as deprecated typealiases in 10.0.0 and are removed in 11.0.0.
+    Every breaking change is listed in the CHANGELOG, and the README has a section on handling errors in a wallet
+    app.</p>
+
+  <h2>Why documented types, and not checked exceptions</h2>
+  <p class="section-intro">No compiler, Kotlin or Swift, can force an app to handle every failure of a wallet flow.
+    What VC-K offers instead: a small set of sealed root types, a list of them in the KDoc of every entry point, and
+    tests that keep that list true.</p>
+  <div class="reasons">
+    <div class="reason">
+      <h3>Kotlin has no checked exceptions</h3>
+      <p>No Kotlin signature can declare "fails only with these types", and the compiler checks no <code>catch</code>.
+        <code>@Throws</code> only changes how a function is exported to Java and Objective-C.</p>
+    </div>
+    <div class="reason">
+      <h3>Swift only sees untyped errors</h3>
+      <p>Swift reaches VC-K through Kotlin/Native's Objective-C export. A Kotlin function annotated with
+        <code>@Throws</code> becomes a Swift <code>throws</code> function, but the error is an <code>NSError</code>
+        that wraps the Kotlin exception, never a specific type. Swift&nbsp;6 has typed throws, but Objective-C has no
+        equivalent, so the export can't produce them. An exception whose type is not listed in <code>@Throws</code>
+        terminates the app. That is why VC-K returns <code>KmmResult</code>: Swift always gets a value, never a crash,
+        and casts the failure with <code>as?</code>.</p>
+    </div>
+    <div class="reason">
+      <h3>Sealed doesn't reach Swift</h3>
+      <p>A sealed Kotlin class is exported as an ordinary class hierarchy, with nested classes flattened into names like
+        <code>OAuth2ExceptionAccessDenied</code>. Swift can't <code>switch</code> over it exhaustively. Kotlin callers
+        get exhaustive <code>when</code>s once they've narrowed to a root, e.g. <code>ValidationException</code>.</p>
+    </div>
+    <div class="reason">
+      <h3>A typed error channel still needs a catch-all</h3>
+      <p>A <code>Result&lt;T, WalletError&gt;</code> would force VC-K to wrap network errors, the user cancellation and
+        bugs into its own type. That would hide the types apps need most, and the type would still need an
+        "anything else" case, so the app would gain no exhaustiveness.</p>
+    </div>
+    <div class="reason">
+      <h3>The protocols are open-ended</h3>
+      <p>OAuth, OpenID4VCI and OpenID4VP allow error codes that aren't defined yet. <code>OAuth2Exception</code> needs
+        <code>Other(error)</code>, and any <code>when</code> over it a branch for that.</p>
+    </div>
+  </div>
+
+  <h2>What you can rely on</h2>
+  <ol class="rely">
+    <li><strong>The type of the failure,</strong> checked from the root types down, as above.</li>
+    <li><strong>The KDoc of each entry point,</strong> which lists the types it fails with.</li>
+    <li><strong>The CHANGELOG,</strong> which marks every change of that list as <em>BREAKING</em>.</li>
+  </ol>
+
+  <footer>Summary of <code>docs/wallet-error-reporting.md</code> in VC-K. Status: planned for 10.0.0, not yet
+    implemented.</footer>
+</main>
+</body>
+</html>
