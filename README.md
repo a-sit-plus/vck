@@ -593,6 +593,13 @@ let codec = JoseCodec<ProvisioningContext>(serializer: ProvisioningContext.compa
 let data = try codec.encode(value: context)
 ```
 
+Parse a compact JWS with `JwsCompactCodec`, e.g. a key attestation from the wallet provider (without verifying it):
+
+```swift
+let keyAttestation = try JwsCompactCodec<KeyAttestationJwt>(serializer: KeyAttestationJwt.companion.serializer())
+    .decodeFromString(string: response)
+```
+
 The demo app in [a-sit-plus/vck-ios](https://github.com/a-sit-plus/vck-ios) shows issuance and presentation with this
 package.
 

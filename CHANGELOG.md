@@ -8,11 +8,12 @@ Release 10.0.0 (unreleased):
       `SecCertificate` and `NSData`, builders for `HolderAgent` and `OpenId4VpHolder`, factories with Swift default
       arguments, `HttpExchange.run(as:)`, `SwiftCredentialStore`, and Swift wrappers for suspend callbacks. The Kotlin
       package is now `at.asitplus.wallet.ios`, Swift names are unchanged
-    - Add `JoseCodec` and `CoseCodec` to encode and decode any serializable type from Swift
+    - Add `JoseCodec` and `CoseCodec` to encode and decode any serializable type from Swift, and `JwsCompactCodec` to
+      parse a compact JWS with any serializable payload
     - BREAKING: Compared to `a-sit-plus/vck-ios`:
-        - `VckSerializer` only parses typed compact JWS (key attestations, and JWTs with
-          `joseDeserializeJsonWebTokenJws`, e.g. a WIA), use `JoseCodec` and `CoseCodec` for all other types, e.g.
-          `JoseCodec<IssuerMetadata>(serializer: IssuerMetadata.companion.serializer())`
+        - Remove `VckSerializer`, use `JoseCodec` and `CoseCodec`, e.g.
+          `JoseCodec<IssuerMetadata>(serializer: IssuerMetadata.companion.serializer())`, and `JwsCompactCodec` for
+          compact JWS, e.g. `JwsCompactCodec<KeyAttestationJwt>(serializer: KeyAttestationJwt.companion.serializer())`
         - `OpenId4VpHolderBuilder`, `OpenId4VciClientAdapter` and `OpenId4VciClientDefaults` no longer have a
           `remoteResourceRetriever` (see the removals below)
         - Remove the deprecated `OpenId4VciClientAdapter(keyMaterial:loadKeyAttestation:...)`, use

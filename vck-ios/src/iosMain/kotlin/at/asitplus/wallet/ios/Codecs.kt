@@ -3,6 +3,8 @@
 package at.asitplus.wallet.ios
 
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.internals.toByteArray
 import at.asitplus.signum.internals.toNSData
@@ -44,4 +46,22 @@ class CoseCodec<T : Any>(private val serializer: KSerializer<T>) {
 
     @Throws(IllegalArgumentException::class)
     fun encode(value: T): NSData = coseCompliantSerializer.encodeToByteArray(serializer, value).toNSData()
+}
+
+/**
+ * Parses a compact JWS and decodes its payload as JSON, e.g. a key attestation for `JwtProofCreator`'s
+ * `loadKeyAttestation` with `JwsCompactCodec<KeyAttestationJwt>(serializer: KeyAttestationJwt.companion.serializer())`,
+ * or a Wallet Instance Attestation with `JwsCompactCodec<JsonWebToken>`. Swift can not call the reified factory of
+ * [JwsCompactTyped]. Does not verify the signature. Throws like [JoseCodec].
+ */
+class JwsCompactCodec<P : Any>(private val serializer: KSerializer<P>) {
+
+    @Throws(IllegalArgumentException::class)
+    fun decodeFromString(string: String): JwsCompactTyped<P> {
+        val jws = JwsCompact(string)
+        return JwsCompactTyped(jws, jws.getPayload(serializer).getOrThrow())
+    }
+
+    /** The compact serialization, as it was signed. */
+    fun encodeToString(value: JwsCompactTyped<P>): String = value.jws.toString()
 }

@@ -165,8 +165,8 @@ Important areas:
   many constructor parameters (`HolderAgentBuilder`, `OpenId4VpHolderBuilder`), Kotlin defaults and `Duration`
   conversions Swift can not express (`SwiftBridgeDefaults`, `ValidationBridge`), `HttpExchangeBridge` to send the
   requests of `HttpExchange`s with `URLSession`, `SuspendFunctionBridge` to call Kotlin suspend lambdas from Swift,
-  and `JoseCodec` and `CoseCodec` to encode and decode any serializable type as `NSData`. `VckSerializer` only keeps
-  parsing that the codecs can not express, e.g. of a typed compact JWS.
+  and `JoseCodec`, `CoseCodec` and `JwsCompactCodec` to encode and decode any serializable type, also as payload of a
+  compact JWS.
 - `vck-ios/src/iosMain/swift`
   Swift code that SKIE bundles into the framework, for what Kotlin can not export: initializers and factories with
   Swift default arguments (`OpenId4VciClientAdapter`, `ValidationPolicy.create`, `OAuth2Client.create`, ...),
