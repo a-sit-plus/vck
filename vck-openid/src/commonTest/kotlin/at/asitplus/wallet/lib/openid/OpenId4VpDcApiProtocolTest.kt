@@ -281,7 +281,11 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
         test("getMatchingCredentials matches ISO Device Retrieval requests") { f ->
             val request = CredentialPresentationRequestBuilder(
-                RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC),
+                RequestOptionsCredential(
+                    credentialScheme = AtomicAttribute2023,
+                    representation = ISO_MDOC,
+                    attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME)),
+                ),
             ).toIsoDeviceRetrievalRequest()
 
             f.holderOid4vp.getMatchingCredentials(f.preparationStateFor(request)).getOrThrow()

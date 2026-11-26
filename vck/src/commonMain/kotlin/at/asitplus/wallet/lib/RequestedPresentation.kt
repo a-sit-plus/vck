@@ -1,0 +1,98 @@
+package at.asitplus.wallet.lib
+
+import kotlin.jvm.JvmOverloads
+import kotlin.jvm.JvmStatic
+
+/**
+ * The credentials a verifier requests in one presentation request, as [sets] of alternative credential combinations
+ * (OpenID4VP 1.0, 6.4.2): every required set has to be satisfied by one of its options, optional sets may be.
+ *
+ * Fails without any set, without a required set, as optional sets alone are satisfied by presenting nothing, and for
+ * two different credentials sharing one [RequestedCredential.id], as "within the Authorization Request, the same `id`
+ * MUST NOT be present more than once" (OpenID4VP 1.0, 6.1). The same credential may occur in several options and
+ * sets; it is requested by one Credential Query.
+ */
+data class RequestedPresentation(
+    val sets: List<RequestedCredentialSet>,
+) {
+    /** Requests the credentials of [sets], see [RequestedPresentation]. */
+    constructor(vararg sets: RequestedCredentialSet) : this(sets.toList())
+
+    /**
+     * The credentials of all [sets], each once, in the order of their first occurrence:
+     * the Credential Queries in `credentials` of the DCQL query (OpenID4VP 1.0, 6).
+     */
+    val credentials: Set<RequestedCredential> = sets.flatMap { set -> set.options.flatten() }.toSet()
+
+    init {
+        require(sets.isNotEmpty()) { "At least one set of credentials is required" }
+        require(sets.any { it.required }) {
+            "At least one set of credentials has to be required, as optional sets alone are satisfied by nothing"
+        }
+        val sharedIds = credentials.groupBy { it.id }.filterValues { it.size > 1 }.keys
+        require(sharedIds.isEmpty()) { "Different credentials share the IDs $sharedIds" }
+    }
+
+    companion object {
+        /** Requests every one of [credentials], as one required set with one option. */
+        @JvmStatic
+        fun allOf(vararg credentials: RequestedCredential): RequestedPresentation {
+            require(credentials.isNotEmpty()) { "At least one credential is required" }
+            return RequestedPresentation(RequestedCredentialSet.oneOf(credentials.toSet()))
+        }
+    }
+}
+
+/**
+ * A set of credentials satisfying one use case of the verifier, as alternative [options], each a combination of
+ * credentials to present together: a Credential Set Query of DCQL (OpenID4VP 1.0, 6.2), whose `options` are "a
+ * non-empty array", and "the value of each element in the `options` array is a non-empty array of identifiers".
+ *
+ * Unlike claim alternatives, the options have no specified order of preference, and the wallet "typically" lets the
+ * End-User choose between them (OpenID4VP 1.0, 6.4.3). Still, [options] is a list: the default submission of VC-K's
+ * holder (`HolderDCQLQueryMatchingResult.toDefaultSubmission`) presents the first option it can satisfy. So for the
+ * options `[pid, mdl]` and `[pid]`, it presents both credentials if the holder has an mDL, and the PID alone
+ * otherwise; in the order `[pid]`, `[pid, mdl]`, it presents the PID alone.
+ */
+data class RequestedCredentialSet @JvmOverloads constructor(
+    val options: List<Set<RequestedCredential>>,
+    /**
+     * Whether this set has to be satisfied; if not, the wallet may present it (OpenID4VP 1.0, 6.4.2). The default
+     * submission of VC-K's holder (`HolderDCQLQueryMatchingResult.toDefaultSubmission`) presents only required sets: a
+     * wallet that offers an optional set to the End-User builds the submission itself.
+     */
+    val required: Boolean = true,
+) {
+    init {
+        require(options.isNotEmpty()) { "At least one option of credentials is required" }
+        val emptyOptions = options.indices.filter { options[it].isEmpty() }
+        require(emptyOptions.isEmpty()) {
+            "Every option needs at least one credential, but the options at $emptyOptions are empty"
+        }
+    }
+
+    companion object {
+        /** A required set, satisfied by one of the [options]. */
+        @JvmStatic
+        fun oneOf(vararg options: Set<RequestedCredential>) = RequestedCredentialSet(options.toList(), required = true)
+
+        /**
+         * A required set, satisfied by one of the [options], see [oneOf]; for Java, which warns about the unchecked
+         * generic array of the vararg overload.
+         */
+        @JvmStatic
+        fun oneOf(options: List<Set<RequestedCredential>>) = RequestedCredentialSet(options, required = true)
+
+        /** An optional set, which the wallet may satisfy by one of the [options]. */
+        @JvmStatic
+        fun optional(vararg options: Set<RequestedCredential>) =
+            RequestedCredentialSet(options.toList(), required = false)
+
+        /**
+         * An optional set, which the wallet may satisfy by one of the [options], see [optional]; for Java, which warns
+         * about the unchecked generic array of the vararg overload.
+         */
+        @JvmStatic
+        fun optional(options: List<Set<RequestedCredential>>) = RequestedCredentialSet(options, required = false)
+    }
+}
