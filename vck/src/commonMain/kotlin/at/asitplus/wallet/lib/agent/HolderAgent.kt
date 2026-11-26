@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore.StoreEntry
@@ -42,27 +43,83 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * An agent that only implements [Holder], i.e. it can receive credentials from other agents
  * and present credentials to other agents.
+ *
+ * With one [KeyMaterial], all credentials are bound to that key. With a [HolderKeyResolver], each credential may have
+ * its own key, which is resolved when presenting it.
  */
-class HolderAgent @JvmOverloads constructor(
-    override val keyMaterial: KeyMaterial,
-    private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-    private val verifiablePresentationFactory: VerifiablePresentationFactory =
-        VerifiablePresentationFactory(keyMaterial = keyMaterial),
-    /**
-     * Validates credentials before they are stored, see [storeCredentialWithReport], and orders stored credentials by
-     * their time and status, see [getValidCredentialsByPriority], unless [orderingValidator] is set. Configure it with
-     * the trust anchors per credential type and the status list token resolver; without trust anchors,
-     * [storeCredential] checks integrity only.
-     */
-    private val credentialValidator: CredentialValidator = CredentialValidator(),
-    /**
-     * Orders stored credentials by their time and status when matching them against a presentation request, see
-     * [getValidCredentialsByPriority]: e.g. with a status list token resolver that returns cached tokens only, so
-     * that matching, and creating a presentation, never waits for the network. A status that can not be resolved
-     * does not demote a credential. By default [credentialValidator].
-     */
-    private val orderingValidator: CredentialValidator = credentialValidator,
+class HolderAgent private constructor(
+    /** `null` for a holder with a [HolderKeyResolver]. */
+    private val singleKey: KeyMaterial?,
+    override val holderKeyResolver: HolderKeyResolver,
+    private val subjectCredentialStore: SubjectCredentialStore,
+    private val verifiablePresentationFactory: VerifiablePresentationFactory,
+    private val credentialValidator: CredentialValidator,
+    private val orderingValidator: CredentialValidator,
 ) : Holder {
+
+    /**
+     * A holder whose credentials are all bound to [keyMaterial].
+     *
+     * @param credentialValidator Validates credentials before they are stored, see [storeCredentialWithReport], and
+     * orders stored credentials by their time and status, see [getValidCredentialsByPriority], unless
+     * [orderingValidator] is set. Configure it with the trust anchors per credential type and the status list token
+     * resolver; without trust anchors, [storeCredential] checks integrity only.
+     * @param orderingValidator Orders stored credentials by their time and status when matching them against a
+     * presentation request, see [getValidCredentialsByPriority]: e.g. with a status list token resolver that returns
+     * cached tokens only, so that matching, and creating a presentation, never waits for the network. A status that
+     * can not be resolved does not demote a credential. By default [credentialValidator].
+     */
+    @Deprecated(
+        "Use the constructor taking a holderKeyResolver; for a single key, use HolderKeyResolver.single(keyMaterial)"
+    )
+    @JvmOverloads
+    constructor(
+        keyMaterial: KeyMaterial,
+        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
+        verifiablePresentationFactory: VerifiablePresentationFactory =
+            VerifiablePresentationFactory(holderKeyResolver = HolderKeyResolver.single(keyMaterial)),
+        credentialValidator: CredentialValidator = CredentialValidator(),
+        orderingValidator: CredentialValidator = credentialValidator,
+    ) : this(
+        singleKey = keyMaterial,
+        holderKeyResolver = HolderKeyResolver.single(keyMaterial),
+        subjectCredentialStore = subjectCredentialStore,
+        verifiablePresentationFactory = verifiablePresentationFactory,
+        credentialValidator = credentialValidator,
+        orderingValidator = orderingValidator,
+    )
+
+    /**
+     * A holder whose credentials may each have their own key, found by [holderKeyResolver]. Pass the resolver by name,
+     * as a trailing lambda would also match this constructor. Storing a credential needs its expected keys, see
+     * [prepareCredentialStorage].
+     *
+     * @param credentialValidator see the constructor taking a [KeyMaterial]
+     * @param orderingValidator see the constructor taking a [KeyMaterial]
+     */
+    @JvmOverloads
+    constructor(
+        holderKeyResolver: HolderKeyResolver,
+        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
+        verifiablePresentationFactory: VerifiablePresentationFactory =
+            VerifiablePresentationFactory(holderKeyResolver = holderKeyResolver),
+        credentialValidator: CredentialValidator = CredentialValidator(),
+        orderingValidator: CredentialValidator = credentialValidator,
+    ) : this(
+        singleKey = null,
+        holderKeyResolver = holderKeyResolver,
+        subjectCredentialStore = subjectCredentialStore,
+        verifiablePresentationFactory = verifiablePresentationFactory,
+        credentialValidator = credentialValidator,
+        orderingValidator = orderingValidator,
+    )
+
+    /** The one key of this holder. Fails for a holder with a [HolderKeyResolver]. */
+    @Deprecated("A holder may use a different key for every credential, use holderKeyResolver")
+    override val keyMaterial: KeyMaterial
+        get() = singleKey ?: throw UnsupportedOperationException(
+            "This holder has been constructed with a HolderKeyResolver, use holderKeyResolver"
+        )
 
     private val presentationResponseCreator = PresentationResponseCreator(verifiablePresentationFactory)
 
@@ -84,6 +141,9 @@ class HolderAgent @JvmOverloads constructor(
      *
      * Validates with [storeCredentialWithReport] under the checks this has always made, see [compatibilityPolicy], and
      * fails with the cause of the first check that rejects the credential.
+     *
+     * This expects the key of a holder with one key. A holder with a [HolderKeyResolver] can not use it, as it takes
+     * no expected keys: it rejects the credential. Use [storeCredentialWithReport] with its `expectedHolderKeys`.
      */
     override suspend fun storeCredential(
         credential: Holder.StoreCredentialInput,
@@ -99,6 +159,8 @@ class HolderAgent @JvmOverloads constructor(
      * says, and of the type of its scheme, and stores it only if it is accepted, see [CredentialStorageResult].
      * A rejected credential is a successful result with its report; only persisting fails.
      *
+     * The credential has to be bound to one of [expectedHolderKeys], see [prepareCredentialStorage].
+     *
      * To let the user decide about a rejected credential, use [prepareCredentialStorage] instead.
      */
     @JvmOverloads
@@ -106,8 +168,11 @@ class HolderAgent @JvmOverloads constructor(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
+        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<CredentialStorageResult> = catching {
-        storeAccepted(prepareCredentialStorage(credential, policy, renewalInfo).getOrThrow()).getOrThrow()
+        storeAccepted(
+            prepareCredentialStorage(credential, policy, renewalInfo, expectedHolderKeys).getOrThrow()
+        ).getOrThrow()
     }
 
     /**
@@ -115,14 +180,22 @@ class HolderAgent @JvmOverloads constructor(
      * issuance, so that the wallet can show the report to the user, e.g. an untrusted issuer or missing required
      * claims (see [ValidationPolicy.requiredClaims]). Then store it with [storeAccepted], or, if the user accepts a
      * rejected report, with [storeAfterUserConsent]. Fails only if the credential can not be validated at all.
+     *
+     * The credential has to be bound to one of [expectedHolderKeys], see the overload taking an encoded credential.
+     * Without them, a holder with one key expects that key; a holder with a [HolderKeyResolver] rejects the
+     * credential, as it blocks the holder binding check rather than accept any key it knows.
      */
     @JvmOverloads
     suspend fun prepareCredentialStorage(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
+        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<PreparedCredentialStorage> = catching {
-        PreparedCredentialStorage(credential, validate(credential, policy), renewalInfo, keyMaterial.publicKey)
+        val resolvedExpectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) }
+        validate(credential, policy, resolvedExpectedHolderKeys).let {
+            PreparedCredentialStorage(credential, it, renewalInfo, it.boundKey(resolvedExpectedHolderKeys))
+        }
     }
 
     /**
@@ -130,6 +203,10 @@ class HolderAgent @JvmOverloads constructor(
      * [prepareCredentialStorage], and decodes it only once: the credential to store is the one that has been
      * validated, e.g. an mdoc with exactly the bytes the issuer signed. Its [PreparedCredentialStorage.credential] is
      * `null` if it is not intact, as it can never be stored then.
+     *
+     * The credential has to be bound to one of [expectedHolderKeys], usually the proof keys of its request (OpenID4VCI
+     * 1.0, 8.2; ARF ISSU_06). Without them, a holder with one key expects that key; a holder with a [HolderKeyResolver]
+     * blocks the holder binding check rather than accept any key it knows.
      *
      * Fails if [scheme] does not support the representation of [input].
      */
@@ -139,17 +216,19 @@ class HolderAgent @JvmOverloads constructor(
         scheme: CredentialScheme,
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
+        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<PreparedCredentialStorage> = catching {
+        val resolvedExpectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) }
         val validation = credentialValidator.validate(
             input = input,
             policy = policy.boundToHolder(),
-            context = context(scheme.credentialIdentifier(input))
+            context = context(scheme.credentialIdentifier(input), resolvedExpectedHolderKeys)
         )
         PreparedCredentialStorage(
             credential = validation.unacceptedCredential?.let { input.toStoreCredentialInput(it, scheme) },
             validation = validation,
             renewalInfo = renewalInfo,
-            holderKey = keyMaterial.publicKey,
+            holderKey = validation.boundKey(resolvedExpectedHolderKeys),
         )
     }
 
@@ -167,7 +246,7 @@ class HolderAgent @JvmOverloads constructor(
         credential = null,
         validation = credentialValidator.rejectUndecodable(cause, policy.boundToHolder()),
         renewalInfo = renewalInfo,
-        holderKey = keyMaterial.publicKey,
+        holderKey = null,
     )
 
     /**
@@ -177,10 +256,10 @@ class HolderAgent @JvmOverloads constructor(
     suspend fun storeAccepted(
         prepared: PreparedCredentialStorage,
     ): KmmResult<CredentialStorageResult> = catching {
-        prepared.requireHolder()
         CredentialStorageResult(
             validation = prepared.validation,
             storedEntry = prepared.validation.credential?.let {
+                prepared.requireHolder()
                 subjectCredentialStore.storeCredential(
                     StoreEntry.fromPreparedCredential(prepared).getOrThrow()
                 ).getOrThrow()
@@ -197,10 +276,10 @@ class HolderAgent @JvmOverloads constructor(
     suspend fun storeAfterUserConsent(
         prepared: PreparedCredentialStorage,
     ): KmmResult<CredentialStorageResult> = catching {
-        prepared.requireHolder()
         prepared.validation.unacceptedCredential
             ?: throw prepared.validation.report.firstRejection()
                 ?: IllegalArgumentException("The credential is not intact")
+        prepared.requireHolder()
         CredentialStorageResult(
             validation = prepared.validation,
             storedEntry = subjectCredentialStore.storeCredential(
@@ -209,40 +288,62 @@ class HolderAgent @JvmOverloads constructor(
         )
     }
 
-    private fun PreparedCredentialStorage.requireHolder() = require(holderKey == keyMaterial.publicKey) {
-        "The credential has been prepared for another holder"
+    /** The credential's key is still a key of this holder; it may have been deleted since it was prepared. */
+    private suspend fun PreparedCredentialStorage.requireHolder() {
+        val key = requireNotNull(holderKey) { "The credential has not been prepared for a holder key" }
+        holderKeyResolver.resolve(key).getOrElse {
+            throw IllegalArgumentException("The credential has been prepared for another holder", it)
+        }
+    }
+
+    /** The key of the intact credential, `null` if it isn't intact or isn't holder-bound. */
+    private fun CredentialValidationResult.boundKey(
+        expectedHolderKeys: Set<CryptoPublicKey>,
+    ): CryptoPublicKey? = when (val credential = unacceptedCredential) {
+        is ValidatedCredential.VcJwt -> credential.credential.holderKey()
+            ?: credential.credential.subject?.let { subject ->
+                expectedHolderKeys.firstOrNull { it.matchesIdentifier(subject) }
+            }
+        is ValidatedCredential.SdJwtVc -> credential.credential.holderKey()
+        is ValidatedCredential.IsoMdoc -> credential.issuerSigned.issuerAuth.payload?.holderKey()
+        null -> null
     }
 
     private suspend fun validate(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
+        expectedHolderKeys: Set<CryptoPublicKey>,
     ): CredentialValidationResult {
         val bound = policy.boundToHolder()
         return when (credential) {
             is Holder.StoreCredentialInput.Vc -> credentialValidator.validate(
                 input = CredentialValidationInput.VcJwt(credential.vcJws),
                 policy = bound,
-                context = context(credential.scheme.vcType)
+                context = context(credential.scheme.vcType, expectedHolderKeys)
             )
 
             is Holder.StoreCredentialInput.SdJwt -> credentialValidator.validate(
                 input = CredentialValidationInput.SdJwtVc(credential.vcSdJwt),
                 policy = bound,
-                context = context(credential.scheme.sdJwtType),
+                context = context(credential.scheme.sdJwtType, expectedHolderKeys),
             )
 
             // Validates the encoding, which is what presentations of the credential carry
             is Holder.StoreCredentialInput.Iso -> credentialValidator.validate(
                 input = CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(credential.issuerSigned)),
                 policy = bound,
-                context = context(credential.scheme.isoDocType),
+                context = context(credential.scheme.isoDocType, expectedHolderKeys),
             )
         }
     }
 
-    private fun context(credentialIdentifier: String) = CredentialValidationContext(
-        expectedHolderKey = keyMaterial.publicKey,
+    /** Expects [expectedHolderKeys], or else this holder's single key, if any. */
+    private fun context(
+        credentialIdentifier: String,
+        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
+    ) = CredentialValidationContext(
         expectedCredentialIdentifier = credentialIdentifier,
+        expectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) },
     )
 
     /** A credential to store is bound to the key of this holder, whatever [ValidationPolicy.holderBinding] says. */

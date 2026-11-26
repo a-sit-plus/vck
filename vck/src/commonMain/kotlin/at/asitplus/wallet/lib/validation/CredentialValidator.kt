@@ -40,7 +40,7 @@ class CredentialValidator @JvmOverloads constructor(
 
     /**
      * Validates [input] under [policy], whose [ValidationPolicy.holderBinding] decides whether it has to be bound to
-     * [CredentialValidationContext.expectedHolderKey]. The clock is read once, all checks use that time.
+     * one of [CredentialValidationContext.expectedHolderKeys]. The clock is read once, all checks use that time.
      */
     @JvmOverloads
     suspend fun validate(

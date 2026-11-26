@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
@@ -36,18 +37,24 @@ internal sealed interface FormatEvaluation {
 }
 
 /**
- * Holder binding of a standalone credential: not applicable unless [this] requires the [expected] key, blocked
- * without an expected key, otherwise whether [isBoundTo] the expected key.
+ * Holder binding of a standalone credential bound to [holderKey], `null` if it is not holder-bound: not applicable
+ * unless [this] requires an expected key, blocked without one (holder binding fails closed), otherwise whether
+ * [holderKey] is one of the expected keys of [context].
  */
-internal inline fun HolderBindingPolicy.check(
-    expected: CryptoPublicKey?,
-    isBoundTo: (CryptoPublicKey) -> Boolean,
+internal fun HolderBindingPolicy.check(
+    context: CredentialValidationContext,
+    holderKey: CryptoPublicKey?,
 ): CheckOutcome = when (this) {
     HolderBindingPolicy.None -> NotApplicable
-    HolderBindingPolicy.RequireExpectedKey -> when {
-        expected == null -> Blocked(IllegalStateException("No expected holder key to check the binding against"))
-        isBoundTo(expected) -> Passed
-        else -> Failed(IllegalArgumentException("The credential is not bound to the expected holder key"))
+    HolderBindingPolicy.RequireExpectedKey -> {
+        val expected = context.allExpectedHolderKeys
+        when {
+            expected.isEmpty() ->
+                Blocked(IllegalStateException("No expected holder key to check the binding against"))
+            // Compared cryptographically, as the key decoded from the credential may be encoded unlike the expected one
+            holderKey != null && expected.any { it.equalsCryptographically(holderKey) } -> Passed
+            else -> Failed(IllegalArgumentException("The credential is not bound to an expected holder key"))
+        }
     }
 }
 

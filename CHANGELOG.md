@@ -68,6 +68,25 @@ Release 10.0.0 (unreleased):
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
 
+- Holder keys:
+    - Add `HolderKeyResolver` for resolving a credential's key, `HolderKeyResolver.single` for one-key holders, and
+      `StoreEntry.holderKey()` / `isHolderBound()` for identifying credential key binding. Keys come from an SD-JWT VC's
+      `cnf`, an mdoc's `deviceKey`, or a VC-JWT's `did:key` in `sub`.
+    - BREAKING: DCQL no longer treats a VC-JWT `sub` such as a JWK thumbprint as holder binding. VCDM 1.1 defines `sub`
+      as the credential subject identifier; VC-K derives a key from it only when it is a `did:key`.
+    - `HolderAgent` and `VerifiablePresentationFactory` resolve and use the key bound to each credential. Add
+      `holderKeyResolver` constructors; deprecate `Holder.keyMaterial`, the single-key `HolderAgent` constructor, and
+      the fixed-key `VerifiablePresentationFactory` constructor. Presentations fail if the holder lacks a credential's
+      key or a VC-JWT presentation combines different keys.
+    - OID4VCI proof creators obtain a key for each request, and `ProofCreator.createProof` returns the proofs with that
+      key. Received credentials are checked against their request's proof keys. Deprecate
+      `CredentialValidationContext.expectedHolderKey` in favor of `expectedHolderKeys`; add `KeyAttestationInput.keys`.
+      New fields change `copy` and `componentN` for `CredentialValidationContext`, `ReceivedCredential.Decoded`,
+      `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and `KeyAttestationInput`.
+    - `HolderAgent.storeCredentialWithReport` and `prepareCredentialStorage` of a `StoreCredentialInput` take
+      `expectedHolderKeys`, as the overload of an encoded credential does. Without them, a holder with a
+      `HolderKeyResolver` rejects the credential, as `storeCredential` does.
+
 Release 9.0.0:
 
 The new validation API (`CredentialValidator`, `RelyingPartyValidator`, `IssuerMetadataValidator`) reports every check
