@@ -99,6 +99,70 @@ val HolderAgentProofKeysTest by matrixSuite {
                 holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldNotBeNull()
             }
 
+            "a credential to store is bound to one of the expected keys of a holder with a resolver" {
+                val issuance = issuance()
+                val otherKey = EphemeralKeyWithoutCert()
+                val holder = HolderAgent(
+                    holderKeyResolver = resolverOf(issuance.holderKey, otherKey),
+                    credentialValidator = issuance.validator(),
+                )
+                val credential = issuance.issue(representation).toStoreCredentialInput()
+
+                val stored = holder.storeCredentialWithReport(
+                    credential = credential,
+                    policy = strictPolicy,
+                    expectedHolderKeys = setOf(otherKey.publicKey, issuance.holderKey.publicKey),
+                ).getOrThrow()
+
+                stored.validation.report.decision shouldBe ACCEPTED
+                stored.storedEntry.shouldNotBeNull()
+                holder.getCredentials().shouldNotBeNull().shouldHaveSize(1)
+            }
+
+            "a credential to store that is bound to no expected key is rejected by a holder with a resolver" {
+                val issuance = issuance()
+                val otherKey = EphemeralKeyWithoutCert()
+                val holder = HolderAgent(
+                    holderKeyResolver = resolverOf(issuance.holderKey, otherKey),
+                    credentialValidator = issuance.validator(),
+                )
+                val credential = issuance.issue(representation).toStoreCredentialInput()
+
+                val prepared = holder.prepareCredentialStorage(
+                    credential = credential,
+                    policy = strictPolicy,
+                    expectedHolderKeys = setOf(otherKey.publicKey),
+                ).getOrThrow()
+
+                prepared.validation.report.checks.shouldBeInstanceOf<CredentialChecks>().holderBinding
+                    .shouldBeInstanceOf<CheckOutcome.Failed>()
+                holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldBeNull()
+                holder.getCredentials().shouldNotBeNull().shouldBeEmpty()
+            }
+
+            "a credential to store without expected keys is blocked for a holder with a resolver" {
+                val issuance = issuance()
+                val holder = HolderAgent(
+                    holderKeyResolver = resolverOf(issuance.holderKey),
+                    credentialValidator = issuance.validator(),
+                )
+                val credential = issuance.issue(representation).toStoreCredentialInput()
+
+                holder.storeCredentialWithReport(credential, strictPolicy).getOrThrow()
+                    .storedEntry.shouldBeNull()
+                holder.getCredentials().shouldNotBeNull().shouldBeEmpty()
+            }
+
+            "a credential to store without expected keys is expected to be bound to the key of a single-key holder" {
+                val issuance = issuance()
+                val holder = HolderAgent(issuance.holderKey, credentialValidator = issuance.validator())
+
+                holder.storeCredentialWithReport(
+                    issuance.issue(representation).toStoreCredentialInput(),
+                    strictPolicy,
+                ).getOrThrow().storedEntry.shouldNotBeNull()
+            }
+
             "a credential whose key has been deleted since its preparation is not stored" {
                 val issuance = issuance()
                 var known = true

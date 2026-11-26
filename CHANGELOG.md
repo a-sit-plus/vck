@@ -60,6 +60,9 @@ Release 10.0.0 (unreleased):
       `CredentialValidationContext.expectedHolderKey` in favor of `expectedHolderKeys`; add `KeyAttestationInput.keys`.
       New fields change `copy` and `componentN` for `CredentialValidationContext`, `ReceivedCredential.Decoded`,
       `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and `KeyAttestationInput`.
+    - `HolderAgent.storeCredentialWithReport` and `prepareCredentialStorage` of a `StoreCredentialInput` take
+      `expectedHolderKeys`, as the overload of an encoded credential does. Without them, a holder with a
+      `HolderKeyResolver` rejects the credential, as `storeCredential` does.
 
 Release 9.0.0:
 

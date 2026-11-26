@@ -141,6 +141,9 @@ class HolderAgent private constructor(
      *
      * Validates with [storeCredentialWithReport] under the checks this has always made, see [compatibilityPolicy], and
      * fails with the cause of the first check that rejects the credential.
+     *
+     * This expects the key of a holder with one key. A holder with a [HolderKeyResolver] can not use it, as it takes
+     * no expected keys: it rejects the credential. Use [storeCredentialWithReport] with its `expectedHolderKeys`.
      */
     override suspend fun storeCredential(
         credential: Holder.StoreCredentialInput,
@@ -156,6 +159,8 @@ class HolderAgent private constructor(
      * says, and of the type of its scheme, and stores it only if it is accepted, see [CredentialStorageResult].
      * A rejected credential is a successful result with its report; only persisting fails.
      *
+     * The credential has to be bound to one of [expectedHolderKeys], see [prepareCredentialStorage].
+     *
      * To let the user decide about a rejected credential, use [prepareCredentialStorage] instead.
      */
     @JvmOverloads
@@ -163,8 +168,11 @@ class HolderAgent private constructor(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
+        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<CredentialStorageResult> = catching {
-        storeAccepted(prepareCredentialStorage(credential, policy, renewalInfo).getOrThrow()).getOrThrow()
+        storeAccepted(
+            prepareCredentialStorage(credential, policy, renewalInfo, expectedHolderKeys).getOrThrow()
+        ).getOrThrow()
     }
 
     /**
@@ -172,16 +180,21 @@ class HolderAgent private constructor(
      * issuance, so that the wallet can show the report to the user, e.g. an untrusted issuer or missing required
      * claims (see [ValidationPolicy.requiredClaims]). Then store it with [storeAccepted], or, if the user accepts a
      * rejected report, with [storeAfterUserConsent]. Fails only if the credential can not be validated at all.
+     *
+     * The credential has to be bound to one of [expectedHolderKeys], see the overload taking an encoded credential.
+     * Without them, a holder with one key expects that key; a holder with a [HolderKeyResolver] rejects the
+     * credential, as it blocks the holder binding check rather than accept any key it knows.
      */
     @JvmOverloads
     suspend fun prepareCredentialStorage(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
+        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<PreparedCredentialStorage> = catching {
-        val expectedHolderKeys = setOfNotNull(singleKey?.publicKey)
-        validate(credential, policy).let {
-            PreparedCredentialStorage(credential, it, renewalInfo, it.boundKey(expectedHolderKeys))
+        val resolvedExpectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) }
+        validate(credential, policy, resolvedExpectedHolderKeys).let {
+            PreparedCredentialStorage(credential, it, renewalInfo, it.boundKey(resolvedExpectedHolderKeys))
         }
     }
 
@@ -299,26 +312,27 @@ class HolderAgent private constructor(
     private suspend fun validate(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
+        expectedHolderKeys: Set<CryptoPublicKey>,
     ): CredentialValidationResult {
         val bound = policy.boundToHolder()
         return when (credential) {
             is Holder.StoreCredentialInput.Vc -> credentialValidator.validate(
                 input = CredentialValidationInput.VcJwt(credential.vcJws),
                 policy = bound,
-                context = context(credential.scheme.vcType)
+                context = context(credential.scheme.vcType, expectedHolderKeys)
             )
 
             is Holder.StoreCredentialInput.SdJwt -> credentialValidator.validate(
                 input = CredentialValidationInput.SdJwtVc(credential.vcSdJwt),
                 policy = bound,
-                context = context(credential.scheme.sdJwtType),
+                context = context(credential.scheme.sdJwtType, expectedHolderKeys),
             )
 
             // Validates the encoding, which is what presentations of the credential carry
             is Holder.StoreCredentialInput.Iso -> credentialValidator.validate(
                 input = CredentialValidationInput.IsoMdoc(coseCompliantSerializer.encodeToByteArray(credential.issuerSigned)),
                 policy = bound,
-                context = context(credential.scheme.isoDocType),
+                context = context(credential.scheme.isoDocType, expectedHolderKeys),
             )
         }
     }
