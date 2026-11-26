@@ -22,6 +22,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKeyFun
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidCredentialRequest
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
 import at.asitplus.wallet.lib.validation.CheckOutcome
@@ -138,7 +139,7 @@ class ProofValidator @JvmOverloads constructor(
      * (F.3). The nonces of all proofs are consumed only if every proof is accepted, so they are not usable again.
      * The clock is read once, all checks use that time.
      *
-     * Fails if [params] contains no proof, or a nonce has been used concurrently.
+     * Fails if [params] contains no proof, proofs of more than one proof type, or a nonce has been used concurrently.
      */
     @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateProofs(
@@ -147,6 +148,11 @@ class ProofValidator @JvmOverloads constructor(
     ): ProofsValidation {
         val evaluatedAt = clock.now()
         val container = params.proofs ?: throw InvalidProof("proof not contained in request")
+        // "The proofs parameter contains exactly one parameter named as the proof type" (OpenID4VCI 1.0, 8.2): a request
+        // with several is malformed, while its key proofs may all be valid (8.3.1.2)
+        if (container.jwt != null && container.attestation != null) {
+            throw InvalidCredentialRequest("proofs contains more than one proof type")
+        }
         val proofs = when {
             !container.jwt.isNullOrEmpty() -> container.jwt!!.map { validateJwtProof(it, policy, evaluatedAt) }
             !container.attestation.isNullOrEmpty() ->

@@ -288,6 +288,24 @@ val OidvciAttestationTest by matrixSuite {
             ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
         }
 
+        test("reject a request with proofs of more than one proof type") {
+            val validator = ProofValidator(keyAttestationValidator = trusting(it.walletProvider))
+            val nonce = validator.nonce().clientNonce
+            val attestation = buildValidKeyAttestation(it.walletProviderKeyMaterial, it.clientKeyMaterial, nonce)
+            val jwtProofs = it.clientKeyMaterial.jwtProof(nonce, attestation.jws).proofs.shouldNotBeNull()
+
+            shouldThrow<OAuth2Exception.InvalidCredentialRequest> {
+                validator.validateProofExtractSubjectPublicKeys(
+                    CredentialRequestParameters(proofs = jwtProofs.copy(attestation = setOf(attestation.jws)))
+                )
+            }.message shouldContain "more than one proof type"
+
+            // each of them alone is accepted, so it is only the combination that is rejected
+            validator.validateProofExtractSubjectPublicKeys(
+                CredentialRequestParameters(proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws)))
+            ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
+        }
+
         test("accept key attestations of any trusted wallet provider with walletProviderAnchors") {
             val trustedAnchor = TestCertificateAuthority()
             val otherTrustedAnchor = TestCertificateAuthority()
