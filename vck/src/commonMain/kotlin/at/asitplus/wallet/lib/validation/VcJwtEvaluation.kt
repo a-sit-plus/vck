@@ -44,7 +44,7 @@ internal suspend fun evaluateVcJwt(
         },
         timeliness = vcJws.validityPeriod.timeliness(timeScope),
         status = vcJws.vc.credentialStatus?.let { TokenStatusInfo.from(it) },
-        credential = ValidatedCredential.VcJwt(vcJws),
+        credential = ValidatedCredential.VcJwt(jws),
     )
 }
 

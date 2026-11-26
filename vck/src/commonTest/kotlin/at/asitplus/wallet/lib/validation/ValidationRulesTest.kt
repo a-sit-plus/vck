@@ -1,6 +1,9 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.KmmResult
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
@@ -16,6 +19,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlin.time.Duration.Companion.seconds
 
@@ -74,22 +78,26 @@ private val acceptedCredentialReport = credentialReport(passingChecks)
 
 private val rejectedCredentialReport = credentialReport(passingChecks.copy(semantics = Failed(failure)))
 
+// signed by no one, as these rules do not check signatures: a well-formed ES256 signature of ones
 private val vcJwt = ValidatedCredential.VcJwt(
-    VerifiableCredentialJws(
-        vc = VerifiableCredential(
-            id = "urn:uuid:1",
+    JwsTyped(
+        JwsCompact("eyJhbGciOiJFUzI1NiJ9.e30.${ByteArray(64) { 1 }.encodeToString(Base64UrlStrict)}"),
+        VerifiableCredentialJws(
+            vc = VerifiableCredential(
+                id = "urn:uuid:1",
+                issuer = "https://issuer.example.com",
+                issuanceDate = evaluatedAt,
+                expirationDate = null,
+                credentialStatus = null,
+                credentialSubject = JsonObject(emptyMap()),
+                credentialType = "ExampleCredential",
+            ),
+            subject = null,
+            notBefore = evaluatedAt,
             issuer = "https://issuer.example.com",
-            issuanceDate = evaluatedAt,
-            expirationDate = null,
-            credentialStatus = null,
-            credentialSubject = JsonObject(emptyMap()),
-            credentialType = "ExampleCredential",
+            expiration = null,
+            jwtId = "urn:uuid:1",
         ),
-        subject = null,
-        notBefore = evaluatedAt,
-        issuer = "https://issuer.example.com",
-        expiration = null,
-        jwtId = "urn:uuid:1",
     )
 )
 

@@ -109,6 +109,10 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
+    - BREAKING: Fix: `trusted_authorities` of type `aki` match a VC-JWT in the verifier's check (`DCQLQueryAdapter`)
+      too, by the `x5c` of its JWS header, as they do in the wallet's matching, instead of no VC-JWT at all.
+      `ValidatedCredential.VcJwt` holds the VC-JWT as received, `signed`, instead of only its payload, which
+      `credential` still returns
     - Fix: `trusted_authorities` of type `aki` match an mdoc whose `x5chain` is in the protected header of its
       `IssuerAuth`, in the wallet's matching and in the verifier's check (`DCQLQueryAdapter`), instead of only one in
       the unprotected header: "An mdoc reader should support the presence of the x5chain element in the protected
@@ -290,8 +294,7 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       the authorities that certify accepted issuers, requested by their subject key identifiers (RFC 5280, 4.2.1.2) as
       `trusted_authorities` of type `aki` (OpenID4VP 1.0, 6.1, 6.1.1). `RequestedCredential.Mdoc.toDocRequest()` sets
       `uniqueDocSetRequired = !multiple`, always, and the same key identifiers as `issuerIdentifiers` (ISO/IEC DIS
-      18013-5:2026, 10.2.4). A trusted authority without a subject key identifier fails constructing the request. A
-      `RequestedCredential.VcJwt` has none, as the verifier keeps no certificate chain of a VC-JWT to check them. Add
+      18013-5:2026, 10.2.4). A trusted authority without a subject key identifier fails constructing the request. Add
       `X509Certificate.subjectKeyIdentifier`
     - BREAKING: `CredentialPresentationRequestBuilder` holds a `RequestedPresentation` instead of
       `credentials: Collection<RequestOptionsCredential>`. It takes `RequestedCredential`s as vararg or collection,

@@ -14,6 +14,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueIsoMdoc
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issuePlainJwt
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.issueSdJwt
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -402,6 +403,65 @@ val DCQLQueryProcedureAdapterTest by matrixSuite {
         )
         val matchingQuery = mdocQuery(aki.encodeToString(Base64UrlStrict))
         val otherQuery = mdocQuery(aki.encodeToString(Base64UrlStrict).reversed())
+
+        val walletMatches = DCQLQueryAdapter(matchingQuery).select(credentials = listOf(storeEntry))
+        val walletMatchesOther = DCQLQueryAdapter(otherQuery).select(credentials = listOf(storeEntry))
+        val verifierCheck = matchingQuery.checkSubmissionRequirements(presentation)
+        val verifierCheckOther = otherQuery.checkSubmissionRequirements(presentation)
+
+        walletMatches.credentialQueryMatches.values.single() shouldHaveSize 1
+        walletMatchesOther.credentialQueryMatches.values.single() shouldHaveSize 0
+        verifierCheck.isSuccess shouldBe true
+        verifierCheckOther.isFailure shouldBe true
+    }
+
+    "Match authority key identifier of a VC-JWT, as the wallet and as the verifier" {
+        val aki = Random.nextBytes(20)
+        val issuer = IssuerAgent(
+            identifier = "https://issuer.example.com/".toUri(),
+            randomSource = RandomSource.Default,
+            keyMaterial = EphemeralKeyWithSelfSignedCert(
+                extensions = listOf(
+                    X509CertificateExtension(
+                        oid = AuthorityKeyIdentifier.oid,
+                        value = Asn1EncapsulatingOctetString(listOf(AuthorityKeyIdentifier(aki).encodeToTlv()))
+                    )
+                )
+            ),
+        )
+        val holderKeyMaterial = EphemeralKeyWithoutCert()
+        val issued = issuePlainJwt(issuer, holderKeyMaterial).shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+        val storeEntry = HolderAgent(keyMaterial = holderKeyMaterial)
+            .storeCredential(issued.toStoreCredentialInput()).getOrThrow()
+        val presentation = CredentialValidator().validate(
+            input = PresentationValidationInput.VcJwt(issued.signedVcJws.toString()),
+            context = PresentationContext(challenge = "challenge", audience = "verifier", requireHolderBinding = false),
+            policy = integrityOnlyPolicy,
+        ).presentation.shouldNotBeNull()
+        fun vcJwtQuery(authorityKeyIdentifier: String) = Json.decodeFromString<DCQLQuery>(
+            """
+              {
+                "credentials": [
+                  {
+                    "id": "vc",
+                    "format": "jwt_vc_json",
+                    "require_cryptographic_holder_binding": false,
+                    "meta": {
+                      "type_values": [["${ConstantIndex.AtomicAttribute2023.vcType}"]]
+                    },
+                    "trusted_authorities": [
+                      {
+                        "type": "aki",
+                        "values": ["$authorityKeyIdentifier"]
+                      }
+                    ]
+                  }
+                ]
+              }
+            """.trimIndent()
+        )
+        val matchingQuery = vcJwtQuery(aki.encodeToString(Base64UrlStrict))
+        val otherQuery = vcJwtQuery(aki.encodeToString(Base64UrlStrict).reversed())
 
         val walletMatches = DCQLQueryAdapter(matchingQuery).select(credentials = listOf(storeEntry))
         val walletMatchesOther = DCQLQueryAdapter(otherQuery).select(credentials = listOf(storeEntry))

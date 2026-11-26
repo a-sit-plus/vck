@@ -61,6 +61,7 @@ import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElementOrNull
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.extensions.authorityKeyIdentifier
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.validation.ValidatedCredential
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.KSerializer
@@ -184,28 +185,29 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         else -> throw IllegalArgumentException("Presentation is no SD-JWT VC")
     }
 
-    // The issuer's certificate chain is not kept for VC-JWTs, so trusted_authorities can not be matched for them.
     private fun ValidatedPresentation.toDCQLVcJwsCredential(): DCQLVcJwsCredential = when (this) {
         is ValidatedPresentation.VpJwt -> {
             require(credentials.size == 1) {
                 "Expected one verifiable credential per presentation, but got ${credentials.size}"
             }
-            credentials.single().credential.toDCQLCredential(satisfiesCryptographicHolderBinding = null)
+            credentials.single().toDCQLCredential(satisfiesCryptographicHolderBinding = null)
         }
 
         is ValidatedPresentation.VcJwt ->
-            credential.credential.toDCQLCredential(satisfiesCryptographicHolderBinding = false)
+            credential.toDCQLCredential(satisfiesCryptographicHolderBinding = false)
 
         else -> throw IllegalArgumentException("Presentation is no VC-JWT")
     }
 
-    private fun VerifiableCredentialJws.toDCQLCredential(satisfiesCryptographicHolderBinding: Boolean?) =
+    /** With the authority key identifiers of the chain in its `x5c`, as the wallet matches them. */
+    private fun ValidatedCredential.VcJwt.toDCQLCredential(satisfiesCryptographicHolderBinding: Boolean?) =
         DCQLVcJwsCredential(
-            satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding ?: !subject.isNullOrEmpty(),
-            types = vc.type,
-            authorityKeyIdentifiers = listOf(),
+            satisfiesCryptographicHolderBinding = satisfiesCryptographicHolderBinding
+                ?: !credential.subject.isNullOrEmpty(),
+            types = credential.vc.type,
+            authorityKeyIdentifiers = signed.jws.jwsHeader.certificateChain.toDCQLAuthorityKeyIdentifiers(),
             claimStructure = DCQLCredentialClaimStructure.JsonBasedStructure(
-                CredentialToJsonConverter.toJsonElement(this)
+                CredentialToJsonConverter.toJsonElement(credential)
             ),
         )
 
