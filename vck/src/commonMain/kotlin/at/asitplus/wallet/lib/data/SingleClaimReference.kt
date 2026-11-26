@@ -5,8 +5,6 @@ import at.asitplus.signum.indispensable.io.TransformingSerializerTemplate
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 
 /**
  * One claim of a credential, in the form its credential format addresses claims with: a claims path pointer into a
@@ -61,20 +59,5 @@ data class MdocClaimReference(
     constructor(scheme: IsoMdocCredentialScheme, claimName: String) : this(
         namespace = scheme.isoNamespace,
         claimName = claimName,
-    )
-
-    /**
-     * Serializes the reference as the two-element array `[namespace, claimName]`, the form that
-     * [at.asitplus.wallet.lib.agent.DeviceRequestCredentialDisclosure.disclosedAttributes] keeps from its earlier
-     * representation as a JSONPath of two names.
-     */
-    object ArraySerializer : KSerializer<MdocClaimReference> by TransformingSerializerTemplate(
-        parent = ListSerializer(String.serializer()),
-        encodeAs = { listOf(it.namespace, it.claimName) },
-        decodeAs = {
-            require(it.size == 2) { "An mdoc data element has a name space and a data element identifier: $it" }
-            MdocClaimReference(it[0], it[1])
-        },
-        serialName = "at.asitplus.wallet.lib.data.MdocClaimReference.Array",
     )
 }

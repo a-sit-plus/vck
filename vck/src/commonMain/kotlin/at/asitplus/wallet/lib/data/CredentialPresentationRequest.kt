@@ -1,10 +1,11 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.DocRequestId
+import at.asitplus.iso.DocRequestSubmissionOption
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
 import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.wallet.lib.agent.DeviceRequestCredentialDisclosure
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -59,10 +60,10 @@ sealed interface CredentialPresentationRequest {
         }
 
         fun toCredentialPresentation(
-            submissions: Collection<DeviceRequestCredentialDisclosure<SubjectCredentialStore.StoreEntry>>? = null,
+            docRequestSubmissions: Map<DocRequestId, List<DocRequestSubmissionOption<SubjectCredentialStore.StoreEntry>>>? = null,
         ): CredentialPresentation = CredentialPresentation.IsoDeviceRetrievalPresentation(
             presentationRequest = this,
-            submissions = submissions
+            docRequestSubmissions = docRequestSubmissions
         )
     }
 }

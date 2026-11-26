@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.iso.DocRequestId
+import at.asitplus.iso.DocRequestSubmissionOption
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
-import at.asitplus.wallet.lib.agent.DeviceRequestCredentialDisclosure
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import kotlinx.serialization.Serializable
 
@@ -26,10 +27,10 @@ sealed interface CredentialPresentation {
         val credentialQuerySubmissions: Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>>?,
     ) : CredentialPresentation
 
-    /** Holder selections for creating one ISO Device Response. */
+    /** ISO Device Retrieval submissions keyed by document request, for creating one ISO Device Response. */
     @Serializable
     data class IsoDeviceRetrievalPresentation(
         override val presentationRequest: CredentialPresentationRequest.IsoDeviceRetrieval,
-        val submissions: Collection<DeviceRequestCredentialDisclosure<SubjectCredentialStore.StoreEntry>>? = null,
+        val docRequestSubmissions: Map<DocRequestId, List<DocRequestSubmissionOption<SubjectCredentialStore.StoreEntry>>>? = null,
     ) : CredentialPresentation
 }

@@ -16,7 +16,7 @@ import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
-import at.asitplus.wallet.lib.procedures.iso.DeviceRetrievalProcedure
+import at.asitplus.wallet.lib.procedures.iso.DeviceRequestAdapter
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialStorageResult
@@ -385,8 +385,8 @@ class HolderAgent @JvmOverloads constructor(
         val credentials = getValidCredentialsByPriority(filterByIds)
             ?: throw PresentationException("Credentials could not be retrieved from the store")
         HolderIsoDeviceRetrievalQueryMatchingResult(
+            deviceRequestMatchingResult = DeviceRequestAdapter(deviceRequest).select(credentials),
             credentials = credentials,
-            queryMatchingResult = DeviceRetrievalProcedure.match(deviceRequest, credentials),
             deviceRequest = deviceRequest,
         )
     }

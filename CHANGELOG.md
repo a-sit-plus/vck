@@ -6,7 +6,8 @@ Removes JSONPath as a dependency, because OpenID4VP relies on DCQL paths only. S
 processing. Adds typed presentation requests (`RequestedCredential`, `RequestedPresentation`) with claims requested if
 available, claim alternatives, and credential sets, replacing the deprecated `RequestOptionsCredential`. Supports the
 extended device requests of ISO/IEC DIS 18013-5:2026 (use cases, alternative data elements, issuer identifiers) in the
-wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over the Digital Credentials API.
+wallet and the verifier, with their rules in `openid-data-classes` and matches and submissions keyed by `DocRequestId`,
+like DCQL, and adds `DcApiRequestOptions` for typed requests over the Digital Credentials API.
 
 - Core:
     - Add `at.asitplus.wallet.lib.BuildProperties.vckVersion`, a compile-time constant generated from `artifactVersion`.
@@ -92,6 +93,7 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
     - Fix: `DCQLCredentialQueryIdentifier` and `DCQLClaimsQueryIdentifier` accept only ASCII letters and digits besides
       `_` and `-`, reading the "alphanumeric" characters of OpenID4VP 1.0, 6.1 and 6.3 as ALPHA and DIGIT of RFC 5234,
       instead of every Unicode letter and digit, e.g. `ä`
+    - `DCQLCredentialQueryIdentifier.toString()` is the identifier itself, e.g. in error messages
     - Fix: Every claims query of a claim combination has to match, also several queries of one claim, e.g. with
       different `values`, instead of only the first query of each claim: OpenID4VP 1.0 has no rule to ignore duplicate
       claims queries, which its drafts had. An mdoc presentation returns a data element selected by several claims
@@ -149,9 +151,7 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
 - ISO mdoc:
     - BREAKING: Data elements to present are `MdocClaimReference`s (name space and data element identifier,
       ISO/IEC 18013-5:2021, 8.3.2.1.2.1) instead of JSONPath `NormalizedJsonPath`s of two names, in
-      `IsoPresentationParameters.claims`, `DeviceRequestCredentialDisclosure.disclosedAttributes`, and
-      `IsoMdocZkBackend.generate(requestedClaims)`. `DeviceRequestCredentialDisclosure` is serialized as before, each
-      data element as a `[namespace, claimName]` array (`MdocClaimReference.ArraySerializer`)
+      `IsoPresentationParameters.claims` and `IsoMdocZkBackend.generate(requestedClaims)`
     - BREAKING: Remove `NormalizedJsonPath.toIsoNamespaceAttribute()`. A requested claim can no longer have another
       shape than a name space and a data element identifier, so none is ignored with a warning any more
     - BREAKING: `RequestOptionsCredential` with the representation `ISO_MDOC` reads its `attributePaths` and
@@ -181,7 +181,7 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       18013-5:2026, 10.2.4): it discloses each requested data element, or, if the credential lacks it, the first of
       its alternative element sets the credential has, each data element once, and matches only credentials with a
       certificate in the `x5chain` of their `IssuerAuth` whose authority key identifier is one of the
-      `issuerIdentifiers`. `IsoDeviceRetrievalCredentialMatch.requestedClaims` are the data elements to disclose
+      `issuerIdentifiers`. `DocRequestMatch.disclosedItems` are the data elements to disclose
     - BREAKING: The holder follows the use cases of an ISO `DeviceRequest` (ISO/IEC DIS 18013-5:2026, 10.2.5):
       `HolderIsoDeviceRetrievalQueryMatchingResult` holds the `deviceRequest` it matches, a new constructor parameter,
       which `HolderAgent` sets, and gains `useCases` with their purpose hints and whether the holder can satisfy each
@@ -202,6 +202,47 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       18013-5:2026, 10.2.4)
     - BREAKING: Fix: `DocRequestInfo.docResponseEncryption` is a `ByteStringWrapper<EncryptionParameters>`, encoded as
       `EncryptionParametersBytes`, a tag-24 byte string (ISO/IEC DIS 18013-5:2026, 10.2.4), instead of a map
+    - Add the rules of an ISO `DeviceRequest` to `openid-data-classes`, like those of a `DCQLQuery`, over the new
+      `IsoMdocCredential` (docType, issuer-signed items by `ElementReference`, authority key identifiers):
+      `DeviceRequest.findDocRequestMatches` (a `DeviceRequestMatchingResult` of one `KmmResult<DocRequestMatch>` per
+      credential and document request, failures included), `requestedUseCases`, `checkUseCaseRequirements`,
+      `checkAcceptedDocuments`, and `ItemsRequest.match`, `checkDisclosure`, `isAnsweredBy`. Document requests are
+      identified by `DocRequestId`, their position in `docRequests`; `DocRequestSubmissionOption` is a credential
+      chosen for one, with the data elements to disclose, serialized as `[namespace, dataElementIdentifier]` arrays
+      with the new `ElementReference.ArraySerializer`
+    - BREAKING: The holder matches an ISO `DeviceRequest` by `DocRequestId`, like a DCQL query by credential query
+      identifier: `HolderIsoDeviceRetrievalQueryMatchingResult(deviceRequestMatchingResult, credentials,
+      deviceRequest)` holds the `DeviceRequestMatchingResult` of the new `DeviceRequestAdapter.select`, which keeps a
+      failure for each credential that does not match, e.g. one that is not an ISO mdoc, instead of
+      `queryMatchingResult`, and `docRequestMatches`, a map of `DocRequestSubmissionOption`s by `DocRequestId`, instead
+      of the positional `documentMatches`. `HolderDocumentSet.docRequestIds` replaces `docRequestIndices`. Remove
+      `IsoDeviceRetrievalQueryMatchingResult`, `IsoDeviceRetrievalCredentialMatch` and `IsoDeviceRetrievalClaimMatch`:
+      the data elements to disclose and their values are the `ElementReference`s and `IssuerSignedItem`s of
+      `DocRequestMatch.disclosedItems`
+    - BREAKING: The holder submits an ISO Device Retrieval presentation by `DocRequestId`, like a DCQL presentation by
+      credential query identifier: `HolderIsoDeviceRetrievalQueryMatchingResult.toSubmission` and
+      `toDefaultSubmission` return a `Map<DocRequestId, List<DocRequestSubmissionOption<Credential>>>`, which
+      `CredentialPresentation.IsoDeviceRetrievalPresentation.docRequestSubmissions` and
+      `CredentialPresentationRequest.IsoDeviceRetrieval.toCredentialPresentation(docRequestSubmissions)` take instead
+      of `submissions`, a flat list of `DeviceRequestCredentialDisclosure`s, which is removed. Its JSON is an object
+      of the document request positions, each with its options, their data elements as
+      `[namespace, dataElementIdentifier]` arrays. `DeviceRequestAdapter.createPresentationParameters` checks the
+      submission, now also rejecting a document request submitted without a credential. Remove
+      `MdocClaimReference.ArraySerializer`, see `ElementReference.ArraySerializer`
+    - BREAKING: ISO Device Retrieval matching and submission follow DCQL; migrate the released ISO types:
+        - `IsoDeviceRetrievalQueryMatchingResult.documentMatches` is
+          `DeviceRequestMatchingResult.docRequestMatchingResults`, or `docRequestMatches` for the matches only
+        - `IsoDeviceRetrievalCredentialMatch(credentialIndex, requestedClaims)` is a `Pair<UInt, DocRequestMatch>` of
+          the index of the credential and its match in `DeviceRequestMatchingResult.docRequestMatches`
+        - `IsoDeviceRetrievalClaimMatch(namespace, claimName, claimValue)` is an `ElementReference` and its
+          `IssuerSignedItem` in `DocRequestMatch.disclosedItems`
+        - `HolderIsoDeviceRetrievalQueryMatchingResult.queryMatchingResult` and `documentMatches` are
+          `deviceRequestMatchingResult` and `docRequestMatches`, its first constructor parameter is
+          `deviceRequestMatchingResult`
+        - `DeviceRequestCredentialDisclosure(docRequestIndex, credential, disclosedAttributes)` is a
+          `DocRequestSubmissionOption(credential, disclosedElements)` under `DocRequestId(docRequestIndex)` in a map
+        - `HolderDocumentSet.docRequestIndices` is `docRequestIds`
+        - `CredentialPresentation.IsoDeviceRetrievalPresentation.submissions` is `docRequestSubmissions`
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
@@ -248,7 +289,8 @@ wallet and the verifier, and adds `DcApiRequestOptions` for typed requests over 
       cases, exactly one document set of each satisfied one, every mandatory one and at least one; a document answers a
       document request with each requested data element or all data elements of one of its alternative element sets,
       and, with `issuerIdentifiers`, only if a certificate in the `x5chain` of its `IssuerAuth` has one of them as its
-      authority key identifier, which is no evidence of its issuer
+      authority key identifier, which is no evidence of its issuer. It adapts the documents to `IsoMdocCredential`s
+      and delegates to `DeviceRequest.checkAcceptedDocuments` in `openid-data-classes`
     - Fix: `OpenId4VpRequestOptions` accepts transaction data whose `credential_ids` reference only some of the
       credential queries, e.g. not an optional one, as each of them only has to reference a requested credential
       "that can be used to authorize this transaction" (OpenID4VP 1.0, 5.1). It still rejects `credential_ids` that
