@@ -544,8 +544,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 accessToken = tokenResponse.accessToken,
                 nonce = dpopNonce ?: resourceServerDpopNonces.current(resourceUrl),
                 randomSource = randomSource,
-                // Apply a bit of clock skew to avoid getting rejected by the AS
-                issuedAt = clock.now().truncateToSeconds() - 3.minutes,
+                issuedAt = clock.now().truncateToSeconds(),
             )
         } else null
         return Headers.build {
@@ -645,8 +644,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                 audience = authentication.authorizationServer,
                 // nonce support must not be implemented by the AS, so we keep it optional
                 nonce = takeAttestationChallenge(resourceUrl) ?: fetchedChallenge,
-                // Apply a bit of clock skew to avoid getting rejected by the AS
-                issuedAt = clock.now().truncateToSeconds() - 3.minutes,
+                issuedAt = clock.now().truncateToSeconds(),
             )
         } else null
 
@@ -663,8 +661,7 @@ class OAuth2ProtocolClient @JvmOverloads constructor(
                     authorizationServerDpopNonces.current(resourceUrl)
                 },
                 randomSource = randomSource,
-                // Apply a bit of clock skew to avoid getting rejected by the AS
-                issuedAt = clock.now().truncateToSeconds() - 3.minutes,
+                issuedAt = clock.now().truncateToSeconds(),
             )
         } else null
 
