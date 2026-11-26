@@ -99,12 +99,19 @@ val ProofKeySupplierTest by matrixSuite {
             .jws.jwsHeader.jsonWebKey shouldBe key.jsonWebKey
     }
 
-    test("a key attestation without the supplied key first fails") {
+    test("a key attestation of another key, or of more keys, fails") {
         val supplier = NewKeys()
 
         JwtProofCreator(
             keySupplier = supplier,
             loadKeyAttestation = { catching { keyAttestation(listOf(EphemeralKeyWithoutCert())) } },
+        ).createProof(issuer, jwtWithAttestation, "client", "nonce").isFailure shouldBe true
+
+        JwtProofCreator(
+            keySupplier = supplier,
+            loadKeyAttestation = {
+                catching { keyAttestation(listOf(supplier.supplied.last(), EphemeralKeyWithoutCert())) }
+            },
         ).createProof(issuer, jwtWithAttestation, "client", "nonce").isFailure shouldBe true
 
         JwtProofCreator(

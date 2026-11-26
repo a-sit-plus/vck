@@ -101,12 +101,12 @@ data class ProofKeyRequest(
     val keyAttestationRequired: KeyAttestationRequired?,
 )
 
-/** Checks that [this] key attestation attests [key] first (TS3, 2.2.2.1); not retried with the same key. */
+/** Checks that [this] key attestation attests exactly [key] (TS3, 2.2.2.1); not retried with the same key. */
 private fun JwsCompactTyped<KeyAttestationJwt>.requireAttests(key: KeyMaterial) {
     val attested = payload.attestedKeys.map { it.jwkThumbprintPlain }
     require(attested.isNotEmpty()) { "Key attestation contains no attested_keys" }
-    require(attested.first() == key.jsonWebKey.jwkThumbprintPlain) {
-        "Key attestation attested_keys[0] must match credential proof signing key"
+    require(attested == listOf(key.jsonWebKey.jwkThumbprintPlain)) {
+        "Key attestation must attest exactly the supplied holder key"
     }
 }
 
@@ -122,8 +122,8 @@ private val JsonWebKey.jwkThumbprintPlain: String
  *
  * If the issuer requires a key attestation for the `jwt` proof type (`key_attestations_required`), the proof carries
  * one in its `key_attestation` header (Appendix D), loaded with [loadKeyAttestation]. Then creating the proof fails
- * without [loadKeyAttestation], if [loadKeyAttestation] fails, or if the key attestation does not attest the
- * signing key as its first key.
+ * without [loadKeyAttestation], if [loadKeyAttestation] fails, or if the key attestation does not attest exactly the
+ * signing key.
  *
  * Creates no proof if the issuer does not accept the `jwt` proof type for the requested credential.
  */
@@ -282,7 +282,7 @@ class JwtProofCreator(
  * `c_nonce` is passed to [loadKeyAttestation] as [KeyAttestationInput.clientNonce], as it has to be the `nonce` of the
  * key attestation if the issuer has a Nonce Endpoint (Appendix F.3).
  *
- * With a [keySupplier], the attestation has to attest its key first. Without one, [loadKeyAttestation] chooses the
+ * With a [keySupplier], the attestation has to attest exactly its key. Without one, [loadKeyAttestation] chooses the
  * key, and [CreatedProof.key] is `null`.
  *
  * Creating the proof fails if [loadKeyAttestation] fails. Creates no proof if the issuer does not accept the
