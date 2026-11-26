@@ -11,12 +11,17 @@ import at.asitplus.openid.dcql.DCQLQueryMatchingResult
  * Holder-facing view of a DCQL match.
  *
  * [dcqlQueryMatchingResult] identifies matches by their index in [credentials]. [credentialQueryMatches] resolves
- * those indices to the actual credentials and retains the matching result that controls which claims are disclosed.
+ * those indices to the actual credentials and retains the matching result that controls which claims are disclosed,
+ * and [credentialSets] shows which credential queries the holder can present together, to build a submission with
+ * [toSubmission] or [toDefaultSubmission].
  */
 data class HolderDCQLQueryMatchingResult<Credential : Any>(
     val dcqlQueryMatchingResult: DCQLQueryMatchingResult,
     override val credentials: List<Credential>,
+    /** The query [dcqlQueryMatchingResult] matches, whose credential sets the submissions follow. */
+    val dcqlQuery: DCQLQuery,
 ) : HolderPresentationRequestMatchingResult<Credential> {
+    /** Matching credentials and the claims to disclose, by the credential query they match, in [credentials] order. */
     val credentialQueryMatches = dcqlQueryMatchingResult.credentialQueryMatches.mapValues {
         it.value.map { (index, matching) ->
             DCQLCredentialSubmissionOption(
@@ -32,53 +37,45 @@ data class HolderDCQLQueryMatchingResult<Credential : Any>(
      * of its credential queries. Wallets show these to let the End-User choose an option of a set, which they
      * "typically" do (6.4.3), and whether to present an optional set, then build the submission with [toSubmission].
      */
-    fun credentialSets(dcqlQuery: DCQLQuery): List<HolderCredentialSet> =
-        dcqlQuery.requestedCredentialSetQueries.map { set ->
-            HolderCredentialSet(
-                required = set.required,
-                options = set.options.map { option ->
-                    HolderCredentialSetOption(
-                        credentialQueryIds = option,
-                        satisfiable = option.all { credentialQueryMatches[it].orEmpty().isNotEmpty() },
-                    )
-                },
-            )
-        }
+    val credentialSets: List<HolderCredentialSet> = dcqlQuery.requestedCredentialSetQueries.map { set ->
+        HolderCredentialSet(
+            required = set.required,
+            options = set.options.map { option ->
+                HolderCredentialSetOption(
+                    credentialQueryIds = option,
+                    satisfiable = option.all { credentialQueryMatches[it].orEmpty().isNotEmpty() },
+                )
+            },
+        )
+    }
 
     /**
-     * The submission of the options [selection] chooses: for each set of [credentialSets], in their order, the index
-     * of its chosen option, or `null` to present nothing for an optional set. For each credential query of the chosen
-     * options, this submits its first matching credential, or every match when that query allows `multiple`
-     * (OpenID4VP 1.0, 6.1).
+     * The submission of the option [selection] chooses for each set to present, both taken from [credentialSets]; an
+     * optional set without an entry is not presented. For each credential query of the chosen options, this submits
+     * its first matching credential, or every match when that query allows `multiple` (OpenID4VP 1.0, 6.1).
      *
-     * Fails if [selection] does not choose for every set, chooses no option of a required set, as every required set
-     * has to be satisfied (OpenID4VP 1.0, 6.4.2), or chooses an option that does not exist or can not be satisfied.
+     * Fails if [selection] chooses no option of a required set, as every required set has to be satisfied
+     * (OpenID4VP 1.0, 6.4.2), or chooses a set or option that is not in [credentialSets], or an option that can not be
+     * satisfied.
      */
     fun toSubmission(
-        dcqlQuery: DCQLQuery,
-        selection: List<Int?>,
+        selection: Map<HolderCredentialSet, HolderCredentialSetOption>,
     ): KmmResult<Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>> =
         catching {
-            val sets = credentialSets(dcqlQuery)
-            require(selection.size == sets.size) {
-                "A selection is required for each of the ${sets.size} credential sets, but got ${selection.size}"
+            selection.entries.forEach { entry ->
+                require(entry.key in credentialSets) { "The credential set ${entry.key} is not one of the query" }
+                require(entry.value in entry.key.options) {
+                    "The option ${entry.value} is not one of the credential set ${entry.key}"
+                }
+                require(entry.value.satisfiable) { "The option ${entry.value} can not be satisfied" }
             }
-            val chosen = sets.indices.mapNotNull { setIndex ->
-                val set = sets[setIndex]
-                val optionIndex = selection[setIndex]
-                if (optionIndex == null) {
-                    require(!set.required) { "The credential set at $setIndex is required, but none was chosen" }
-                    return@mapNotNull null
+            credentialSets.forEachIndexed { setIndex, set ->
+                require(!set.required || set in selection) {
+                    "The credential set at $setIndex is required, but no option was chosen"
                 }
-                val option = requireNotNull(set.options.getOrNull(optionIndex)) {
-                    "The credential set at $setIndex has no option at $optionIndex"
-                }
-                require(option.satisfiable) {
-                    "The option at $optionIndex of the credential set at $setIndex can not be satisfied"
-                }
-                option
             }
             val allowsMultiple = dcqlQuery.credentials.filter { it.multiple }.map { it.id }.toSet()
+            val chosen = credentialSets.mapNotNull { selection[it] }
             chosen.flatMap { it.credentialQueryIds }.distinct().associateWith { queryId ->
                 val matches = credentialQueryMatches[queryId].orEmpty()
                 if (queryId in allowsMultiple) matches else matches.take(1)
@@ -93,16 +90,21 @@ data class HolderDCQLQueryMatchingResult<Credential : Any>(
      * queries. Wallets that obtain a different choice from the End-User use [credentialSets] and [toSubmission].
      */
     fun toDefaultSubmission(
-        dcqlQuery: DCQLQuery,
     ): KmmResult<Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>> =
         catching {
-            val selection = credentialSets(dcqlQuery).map { set ->
-                if (!set.required) null
-                else set.options.indexOfFirst { it.satisfiable }.takeIf { it >= 0 }
+            val selection = credentialSets.filter { it.required }.associateWith { set ->
+                set.options.firstOrNull { it.satisfiable }
                     ?: throw IllegalStateException("No option of a required credential set query is satisfiable")
             }
-            toSubmission(dcqlQuery, selection).getOrThrow()
+            toSubmission(selection).getOrThrow()
         }
+
+    /** [toDefaultSubmission] for [dcqlQuery] instead of the query this result holds. */
+    @Deprecated("The result holds the query it matches", ReplaceWith("toDefaultSubmission()"))
+    fun toDefaultSubmission(
+        dcqlQuery: DCQLQuery,
+    ): KmmResult<Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>> =
+        copy(dcqlQuery = dcqlQuery).toDefaultSubmission()
 }
 
 /**

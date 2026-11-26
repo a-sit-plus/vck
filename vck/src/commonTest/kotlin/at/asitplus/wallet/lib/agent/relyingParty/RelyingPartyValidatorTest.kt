@@ -12,14 +12,18 @@ import at.asitplus.etsi.relyingParty.WrpCredential
 import at.asitplus.etsi.relyingParty.WrpCredentialMeta
 import at.asitplus.etsi.relyingParty.WrpIntermediary
 import at.asitplus.etsi.relyingParty.WrpPayload
+import at.asitplus.iso.AlternativeDataElementsSet
 import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.DeviceRequestInfo
 import at.asitplus.iso.DocRequest
 import at.asitplus.iso.DocRequestInfo
+import at.asitplus.iso.ElementReference
 import at.asitplus.iso.EncryptionInfo
 import at.asitplus.iso.EncryptionParameters
 import at.asitplus.iso.ReaderAuthentication
 import at.asitplus.iso.ReaderAuthenticationAll
 import at.asitplus.iso.SessionTranscript
+import at.asitplus.iso.UseCase
 import at.asitplus.iso.sha256
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
@@ -357,6 +361,27 @@ val RelyingPartyValidatorTest by matrixSuite {
         }
     }
 
+    "alternative data elements of an mdoc request need to be registered, like the requested ones" - {
+        listOf(
+            "family_name" to ACCEPTED,
+            "portrait" to REJECTED,
+        ).asData() test { (alternative, decision) ->
+            val fixture = buildWrpFixture()
+            val transcript = nfcTranscript()
+            val docRequest = fixture.docRequestWithWrprc(claimNames = listOf("given_name")).withAlternatives(
+                AlternativeDataElementsSet(
+                    requestedElement = ElementReference(DEFAULT_DOCTYPE, "given_name"),
+                    alternativeElementSets = listOf(listOf(ElementReference(DEFAULT_DOCTYPE, alternative))),
+                )
+            )
+            val deviceRequest = fixture.isoRequest(docRequest, transcript).parameters.isoMdocRequest.deviceRequest
+
+            val result = fixture.validator().validate(deviceRequest, transcript, policy)
+
+            result.report.decision shouldBe decision
+        }
+    }
+
     "a revoked WRPRC is rejected, with its status" {
         val fixture = buildWrpFixture()
 
@@ -649,6 +674,43 @@ val RelyingPartyValidatorTest by matrixSuite {
             docRequests = arrayOf(first, second.copy(readerAuth = fixture.readerAuth(second, transcript)))
         )
         fixture.validator().validate(completely, transcript, policy).report.decision shouldBe ACCEPTED
+    }
+
+    "a device request with a deviceRequestInfo but only readerAuth fails its request data, not the signature" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val docRequest = fixture.docRequestWithWrprc().let { it.copy(readerAuth = fixture.readerAuth(it, transcript)) }
+        val request = DeviceRequest(
+            parsedVersion = Version(1, 1),
+            docRequests = arrayOf(docRequest),
+            deviceRequestInfo = singleUseCaseInfo(),
+        )
+
+        val result = fixture.validator().validate(request, transcript, policy)
+
+        result.apply {
+            report.decision shouldBe REJECTED
+            accessChecks().signature shouldBe CheckOutcome.Passed
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().requestData
+                .shouldBeInstanceOf<CheckOutcome.Failed>().throwable.shouldBeInstanceOf<UnsupportedWrpRequestException>()
+        }
+    }
+
+    "a device request with a deviceRequestInfo covered by readerAuthAll is accepted" {
+        val fixture = buildWrpFixture()
+        val transcript = nfcTranscript()
+        val unsigned = DeviceRequest(
+            parsedVersion = Version(1, 1),
+            docRequests = arrayOf(fixture.docRequestWithWrprc()),
+            deviceRequestInfo = singleUseCaseInfo(),
+        )
+        val request = unsigned.copy(
+            readerAuthAll = arrayOf(readerAuthAll(unsigned, transcript, fixture.wrpKey, fixture.wrpacChain))
+        )
+
+        val result = fixture.validator().validate(request, transcript, policy)
+
+        result.report.decision shouldBe ACCEPTED
     }
 
     "of several readerAuthAll signatures, the one of a trusted WRPAC linking to the WRPRCs is selected" {
@@ -1261,5 +1323,17 @@ private suspend fun WrpFixture.validateAccessCertificate(
     return result.accessChecks().trust.outcome.shouldBeInstanceOf<CheckOutcome.Failed>().throwable.message.shouldNotBeNull()
 }
 
+/** A `deviceRequestInfo` with one mandatory use case of the first document request. */
+private fun singleUseCaseInfo() = ByteStringWrapper(
+    DeviceRequestInfo(useCases = listOf(UseCase(mandatory = true, documentSets = listOf(listOf(0U)))))
+)
+
 private fun DocRequest.withEuWrprc(euWrprc: ByteArray) =
     copy(itemsRequest = ByteStringWrapper(itemsRequest.value.copy(requestInfo = DocRequestInfo(euWrprc = euWrprc))))
+
+/** This document request, with [alternatives] in its `DocRequestInfo`, keeping its other values. */
+private fun DocRequest.withAlternatives(vararg alternatives: AlternativeDataElementsSet): DocRequest {
+    val requestInfo = (itemsRequest.value.requestInfo ?: DocRequestInfo())
+        .copy(alternativeDataElements = alternatives.toList())
+    return copy(itemsRequest = ByteStringWrapper(itemsRequest.value.copy(requestInfo = requestInfo)))
+}

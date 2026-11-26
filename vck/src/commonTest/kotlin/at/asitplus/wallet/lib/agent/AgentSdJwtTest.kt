@@ -47,180 +47,186 @@ import kotlinx.serialization.json.jsonPrimitive
 
 val AgentSdJwtTest by matrixSuite {
 
-    fixture {
-        runBlocking {
-            val issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val holderCredentialStore = InMemorySubjectCredentialStore()
-            val issuer = IssuerAgent(
-                issuerCredentialStore = issuerCredentialStore,
-                identifier = "https://issuer.example.com/".toUri(),
-                randomSource = RandomSource.Default
-            )
-            val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-            val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val holder = HolderAgent(holderKeyMaterial, holderCredentialStore).also {
-                it.storeCredential(
-                    issuer.issueCredential(
-                        DummyCredentialDataProvider.getCredential(
-                            holderKeyMaterial.publicKey,
-                            ConstantIndex.AtomicAttribute2023,
-                            SD_JWT,
-                        ).getOrThrow().shouldBeInstanceOf<CredentialToBeIssued.VcSd>()
-                            .copy(sdAlgorithm = Digest.SHA256)
-                    ).getOrThrow().toStoreCredentialInput()
-                ).getOrThrow()
-            }
-            object {
-                val holder = holder
-                val holderCredentialStore = holderCredentialStore
-                val holderKeyMaterial = holderKeyMaterial
-                val statusListIssuer = statusListIssuer
-                val validator = statusCheckingValidator(statusListIssuer)
-                val verifierId = "urn:${uuid4()}"
-                val verifier = NonceChallengeVerifier(verifierId = verifierId)
+    for (format in StatusListTokenFormat.entries) "status list token as $format" - {
+        fixture {
+            runBlocking {
+                val issuerCredentialStore = InMemoryIssuerCredentialStore()
+                val holderCredentialStore = InMemorySubjectCredentialStore()
+                val issuer = IssuerAgent(
+                    issuerCredentialStore = issuerCredentialStore,
+                    identifier = "https://issuer.example.com/".toUri(),
+                    randomSource = RandomSource.Default
+                )
+                val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+                val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
+                val holder = HolderAgent(holderKeyMaterial, holderCredentialStore).also {
+                    it.storeCredential(
+                        issuer.issueCredential(
+                            DummyCredentialDataProvider.getCredential(
+                                holderKeyMaterial.publicKey,
+                                ConstantIndex.AtomicAttribute2023,
+                                SD_JWT,
+                            ).getOrThrow().shouldBeInstanceOf<CredentialToBeIssued.VcSd>()
+                                .copy(sdAlgorithm = Digest.SHA256)
+                        ).getOrThrow().toStoreCredentialInput()
+                    ).getOrThrow()
+                }
+                object {
+                    val holder = holder
+                    val holderCredentialStore = holderCredentialStore
+                    val holderKeyMaterial = holderKeyMaterial
+                    val statusListIssuer = statusListIssuer
+                    val validator = statusCheckingValidator(statusListIssuer, format)
+                    val verifierId = "urn:${uuid4()}"
+                    val verifier = NonceChallengeVerifier(verifierId = verifierId)
 
-                suspend fun validate(presentation: CreatePresentationResult, request: PresentationRequestParameters) =
-                    validator.validatePresentation(
-                        presentation = presentation,
-                        context = verifier.consumeChallenge(request.nonce).context(audience = verifierId),
-                        policy = statusCheckingPolicy,
-                    ).shouldBeSingleton().first()
+                    suspend fun validate(
+                        presentation: CreatePresentationResult,
+                        request: PresentationRequestParameters,
+                    ) =
+                        validator.validatePresentation(
+                            presentation = presentation,
+                            context = verifier.consumeChallenge(request.nonce).context(audience = verifierId),
+                            policy = statusCheckingPolicy,
+                        ).shouldBeSingleton().first()
+                }
             }
-        }
-    } - {
+        } - {
 
-        "keyBindingJws contains more JWK attributes, still verifies" {
-            val request = it.verifier.createPresentationRequest()
-            val credential = it.holderCredentialStore.getCredentials().getOrThrow()
-                .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
-            val sdJwt = createSdJwtPresentation(
-                signKeyBindingJws = SignJwt(it.holderKeyMaterial, { header, _ ->
-                    header.copy(keyId = "definitely not matching")
-                }),
-                audienceId = request.audience,
-                challenge = request.nonce,
-                validSdJwtCredential = credential,
-                claimName = CLAIM_GIVEN_NAME
-            )
-            it.validate(sdJwt, request).apply {
-                observedStatus shouldBe TokenStatus.Valid
-                acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.SdJwt>()
-                    .credential.decoded.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
+            "keyBindingJws contains more JWK attributes, still verifies" {
+                val request = it.verifier.createPresentationRequest()
+                val credential = it.holderCredentialStore.getCredentials().getOrThrow()
+                    .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
+                val sdJwt = createSdJwtPresentation(
+                    signKeyBindingJws = SignJwt(it.holderKeyMaterial, { header, _ ->
+                        header.copy(keyId = "definitely not matching")
+                    }),
+                    audienceId = request.audience,
+                    challenge = request.nonce,
+                    validSdJwtCredential = credential,
+                    claimName = CLAIM_GIVEN_NAME
+                )
+                it.validate(sdJwt, request).apply {
+                    observedStatus shouldBe TokenStatus.Valid
+                    acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.SdJwt>()
+                        .credential.decoded.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
+                }
             }
-        }
 
-        "dcql: simple walk-through success" {
-            val request = it.verifier.createPresentationRequest()
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = request,
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    buildDCQLQuery(
-                        DCQLJsonClaimsQuery(
-                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+            "dcql: simple walk-through success" {
+                val request = it.verifier.createPresentationRequest()
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = request,
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        buildDCQLQuery(
+                            DCQLJsonClaimsQuery(
+                                path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                            ),
+                            DCQLJsonClaimsQuery(
+                                path = DCQLClaimsPathPointer(CLAIM_DATE_OF_BIRTH),
+                            ),
+                        )
+                    )
+                ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+
+                val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
+                    .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+                it.validate(vp, request).apply {
+                    observedStatus shouldBe TokenStatus.Valid
+                    acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.SdJwt>().credential.apply {
+                        decoded.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+                        decoded.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe
+                                "1990-01-01"
+                    }
+                }
+            }
+
+            "dcql: wrong key binding jwt" {
+                val request = it.verifier.createPresentationRequest()
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = request,
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        buildDCQLQuery(
+                            DCQLJsonClaimsQuery(
+                                path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                            )
                         ),
-                        DCQLJsonClaimsQuery(
-                            path = DCQLClaimsPathPointer(CLAIM_DATE_OF_BIRTH),
+                    ),
+                ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+
+                val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
+                    .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+                // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
+                val freshKbJwt = createFreshSdJwtKeyBinding(request.nonce, request.audience)
+                val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
+
+                val malformedVp = CreatePresentationResult.SdJwt(
+                    malformedVpSdJwt,
+                    SdJwtSigned.parseCatching(malformedVpSdJwt).getOrThrow(),
+                )
+                it.validate(malformedVp, request).apply {
+                    presentation.shouldBeNull()
+                    report.checks.shouldBeInstanceOf<PresentationChecks>()
+                        .signature.shouldBeInstanceOf<CheckOutcome.Failed>()
+                }
+            }
+
+            "dcql: wrong challenge in key binding jwt" {
+                val request = it.verifier.createPresentationRequest()
+                val malformedChallenge = request.nonce.reversed()
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = PresentationRequestParameters(
+                        nonce = malformedChallenge,
+                        audience = it.verifierId
+                    ),
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        buildDCQLQuery(
+                            DCQLJsonClaimsQuery(
+                                path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                            )
                         ),
                     )
-                )
-            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+                ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
-                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+                val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
+                    .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            it.validate(vp, request).apply {
-                observedStatus shouldBe TokenStatus.Valid
-                acceptedOrThrow().shouldBeInstanceOf<ValidatedPresentation.SdJwt>().credential.apply {
-                    decoded.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
-                    decoded.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
+                it.validate(vp, request).apply {
+                    presentation.shouldBeNull()
+                    report.checks.shouldBeInstanceOf<PresentationChecks>()
+                        .challenge.shouldBeInstanceOf<CheckOutcome.Failed>()
                 }
             }
-        }
 
-        "dcql: wrong key binding jwt" {
-            val request = it.verifier.createPresentationRequest()
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = request,
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    buildDCQLQuery(
-                        DCQLJsonClaimsQuery(
-                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
-                        )
-                    ),
-                ),
-            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+            "dcql: revoked sd jwt" {
+                val request = it.verifier.createPresentationRequest()
+                val presentationParameters = it.holder.createDefaultPresentation(
+                    request = request,
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                        buildDCQLQuery(
+                            DCQLJsonClaimsQuery(
+                                path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                            )
+                        ),
+                    )
+                ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
-                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-            // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
-            val freshKbJwt = createFreshSdJwtKeyBinding(request.nonce, request.audience)
-            val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
+                val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
+                    .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-            val malformedVp = CreatePresentationResult.SdJwt(
-                malformedVpSdJwt,
-                SdJwtSigned.parseCatching(malformedVpSdJwt).getOrThrow(),
-            )
-            it.validate(malformedVp, request).apply {
-                presentation.shouldBeNull()
-                report.checks.shouldBeInstanceOf<PresentationChecks>()
-                    .signature.shouldBeInstanceOf<CheckOutcome.Failed>()
-            }
-        }
-
-        "dcql: wrong challenge in key binding jwt" {
-            val request = it.verifier.createPresentationRequest()
-            val malformedChallenge = request.nonce.reversed()
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = PresentationRequestParameters(
-                    nonce = malformedChallenge,
-                    audience = it.verifierId
-                ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    buildDCQLQuery(
-                        DCQLJsonClaimsQuery(
-                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
-                        )
-                    ),
-                )
-            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
-
-            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
-                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-
-            it.validate(vp, request).apply {
-                presentation.shouldBeNull()
-                report.checks.shouldBeInstanceOf<PresentationChecks>()
-                    .challenge.shouldBeInstanceOf<CheckOutcome.Failed>()
-            }
-        }
-
-        "dcql: revoked sd jwt" {
-            val request = it.verifier.createPresentationRequest()
-            val presentationParameters = it.holder.createDefaultPresentation(
-                request = request,
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    buildDCQLQuery(
-                        DCQLJsonClaimsQuery(
-                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
-                        )
-                    ),
-                )
-            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
-
-            val vp = presentationParameters.verifiablePresentations.values.flatten().firstOrNull()
-                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-
-            it.holderCredentialStore.getCredentials().getOrThrow()
-                .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .forEach { storeEntry ->
-                    it.statusListIssuer.revokeCredentialByIndex(
-                        FixedTimePeriodProvider.timePeriod,
-                        storeEntry.sdJwt.statusElement.shouldBeInstanceOf<StatusListInfo>().index,
-                    ) shouldBe true
+                it.holderCredentialStore.getCredentials().getOrThrow()
+                    .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
+                    .forEach { storeEntry ->
+                        it.statusListIssuer.revokeCredentialByIndex(
+                            FixedTimePeriodProvider.timePeriod,
+                            storeEntry.sdJwt.statusElement.shouldBeInstanceOf<StatusListInfo>().index,
+                        ) shouldBe true
+                    }
+                it.validate(vp, request).apply {
+                    presentation.shouldBeNull()
+                    observedStatus shouldBe TokenStatus.Invalid
                 }
-            it.validate(vp, request).apply {
-                presentation.shouldBeNull()
-                observedStatus shouldBe TokenStatus.Invalid
             }
         }
     }

@@ -387,6 +387,7 @@ class HolderAgent @JvmOverloads constructor(
         HolderIsoDeviceRetrievalQueryMatchingResult(
             credentials = credentials,
             queryMatchingResult = DeviceRetrievalProcedure.match(deviceRequest, credentials),
+            deviceRequest = deviceRequest,
         )
     }
 
@@ -401,6 +402,7 @@ class HolderAgent @JvmOverloads constructor(
                 credentials = credentials
             ),
             credentials = credentials,
+            dcqlQuery = dcqlQuery,
         )
     }
 

@@ -15,6 +15,10 @@ data class IsoDeviceRetrievalClaimMatch(
  */
 data class IsoDeviceRetrievalCredentialMatch(
     val credentialIndex: Int,
+    /**
+     * The data elements to disclose: each requested one, or, if the credential lacks it, its first alternative element
+     * set the credential has (ISO/IEC DIS 18013-5:2026, 10.2.4), each data element once.
+     */
     val requestedClaims: List<IsoDeviceRetrievalClaimMatch>,
 )
 

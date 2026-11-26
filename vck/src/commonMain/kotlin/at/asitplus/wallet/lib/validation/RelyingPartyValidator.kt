@@ -15,6 +15,7 @@ import at.asitplus.signum.indispensable.josef.JwsGeneral
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.validation.TimeScope
+import at.asitplus.wallet.lib.agent.validation.relyingParty.AuthenticatedReader
 import at.asitplus.wallet.lib.agent.validation.relyingParty.InvalidRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.MissingRegistrationCertificateException
 import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
@@ -97,7 +98,8 @@ class RelyingPartyValidator @JvmOverloads constructor(
      * [UnsupportedWrpRequestException], so that a wallet can tell an unauthenticated reader from one whose reader
      * authentication does not verify, whose `signature` fails. A request that authenticates only some of its document
      * requests (ISO/IEC DIS 18013-5:2025, 12.5.4) fails `requestData` alike, as the others are not bound to the
-     * reader, while its `signature` passes.
+     * reader, while its `signature` passes; so does a request with a `deviceRequestInfo`, e.g. use cases, but without
+     * a `readerAuthAll`, the only signature that covers it (ISO/IEC DIS 18013-5:2026, 12.5.4).
      *
      * A reader may sign the request with several `readerAuthAll` signatures, e.g. one for each trust framework it
      * takes part in: the report is about the first chain whose WRPAC is accepted and links to every WRPRC, else the
@@ -319,7 +321,11 @@ class RelyingPartyValidator @JvmOverloads constructor(
                 timeScope = timeScope,
                 requireIdentifier = requireIdentifier,
             )
-            AccessCertificateCandidate(chain, evaluation, ValidationReport.accessCertificate(evaluation.checks, policy, now))
+            AccessCertificateCandidate(
+                chain,
+                evaluation,
+                ValidationReport.accessCertificate(evaluation.checks, policy, now)
+            )
         }
         val accepted = candidates.filter { it.report.decision == ValidationDecision.ACCEPTED }
         return accepted.firstOrNull { candidate ->
@@ -355,9 +361,7 @@ class RelyingPartyValidator @JvmOverloads constructor(
                 ?: Blocked(IllegalArgumentException("The request transports no certificate chain")),
             clientId = parameters.clientId.orEmpty(),
             requestData = requestData.toOutcome(),
-            registration = certificate.toOutcome(),
-            registrationCertificates = certificate.getOrNull()?.let { wrprc -> requests?.let { mapOf(wrprc to it) } }
-                .orEmpty(),
+            registrationCertificates = certificate.map { wrprc -> requests?.let { mapOf(wrprc to it) }.orEmpty() },
         )
     }
 
@@ -371,45 +375,55 @@ class RelyingPartyValidator @JvmOverloads constructor(
     ): ExtractedRequest {
         if (deviceRequest.readerAuthAll.isNullOrEmpty() && deviceRequest.docRequests.all { it.readerAuth == null })
             return unsigned("The request has no reader authentication")
-        val reader = ReaderAuthenticationVerifier().authenticate(deviceRequest, sessionTranscript)
-        val unauthenticated = reader.getOrNull()?.unauthenticatedDocRequests.orEmpty()
-        if (unauthenticated.isNotEmpty()) return ExtractedRequest(
-            accessCertificateChains = reader.getOrThrow().chains,
-            signature = Passed,
-            clientId = null,
-            requestData = Failed(
-                UnsupportedWrpRequestException("The DocRequests at $unauthenticated have no reader authentication")
-            ),
-            registration = Blocked(),
-            registrationCertificates = emptyMap(),
-        )
-        val registrationCertificates = catchingUnwrapped<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> {
-            if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
-                throw MissingRegistrationCertificateException("No DocRequest contains a registration certificate")
+        val reader = ReaderAuthenticationVerifier()
+            .authenticate(deviceRequest, sessionTranscript).getOrElse {
+                return signedMdoc(deviceRequest, chains = emptyList(), signature = Failed(it))
             }
-            deviceRequest.docRequests.map { docRequest ->
-                val encoded = docRequest.itemsRequest.value.requestInfo?.euWrprc
-                    ?: throw InvalidRegistrationCertificateException(
-                        "A DocRequest has no registration certificate, while others have one"
-                    )
-                val certificate = catchingUnwrapped {
-                    val cose = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(encoded)
-                    WrpRegistrationCertificate.WrpCwtRegistrationCertificate(
-                        cose = cose,
-                        payload = parseWrprcCose(cose),
-                    )
-                }.getOrElse { throw InvalidRegistrationCertificateException("A WRPRC can not be parsed", it) }
-                certificate to WrpCredentialRequest.WrpDocRequest(docRequest)
-            }.groupBy({ it.first }, { it.second })
+        if (reader.isPartial)
+            return partlyAuthenticated(reader)
+        return signedMdoc(deviceRequest, chains = reader.chains, signature = Passed)
+    }
+
+    /**
+     * A signed mdoc request, signed with [chains] as [signature] tells, with its WRPRCs from `euWrprc`, which a failing
+     * signature still reports, as untrusted.
+     */
+    private fun signedMdoc(
+        deviceRequest: DeviceRequest,
+        chains: List<CertificateChain>,
+        signature: CheckOutcome,
+    ) = ExtractedRequest(
+        accessCertificateChains = chains,
+        signature = signature,
+        clientId = null,
+        requestData = Passed,
+        registrationCertificates = registrationCertificatesOf(deviceRequest),
+    )
+
+    /**
+     * The WRPRCs in `euWrprc` of the document requests of [deviceRequest], each with the document requests that carry
+     * it. Fails if no document request or only some carry one, or one can not be parsed.
+     */
+    private fun registrationCertificatesOf(
+        deviceRequest: DeviceRequest,
+    ): Result<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>> = catchingUnwrapped {
+        if (deviceRequest.docRequests.all { it.itemsRequest.value.requestInfo?.euWrprc == null }) {
+            throw MissingRegistrationCertificateException("No DocRequest contains a registration certificate")
         }
-        return ExtractedRequest(
-            accessCertificateChains = reader.getOrNull()?.chains.orEmpty(),
-            signature = reader.toOutcome(),
-            clientId = null,
-            requestData = Passed,
-            registration = registrationCertificates.toOutcome(),
-            registrationCertificates = registrationCertificates.getOrElse { emptyMap() },
-        )
+        deviceRequest.docRequests.map { docRequest ->
+            val encoded = docRequest.itemsRequest.value.requestInfo?.euWrprc
+                ?: throw InvalidRegistrationCertificateException(
+                    "A DocRequest has no registration certificate, while others have one"
+                )
+            val certificate = catchingUnwrapped {
+                val cose = coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(encoded)
+                WrpRegistrationCertificate.WrpCwtRegistrationCertificate(
+                    cose = cose,
+                    payload = parseWrprcCose(cose),
+                )
+            }.getOrElse { throw InvalidRegistrationCertificateException("A WRPRC can not be parsed", it) }
+            certificate to WrpCredentialRequest.WrpDocRequest(docRequest)
+        }.groupBy({ it.first }, { it.second })
     }
 
     /**
@@ -424,6 +438,29 @@ class RelyingPartyValidator @JvmOverloads constructor(
         registration = Blocked(),
         registrationCertificates = emptyMap(),
     )
+
+    /**
+     * A request [reader] authenticates only partly, so that the rest is not bound to the reader: its signature passes,
+     * its request data fails.
+     */
+    private fun partlyAuthenticated(reader: AuthenticatedReader) = ExtractedRequest(
+        accessCertificateChains = reader.chains,
+        signature = Passed,
+        clientId = null,
+        requestData = Failed(UnsupportedWrpRequestException(reader.unauthenticatedMessage())),
+        registration = Blocked(),
+        registrationCertificates = emptyMap(),
+    )
+
+    /** Whether some document requests or the `deviceRequestInfo` of the request are not authenticated. */
+    private val AuthenticatedReader.isPartial: Boolean
+        get() = unauthenticatedDocRequests.isNotEmpty() || !deviceRequestInfoAuthenticated
+
+    /** The message naming what is not authenticated, e.g. "No reader authentication covers the DocRequests at [1]". */
+    private fun AuthenticatedReader.unauthenticatedMessage(): String = listOfNotNull(
+        unauthenticatedDocRequests.takeIf { it.isNotEmpty() }?.let { "the DocRequests at $it" },
+        "the deviceRequestInfo".takeIf { !deviceRequestInfoAuthenticated },
+    ).joinToString(" and ", prefix = "No reader authentication covers ")
 
     private fun unsupported(message: String) = ExtractedRequest(
         accessCertificateChains = emptyList(),
@@ -447,7 +484,23 @@ class RelyingPartyValidator @JvmOverloads constructor(
         /** Whether the request carries its WRPRCs, and they could be parsed. */
         val registration: CheckOutcome,
         val registrationCertificates: Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>,
-    )
+    ) {
+        /** With [registrationCertificates] as extracted: its outcome is the `registration`, a failure has none. */
+        constructor(
+            accessCertificateChains: List<CertificateChain>,
+            signature: CheckOutcome,
+            clientId: String?,
+            requestData: CheckOutcome,
+            registrationCertificates: Result<Map<WrpRegistrationCertificate, List<WrpCredentialRequest>>>,
+        ) : this(
+            accessCertificateChains = accessCertificateChains,
+            signature = signature,
+            clientId = clientId,
+            requestData = requestData,
+            registration = registrationCertificates.toOutcome(),
+            registrationCertificates = registrationCertificates.getOrElse { emptyMap() },
+        )
+    }
 
     /** A chain the request is signed with, its evaluation, and the report of its WRPAC. */
     private class AccessCertificateCandidate(

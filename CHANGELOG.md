@@ -133,11 +133,13 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
       a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
       `DCQLClaimsPathPointerSegment.query` is removed, as processing a claims path pointer needs the whole selection
-    - Add `HolderDCQLQueryMatchingResult.credentialSets(dcqlQuery)`, the credential sets of a DCQL query with
-      whether the holder can satisfy each option, for wallets to let the End-User choose options and optional sets
-      (OpenID4VP 1.0, 6.4.2, 6.4.3), and `toSubmission(dcqlQuery, selection)`, the submission of the chosen option of
-      each set, or of none for an optional set. `toDefaultSubmission` is the selection of the first satisfiable option
-      of each required set, as before
+    - BREAKING: `HolderDCQLQueryMatchingResult` holds the `dcqlQuery` it matches, a new constructor parameter, which
+      `HolderAgent` sets. Deprecate `toDefaultSubmission(dcqlQuery)` in favor of `toDefaultSubmission()`
+    - Add `HolderDCQLQueryMatchingResult.credentialSets`, the credential sets of its DCQL query with whether the
+      holder can satisfy each option, for wallets to let the End-User choose options and optional sets
+      (OpenID4VP 1.0, 6.4.2, 6.4.3), and `toSubmission(selection)`, the submission of the option chosen for each set
+      in `selection`, a map of these sets to their options, which may leave out an optional set.
+      `toDefaultSubmission` is the selection of the first satisfiable option of each required set, as before
 - ISO mdoc:
     - BREAKING: Data elements to present are `MdocClaimReference`s (name space and data element identifier,
       ISO/IEC 18013-5:2021, 8.3.2.1.2.1) instead of JSONPath `NormalizedJsonPath`s of two names, in
@@ -169,6 +171,29 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       `purposeHints`. Add `IsoConstants.VERSION_1_0` and `VERSION_1_1`, and the purposes of
       `UseCase.PURPOSE_CONTROLLER_ISO` (`PURPOSE_IDENTITY_VERIFICATION`, `PURPOSE_DRIVING_PRIVILEGE_VERIFICATION`,
       `PURPOSE_AGE_VERIFICATION`)
+    - The holder answers alternative data elements and issuer identifiers of an ISO `DocRequest` (ISO/IEC DIS
+      18013-5:2026, 10.2.4): it discloses each requested data element, or, if the credential lacks it, the first of
+      its alternative element sets the credential has, each data element once, and matches only credentials with a
+      certificate in the `x5chain` of their `IssuerAuth` whose authority key identifier is one of the
+      `issuerIdentifiers`. `IsoDeviceRetrievalCredentialMatch.requestedClaims` are the data elements to disclose
+    - BREAKING: The holder follows the use cases of an ISO `DeviceRequest` (ISO/IEC DIS 18013-5:2026, 10.2.5):
+      `HolderIsoDeviceRetrievalQueryMatchingResult` holds the `deviceRequest` it matches, a new constructor parameter,
+      which `HolderAgent` sets, and gains `useCases` with their purpose hints and whether the holder can satisfy each
+      document set, and `toSubmission(selection)` for the document set the End-User chooses for each use case to
+      present, a map of these use cases to their document sets. `toDefaultSubmission()` presents the first satisfiable
+      document sets of the mandatory use cases, or, without one, of the first satisfiable use case, and every matching
+      credential of a `DocRequest` whose `uniqueDocSetRequired` is `false`. A submission, also one the wallet builds,
+      has to satisfy exactly one document set of each use case it satisfies, as "Exactly one DocumentSet has to be
+      satisfied", and the default submission takes a later choice to avoid satisfying several. It may disclose, for each
+      requested data element, the element or one of its alternative element sets, e.g. a later one, instead of exactly
+      those the holder selects itself, but nothing else
+    - BREAKING: `AuthenticatedReader` gains `deviceRequestInfoAuthenticated`: whether a `readerAuthAll` signature,
+      the only one whose payload contains the `deviceRequestInfo` (ISO/IEC DIS 18013-5:2026, 12.5.4), covers it.
+      `RelyingPartyValidator` fails `requestData` of a device request with a `deviceRequestInfo`, e.g. use cases, that
+      only the `readerAuth` of its document requests authenticates, like one with unauthenticated document requests
+    - The WRPRC check of an ISO `DocRequest` also requires the data elements of its alternative element sets to be
+      registered, as the mdoc may return any of them instead of the requested data element (ISO/IEC DIS
+      18013-5:2026, 10.2.4)
     - BREAKING: Fix: `DocRequestInfo.docResponseEncryption` is a `ByteStringWrapper<EncryptionParameters>`, encoded as
       `EncryptionParametersBytes`, a tag-24 byte string (ISO/IEC DIS 18013-5:2026, 10.2.4), instead of a map
 - OpenID for Verifiable Presentations verifier

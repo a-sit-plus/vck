@@ -64,11 +64,12 @@ val HolderDCQLQueryMatchingResultTest by matrixSuite {
             }
         ),
         credentials = credentials,
+        dcqlQuery = dcql,
     )
 
     "default submission skips options without matching credentials" {
         val submission = matching(listOf("mdoc"), setOf("mdoc-1", "mdoc-2"))
-            .toDefaultSubmission(dcqlQuery).getOrThrow()
+            .toDefaultSubmission().getOrThrow()
 
         submission.keys shouldBe setOf(DCQLCredentialQueryIdentifier("mdoc-1"))
         submission.values.single().map { it.credential } shouldBe listOf("mdoc")
@@ -76,14 +77,14 @@ val HolderDCQLQueryMatchingResultTest by matrixSuite {
 
     "default submission fails if no option of a required credential set is satisfiable" {
         matching(listOf("mdoc"), setOf())
-            .toDefaultSubmission(dcqlQuery).isFailure.shouldBeTrue()
+            .toDefaultSubmission().isFailure.shouldBeTrue()
     }
 
     "credential sets" - {
         test("each option tells whether the holder can satisfy it, optional sets included") {
             val matching = matching(listOf("mdoc", "card"), setOf("pid-mdoc", "loyalty"), withOptionalSet)
 
-            val sets = matching.credentialSets(withOptionalSet)
+            val sets = matching.credentialSets
 
             sets shouldBe listOf(
                 HolderCredentialSet(
@@ -113,7 +114,7 @@ val HolderDCQLQueryMatchingResultTest by matrixSuite {
             )
             val matching = matching(listOf("pid"), setOf("pid"), query)
 
-            val sets = matching.credentialSets(query)
+            val sets = matching.credentialSets
 
             sets shouldBe listOf(
                 HolderCredentialSet(
@@ -131,33 +132,35 @@ val HolderDCQLQueryMatchingResultTest by matrixSuite {
 
     "submission of a selection" - {
         val matching = matching(listOf("mdoc", "card"), setOf("pid-mdoc", "loyalty"), withOptionalSet)
+        val sets = matching.credentialSets
 
         test("presents the chosen option of an optional set") {
-            val selection = listOf(1, 0)
+            val selection = mapOf(sets[0] to sets[0].options[1], sets[1] to sets[1].options[0])
 
-            val submission = matching.toSubmission(withOptionalSet, selection).getOrThrow()
+            val submission = matching.toSubmission(selection).getOrThrow()
 
             submission.keys shouldBe
                     setOf(DCQLCredentialQueryIdentifier("pid-mdoc"), DCQLCredentialQueryIdentifier("loyalty"))
         }
 
-        test("presents nothing for an optional set chosen with null") {
-            val selection = listOf(1, null)
+        test("presents nothing for an optional set left out") {
+            val selection = mapOf(sets[0] to sets[0].options[1])
 
-            val submission = matching.toSubmission(withOptionalSet, selection).getOrThrow()
+            val submission = matching.toSubmission(selection).getOrThrow()
 
             submission.keys shouldBe setOf(DCQLCredentialQueryIdentifier("pid-mdoc"))
         }
 
         "fails" - {
+            val otherSet = HolderCredentialSet(required = false, options = listOf(sets[0].options[1]))
             listOf(
-                listOf(null, 0) to "for no option of a required set",
-                listOf(0, 0) to "for an option that can not be satisfied",
-                listOf(2, 0) to "for an option that does not exist",
-                listOf(1) to "without a choice for every set",
+                mapOf(sets[1] to sets[1].options[0]) to "for no option of a required set",
+                mapOf(sets[0] to sets[0].options[0]) to "for an option that can not be satisfied",
+                mapOf(sets[0] to sets[1].options[0]) to "for an option of another set",
+                mapOf(sets[0] to sets[0].options[1], otherSet to sets[0].options[1]) to "for a set not of the query",
             ).forEach { (selection, name) ->
                 test(name) {
-                    val result = matching.toSubmission(withOptionalSet, selection)
+                    val result = matching.toSubmission(selection)
 
                     result.isFailure.shouldBeTrue()
                 }

@@ -53,7 +53,7 @@ val AgentIsoMdocMultipleDocumentsTest by matrixSuite {
                 randomSource = RandomSource.Default
             )
             val statusListIssuer = StatusListAgent(issuerCredentialStore = issuerCredentialStore)
-            val validator = statusCheckingValidator(statusListIssuer)
+            val validator = statusCheckingValidator(statusListIssuer, StatusListTokenFormat.CWT)
             val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
             val holder = HolderAgent(keyMaterial = holderKeyMaterial).also {
                 runBlocking {

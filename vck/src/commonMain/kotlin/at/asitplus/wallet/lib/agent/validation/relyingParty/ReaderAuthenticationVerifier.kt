@@ -19,13 +19,15 @@ class ReaderAuthenticationVerifier(
 ) {
 
     /**
-     * Authenticates the mdoc [request] over [transcript] (ISO/IEC DIS 18013-5:2025, 12.5.4), which "can be used for
-     * each element individually or all at the same time":
-     *  - with `readerAuthAll`, which covers every document request, every signature that verifies yields a chain,
-     *    e.g. one per trust framework of the reader, and the `readerAuth` of document requests is ignored; if none
-     *    verifies, the request is not authenticated;
+     * Authenticates the mdoc [request] over [transcript] (ISO/IEC DIS 18013-5:2025, 12.5.4),
+     * which "can be used for each element individually or all at the same time":
+     *  - with `readerAuthAll`, which covers every document request and the `deviceRequestInfo`, every signature that
+     *    verifies yields a chain, e.g. one per trust framework of the reader, and the `readerAuth` of document
+     *    requests is ignored; if none verifies, the request is not authenticated;
      *  - otherwise, every `readerAuth` of a document request has to verify, all with one reader certificate, and
-     *    document requests without one are [AuthenticatedReader.unauthenticatedDocRequests].
+     *    document requests without one are [AuthenticatedReader.unauthenticatedDocRequests]; a `deviceRequestInfo`
+     *    is not authenticated then, as only `ReaderAuthenticationAll` contains it, see
+     *    [AuthenticatedReader.deviceRequestInfoAuthenticated].
      *
      * Fails for a request without any reader authentication.
      */
@@ -41,12 +43,13 @@ class ReaderAuthenticationVerifier(
             val results = readerAuthAll.map { verify(it, payload) }
             val chains = results.mapNotNull { it.getOrNull() }
             if (chains.isEmpty()) {
-                throw IllegalArgumentException(
-                    "No readerAuthAll signature verifies",
-                    results.last().exceptionOrNull(),
-                )
+                throw IllegalArgumentException("No readerAuthAll signature verifies", results.last().exceptionOrNull())
             }
-            return@catching AuthenticatedReader(chains, emptyList())
+            return@catching AuthenticatedReader(
+                chains = chains,
+                unauthenticatedDocRequests = emptyList(),
+                deviceRequestInfoAuthenticated = true,
+            )
         }
 
         val chains = request.docRequests.mapNotNull { docRequest ->
@@ -63,6 +66,7 @@ class ReaderAuthenticationVerifier(
         AuthenticatedReader(
             chains = listOf(first),
             unauthenticatedDocRequests = request.docRequests.indices.filter { request.docRequests[it].readerAuth == null },
+            deviceRequestInfoAuthenticated = request.deviceRequestInfo == null,
         )
     }
 
@@ -95,4 +99,11 @@ data class AuthenticatedReader(
     val chains: List<CertificateChain>,
     /** The indices of the document requests no signature covers, which are not bound to the reader. */
     val unauthenticatedDocRequests: List<Int>,
+    /**
+     * Whether the `deviceRequestInfo` of the request, e.g. its use cases, is bound to the reader:
+     * true without one, or with a `readerAuthAll` signature, whose `ReaderAuthenticationAll` contains
+     * its `DeviceRequestInfoBytes` (ISO/IEC DIS 18013-5:2026, 12.5.4);
+     * false if only the `readerAuth` of document requests authenticates the request, which does not cover it.
+     */
+    val deviceRequestInfoAuthenticated: Boolean,
 )
