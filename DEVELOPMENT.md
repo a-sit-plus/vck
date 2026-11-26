@@ -190,3 +190,32 @@ To also release the artifacts to Maven Central run:
 ```shell
 ./gradlew clean publishToSonatype closeAndReleaseSonatypeStagingRepository
 ```
+
+## Swift package
+
+The `vck-ios` module is not published to Maven, but as `VckIos.xcframework` attached to the GitHub release, referenced
+by the root `Package.swift`. Swift Package Manager reads `Package.swift` at the version tag, so the tag has to contain
+the checksum of the released XCFramework. Hence, do not push the release tag manually: run the workflow
+"Publish Swift Package" on the release commit with the version, which builds the XCFramework, updates `Package.swift`,
+commits and tags that version, pushes both to the branch it ran on, and uploads the XCFramework to the GitHub release.
+
+To test the Swift package in an iOS app with a local build of `vck-ios`:
+
+```shell
+./gradlew :vck-ios:assembleVckIosDebugXCFramework
+```
+
+Then add this checkout to the app as a local package (in Xcode: *Add Package Dependencies…* → *Add Local…*), and
+link the product `VckIos`. As long as `vck-ios/build/XCFrameworks/debug/VckIos.xcframework` exists, `Package.swift`
+uses it instead of the release; delete it, e.g. with `./gradlew :vck-ios:clean`, to test the released XCFramework.
+After rebuilding it, use *File* → *Packages* → *Reset Package Caches* in Xcode.
+
+To test the published package end to end before a release, run "Publish Swift Package" on the branch with a
+pre-release version, e.g. `10.0.0-alpha.1`: it pushes the commit updating `Package.swift` and the tag to that branch,
+and creates a pre-release on GitHub. Then depend on it with `.package(url: "https://github.com/a-sit-plus/vck",
+exact: "10.0.0-alpha.1")`. Swift Package Manager only resolves pre-releases for requirements that name one.
+GitHub runs a manually dispatched workflow only if it exists on the default branch too.
+
+Swift code in `vck-ios/src/iosMain/swift` is compiled into the framework by SKIE when linking it, so only an
+XCFramework build checks it. Linking frameworks and running iOS tests (`./gradlew :vck-ios:iosSimulatorArm64Test`)
+requires macOS with Xcode.

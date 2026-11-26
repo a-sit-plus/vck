@@ -15,6 +15,7 @@ semver = "3.1.0"
 #testballoonAddons = "0.15.0"
 asp = "20260918"
 multipaz = "0.101.0"
+skie = "0.10.14"
 
 [libraries]
 asp = { module = "at.asitplus.gradle:k2", version.ref = "asp" }
@@ -24,3 +25,4 @@ tomlj = { module = "org.tomlj:tomlj", version.ref = "tomlj" }
 
 [plugins]
 asp = { id = "at.asitplus.gradle.conventions", version.ref = "asp" }
+skie = { id = "co.touchlab.skie", version.ref = "skie" }

@@ -1,0 +1,101 @@
+name: Publish Swift Package
+
+# Builds VckIos.xcframework, points Package.swift at it, then commits, tags, and releases that version.
+# Run it on the release commit instead of tagging manually: Swift Package Manager reads Package.swift at the tag,
+# so the tag must include the checksum of the released XCFramework.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to tag and release, e.g. 10.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish Swift package
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    env:
+      FRAMEWORK_NAME: VckIos
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Validate version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+            echo "Version '$VERSION' is not SemVer, e.g. 10.0.0 or 10.0.0-RC1." >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag '$VERSION' already exists, but this workflow needs to create it." >&2
+            exit 1
+          fi
+
+      - name: Build release XCFramework
+        run: ./gradlew :vck-ios:assembleVckIosReleaseXCFramework
+
+      - name: Zip XCFramework and compute checksum
+        id: artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          framework_dir="vck-ios/build/XCFrameworks/release"
+          zip_path="$RUNNER_TEMP/${FRAMEWORK_NAME}.xcframework.zip"
+          test -d "$framework_dir/${FRAMEWORK_NAME}.xcframework"
+          (cd "$framework_dir" && ditto -c -k --sequesterRsrc --keepParent "${FRAMEWORK_NAME}.xcframework" "$zip_path")
+          echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "checksum=$(swift package compute-checksum "$zip_path")" >> "$GITHUB_OUTPUT"
+
+      - name: Update Package.swift, commit and tag
+        shell: bash
+        env:
+          CHECKSUM: ${{ steps.artifact.outputs.checksum }}
+        run: |
+          set -euo pipefail
+          sed -i '' \
+            -e "s/^let releaseVersion = \".*\"/let releaseVersion = \"$VERSION\"/" \
+            -e "s/^let releaseChecksum = \".*\"/let releaseChecksum = \"$CHECKSUM\"/" \
+            Package.swift
+          grep -q "releaseChecksum = \"$CHECKSUM\"" Package.swift
+          swift package dump-package >/dev/null
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Package.swift
+          git commit -m "Swift package $VERSION"
+          git tag "$VERSION"
+          git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
+          git push origin "refs/tags/$VERSION"
+
+      - name: Upload XCFramework to GitHub release
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip_path="${{ steps.artifact.outputs.zip_path }}"
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$VERSION" "$zip_path" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            # A version like 10.0.0-alpha.1 tests the Swift package before a release, e.g. on a feature branch
+            prerelease=()
+            [[ "$VERSION" == *-* ]] && prerelease=(--prerelease)
+            gh release create "$VERSION" "$zip_path" --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" \
+              --title "$VERSION" --notes "See [CHANGELOG.md](CHANGELOG.md)."
+          fi

@@ -2,6 +2,26 @@
 
 Release 10.0.0 (unreleased):
 
+- iOS:
+    - Add module `vck-ios` and the root `Package.swift`, publishing `VckIos.xcframework` as Swift package from this
+      repository, moved from `a-sit-plus/vck-ios` with its Swift code bundled by SKIE: Adapters for `SecKey`,
+      `SecCertificate` and `NSData`, builders for `HolderAgent` and `OpenId4VpHolder`, factories with Swift default
+      arguments, `HttpExchange.run(as:)`, `SwiftCredentialStore`, and Swift wrappers for suspend callbacks. The Kotlin
+      package is now `at.asitplus.wallet.ios`, Swift names are unchanged
+    - Add `JoseCodec` and `CoseCodec` to encode and decode any serializable type from Swift, and `JwsCompactCodec` to
+      parse a compact JWS with any serializable payload
+    - BREAKING: Compared to `a-sit-plus/vck-ios`:
+        - Remove `VckSerializer`, use `JoseCodec` and `CoseCodec`, e.g.
+          `JoseCodec<IssuerMetadata>(serializer: IssuerMetadata.companion.serializer())`, and `JwsCompactCodec` for
+          compact JWS, e.g. `JwsCompactCodec<KeyAttestationJwt>(serializer: KeyAttestationJwt.companion.serializer())`
+        - `OpenId4VpHolderBuilder`, `OpenId4VciClientAdapter` and `OpenId4VciClientDefaults` no longer have a
+          `remoteResourceRetriever` (see the removals below)
+        - Remove the deprecated `OpenId4VciClientAdapter(keyMaterial:loadKeyAttestation:...)`, use
+          `proofCreators: [JwtProofCreator(...), AttestationProofCreator(...)]`, its `service`, and the aliases
+          `WalletServiceAdapter` and `WalletServiceDefaults`
+        - `SubjectCredentialStoreAdapter` implements only `getCredentials` and `storeCredential(entry:)`, like
+          `SubjectCredentialStore`
+        - The demo `BasicWallet`, `BasicWalletFactory` and `WalletProviderClient` are not part of VC-K
 - Core:
     - Add `at.asitplus.wallet.lib.BuildProperties.vckVersion`, a compile-time constant generated from `artifactVersion`.
 - Removals:
