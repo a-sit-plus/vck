@@ -70,6 +70,7 @@ Release 10.0.0 (unreleased):
     - `HolderAgent.storeCredentialWithReport` and `prepareCredentialStorage` of a `StoreCredentialInput` take
       `expectedHolderKeys`, as the overload of an encoded credential does. Without them, a holder with a
       `HolderKeyResolver` rejects the credential, as `storeCredential` does.
+    - Make `PreparedCredentialStorage.holderKey`, the key of the prepared credential, public.
 - Credential issuer:
     - Reject a credential request whose `proofs` contains more than one proof type with `invalid_credential_request`,
       as OpenID4VCI 1.0 requires exactly one proof type.

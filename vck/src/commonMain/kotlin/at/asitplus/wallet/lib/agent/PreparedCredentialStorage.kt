@@ -19,8 +19,12 @@ data class PreparedCredentialStorage internal constructor(
     val credential: Holder.StoreCredentialInput?,
     val validation: CredentialValidationResult,
     val renewalInfo: CredentialRenewalInfo?,
-    /** The key the credential is bound to, `null` if it is not intact or not holder-bound. */
-    internal val holderKey: CryptoPublicKey?,
+    /**
+     * The key the credential is bound to, `null` if it is not intact, not holder-bound, or bound to a key that can not be
+     * read, e.g. an SD-JWT VC whose `cnf` has a `kid` instead of a `jwk`; see
+     * [SubjectCredentialStore.StoreEntry.isHolderBound] to tell the last two apart.
+     */
+    val holderKey: CryptoPublicKey?,
 ) {
     init {
         require(credential != null || validation.unacceptedCredential == null) {
