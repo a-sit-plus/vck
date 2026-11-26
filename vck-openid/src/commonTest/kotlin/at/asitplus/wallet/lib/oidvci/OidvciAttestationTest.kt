@@ -25,6 +25,7 @@ import at.asitplus.catching
 import at.asitplus.catchingUnwrapped
 import at.asitplus.openid.CredentialRequestParameters
 import at.asitplus.openid.CredentialRequestProofContainer
+import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
@@ -86,6 +87,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
@@ -304,6 +306,84 @@ val OidvciAttestationTest by matrixSuite {
             validator.validateProofExtractSubjectPublicKeys(
                 CredentialRequestParameters(proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws)))
             ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
+        }
+
+        test("publish the key storage requirements for both proof types") {
+            val requirements = KeyAttestationRequired(
+                keyStorage = listOf("iso_18045_high"),
+                userAuthentication = listOf("iso_18045_moderate", "iso_18045_high"),
+            )
+            val validator = ProofValidator(
+                requireKeyAttestation = true,
+                keyAttestationValidator = trusting(it.walletProvider),
+                keyAttestationRequirements = requirements,
+            )
+
+            validator.validProofTypes().values.map { type -> type.keyAttestationRequired } shouldBe
+                listOf(requirements, requirements)
+        }
+
+        test("accept a key attestation meeting the key storage requirements") {
+            val validator = ProofValidator(
+                requireKeyAttestation = true,
+                keyAttestationValidator = trusting(it.walletProvider),
+                keyAttestationRequirements = KeyAttestationRequired(
+                    keyStorage = listOf("iso_18045_moderate", "iso_18045_high"),
+                    userAuthentication = listOf("iso_18045_high"),
+                ),
+            )
+            val attestation = buildValidKeyAttestation(
+                it.walletProviderKeyMaterial, it.clientKeyMaterial, validator.nonce().clientNonce,
+            ) // key_storage and user_authentication are iso_18045_high
+
+            validator.validateProofExtractSubjectPublicKeys(
+                CredentialRequestParameters(proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws)))
+            ) shouldContainExactly listOf(it.clientKeyMaterial.jsonWebKey.toCryptoPublicKey().getOrThrow())
+        }
+
+        test("reject a key attestation not meeting the key storage requirements") {
+            listOf(
+                KeyAttestationRequired(keyStorage = listOf("iso_18045_moderate")) to "key_storage",
+                KeyAttestationRequired(userAuthentication = listOf("iso_18045_moderate")) to "user_authentication",
+            ).forEach { (requirements, claim) ->
+                val validator = ProofValidator(
+                    requireKeyAttestation = true,
+                    keyAttestationValidator = trusting(it.walletProvider),
+                    keyAttestationRequirements = requirements,
+                )
+                val attestation = buildValidKeyAttestation(
+                    it.walletProviderKeyMaterial, it.clientKeyMaterial, validator.nonce().clientNonce,
+                )
+                val params = CredentialRequestParameters(
+                    proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws))
+                )
+
+                shouldThrow<OAuth2Exception.InvalidProof> {
+                    validator.validateProofExtractSubjectPublicKeys(params)
+                }.message.shouldNotBeNull().let { message ->
+                    message shouldContain claim
+                    message shouldNotContain "iso_18045" // no claim values (ARCHITECTURE.md, Validation)
+                }
+                val keyStorage = validator.validateProofs(params, strictPolicy).proofs.single().report.checks
+                    .shouldBeInstanceOf<KeyAttestationChecks>().keyStorage
+                keyStorage.shouldBeInstanceOf<CheckOutcome.Failed>()
+            }
+        }
+
+        test("accept any key storage without requirements") {
+            val validator = ProofValidator(
+                requireKeyAttestation = true,
+                keyAttestationValidator = trusting(it.walletProvider),
+            )
+            val attestation = buildValidKeyAttestation(
+                it.walletProviderKeyMaterial, it.clientKeyMaterial, validator.nonce().clientNonce,
+            ) { copy(keyStorage = setOf("iso_18045_basic"), userAuthentication = setOf("iso_18045_basic")) }
+            val params = CredentialRequestParameters(
+                proofs = CredentialRequestProofContainer(attestation = setOf(attestation.jws))
+            )
+
+            validator.validateProofs(params, strictPolicy).proofs.single().report.checks
+                .shouldBeInstanceOf<KeyAttestationChecks>().keyStorage shouldBe CheckOutcome.NotApplicable
         }
 
         test("accept key attestations of any trusted wallet provider with walletProviderAnchors") {

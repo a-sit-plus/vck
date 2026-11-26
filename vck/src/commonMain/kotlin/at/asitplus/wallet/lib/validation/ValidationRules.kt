@@ -242,7 +242,8 @@ internal fun KeyAttestationChecks.named(policy: ValidationPolicy) = listOf(
     NamedCheck("signature", signature, REQUIRED),
     NamedCheck("trust", trust.outcome, policy.trust.requirement, trust = trust),
     NamedCheck("timeliness", timeliness, policy.timelinessRequirement),
-) + status.named(policy.status) + NamedCheck("nonce", nonce, REQUIRED_IF_APPLICABLE)
+) + status.named(policy.status) + NamedCheck("nonce", nonce, REQUIRED_IF_APPLICABLE) +
+    NamedCheck("keyStorage", keyStorage, REQUIRED_IF_APPLICABLE)
 
 internal fun KeyAttestationChecks.meets(policy: ValidationPolicy): Boolean = named(policy).allSatisfied()
 

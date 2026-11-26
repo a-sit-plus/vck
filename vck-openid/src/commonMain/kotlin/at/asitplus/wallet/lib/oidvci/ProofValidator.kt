@@ -78,6 +78,12 @@ class ProofValidator @JvmOverloads constructor(
      * are rejected.
      */
     private val keyAttestationValidator: KeyAttestationValidator = KeyAttestationValidator(),
+    /**
+     * The `key_attestations_required` of both proof types if [requireKeyAttestation] is set: published in
+     * [validProofTypes], and every key attestation has to meet its `key_storage` and `user_authentication`, see
+     * [KeyAttestationValidator.validate]. The default states no requirements.
+     */
+    private val keyAttestationRequirements: KeyAttestationRequired = KeyAttestationRequired(),
 ) {
 
     /**
@@ -96,11 +102,11 @@ class ProofValidator @JvmOverloads constructor(
     fun validProofTypes(): Map<String, CredentialRequestProofSupported> = if (requireKeyAttestation) mapOf(
         OpenIdConstants.ProofTypes.JWT to CredentialRequestProofSupported(
             supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-            keyAttestationRequired = KeyAttestationRequired()
+            keyAttestationRequired = keyAttestationRequirements
         ),
         OpenIdConstants.ProofTypes.ATTESTATION to CredentialRequestProofSupported(
             supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-            keyAttestationRequired = KeyAttestationRequired()
+            keyAttestationRequired = keyAttestationRequirements
         )
     ) else mapOf(
         OpenIdConstants.ProofTypes.JWT to CredentialRequestProofSupported(
@@ -299,6 +305,7 @@ class ProofValidator @JvmOverloads constructor(
             nonce = if (embedded && attestation.payload.nonce == null) NotApplicable
             else nonceOutcome(attestation.payload.nonce),
             supportedAlgorithms = supportedAlgorithms,
+            requirements = keyAttestationRequirements.takeIf { requireKeyAttestation },
         ),
     )
 
@@ -317,6 +324,7 @@ class ProofValidator @JvmOverloads constructor(
         timeliness = Blocked(),
         status = StatusValidation(claim = Blocked(), agreement = Blocked()),
         nonce = Blocked(),
+        keyStorage = Blocked(),
     )
 }
 
@@ -374,6 +382,9 @@ private fun ValidationReport.keyAttestationRejection(): CheckOutcome {
 
         checks.signature != Passed -> checks.signature.cause().wrap("key attestation not verified")
         checks.trust.outcome != Passed -> checks.trust.outcome.cause().wrap("key attestation not verified")
+        checks.keyStorage is Failed ->
+            (checks.keyStorage as Failed).throwable.let { Failed(InvalidProof(it.message, it)) }
+
         else -> checks.status.mechanisms.firstNotNullOfOrNull { it.outcome as? Failed }?.throwable
             .wrap("TokenStatus invalid")
     }

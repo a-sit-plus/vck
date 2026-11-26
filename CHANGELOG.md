@@ -73,6 +73,17 @@ Release 10.0.0 (unreleased):
 - Credential issuer:
     - Reject a credential request whose `proofs` contains more than one proof type with `invalid_credential_request`,
       as OpenID4VCI 1.0 requires exactly one proof type.
+    - Publish and evaluate key storage requirements: `ProofValidator` advertises `key_attestation_required`, and key
+      attestations must satisfy the configured `key_storage` and `user_authentication` requirements.
+    - BREAKING: `KeyAttestationChecks` gains a parameter, changing its `copy` and `componentN` functions.
+    - Publish and evaluate key storage requirements: `ProofValidator` gets `keyAttestationRequirements`, published as
+      `key_attestations_required` of both proof types when key attestations are required, and
+      `KeyAttestationValidator.validate` gets `requirements`, checked as the new `keyStorage` of
+      `KeyAttestationChecks`: the `key_storage` and `user_authentication` of a key attestation have to contain one of
+      the accepted values of each array the requirements list; a key attestation failing it is rejected with
+      `invalid_proof`
+    - BREAKING: `KeyAttestationChecks` is a data class with a new parameter, which changes its `copy` and `componentN`
+      functions
 
 Release 9.0.0:
 
