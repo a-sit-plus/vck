@@ -105,10 +105,13 @@ internal class VpTokenValidator(
         val responseUrl = authnRequest.responseUrl ?: authnRequest.redirectUrlExtracted
         val validated = vpToken.presentations.mapValues { (credentialQueryId, relatedPresentations) ->
             val credentialQuery = vpToken.query.credentialQuery(credentialQueryId)!!
+            val requireHolderBinding = credentialQuery.requireCryptographicHolderBinding != false
             val context = session.context(
                 audience = vpToken.audience,
-                transactionData = authnRequest.transactionData,
-                requireHolderBinding = credentialQuery.requireCryptographicHolderBinding != false,
+                // Transaction data need holder binding, so none of them names a query without it, and its
+                // presentation may carry no KB-JWT (OpenID4VP 1.0, IETF SD-JWT VC, "Transaction Data")
+                transactionData = authnRequest.transactionData.takeIf { requireHolderBinding },
+                requireHolderBinding = requireHolderBinding,
             )
             relatedPresentations.map {
                 ValidatedEntry(

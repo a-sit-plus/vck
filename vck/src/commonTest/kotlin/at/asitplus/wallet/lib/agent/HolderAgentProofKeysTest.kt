@@ -11,7 +11,9 @@ import at.asitplus.wallet.lib.data.toJsonElement
 import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialValidationContext
+import at.asitplus.wallet.lib.validation.Issuance
 import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
+import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
 import at.asitplus.wallet.lib.validation.input
 import at.asitplus.wallet.lib.validation.issuance
 import at.asitplus.wallet.lib.validation.scheme
@@ -197,31 +199,49 @@ val HolderAgentProofKeysTest by matrixSuite {
             .allExpectedHolderKeys shouldBe setOf(first, second)
     }
 
-    "a VC-JWT bound by an expected key thumbprint is stored by a single-key holder" {
+    // The holder key of a VC-JWT is the did:key in `sub`; a JWK thumbprint is no key binding
+    "a VC-JWT bound by the did:key of an expected key is stored by a single-key holder" {
         val issuance = issuance()
-        val issued = issuance.issuer.issueCredential(
-            CredentialToBeIssued.VcJwt(
-                subject = AtomicAttribute2023(
-                    issuance.holderKey.jsonWebKey.jwkThumbprint,
-                    ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME,
-                    "Susanne",
-                ).toJsonElement(),
-                expiration = Clock.System.now() + 1.days,
-                scheme = scheme,
-                subjectPublicKey = issuance.holderKey.publicKey,
-                userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
-            )
-        ).getOrThrow()
         val holder = HolderAgent(issuance.holderKey, credentialValidator = issuance.validator())
 
-        val prepared = holder.prepareCredentialStorage(issued.input(), scheme, strictPolicy).getOrThrow()
+        val prepared = holder.prepareCredentialStorage(
+            issuance.vcJwtWithSubject(issuance.holderKey.publicKey.didEncoded).input(), scheme, strictPolicy
+        ).getOrThrow()
 
         prepared.validation.report.decision shouldBe ACCEPTED
         prepared.holderKey shouldBe issuance.holderKey.publicKey
         holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldNotBeNull()
         holder.getCredentials().shouldNotBeNull().shouldHaveSize(1)
     }
+
+    "a VC-JWT whose sub is the JWK thumbprint of an expected key is rejected and not stored" {
+        val issuance = issuance()
+        val holder = HolderAgent(issuance.holderKey, credentialValidator = issuance.validator())
+
+        val prepared = holder.prepareCredentialStorage(
+            issuance.vcJwtWithSubject(issuance.holderKey.jsonWebKey.jwkThumbprint).input(), scheme, strictPolicy
+        ).getOrThrow()
+
+        prepared.validation.report.decision shouldBe REJECTED
+        prepared.holderKey.shouldBeNull()
+        holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldBeNull()
+        holder.getCredentials().shouldNotBeNull().shouldHaveSize(0)
+    }
 }
+
+private suspend fun Issuance.vcJwtWithSubject(subject: String) = issuer.issueCredential(
+    CredentialToBeIssued.VcJwt(
+        subject = AtomicAttribute2023(
+            subject,
+            ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME,
+            "Susanne",
+        ).toJsonElement(),
+        expiration = Clock.System.now() + 1.days,
+        scheme = scheme,
+        subjectPublicKey = holderKey.publicKey,
+        userInfo = OidcUserInfoExtended.fromOidcUserInfo(OidcUserInfo("subject")).getOrThrow(),
+    )
+).getOrThrow()
 
 private fun resolverOf(vararg keys: KeyMaterial) = HolderKeyResolver { bound ->
     catching { keys.first { it.publicKey == bound } }
