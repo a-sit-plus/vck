@@ -36,3 +36,7 @@ Agent-only operating notes:
 - Do not call `removeFirst()`/`removeLast()` on a `MutableList`: with `android.compileSdk` 36 they crash below Android
   15 ([KT-71375](https://youtrack.jetbrains.com/issue/KT-71375)). Use `removeAt(0)`/`removeAt(lastIndex)` or
   `kotlin.collections.ArrayDeque`. `./gradlew lintAndroidMain` (Android Lint `NewApi`) reports such calls.
+- Structure each test as Arrange-Act-Assert, with the three parts separated by a blank line: arrange the state and
+  inputs (e.g. store credentials, build the `request`), act once on the behavior under test, and assert on its result
+  last, e.g. in one `.apply { ... }` block on it. Keep assertions out of the arrange and act parts, except casts such
+  as `shouldBeInstanceOf` that the next step needs.
