@@ -353,14 +353,33 @@ class VerifiablePresentationFactory private constructor(
         validSdJwtCredential: StoreEntry.SdJwt,
         disclosures: Set<String>,
     ): CreatePresentationResult.SdJwt {
-        val digest = validSdJwtCredential.sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
-        val digestInput = SdJwtSigned.sdHashInput(validSdJwtCredential, disclosures)
-        val keyBinding = createKeyBindingJws(request, digestInput, digest, holderKeyOf(validSdJwtCredential))
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
             catching { JwsCompact(issuerSignedJwsSerialized) }
                 .getOrElse { throw PresentationException(it) }
+        if (!validSdJwtCredential.isHolderBound())
+            return createSdJwtPresentationWithoutKeyBinding(request, issuerSignedJws, disclosures)
+        val digest = validSdJwtCredential.sdJwt.selectiveDisclosureAlgorithm?.toDigest() ?: Digest.SHA256
+        val digestInput = SdJwtSigned.sdHashInput(validSdJwtCredential, disclosures)
+        val keyBinding = createKeyBindingJws(request, digestInput, digest, holderKeyOf(validSdJwtCredential))
         val sdJwt = SdJwtSigned.presented(issuerSignedJws, disclosures, keyBinding)
+        return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
+    }
+
+    /**
+     * Presents an SD-JWT VC without `cnf` without a KB-JWT, which OpenID4VP 1.0 allows when the verifier doesn't
+     * require holder binding (DCQL matching ensures that). Fails for transaction data, which require holder binding:
+     * a DCQL response passes only those naming the credential's query, see [PresentationResponseCreator].
+     */
+    private fun createSdJwtPresentationWithoutKeyBinding(
+        request: PresentationRequestParameters,
+        issuerSignedJws: JwsCompact,
+        disclosures: Set<String>,
+    ): CreatePresentationResult.SdJwt {
+        if (!request.transactionData.isNullOrEmpty())
+            throw PresentationException("Transaction data require holder binding, which the credential does not have")
+        // Serialized like an issued SD-JWT: the issuer-signed JWT and the disclosures, no KB-JWT
+        val sdJwt = SdJwtSigned.issued(issuerSignedJws, disclosures.toList())
         return CreatePresentationResult.SdJwt(sdJwt.serialize(), sdJwt)
     }
 

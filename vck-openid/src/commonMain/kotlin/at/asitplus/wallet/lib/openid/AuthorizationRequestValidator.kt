@@ -185,16 +185,26 @@ internal class AuthorizationRequestValidator(
     /**
      * OpenID4VP 1.0 sections 5.1 and 8.5 require non-empty DCQL credential_ids. CSC's conditional omission
      * of this field applies to other transaction protocols, not to an OpenID4VP authorization request.
+     *
+     * Transaction data require cryptographic holder binding: "Wallets MUST reject requests with transaction data types
+     * that have the `require_cryptographic_holder_binding` parameter set to `false`" (OpenID4VP 1.0, IETF SD-JWT VC,
+     * "Transaction Data"). So every DCQL credential query named in credential_ids has to require holder binding, also
+     * if credential_ids names other queries that do.
      */
     private fun AuthenticationRequestParameters.validateTransactionData(): Unit =
         catchingUnwrapped {
             transactionDataDecoded?.let {
                 require(it.isNotEmpty()) { "transaction_data must be non-empty" }
-                val queryIds = dcqlQuery?.credentials?.map { it.id.string }?.toSet()
+                val queries = dcqlQuery?.credentials?.associateBy { it.id.string }
                 it.forEach { data ->
                     require(data.credentialIds.isNotEmpty()) { "credential_ids must be present and non-empty" }
-                    require(queryIds == null || queryIds.containsAll(data.credentialIds)) {
+                    require(queries == null || queries.keys.containsAll(data.credentialIds)) {
                         "credential_ids references an unknown DCQL query"
+                    }
+                    val withoutHolderBinding = queries?.let { byId -> data.credentialIds.map { id -> byId.getValue(id) } }
+                        .orEmpty().filterNot { query -> query.requireCryptographicHolderBinding }
+                    require(withoutHolderBinding.isEmpty()) {
+                        "credential_ids references a DCQL query that does not require cryptographic holder binding"
                     }
                 }
             } ?: Unit

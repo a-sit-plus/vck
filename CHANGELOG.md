@@ -56,6 +56,10 @@ Release 10.0.0 (unreleased):
       `holderKeyResolver` constructors; deprecate `Holder.keyMaterial`, the single-key `HolderAgent` constructor, and
       the fixed-key `VerifiablePresentationFactory` constructor. Presentations fail if the holder lacks a credential's
       key or a VC-JWT presentation combines different keys.
+    - OpenID4VP permits presenting an SD-JWT VC without `cnf` and without a KB-JWT. SD-JWT VCs with `cnf` require a
+      KB-JWT, and presentation fails when its holder key cannot be read or resolved.
+    - BREAKING: OpenID4VP rejects transaction data that references a DCQL query without required holder binding;
+      `OpenId4VpRequestOptions` refuses to create such requests.
     - OID4VCI proof creators obtain a key for each request, and `ProofCreator.createProof` returns the proofs with that
       key. Received credentials are checked against their request's proof keys. Deprecate
       `CredentialValidationContext.expectedHolderKey` in favor of `expectedHolderKeys`; add `KeyAttestationInput.keys`.
