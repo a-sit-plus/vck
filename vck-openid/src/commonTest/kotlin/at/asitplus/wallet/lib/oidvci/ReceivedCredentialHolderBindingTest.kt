@@ -86,4 +86,43 @@ val ReceivedCredentialHolderBindingTest by matrixSuite {
                 }
             }
     }
+
+    "a credential of a proof with an unknown key is expected to be bound to the key of a holder with one key" {
+        val holderKey = EphemeralKeyWithoutCert()
+        val received = ReceivedCredential.Decoded(
+            input = boundSdJwtVc(holderKey),
+            proofKeys = emptySet(),
+        )
+
+        val single = HolderAgent(holderKey)
+        val resolving = HolderAgent(holderKeyResolver = HolderKeyResolver.single(holderKey))
+
+        received.prepareCredentialStorage(single, AtomicAttribute2023, lenientPolicy).getOrThrow()
+            .validation.report.decision shouldBe ValidationDecision.ACCEPTED
+        // A holder with a resolver can not know which key to expect: the caller has to say, so it fails
+        received.prepareCredentialStorage(resolving, AtomicAttribute2023, lenientPolicy)
+            .exceptionOrNull().shouldBeInstanceOf<IllegalStateException>()
+    }
+}
+
+private val lenientPolicy = ValidationPolicy(
+    trust = TrustPolicy.IntegrityOnly,
+    status = StatusPolicy.Skip,
+    timeLeeway = Duration.ZERO,
+    requireTimeliness = false,
+)
+
+private suspend fun boundSdJwtVc(key: EphemeralKeyWithoutCert): CredentialValidationInput.SdJwtVc {
+    val signed = SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderCertOrJwk())(
+        type = JwsContentTypeConstants.SD_JWT,
+        payload = buildJsonObject {
+            put("iss", "https://issuer.example.com")
+            put("vct", AtomicAttribute2023.sdJwtType)
+            put("cnf", buildJsonObject {
+                put("jwk", joseCompliantSerializer.encodeToJsonElement(JsonWebKey.serializer(), key.jsonWebKey))
+            })
+        },
+        serializer = JsonObject.serializer(),
+    ).getOrThrow()
+    return CredentialValidationInput.SdJwtVc("${signed.jws}~")
 }

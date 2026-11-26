@@ -70,8 +70,9 @@ class HolderAgent private constructor(
      * can not be resolved does not demote a credential. By default [credentialValidator].
      */
     @Deprecated(
-        "Use the constructor taking a holderKeyResolver, e.g. HolderKeyResolver.single(keyMaterial), and pass the " +
-                "expected holder keys when storing a credential: only this constructor expects its key by default"
+        "Use the constructor taking a holderKeyResolver, e.g. HolderKeyResolver.single(keyMaterial), and store " +
+                "credentials with prepareCredentialStorageBoundTo or storeCredentialBoundTo and their expected " +
+                "holder keys: only this constructor expects its key by default"
     )
     @JvmOverloads
     constructor(
@@ -93,7 +94,7 @@ class HolderAgent private constructor(
     /**
      * A holder whose credentials may each have their own key, found by [holderKeyResolver]. Pass the resolver by name,
      * as a trailing lambda would also match this constructor. Storing a credential needs its expected keys, see
-     * [prepareCredentialStorage].
+     * [prepareCredentialStorageBoundTo] and [storeCredentialBoundTo].
      *
      * @param credentialValidator see the constructor taking a [KeyMaterial]
      * @param orderingValidator see the constructor taking a [KeyMaterial]
@@ -140,91 +141,93 @@ class HolderAgent private constructor(
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      *
-     * Validates with [storeCredentialWithReport] under the checks this has always made, see [compatibilityPolicy], and
+     * Validates with [storeCredentialBoundTo] under the checks this has always made, see [compatibilityPolicy], and
      * fails with the cause of the first check that rejects the credential.
      *
-     * This expects the key of a holder with one key. A holder with a [HolderKeyResolver] can not use it, as it takes
-     * no expected keys: it rejects the credential. Use [storeCredentialWithReport] with its `expectedHolderKeys`.
+     * This expects the key of a holder with one key. It takes no expected keys, as it is part of [Holder], so it fails
+     * for a holder with a [HolderKeyResolver]: use [storeCredentialBoundTo].
      */
     override suspend fun storeCredential(
         credential: Holder.StoreCredentialInput,
         renewalInfo: CredentialRenewalInfo?
     ) = catching {
-        val result = storeCredentialWithReport(credential, compatibilityPolicy, renewalInfo).getOrThrow()
+        val result = storeCredentialBoundTo(
+            credential = credential,
+            policy = compatibilityPolicy,
+            expectedHolderKeys = defaultExpectedHolderKeys(compatibilityPolicy),
+            renewalInfo = renewalInfo,
+        ).getOrThrow()
         result.storedEntry ?: throw result.validation.report.firstRejection()
             ?: IllegalStateException("The credential has not been stored")
     }
 
     /**
-     * Validates [credential] under [policy], bound to the key of this holder whatever [ValidationPolicy.holderBinding]
-     * says, unless it is [HolderBindingPolicy.RequireNoKey], and of the type of its scheme, and stores it only if it is
-     * accepted, see [CredentialStorageResult].
+     * Validates [credential] under [policy], bound to one of [expectedHolderKeys] whatever
+     * [ValidationPolicy.holderBinding] says, unless it is [HolderBindingPolicy.RequireNoKey], and of the type of its
+     * scheme, and stores it only if it is accepted, see [CredentialStorageResult].
      * A rejected credential is a successful result with its report; only persisting fails.
      *
-     * The credential has to be bound to one of [expectedHolderKeys], see [prepareCredentialStorage].
+     * [expectedHolderKeys] are the keys the credential may be bound to, e.g. the proof keys of its request (OpenID4VCI
+     * 1.0, 8.2; ARF ISSU_06). Without any, the holder binding check is blocked.
      *
-     * To let the user decide about a rejected credential, use [prepareCredentialStorage] instead.
+     * To let the user decide about a rejected credential, use [prepareCredentialStorageBoundTo] instead.
      */
     @JvmOverloads
-    suspend fun storeCredentialWithReport(
+    suspend fun storeCredentialBoundTo(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
+        expectedHolderKeys: Set<CryptoPublicKey>,
         renewalInfo: CredentialRenewalInfo? = null,
-        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<CredentialStorageResult> = catching {
         storeAccepted(
-            prepareCredentialStorage(credential, policy, renewalInfo, expectedHolderKeys).getOrThrow()
+            prepareCredentialStorageBoundTo(credential, policy, expectedHolderKeys, renewalInfo).getOrThrow()
         ).getOrThrow()
     }
 
     /**
-     * Validates [credential] like [storeCredentialWithReport], but stores nothing yet, e.g. as the last step of
-     * issuance, so that the wallet can show the report to the user, e.g. an untrusted issuer or missing required
-     * claims (see [ValidationPolicy.requiredClaims]). Then store it with [storeAccepted], or, if the user accepts a
-     * rejected report, with [storeAfterUserConsent]. Fails only if the credential can not be validated at all.
+     * Validates [credential] under [policy] like [storeCredentialBoundTo], but stores nothing yet, e.g. as the last
+     * step of issuance, so that the wallet can show the report to the user, e.g. an untrusted issuer or missing
+     * required claims (see [ValidationPolicy.requiredClaims]). Then store it with [storeAccepted], or, if the user
+     * accepts a rejected report, with [storeAfterUserConsent]. Fails only if the credential can not be validated at
+     * all.
      *
-     * The credential has to be bound to one of [expectedHolderKeys], see the overload taking an encoded credential.
-     * Without them, a holder with one key expects that key; a holder with a [HolderKeyResolver] rejects the
-     * credential, as it blocks the holder binding check rather than accept any key it knows.
+     * The credential has to be bound to one of [expectedHolderKeys], see [storeCredentialBoundTo].
      */
     @JvmOverloads
-    suspend fun prepareCredentialStorage(
+    suspend fun prepareCredentialStorageBoundTo(
         credential: Holder.StoreCredentialInput,
         policy: ValidationPolicy,
+        expectedHolderKeys: Set<CryptoPublicKey>,
         renewalInfo: CredentialRenewalInfo? = null,
-        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<PreparedCredentialStorage> = catching {
-        val resolvedExpectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) }
-        validate(credential, policy, resolvedExpectedHolderKeys).let {
+        validate(credential, policy, expectedHolderKeys).let {
             PreparedCredentialStorage(credential, it, renewalInfo, it.boundKey())
         }
     }
 
     /**
      * Validates the encoded credential [input] of the type of [scheme], e.g. as received from a credential issuer, like
-     * [prepareCredentialStorage], and decodes it only once: the credential to store is the one that has been
+     * [prepareCredentialStorageBoundTo], and decodes it only once: the credential to store is the one that has been
      * validated, e.g. an mdoc with exactly the bytes the issuer signed. Its [PreparedCredentialStorage.credential] is
      * `null` if it is not intact, as it can never be stored then.
      *
      * The credential has to be bound to one of [expectedHolderKeys], usually the proof keys of its request (OpenID4VCI
-     * 1.0, 8.2; ARF ISSU_06). Without them, a holder with one key expects that key; a holder with a [HolderKeyResolver]
-     * blocks the holder binding check rather than accept any key it knows.
+     * 1.0, 8.2; ARF ISSU_06), see [storeCredentialBoundTo].
      *
      * Fails if [scheme] does not support the representation of [input].
      */
     @JvmOverloads
-    suspend fun prepareCredentialStorage(
+    suspend fun prepareCredentialStorageBoundTo(
         input: CredentialValidationInput,
         scheme: CredentialScheme,
         policy: ValidationPolicy,
+        expectedHolderKeys: Set<CryptoPublicKey>,
         renewalInfo: CredentialRenewalInfo? = null,
-        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
     ): KmmResult<PreparedCredentialStorage> = catching {
-        val resolvedExpectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) }
         val validation = credentialValidator.validate(
             input = input,
             policy = policy.boundToHolder(),
-            context = context(scheme.credentialIdentifier(input), resolvedExpectedHolderKeys)
+            context = context(scheme.credentialIdentifier(input), expectedHolderKeys)
         )
         PreparedCredentialStorage(
             credential = validation.unacceptedCredential?.let { input.toStoreCredentialInput(it, scheme) },
@@ -232,6 +235,60 @@ class HolderAgent private constructor(
             renewalInfo = renewalInfo,
             holderKey = validation.boundKey(),
         )
+    }
+
+    /**
+     * Validates [credential] under [policy], bound to the key of this holder, see [storeCredentialBoundTo]. Fails for a
+     * holder with a [HolderKeyResolver], which has no key of its own to expect.
+     */
+    @Deprecated(
+        "Only a holder with one key can expect its key; use storeCredentialBoundTo with the expected holder keys"
+    )
+    @JvmOverloads
+    suspend fun storeCredentialWithReport(
+        credential: Holder.StoreCredentialInput,
+        policy: ValidationPolicy,
+        renewalInfo: CredentialRenewalInfo? = null,
+    ): KmmResult<CredentialStorageResult> = catching {
+        storeCredentialBoundTo(credential, policy, defaultExpectedHolderKeys(policy), renewalInfo).getOrThrow()
+    }
+
+    /**
+     * Validates [credential] under [policy], bound to the key of this holder, see [prepareCredentialStorageBoundTo].
+     * Fails for a holder with a [HolderKeyResolver], which has no key of its own to expect.
+     */
+    @Deprecated(
+        "Only a holder with one key can expect its key; use prepareCredentialStorageBoundTo with the expected " +
+                "holder keys"
+    )
+    @JvmOverloads
+    suspend fun prepareCredentialStorage(
+        credential: Holder.StoreCredentialInput,
+        policy: ValidationPolicy,
+        renewalInfo: CredentialRenewalInfo? = null,
+    ): KmmResult<PreparedCredentialStorage> = catching {
+        prepareCredentialStorageBoundTo(credential, policy, defaultExpectedHolderKeys(policy), renewalInfo)
+            .getOrThrow()
+    }
+
+    /**
+     * Validates the encoded credential [input] of the type of [scheme], bound to the key of this holder, see
+     * [prepareCredentialStorageBoundTo]. Fails for a holder with a [HolderKeyResolver], which has no key of its own to
+     * expect.
+     */
+    @Deprecated(
+        "Only a holder with one key can expect its key; use prepareCredentialStorageBoundTo with the expected " +
+                "holder keys"
+    )
+    @JvmOverloads
+    suspend fun prepareCredentialStorage(
+        input: CredentialValidationInput,
+        scheme: CredentialScheme,
+        policy: ValidationPolicy,
+        renewalInfo: CredentialRenewalInfo? = null,
+    ): KmmResult<PreparedCredentialStorage> = catching {
+        prepareCredentialStorageBoundTo(input, scheme, policy, defaultExpectedHolderKeys(policy), renewalInfo)
+            .getOrThrow()
     }
 
     /**
@@ -335,14 +392,26 @@ class HolderAgent private constructor(
         }
     }
 
-    /** Expects [expectedHolderKeys], or else this holder's single key, if any. */
     private fun context(
         credentialIdentifier: String,
-        expectedHolderKeys: Set<CryptoPublicKey> = emptySet(),
+        expectedHolderKeys: Set<CryptoPublicKey>,
     ) = CredentialValidationContext(
         expectedCredentialIdentifier = credentialIdentifier,
-        expectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) },
+        expectedHolderKeys = expectedHolderKeys,
     )
+
+    /**
+     * The key a credential has to be bound to if the caller gives none: the key of a holder with one key. A holder with
+     * a [HolderKeyResolver] has none, which is the caller's mistake, unless [policy] needs no key.
+     */
+    private fun defaultExpectedHolderKeys(policy: ValidationPolicy): Set<CryptoPublicKey> =
+        singleKey?.let { setOf(it.publicKey) } ?: run {
+            check(policy.holderBinding == HolderBindingPolicy.RequireNoKey) {
+                "A holder with a HolderKeyResolver needs the expected holder keys of a credential: use " +
+                        "prepareCredentialStorageBoundTo or storeCredentialBoundTo"
+            }
+            emptySet()
+        }
 
     /** A stored credential is bound to a key of this holder, or to none under [HolderBindingPolicy.RequireNoKey]. */
     private fun ValidationPolicy.boundToHolder() = copy(

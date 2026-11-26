@@ -36,7 +36,7 @@ sealed interface ReceivedCredential {
 
     /**
      * Validates this credential of the type of [scheme] for storage by [holder] under [policy], with [renewalInfo],
-     * see [HolderAgent.prepareCredentialStorage], and stores nothing yet. It has to be bound to one of the
+     * see [HolderAgent.prepareCredentialStorageBoundTo], and stores nothing yet. It has to be bound to one of the
      * [Decoded.proofKeys], or to no key unless [Decoded.holderBindingRequired]. A credential that could not be decoded
      * is prepared as rejected, so that it is reported like every other credential of a batch, but can never be stored.
      *
@@ -48,16 +48,26 @@ sealed interface ReceivedCredential {
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
     ): KmmResult<PreparedCredentialStorage> = when (this) {
-        is Decoded -> holder.prepareCredentialStorage(
-            input = input,
-            scheme = scheme,
-            policy = policy.copy(
-                holderBinding = if (holderBindingRequired) HolderBindingPolicy.RequireExpectedKey
-                else HolderBindingPolicy.RequireNoKey
-            ),
-            renewalInfo = renewalInfo,
-            expectedHolderKeys = proofKeys,
-        )
+        is Decoded -> policy.copy(
+            holderBinding = if (holderBindingRequired) HolderBindingPolicy.RequireExpectedKey
+            else HolderBindingPolicy.RequireNoKey
+        ).let { bindingPolicy ->
+            if (!holderBindingRequired || proofKeys.isNotEmpty()) holder.prepareCredentialStorageBoundTo(
+                input = input,
+                scheme = scheme,
+                policy = bindingPolicy,
+                expectedHolderKeys = proofKeys,
+                renewalInfo = renewalInfo,
+            )
+            // The key of the proof is unknown, e.g. for a proof creator that implements only `invoke`: a holder with
+            // one key expects its key, any other holder fails, as it can not know which key to expect
+            else @Suppress("DEPRECATION") holder.prepareCredentialStorage(
+                input = input,
+                scheme = scheme,
+                policy = bindingPolicy,
+                renewalInfo = renewalInfo,
+            )
+        }
         is Undecodable -> KmmResult.success(holder.rejectUndecodable(cause, policy, renewalInfo))
     }
 }

@@ -67,9 +67,10 @@ Release 10.0.0 (unreleased):
       `KeyAttestationInput.keys`. New fields change `copy` and `componentN` for `CredentialValidationContext`,
       `ReceivedCredential.Decoded`, `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and
       `KeyAttestationInput`.
-    - `HolderAgent.storeCredentialWithReport` and `prepareCredentialStorage` of a `StoreCredentialInput` take
-      `expectedHolderKeys`, as the overload of an encoded credential does. Without them, a holder with a
-      `HolderKeyResolver` rejects the credential, as `storeCredential` does.
+    - Add `HolderAgent.storeCredentialBoundTo` and `prepareCredentialStorageBoundTo`, which take the keys a credential
+      has to be bound to, e.g. the proof keys of its request. Deprecate `storeCredentialWithReport` and
+      `prepareCredentialStorage`, which expect the key of a holder with one key and fail for a holder with a
+      `HolderKeyResolver`, as `storeCredential` does.
     - Make `PreparedCredentialStorage.holderKey`, the key of the prepared credential, public.
 - Credential issuer:
     - Reject a credential request whose `proofs` contains more than one proof type with `invalid_credential_request`,

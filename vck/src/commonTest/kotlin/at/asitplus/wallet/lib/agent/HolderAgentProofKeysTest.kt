@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.validation.CheckOutcome
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.CredentialValidationContext
 import at.asitplus.wallet.lib.validation.Issuance
+import at.asitplus.wallet.lib.validation.HolderBindingPolicy
 import at.asitplus.wallet.lib.validation.ValidationDecision.ACCEPTED
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
 import at.asitplus.wallet.lib.validation.input
@@ -40,7 +41,7 @@ val HolderAgentProofKeysTest by matrixSuite {
                     credentialValidator = issuance.validator(),
                 )
 
-                val prepared = holder.prepareCredentialStorage(
+                val prepared = holder.prepareCredentialStorageBoundTo(
                     input = issuance.issue(representation).input(),
                     scheme = scheme,
                     policy = strictPolicy,
@@ -61,7 +62,7 @@ val HolderAgentProofKeysTest by matrixSuite {
                     credentialValidator = issuance.validator(),
                 )
 
-                val prepared = holder.prepareCredentialStorage(
+                val prepared = holder.prepareCredentialStorageBoundTo(
                     input = issuance.issue(representation).input(),
                     scheme = scheme,
                     policy = strictPolicy,
@@ -75,19 +76,52 @@ val HolderAgentProofKeysTest by matrixSuite {
                 holder.getCredentials().shouldNotBeNull().shouldBeEmpty()
             }
 
-            "without proof keys, the holder binding of a holder with a resolver is blocked" {
+            "without expected keys, the holder binding of a holder with a resolver is blocked" {
                 val issuance = issuance()
                 val holder = HolderAgent(
                     holderKeyResolver = resolverOf(issuance.holderKey),
                     credentialValidator = issuance.validator(),
                 )
 
-                val prepared = holder.prepareCredentialStorage(issuance.issue(representation).input(), scheme, strictPolicy)
-                    .getOrThrow()
+                val prepared = holder.prepareCredentialStorageBoundTo(
+                    input = issuance.issue(representation).input(),
+                    scheme = scheme,
+                    policy = strictPolicy,
+                    expectedHolderKeys = emptySet(),
+                ).getOrThrow()
 
                 prepared.validation.report.checks.shouldBeInstanceOf<CredentialChecks>().holderBinding
                     .shouldBeInstanceOf<CheckOutcome.Blocked>()
                 holder.storeAccepted(prepared).getOrThrow().storedEntry.shouldBeNull()
+            }
+
+            "a holder with a resolver fails to prepare a credential without being told the expected keys" {
+                val issuance = issuance()
+                val holder = HolderAgent(
+                    holderKeyResolver = resolverOf(issuance.holderKey),
+                    credentialValidator = issuance.validator(),
+                )
+
+                holder.prepareCredentialStorage(issuance.issue(representation).input(), scheme, strictPolicy)
+                    .exceptionOrNull().shouldBeInstanceOf<IllegalStateException>()
+            }
+
+            "a holder with a resolver needs no expected keys for a credential that must not be bound" {
+                val issuance = issuance()
+                val holder = HolderAgent(
+                    holderKeyResolver = resolverOf(issuance.holderKey),
+                    credentialValidator = issuance.validator(),
+                )
+
+                // Does not fail for lack of keys; the credential is bound, so its binding is rejected
+                val prepared = holder.prepareCredentialStorage(
+                    input = issuance.issue(representation).input(),
+                    scheme = scheme,
+                    policy = strictPolicy.copy(holderBinding = HolderBindingPolicy.RequireNoKey),
+                ).getOrThrow()
+
+                prepared.validation.report.checks.shouldBeInstanceOf<CredentialChecks>().holderBinding
+                    .shouldBeInstanceOf<CheckOutcome.Failed>()
             }
 
             "without proof keys, a holder with one key expects that key, as before" {
@@ -110,7 +144,7 @@ val HolderAgentProofKeysTest by matrixSuite {
                 )
                 val credential = issuance.issue(representation).toStoreCredentialInput()
 
-                val stored = holder.storeCredentialWithReport(
+                val stored = holder.storeCredentialBoundTo(
                     credential = credential,
                     policy = strictPolicy,
                     expectedHolderKeys = setOf(otherKey.publicKey, issuance.holderKey.publicKey),
@@ -130,7 +164,7 @@ val HolderAgentProofKeysTest by matrixSuite {
                 )
                 val credential = issuance.issue(representation).toStoreCredentialInput()
 
-                val prepared = holder.prepareCredentialStorage(
+                val prepared = holder.prepareCredentialStorageBoundTo(
                     credential = credential,
                     policy = strictPolicy,
                     expectedHolderKeys = setOf(otherKey.publicKey),
@@ -142,7 +176,7 @@ val HolderAgentProofKeysTest by matrixSuite {
                 holder.getCredentials().shouldNotBeNull().shouldBeEmpty()
             }
 
-            "a credential to store without expected keys is blocked for a holder with a resolver" {
+            "a credential to store without expected keys fails for a holder with a resolver" {
                 val issuance = issuance()
                 val holder = HolderAgent(
                     holderKeyResolver = resolverOf(issuance.holderKey),
@@ -150,7 +184,10 @@ val HolderAgentProofKeysTest by matrixSuite {
                 )
                 val credential = issuance.issue(representation).toStoreCredentialInput()
 
-                holder.storeCredentialWithReport(credential, strictPolicy).getOrThrow()
+                holder.storeCredentialWithReport(credential, strictPolicy)
+                    .exceptionOrNull().shouldBeInstanceOf<IllegalStateException>()
+                holder.storeCredential(credential).exceptionOrNull().shouldBeInstanceOf<IllegalStateException>()
+                holder.storeCredentialBoundTo(credential, strictPolicy, expectedHolderKeys = emptySet()).getOrThrow()
                     .storedEntry.shouldBeNull()
                 holder.getCredentials().shouldNotBeNull().shouldBeEmpty()
             }
@@ -177,7 +214,7 @@ val HolderAgentProofKeysTest by matrixSuite {
                     },
                     credentialValidator = issuance.validator(),
                 )
-                val prepared = holder.prepareCredentialStorage(
+                val prepared = holder.prepareCredentialStorageBoundTo(
                     input = issuance.issue(representation).input(),
                     scheme = scheme,
                     policy = strictPolicy,
