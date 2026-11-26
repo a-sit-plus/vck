@@ -9,12 +9,11 @@ import at.asitplus.openid.ResponseParametersFrom
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultNonceService
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.extensions.getEncryptionTargetKey
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import com.benasher44.uuid.uuid4
@@ -36,7 +35,7 @@ import kotlinx.serialization.json.JsonObject
 val OpenId4VpVerifierLifecycleTest by matrixSuite {
 
     val presentationRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(AtomicAttribute2023, SD_JWT),
+        RequestedCredential.SdJwt(AtomicAttribute2023),
     ).toDCQLRequest()
     val callingOrigin = "https://example.com"
     val plaintextVpToken = AuthenticationResponseParameters(vpToken = JsonObject(emptyMap()))

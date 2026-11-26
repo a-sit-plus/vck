@@ -5,6 +5,9 @@ val TestJavaApiTest by matrixSuite {
     "creates StatusListInfo through the Java API" {
         TestJavaApi.createsStatusListInfoFromJavaApi()
     }
+    "creates a RequestedPresentation through the Java API" {
+        TestJavaApi.createsRequestedPresentationFromJavaApi()
+    }
     "creates nested claims through the Java API" {
         TestJavaApi.createsNestedClaimFromJavaApi()
     }

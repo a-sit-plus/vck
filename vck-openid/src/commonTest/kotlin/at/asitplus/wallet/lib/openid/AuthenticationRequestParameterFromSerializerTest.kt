@@ -13,7 +13,7 @@ import at.asitplus.signum.indispensable.josef.JwsTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.toJwsFlattened
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -43,10 +43,13 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
     val byReference = CreationOptions.SignedRequestByReference("https://example.com", "https://example.com")
 
     representations.forEach { representation ->
+        val requestedCredential = when (representation) {
+            PLAIN_JWT -> RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
+            SD_JWT -> RequestedCredential.SdJwt(ConstantIndex.AtomicAttribute2023)
+            ISO_MDOC -> RequestedCredential.Mdoc(ConstantIndex.AtomicAttribute2023)
+        }
         val reqOptions = OpenId4VpRequestOptions(
-            presentationRequest = CredentialPresentationRequestBuilder(
-                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, representation)
-            ).toDCQLRequest()
+            presentationRequest = CredentialPresentationRequestBuilder(requestedCredential).toDCQLRequest()
         )
 
         "URL test $representation" {
@@ -172,7 +175,7 @@ val AuthenticationRequestParameterFromSerializerTest by matrixSuite {
         val authnRequestUrl = verifierOid4vp.createAuthnRequest(
             OpenId4VpRequestOptions(
                 presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, PLAIN_JWT)
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                 ).toDCQLRequest()
             ),
             CreationOptions.SignedRequestByValue(walletUrl)

@@ -35,7 +35,7 @@ import at.asitplus.wallet.eupid.EuPidDataElements
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.HttpErrorResponseException
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.DCQLMatchingResult
@@ -58,6 +58,8 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
 import at.asitplus.wallet.lib.data.CredentialRepresentation
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
+import at.asitplus.wallet.lib.data.JsonClaimReference
+import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
@@ -142,14 +144,8 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 redirectUriAfterPost: String? = null,
             ) {
                 val requestOptions = OpenId4VpRequestOptions(
-                    presentationRequest = CredentialPresentationRequestBuilder.fromRequestOptions(
-                        credentials = setOf(
-                            RequestOptionsCredential(
-                                credentialScheme = scheme,
-                                representation = representation,
-                                attributePaths = attributes.keys
-                            )
-                        ),
+                    presentationRequest = CredentialPresentationRequestBuilder(
+                        listOf(requestedCredential(scheme, representation, attributes.keys)),
                     ).toDCQLRequest(),
                     responseMode = responseMode,
                 )
@@ -240,11 +236,12 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 val decryptionKeyMaterial = EphemeralKeyWithoutCert()
                 val results = mutableListOf<KmmResult<AuthnResponseResult>>()
                 val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+                    .shouldBeInstanceOf<SdJwtCredentialScheme>()
                 setupRelyingPartyService(
                     clientId = uuid4().toString(),
                     requestOptions = OpenId4VpRequestOptions(
                         presentationRequest = CredentialPresentationRequestBuilder(
-                            RequestOptionsCredential(scheme, SD_JWT)
+                            RequestedCredential.SdJwt(scheme)
                         ).toDCQLRequest(),
                         responseMode = responseMode,
                     ),
@@ -364,6 +361,7 @@ val OpenId4VpKtorHolderTest by matrixSuite {
 
         test("a request_uri of a trusted relying party returns an accepted report") {
             val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+                .shouldBeInstanceOf<SdJwtCredentialScheme>()
             val attributes = mapOf(DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString())
             val clientId = uuid4().toString()
             val verifierKeyMaterial = EphemeralKeyWithoutCert()
@@ -372,7 +370,10 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 clientId = clientId,
                 requestOptions = OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(scheme, SD_JWT, attributePaths = attributes.keys)
+                        RequestedCredential.SdJwt(
+                            scheme,
+                            *attributes.keys.map { JsonClaimReference(it) }.toTypedArray(),
+                        )
                     ).toDCQLRequest(),
                     responseMode = ResponseMode.DirectPost,
                 ),
@@ -491,7 +492,7 @@ val OpenId4VpKtorHolderTest by matrixSuite {
             ).createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                 ),
                 CreationOptions.SignedRequestByReference("http://wallet.example.com/", requestUrl),
@@ -730,6 +731,7 @@ val OpenId4VpKtorHolderTest by matrixSuite {
 
         test("a presentation that can't be encrypted for direct_post.jwt fails, and its error is sent unencrypted") {
             val scheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+                .shouldBeInstanceOf<SdJwtCredentialScheme>()
             val attributes = mapOf(DCQLClaimsPathPointer(EuPidSdJwtDataElements.FAMILY_NAME) to randomString())
             it.storeMockCredentials(scheme, SD_JWT, attributes)
             val results = mutableListOf<KmmResult<AuthnResponseResult>>()
@@ -738,7 +740,10 @@ val OpenId4VpKtorHolderTest by matrixSuite {
                 clientId = uuid4().toString(),
                 requestOptions = OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(scheme, SD_JWT, attributePaths = attributes.keys)
+                        RequestedCredential.SdJwt(
+                            scheme,
+                            *attributes.keys.map { JsonClaimReference(it) }.toTypedArray(),
+                        )
                     ).toDCQLRequest(),
                     responseMode = ResponseMode.DirectPostJwt,
                 ),
@@ -792,6 +797,33 @@ private fun List<KmmResult<AuthnResponseResult>>.shouldBeProcessedAccessDenied()
     single().getOrThrow().shouldBeInstanceOf<AuthnResponseResult.Error>().error.apply {
         error shouldBe "access_denied"
         errorDescription shouldBe "user declined"
+    }
+}
+
+/**
+ * Requests the claims at [paths] from a credential of [scheme] in [representation]: paths from the root of a VC-JWT or
+ * an SD-JWT VC, or data element identifiers in the name space of an mdoc [scheme].
+ */
+private fun requestedCredential(
+    scheme: CredentialScheme,
+    representation: CredentialRepresentation,
+    paths: Collection<DCQLClaimsPathPointer>,
+): RequestedCredential = when (representation) {
+    ConstantIndex.CredentialRepresentation.PLAIN_JWT -> RequestedCredential.VcJwt(
+        scheme.shouldBeInstanceOf<VcJwtCredentialScheme>(),
+        *paths.map { JsonClaimReference(it) }.toTypedArray(),
+    )
+
+    SD_JWT -> RequestedCredential.SdJwt(
+        scheme.shouldBeInstanceOf<SdJwtCredentialScheme>(),
+        *paths.map { JsonClaimReference(it) }.toTypedArray(),
+    )
+
+    ISO_MDOC -> scheme.shouldBeInstanceOf<IsoMdocCredentialScheme>().let { mdocScheme ->
+        RequestedCredential.Mdoc(
+            mdocScheme,
+            *paths.map { MdocClaimReference(mdocScheme, (it.single() as NameSegment).name) }.toTypedArray(),
+        )
     }
 }
 

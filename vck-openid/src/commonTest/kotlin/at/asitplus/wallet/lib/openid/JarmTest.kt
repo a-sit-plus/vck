@@ -12,7 +12,7 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.DefaultNonceService
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -142,7 +142,7 @@ val JarmTest by matrixSuite {
 /** Asks for the plain JWT credential the fixture's holder actually holds, so that the flow can complete. */
 private fun directPostJwtOptions() = OpenId4VpRequestOptions(
     presentationRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(AtomicAttribute2023)
+        RequestedCredential.VcJwt(AtomicAttribute2023)
     ).toDCQLRequest(),
     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
     responseUrl = "https://example.com/${uuid4()}",

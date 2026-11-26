@@ -14,13 +14,26 @@ import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import com.benasher44.uuid.uuid4
 
-typealias RequestedAttributes = Set<String>
+@Deprecated(
+    "Request claims as JsonClaimReferences or MdocClaimReferences of a RequestedCredential",
+    ReplaceWith("Set<DCQLClaimsPathPointer>", "at.asitplus.openid.dcql.DCQLClaimsPathPointer"),
+)
 typealias RequestedAttributePaths = Set<DCQLClaimsPathPointer>
 
 interface RequestOptions {
     val state: String
 }
 
+/**
+ * A credential to request in one representation, with claims paths whose meaning depends on the [representation].
+ *
+ * Deprecated: request a typed [RequestedCredential] instead, which [toRequestedCredential] converts this to.
+ */
+@Deprecated(
+    "Request a RequestedCredential.SdJwt, VcJwt, or Mdoc, see toRequestedCredential(): VC-JWT claims paths start at " +
+            "the root of the VC, mdoc data elements are MdocClaimReferences, and optional paths are " +
+            "ClaimSelection.All.ifAvailable"
+)
 data class RequestOptionsCredential(
     /** Credential type to request, or `null` to make no restrictions. */
     val credentialScheme: CredentialScheme,
@@ -38,7 +51,7 @@ data class RequestOptionsCredential(
      * For [PLAIN_JWT], paths are relative to `credentialSubject`, see [toVcJwtClaimPath].
      * For [ISO_MDOC], see [requestedMdocClaims].
      */
-    val attributePaths: RequestedAttributePaths? = null,
+    val attributePaths: Set<DCQLClaimsPathPointer>? = null,
     /**
      * List of JSON claim paths that shall be requested explicitly (selective disclosure),
      * but are not required (i.e. marked as optional), or `null` to make no restrictions.
@@ -49,7 +62,7 @@ data class RequestOptionsCredential(
      * For [PLAIN_JWT], paths are relative to `credentialSubject`, see [toVcJwtClaimPath].
      * For [ISO_MDOC], see [requestedOptionalMdocClaims].
      */
-    val optionalAttributePaths: RequestedAttributePaths? = null,
+    val optionalAttributePaths: Set<DCQLClaimsPathPointer>? = null,
 ) {
 
     /**
@@ -126,13 +139,13 @@ data class RequestOptionsCredential(
         )
     }
 
-    fun effectiveRequestedAttributePaths(): RequestedAttributePaths =
+    fun effectiveRequestedAttributePaths(): Set<DCQLClaimsPathPointer> =
         attributePaths ?: emptySet()
 
-    fun effectiveRequestedOptionalAttributePaths(): RequestedAttributePaths =
+    fun effectiveRequestedOptionalAttributePaths(): Set<DCQLClaimsPathPointer> =
         optionalAttributePaths ?: emptySet()
 
-    private fun RequestedAttributePaths?.toMdocClaims(): Set<MdocClaimReference> =
+    private fun Set<DCQLClaimsPathPointer>?.toMdocClaims(): Set<MdocClaimReference> =
         if (this == null || representation != ISO_MDOC) emptySet()
         else mapTo(linkedSetOf()) { it.toMdocClaim() }
 

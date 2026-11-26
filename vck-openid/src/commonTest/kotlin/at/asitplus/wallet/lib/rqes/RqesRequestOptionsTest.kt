@@ -7,7 +7,6 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.QesAuthorization
 import at.asitplus.openid.TransactionData
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.decodeFromQuery
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.testballoon.matrix.fixture
@@ -15,11 +14,13 @@ import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements.FAMILY_NAME
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements.GIVEN_NAME
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.SdJwtConstants
+import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
@@ -30,6 +31,7 @@ import com.benasher44.uuid.uuid4
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 
 val RqesRequestOptionsTest by matrixSuite {
@@ -67,11 +69,11 @@ internal suspend fun buildRequestOptions(
             "https://example.com/rp/${uuid4()}"
         else null,
         presentationRequest = CredentialPresentationRequestBuilder(
-            RequestOptionsCredential(
-                credentialScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT),
-                representation = SD_JWT,
-                attributePaths = setOf(DCQLClaimsPathPointer(FAMILY_NAME), DCQLClaimsPathPointer(GIVEN_NAME)),
-                id = credentialId
+            RequestedCredential.SdJwt(
+                AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT).shouldBeInstanceOf<SdJwtCredentialScheme>(),
+                JsonClaimReference(FAMILY_NAME),
+                JsonClaimReference(GIVEN_NAME),
+                id = credentialId,
             )
         ).toDCQLRequest(),
         transactionData = listOf(

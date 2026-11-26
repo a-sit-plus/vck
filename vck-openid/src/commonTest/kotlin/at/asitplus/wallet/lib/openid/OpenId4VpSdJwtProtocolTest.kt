@@ -3,12 +3,12 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.ClaimSelection
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomSource
@@ -16,6 +16,8 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.JsonClaimReference
+import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.openid.DummyCredentialDataProvider.issueAndStoreSdJwt
 import at.asitplus.wallet.lib.utils.DefaultMapStore
 import at.asitplus.wallet.lib.validation.ValidationDecision.REJECTED
@@ -32,6 +34,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
     fixture {
         runBlocking {
             val euPidSdJwtScheme = AttributeIndex.resolveIdentifier(EU_PID_SD_JWT_VCT, SD_JWT)
+                .shouldBeInstanceOf<SdJwtCredentialScheme>()
             val holderKeyMaterial = EphemeralKeyWithoutCert()
             val holderAgent = HolderAgent(holderKeyMaterial).also {
                 issueAndStoreSdJwt(it, holderKeyMaterial)
@@ -63,11 +66,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = SD_JWT,
-                            attributePaths = setOf(DCQLClaimsPathPointer(requestedClaim))
-                        )
+                        RequestedCredential.SdJwt(AtomicAttribute2023, JsonClaimReference(requestedClaim))
                     ).toDCQLRequest(),
                 ),
                 CreationOptions.Query(it.walletUrl)
@@ -87,11 +86,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = SD_JWT,
-                            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
-                        )
+                        RequestedCredential.SdJwt(AtomicAttribute2023, JsonClaimReference(CLAIM_GIVEN_NAME))
                     ).toDCQLRequest(),
                 ),
                 CreationOptions.Query(it.walletUrl)
@@ -109,11 +104,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = SD_JWT,
-                            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
-                        )
+                        RequestedCredential.SdJwt(AtomicAttribute2023, JsonClaimReference(CLAIM_GIVEN_NAME))
                     ).toDCQLRequest(),
                     state = state,
                 ),
@@ -137,11 +128,7 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = AtomicAttribute2023,
-                            representation = SD_JWT,
-                            attributePaths = setOf(DCQLClaimsPathPointer(CLAIM_GIVEN_NAME))
-                        )
+                        RequestedCredential.SdJwt(AtomicAttribute2023, JsonClaimReference(CLAIM_GIVEN_NAME))
                     ).toDCQLRequest(),
                     state = state,
                 ),
@@ -172,10 +159,9 @@ val OpenId4VpSdJwtProtocolTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(
-                            credentialScheme = it.euPidSdJwtScheme,
-                            representation = SD_JWT,
-                            attributePaths = requestedClaims.map { DCQLClaimsPathPointer(it) }.toSet()
+                        RequestedCredential.SdJwt(
+                            it.euPidSdJwtScheme,
+                            ClaimSelection.All(requestedClaims.map { JsonClaimReference(it) }.toSet()),
                         )
                     ).toDCQLRequest(),
                 ),

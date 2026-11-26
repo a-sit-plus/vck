@@ -23,7 +23,7 @@ import at.asitplus.openid.formUrlEncode
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -104,10 +104,8 @@ val RedirectUriClientTest by matrixSuite {
             ).toNonEmptyList()
 
             val requestOptions = OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder.fromRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                    )
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                 ).toDCQLRequest(),
                 verifierInfo = verifierInfo
             )
@@ -131,10 +129,8 @@ val RedirectUriClientTest by matrixSuite {
                 )
             ).toNonEmptyList()
             val requestOptions = OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder.fromRequestOptions(
-                    credentials = setOf(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-                    )
+                presentationRequest = CredentialPresentationRequestBuilder(
+                    RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                 ).toDCQLRequest(),
                 verifierInfo = verifierInfo,
             )
@@ -204,7 +200,7 @@ val RedirectUriClientTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = it.clientId,
@@ -225,7 +221,7 @@ val RedirectUriClientTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = it.clientId,
@@ -249,7 +245,7 @@ val RedirectUriClientTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = it.clientId,
@@ -273,7 +269,7 @@ val RedirectUriClientTest by matrixSuite {
             val authnRequest = it.verifierOid4vp.createAuthnRequest(
                 OpenId4VpRequestOptions(
                     presentationRequest = CredentialPresentationRequestBuilder(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+                        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
                     ).toDCQLRequest(),
                     responseMode = OpenIdConstants.ResponseMode.Query,
                     state = expectedState
@@ -342,7 +338,7 @@ val RedirectUriClientTest by matrixSuite {
 
 private fun requestOptionsAtomicAttribute() = OpenId4VpRequestOptions(
     presentationRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
     ).toDCQLRequest(),
 )
 
@@ -362,7 +358,7 @@ private suspend fun verifySecondProtocolRun(
 
 private val defaultRequestOptions = OpenId4VpRequestOptions(
     presentationRequest = CredentialPresentationRequestBuilder(
-        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
     ).toDCQLRequest(),
 )
 

@@ -3,7 +3,8 @@
 Release 10.0.0 (unreleased):
 
 Removes JSONPath as a dependency, because OpenID4VP relies on DCQL paths only. Strengthens implementation of SD-JWT
-processing.
+processing. Adds typed presentation requests (`RequestedCredential`, `RequestedPresentation`) with claims requested if
+available, claim alternatives, and credential sets, replacing the deprecated `RequestOptionsCredential`.
 
 - Core:
     - Add `at.asitplus.wallet.lib.BuildProperties.vckVersion`, a compile-time constant generated from `artifactVersion`.
@@ -140,6 +141,11 @@ processing.
       can be registered with several identifiers (ETSI TS 119 475 V1.2.1, B.2.2). The shared subject stands in for
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
+    - Fix: `OpenId4VpRequestOptions` accepts transaction data whose `credential_ids` reference only some of the
+      credential queries, e.g. not an optional one, as each of them only has to reference a requested credential
+      "that can be used to authorize this transaction" (OpenID4VP 1.0, 5.1). It still rejects `credential_ids` that
+      reference no credential query, and rejects empty `credential_ids` of any transaction data, a "Non-empty array"
+      (ibid.)
 - Trusted relying parties:
     - WRPRC authorization exempts, besides `vct`, every root claim of an SD-JWT VC that must not be selectively
       disclosed, with its sub-claims: `iss`, `nbf`, `exp`, `cnf`, `vct#integrity`, `aka_vcts`, and `status`
@@ -184,6 +190,14 @@ processing.
       18013-5:2021, 8.3.2.1.2.1), and `toIsoDeviceRetrievalRequest()` also for other credentials than mdocs and for
       alternative or optional credentials. `RequestOptionsCredential.toDocRequest()` accepts any credential scheme
       with an `isoDocType`, as the DCQL query does, not only an `IsoMdocCredentialScheme`
+    - Deprecate `RequestOptionsCredential`, `RequestedAttributePaths`, the `CredentialPresentationRequestBuilder`
+      constructor taking `RequestOptionsCredential`s, and `CredentialPresentationRequestBuilder.fromRequestOptions`.
+      Migrate by requesting a `RequestedCredential` of the representation: name VC-JWT claims from the root of the VC,
+      e.g. `JsonClaimReference("credentialSubject", "given_name")` for the attribute path `["given_name"]`, mdoc data
+      elements as `MdocClaimReference(scheme, "given_name")`, and `optionalAttributePaths` as
+      `ClaimSelection.All(required, ifAvailable)`; `RequestOptionsCredential.toRequestedCredential()` converts as a
+      first step
+    - BREAKING: Remove the unused typealias `RequestedAttributes`
     - The required claims of a VC-JWT type (`CredentialScheme.requiredClaims`) are qualified with `credentialSubject`
       too, see `vcJwtQualifiedClaimDescriptions`, unless the new `VcJwtCredentialScheme.vcJwtClaimPathsAreQualified`
       is true. Schemes derived from type metadata (`ExtractedVcJwtCredentialScheme`) set it, so their claim paths

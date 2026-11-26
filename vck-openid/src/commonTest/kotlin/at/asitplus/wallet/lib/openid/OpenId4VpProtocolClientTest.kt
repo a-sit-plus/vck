@@ -12,7 +12,7 @@ import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.HttpErrorResponseException
 import at.asitplus.wallet.lib.ReceivedHttpResponse
-import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.RequestedCredential
 import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -64,7 +64,7 @@ val OpenId4VpProtocolClientTest by matrixSuite {
     )
     val requestOptions = OpenId4VpRequestOptions(
         presentationRequest = CredentialPresentationRequestBuilder(
-            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+            RequestedCredential.VcJwt(ConstantIndex.AtomicAttribute2023)
         ).toDCQLRequest(),
     )
 

@@ -252,9 +252,12 @@ VC-K supports three main credential families:
 Claim paths are OpenID4VP claims path pointers (`DCQLClaimsPathPointer`, OpenID4VP 1.0 §7), and processing one yields
 `DCQLSelectedClaim`s at concrete paths. `OpenId4VciClaimsPathPointer`, `SdJwtTypeMetadataClaimInformationPath`, and
 `WrpClaimPathSegment` are the wire types of their modules. ISO mDoc data elements are `MdocClaimReference`s (name space
-and data element identifier), never paths; `RequestOptionsCredential` reads the claims path pointers of an ISO mDoc
-request once, as `requestedMdocClaims`, and the request builders use only those. Read the claims and disclosures of
-an SD-JWT through `SdJwtDecoded`. Do not add JSONPath: no implemented specification uses it, and
+and data element identifier), never paths. Verifiers request credentials as `RequestedCredential.SdJwt`, `VcJwt`, or
+`Mdoc`, each with a `ClaimSelection` of `JsonClaimReference`s (VC-JWT paths from the root of the VC) or
+`MdocClaimReference`s, combined into a `RequestedPresentation` of `RequestedCredentialSet`s;
+`CredentialPresentationRequestBuilder` turns them into a DCQL query or an ISO `DeviceRequest`. The deprecated
+`RequestOptionsCredential` only converts to a `RequestedCredential` (`toRequestedCredential`). Read the claims and
+disclosures of an SD-JWT through `SdJwtDecoded`. Do not add JSONPath: no implemented specification uses it, and
 draft-ietf-oauth-sd-jwt-vc-19 §5.6.1.2 rejects it for its complexity and security concerns.
 
 Feature work often needs tests across at least one core agent flow and one protocol flow. For example, a disclosure
