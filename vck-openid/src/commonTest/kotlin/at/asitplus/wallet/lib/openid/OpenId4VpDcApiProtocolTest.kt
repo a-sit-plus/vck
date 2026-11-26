@@ -397,7 +397,6 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 OpenId4VpRequestOptions(
                     presentationRequest = dcqlRequest,
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
-                    responseUrl = "$rpOrigin/transaction/result/$transactionId",
                     expectedOrigins = listOf(rpOrigin),
                     state = transactionId,
                 )

@@ -324,7 +324,7 @@ internal class OpenId4VpRequestFactory(
             dcqlQuery = (presentationRequest as? DCQLRequest)?.dcqlQuery,
             transactionData = transactionData?.map { it.toBase64UrlJsonString() },
             expectedOrigins = expectedOrigins,
-            verifierInfo = verifierInfo,
+            verifierInfo = verifierInfoWithRegistrationCertificate,
         )
     }
 

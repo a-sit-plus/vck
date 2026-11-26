@@ -1,10 +1,12 @@
 package at.asitplus.wallet.lib.openid
 
 import at.asitplus.data.NonEmptyList
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.data.validation.third_party.kotlin.collections.requireIsNotNullOrEmpty
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT
 import at.asitplus.openid.TransactionData
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.wallet.lib.RequestOptions
@@ -22,6 +24,9 @@ data class OpenId4VpRequestOptions(
     /**
      * Presentation mechanism to be used for requesting credentials.
      * Use [CredentialPresentationRequestBuilder] for simple requests.
+     *
+     * Over the Digital Credentials API, give a typed request in [DcApiRequestOptions] instead, which builds its ISO
+     * `DeviceRequest` for ISO/IEC 18013-7 Annex C directly, with the purpose hints of its credential sets.
      */
     val presentationRequest: CredentialPresentationRequest?,
 
@@ -68,7 +73,13 @@ data class OpenId4VpRequestOptions(
     /**
      * OID4VP 1.0: OPTIONAL. A non-empty array of attestations about the Verifier relevant to the Credential Request.
      * These attestations MAY include Verifier metadata, policies, trust status, or authorizations.
+     *
+     * VC-K supports only the registration certificate (WRPRC) of the relying party as such an attestation: give it in
+     * [registrationCertificate], which adds its `verifier_info` element. Elements given here are still sent.
      */
+    @Deprecated(
+        "VC-K supports only the registration certificate (WRPRC) as verifier_info: give it in registrationCertificate"
+    )
     val verifierInfo: NonEmptyList<VerifierInfo>? = null,
 
     /**
@@ -92,9 +103,19 @@ data class OpenId4VpRequestOptions(
      * ISO/IEC 18013-5:2026 `euWrprc`: The CBOR-encoded, COSE-signed registration certificate (WRPRC) of the
      * relying party, set in the [at.asitplus.iso.DocRequestInfo] of every document request of an
      * ISO/IEC 18013-7 Annex C request, see [DcApiCreationOptions.Iso180137AnnexC].
-     * Registration certificates for OpenID4VP are passed in [verifierInfo] instead.
      */
+    @Deprecated(
+        "Give the WRPRC in registrationCertificate, for OpenID4VP and ISO/IEC 18013-7 Annex C",
+        ReplaceWith("registrationCertificate = RelyingPartyRegistrationCertificate(cwt = euWrprc)"),
+    )
     val euWrprc: ByteArray? = null,
+
+    /**
+     * The registration certificate (WRPRC) of the relying party: its JWT is sent in `verifier_info` of an OpenID4VP
+     * request, its CWT in `euWrprc` of an ISO/IEC 18013-7 Annex C request, see [RelyingPartyRegistrationCertificate].
+     * Requesting over a protocol without its encoding fails, instead of sending the request without the WRPRC.
+     */
+    val registrationCertificate: RelyingPartyRegistrationCertificate? = null,
 ) : RequestOptions {
 
     init {
@@ -121,11 +142,26 @@ data class OpenId4VpRequestOptions(
         }
         // OpenID4VP 1.0, 5.1: credential_ids of verifier_info, if present, are "A non-empty array of strings each
         // referencing a Credential requested by the Verifier for which the attestation is relevant"
+        @Suppress("DEPRECATION")
         verifierInfo?.forEach { info ->
             val infoIds = info.credentialIds ?: return@forEach
             require(infoIds.isNotEmpty()) { "credential_ids of verifier_info must be non-empty if present" }
             require(credentialIds.containsAll(infoIds)) {
                 "credential_ids of verifier_info reference no credential query: ${infoIds - credentialIds}"
+            }
+        }
+        if (registrationCertificate != null) {
+            @Suppress("DEPRECATION")
+            require(verifierInfo.orEmpty().none { it.format.equals(REGISTRATION_CERT_FORMAT, ignoreCase = true) }) {
+                "Give the WRPRC either in registrationCertificate or in verifierInfo, not in both"
+            }
+            @Suppress("DEPRECATION")
+            require(euWrprc == null || registrationCertificate.cwt == null) {
+                "Give the CWT of the WRPRC either in registrationCertificate or in euWrprc, not in both"
+            }
+            // only DC API requests may be offered over ISO/IEC 18013-7 Annex C too, see DcApiVerifier
+            require(isAnyDcApi || registrationCertificate.jwt != null) {
+                "An OpenID4VP request needs the JWT of the WRPRC"
             }
         }
         if (isAnyDcApi) {
@@ -156,5 +192,11 @@ data class OpenId4VpRequestOptions(
 
     val isAnyDcApi: Boolean
         get() = responseMode == ResponseMode.DcApi || responseMode == ResponseMode.DcApiJwt
+
+    /** The `verifier_info` of an OpenID4VP request: [verifierInfo], and the element of [registrationCertificate]. */
+    internal val verifierInfoWithRegistrationCertificate: NonEmptyList<VerifierInfo>?
+        @Suppress("DEPRECATION")
+        get() = (verifierInfo.orEmpty() + listOfNotNull(registrationCertificate?.verifierInfo))
+            .takeIf { it.isNotEmpty() }?.toNonEmptyList()
 
 }

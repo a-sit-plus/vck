@@ -213,6 +213,36 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       document of the requested docType: the mdoc may withhold requested data elements (ISO/IEC 18013-5:2021,
       8.3.2.1.2.2), but VC-K requests only those it requires. Documents are assigned to requests regardless of their
       order, so two requests of one docType need two documents
+    - `DcApiVerifier` signs `readerAuthAll` over an ISO/IEC 18013-7 Annex C request with a `deviceRequestInfo`, e.g.
+      use cases, the only signature that covers it (ISO/IEC DIS 18013-5:2026, 12.5.4), so that wallets accept the use
+      cases as authenticated, and keeps the `readerAuth` of every document request for mdocs of ISO/IEC 18013-5:2021
+    - Add `DcApiRequestOptions` for `DcApiVerifier.createAuthnRequest`, with a typed `RequestedPresentation` or a raw
+      DCQL query or ISO `DeviceRequest` (`DcApiPresentationRequest`), built for each offered exchange protocol only:
+      a typed request is its DCQL query for OpenID4VP, and its `RequestedPresentation.toDeviceRequest()` for ISO/IEC
+      18013-7 Annex C, with the purpose hints of its credential sets. `responseMode` is `dc_api.jwt` by default (HAIP
+      1.0, 5.2). Deprecate `DcApiVerifier.createAuthnRequest(OpenId4VpRequestOptions, …)`, which converts its options
+      with the new `DcApiRequestOptions.from`. That fails for a `responseUrl`, a `responseType` other than `vp_token`,
+      and `verifierInfo` other than a `registration_cert`, which the DC API does not support (OpenID4VP 1.0, A.2), and
+      moves the WRPRC of `euWrprc` and `verifierInfo` into `registrationCertificate`. `populateClientId` is ignored, as
+      only signed requests have a `client_id`. A raw ISO `DeviceRequest` offered over OpenID4VP fails, instead of
+      sending an OpenID4VP request without a query
+    - Add `OpenId4VpRequestOptions.registrationCertificate`, a `RelyingPartyRegistrationCertificate` with the JWT and
+      the CWT of the relying party's WRPRC (ETSI TS 119 475 V1.2.1, GEN-5.2.1-01), given in one place: the JWT is sent
+      in a `verifier_info` element of the format `registration_cert`, base64url-encoded (ETSI TS 119 472-2 V1.3.1,
+      OIDFVP-HAIP-COMMON-REQ-RO-15, RO-16), the CWT in the `euWrprc` of every document request of ISO/IEC 18013-7
+      Annex C. Requesting over a protocol without its encoding fails, as does a `registration_cert` in `verifierInfo`
+      or a CWT in `euWrprc` next to it. Deprecate `OpenId4VpRequestOptions.euWrprc` in favor of it, and
+      `OpenId4VpRequestOptions.verifierInfo`, as VC-K supports no other attestation in `verifier_info`
+    - BREAKING: `DcApiVerifier.createAuthnRequest` fails for `transactionData` offered over ISO/IEC 18013-7 Annex C,
+      whose `DeviceRequest` carries none, so that its response could not authorize the transaction (OpenID4VP 1.0,
+      5.1), before creating any request, instead of sending the Annex C request without it
+    - `DcApiVerifier` checks an Annex C response against the extended request (ISO/IEC DIS 18013-5:2026, 10.2.4,
+      10.2.5) with the new `DeviceRequestAdapter.checkAcceptedDocuments` in `vck`, the counterpart of
+      `DCQLQueryAdapter.checkAcceptedSubmissions`: the accepted documents answer document requests that satisfy the use
+      cases, exactly one document set of each satisfied one, every mandatory one and at least one; a document answers a
+      document request with each requested data element or all data elements of one of its alternative element sets,
+      and, with `issuerIdentifiers`, only if a certificate in the `x5chain` of its `IssuerAuth` has one of them as its
+      authority key identifier, which is no evidence of its issuer
     - Fix: `OpenId4VpRequestOptions` accepts transaction data whose `credential_ids` reference only some of the
       credential queries, e.g. not an optional one, as each of them only has to reference a requested credential
       "that can be used to authorize this transaction" (OpenID4VP 1.0, 5.1). It still rejects `credential_ids` that
