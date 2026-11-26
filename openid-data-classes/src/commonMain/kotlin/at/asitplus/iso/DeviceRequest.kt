@@ -19,7 +19,17 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 
 /**
- * Part of the ISO/IEC 18013-5:2026 standard: Mdoc request (10.2)
+ * Part of the ISO/IEC DIS 18013-5:2026 standard: Mdoc request (10.2)
+ *
+ * Fails for what the CDDL of 10.2.2 does not allow: no [docRequests] (`"docRequests" : [+ DocRequest]`), an empty
+ * [readerAuthAll] (`? "readerAuthAll" : [+ReaderAuthAll]`), a [deviceRequestInfo] or [readerAuthAll] in a request of a
+ * version below 1.1 (the version "shall be “1.0” if deviceRequestInfo and readerAuthAll is not present and “1.1” if one
+ * of them is present"), and a use case referencing a document request that does not exist (a DocRequestID "references
+ * the DocRequests in the docRequests array, identified by its position starting from 0", 10.2.5).
+ *
+ * Only that direction of the version rule is enforced: a request of a version above 1.0 without [deviceRequestInfo]
+ * and [readerAuthAll] is accepted, as it is processed the same, and rejecting it, e.g. from a reader of a later
+ * version, would only hurt interoperability.
  */
 @Serializable
 data class DeviceRequest(
@@ -28,14 +38,36 @@ data class DeviceRequest(
     val parsedVersion: Version,
     @SerialName("docRequests")
     val docRequests: Array<DocRequest>,
-    /** Can be used with version 1.1 to transport additional infos on how to satisfy the request (DCQL like?) */
+    /**
+     * Additional information on the requested documents, e.g. which combinations of them satisfy the request
+     * (ISO/IEC DIS 18013-5:2026, 10.2.5). Requires version 1.1.
+     */
     @SerialName("deviceRequestInfo")
     @Serializable(with = ReserializableByteStringSerializer::class)
     @ValueTags(24U)
     val deviceRequestInfo: ByteStringWrapper<DeviceRequestInfo>? = null,
+    /** Authenticates every document request and [deviceRequestInfo] (ISO/IEC DIS 18013-5:2026, 12.5.4). */
     @SerialName("readerAuthAll")
     val readerAuthAll: Array<CoseSigned<ByteArray>>? = null,
 ) {
+    init {
+        require(docRequests.isNotEmpty()) { "A DeviceRequest requests at least one document" }
+        require(readerAuthAll == null || readerAuthAll.isNotEmpty()) { "readerAuthAll must not be empty if present" }
+        require(
+            (deviceRequestInfo == null && readerAuthAll == null) ||
+                    parsedVersion >= IsoConstants.VERSION_1_1
+        ) {
+            "deviceRequestInfo and readerAuthAll require version ${IsoConstants.VERSION_1_1}, " +
+                    "but the version is $parsedVersion"
+        }
+        val documentRequestIds = deviceRequestInfo?.value?.useCases.orEmpty()
+            .flatMap { it.documentSets.flatten() }
+        val missing = documentRequestIds.filter { it >= docRequests.size.toUInt() }.distinct()
+        require(missing.isEmpty()) {
+            "Use cases reference the document requests $missing, but there are ${docRequests.size}"
+        }
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

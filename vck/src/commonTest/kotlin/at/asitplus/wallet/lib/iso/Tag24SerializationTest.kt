@@ -12,7 +12,9 @@ import at.asitplus.iso.IssuerSigned
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.iso.IssuerSignedItemSerializer
 import at.asitplus.iso.ItemsRequest
+import at.asitplus.iso.ItemsRequestList
 import at.asitplus.iso.MobileSecurityObject
+import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.iso.ValidityInfo
 import at.asitplus.iso.ValueDigest
 import at.asitplus.iso.ValueDigestList
@@ -96,7 +98,12 @@ val Tag24SerializationTest by matrixSuite {
 
     "DocRequest" {
         val input = DocRequest(
-            itemsRequest = ByteStringWrapper(ItemsRequest("docType", mapOf(), null)),
+            itemsRequest = ByteStringWrapper(
+                ItemsRequest(
+                    docType = "docType",
+                    namespaces = mapOf("namespace" to ItemsRequestList(listOf(SingleItemsRequest("name", false)))),
+                )
+            ),
         )
 
         val serialized = coseCompliantSerializer.encodeToByteArray(input)

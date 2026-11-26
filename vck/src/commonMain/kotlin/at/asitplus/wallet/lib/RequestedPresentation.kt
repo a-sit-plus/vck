@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib
 
+import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.UseCase
+import at.asitplus.iso.forUseCases
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 
@@ -33,6 +36,32 @@ data class RequestedPresentation(
         require(sharedIds.isEmpty()) { "Different credentials share the IDs $sharedIds" }
     }
 
+    /**
+     * The ISO/IEC 18013-5 `DeviceRequest` of this presentation, e.g. for ISO/IEC 18013-7 Annex C: one `DocRequest` per
+     * credential of [credentials], see [RequestedCredential.Mdoc.toDocRequest], and one use case per set, with its
+     * [RequestedCredentialSet.purposeHints], see `DeviceRequest.forUseCases` (ISO/IEC DIS 18013-5:2026, 10.2.5).
+     * Without anything a use case would add to "every document request is required", the request has version 1.0.
+     *
+     * Fails for other credentials than ISO mdocs, and for a set with an option contained in another one, e.g.
+     * `[pid, mdl]` and `[pid]`, which ISO can not satisfy, see `DeviceRequest.forUseCases`: request a required set
+     * `[pid]` and an optional set `[mdl]` instead.
+     */
+    fun toDeviceRequest(): DeviceRequest {
+        val docRequests = credentials.map {
+            require(it is RequestedCredential.Mdoc) { "An ISO DeviceRequest requests only mdocs, but not $it" }
+            it.toDocRequest()
+        }
+        val positions = credentials.withIndex().associate { it.value to it.index.toUInt() }
+        val useCases = sets.map { set ->
+            UseCase(
+                mandatory = set.required,
+                documentSets = set.options.map { option -> option.map { positions.getValue(it) } },
+                purposeHints = set.purposeHints.ifEmpty { null },
+            )
+        }
+        return DeviceRequest.forUseCases(docRequests = docRequests, useCases = useCases)
+    }
+
     companion object {
         /** Requests every one of [credentials], as one required set with one option. */
         @JvmStatic
@@ -53,6 +82,7 @@ data class RequestedPresentation(
  * holder (`HolderDCQLQueryMatchingResult.toDefaultSubmission`) presents the first option it can satisfy. So for the
  * options `[pid, mdl]` and `[pid]`, it presents both credentials if the holder has an mDL, and the PID alone
  * otherwise; in the order `[pid]`, `[pid, mdl]`, it presents the PID alone.
+ * Over ISO, such options can not be requested at all, see [RequestedPresentation.toDeviceRequest].
  */
 data class RequestedCredentialSet @JvmOverloads constructor(
     val options: List<Set<RequestedCredential>>,
@@ -63,6 +93,13 @@ data class RequestedCredentialSet @JvmOverloads constructor(
      * builds the submission of the chosen options with `HolderDCQLQueryMatchingResult.toSubmission`.
      */
     val required: Boolean = true,
+    /**
+     * Purpose codes of this set by the ID of the entity that defines them, the `PurposeHints` of its ISO use case, to
+     * "help the user to distinguish the different UseCase in the request", e.g. `UseCase.PURPOSE_AGE_VERIFICATION` of
+     * `UseCase.PURPOSE_CONTROLLER_ISO` (ISO/IEC DIS 18013-5:2026, 10.2.5).
+     * *Not sent over OpenID4VP, whose Credential Set Query has no purpose (OpenID4VP 1.0, 6.2).*
+     */
+    val purposeHints: Map<String, Int> = mapOf(),
 ) {
     init {
         require(options.isNotEmpty()) { "At least one option of credentials is required" }

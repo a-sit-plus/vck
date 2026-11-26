@@ -55,9 +55,11 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.SdJwtDecoded
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.cbor.authorityKeyIdentifiers
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElementOrNull
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.extensions.authorityKeyIdentifier
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.validation.ValidatedPresentation
 import kotlinx.datetime.LocalDate
@@ -175,7 +177,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             ),
             satisfiesCryptographicHolderBinding = credential.credential.confirmationClaim != null,
             authorityKeyIdentifiers = credential.decoded.sdJwtSigned.jws.jwsHeader.certificateChain
-                ?.flatMap { it.getAuthorityKeyIdentifier() } ?: listOf(),
+                .toDCQLAuthorityKeyIdentifiers(),
             type = credential.credential.verifiableCredentialType,
         )
 
@@ -220,9 +222,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
                 ),
                 documentType = document.docType,
                 satisfiesCryptographicHolderBinding = issuerAuth.payload?.deviceKeyInfo != null,
-                authorityKeyIdentifiers = issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
-                    X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
-                } ?: listOf(),
+                authorityKeyIdentifiers = issuerAuth.authorityKeyIdentifiers().map { DCQLAuthorityKeyIdentifier(it) },
             )
         }
 
@@ -244,9 +244,8 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
             } ?: mapOf()
         ),
         satisfiesCryptographicHolderBinding = issuerSigned.issuerAuth.payload?.deviceKeyInfo != null,
-        authorityKeyIdentifiers = issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.flatMap {
-            X509Certificate.decodeFromByteArray(it)?.getAuthorityKeyIdentifier() ?: listOf()
-        } ?: listOf(),
+        authorityKeyIdentifiers = issuerSigned.issuerAuth.authorityKeyIdentifiers()
+            .map { DCQLAuthorityKeyIdentifier(it) },
         documentType = schemeIdentifier
     )
 
@@ -257,9 +256,7 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         satisfiesCryptographicHolderBinding = sdJwt.confirmationClaim != null,
         authorityKeyIdentifiers = SdJwtSigned.parseCatching(
             vcSerialized
-        ).getOrThrow().jws.jwsHeader.certificateChain?.flatMap {
-            it.getAuthorityKeyIdentifier()
-        } ?: listOf(),
+        ).getOrThrow().jws.jwsHeader.certificateChain.toDCQLAuthorityKeyIdentifiers(),
         type = sdJwt.verifiableCredentialType,
     )
 
@@ -270,19 +267,13 @@ value class DCQLQueryAdapter(val dcqlQuery: DCQLQuery) {
         satisfiesCryptographicHolderBinding = !vc.subject.isNullOrEmpty(),
         authorityKeyIdentifiers = JwsCompactTyped<VerifiableCredentialJws>(
             vcSerialized
-        ).jws.jwsHeader.certificateChain?.flatMap {
-            it.getAuthorityKeyIdentifier()
-        } ?: listOf(),
+        ).jws.jwsHeader.certificateChain.toDCQLAuthorityKeyIdentifiers(),
         types = vc.vc.type,
     )
 
-    // take all authority key identifiers from chain, assuming chain is validated elsewhere
-    private fun X509Certificate.getAuthorityKeyIdentifier() = tbsCertificate.extensions?.filter {
-        it.oid == KnownOIDs.authorityKeyIdentifier_2_5_29_35
-    }?.mapNotNull {
-        AuthorityKeyIdentifier.decodeFromDerSafe(it.value.asEncapsulatingOctetString().content)
-            .getOrNull()?.keyIdentifier?.let { DCQLAuthorityKeyIdentifier(it) }
-    } ?: listOf()
+    /** The authority key identifiers of the certificates of this chain, which is validated elsewhere. */
+    private fun List<X509Certificate>?.toDCQLAuthorityKeyIdentifiers() =
+        orEmpty().mapNotNull { it.authorityKeyIdentifier }.map { DCQLAuthorityKeyIdentifier(it) }
 }
 
 /**

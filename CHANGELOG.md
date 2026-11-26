@@ -107,15 +107,28 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       into another array is still checked at its position
     - A credential not satisfying any combination of claims queries fails with an `IllegalArgumentException` naming
       the credential query, with the failure of each combination, instead of a `NoSuchElementException`
-    - Fix: `DCQLQuery.toIso180137AnnexCDeviceRequest()` fails for what an ISO `DeviceRequest` can not express,
-      instead of requesting more or other than the query: `claim_sets` none of whose options is contained in every
-      other one, i.e. alternatives, `credential_sets` other than required sets with a single option that together
-      request every credential query, expected claim `values`, `multiple`, and `trusted_authorities`. Of `claim_sets`,
-      the option contained in every other one is requested, as the verifier accepts it, e.g. the required claims of
-      claims requested if available, or a single option. A data element queried twice is requested once, retained if
-      any of its claims queries retains it. `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC
-      18013-7 Annex C before creating any request, so a query that can not be converted creates no nonce, ephemeral
-      key, or stored request for any exchange protocol
+    - Fix: `trusted_authorities` of type `aki` match an mdoc whose `x5chain` is in the protected header of its
+      `IssuerAuth`, in the wallet's matching and in the verifier's check (`DCQLQueryAdapter`), instead of only one in
+      the unprotected header: "An mdoc reader should support the presence of the x5chain element in the protected
+      header" (ISO/IEC DIS 18013-5:2026, 12.3.4). The chain is read as signature validation reads it, from either
+      header, and not at all if both headers carry different chains
+    - Fix: `DCQLQuery.toIso180137AnnexCDeviceRequest()` fails for what an ISO `DeviceRequest` can not express, instead
+      of requesting more or other than the query: `credential_sets` that are all optional, a credential set with an
+      option contained in another one, which ISO can not satisfy, as "Exactly one DocumentSet has to be satisfied",
+      `trusted_authorities` of another type than `aki`, and expected claim `values` of a requested data element.
+      `credential_sets` are use cases (ISO/IEC DIS 18013-5:2026, 10.2.5) with the new `DeviceRequest.forUseCases`, in
+      version 1.1, unless they only require every credential query; credential queries no set requests are left out.
+      `multiple` is `uniqueDocSetRequired = !multiple`, which is always set, and `trusted_authorities` of type `aki` are
+      the `issuerIdentifiers` (ibid., 10.2.4). `claim_sets` are requested as alternative data elements (ISO/IEC DIS
+      18013-5:2026, 10.2.4) with the new `ItemsRequest.ofCombinations`: the data elements all options share and the
+      first option are requested, each data element of the first option with the other options as its alternatives, e.g.
+      `age_over_18` with the alternative `birth_date`. An option contained in every other one is requested alone, as the
+      verifier accepts it, e.g. the required claims of claims requested if available, as ISO can not mark a data element
+      as optional. Alternative data elements are retained like the data element they are alternatives to, so claims
+      queries retaining them differently fail. A data element queried twice is requested once, retained if any of its
+      claims queries retains it. `DcApiVerifier.createAuthnRequest` converts the request for ISO/IEC 18013-7 Annex C
+      before creating any request, so a query that can not be converted creates no nonce, ephemeral key, or stored
+      request for any exchange protocol
     - BREAKING: `DCQLClaimsPathPointer.query` returns a `List<DCQLSelectedClaim>`, each selected claim with its
       `value` and its concrete `path`, a `DCQLClaimsPathPointer` of names and indices (OpenID4VP 1.0, 7.1), instead of
       a JSONPath `NodeList`. `DCQLClaimsQueryResult.JsonResult.nodeList` is replaced by `selectedClaims`, and
@@ -146,6 +159,18 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       requested twice, e.g. once with and once without its name space, is requested once. It still requests only the
       data elements of `attributePaths`, as a `DocRequest` marks no data element as optional (ISO/IEC 18013-5:2021,
       8.3.2.1.2.1)
+    - BREAKING: The mdoc request classes reject what the CDDL of ISO/IEC DIS 18013-5:2026, 10.2 does not allow, also
+      when decoding: a `DeviceRequest` without `docRequests`, with an empty `readerAuthAll`, with `deviceRequestInfo`
+      or `readerAuthAll` in a version below 1.1, or with a use case referencing a document request that does not
+      exist; an `ItemsRequest` without name spaces, or with alternatives for a data element it does not request; an
+      `ItemsRequestList` without data elements; empty `alternativeDataElements` or `issuerIdentifiers` of
+      `DocRequestInfo`; an `AlternativeDataElementsSet` without alternative sets or with an empty one; empty
+      `useCases` of `DeviceRequestInfo`; a `UseCase` without document sets, with an empty one, or with empty
+      `purposeHints`. Add `IsoConstants.VERSION_1_0` and `VERSION_1_1`, and the purposes of
+      `UseCase.PURPOSE_CONTROLLER_ISO` (`PURPOSE_IDENTITY_VERIFICATION`, `PURPOSE_DRIVING_PRIVILEGE_VERIFICATION`,
+      `PURPOSE_AGE_VERIFICATION`)
+    - BREAKING: Fix: `DocRequestInfo.docResponseEncryption` is a `ByteStringWrapper<EncryptionParameters>`, encoded as
+      `EncryptionParametersBytes`, a tag-24 byte string (ISO/IEC DIS 18013-5:2026, 10.2.4), instead of a map
 - OpenID for Verifiable Presentations verifier
     - An ISO mdoc request whose WRPRCs have different subjects keeps its WRPRCs: each is validated and reported, and
       returned in `untrustedRegistrations`. A WRPRC that does not link to the WRPAC fails its own `linkage`, no
@@ -197,6 +222,20 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       `optional`, `RequestedPresentation.allOf`). `CredentialPresentationRequestBuilder` builds them into the DCQL
       `claims`, `claim_sets`, and `credential_sets` (OpenID4VP 1.0, 6.1 to 6.4). The claims requested `ifAvailable`
       are one bundle: if the holder's credential lacks one of them, none of them is presented
+    - Typed requests convert directly to an ISO `DeviceRequest` with the new `RequestedPresentation.toDeviceRequest()`,
+      which `CredentialPresentationRequestBuilder.toIsoDeviceRetrievalRequest()` uses: alternative and optional
+      credential sets are use cases (ISO/IEC DIS 18013-5:2026, 10.2.5), with the new
+      `RequestedCredentialSet.purposeHints`, which OpenID4VP can not express; a set with an option contained in another
+      one fails, as ISO can not satisfy it. `RequestedCredential.Mdoc.toDocRequest()` requests
+      `ClaimSelection.Alternatives` as alternative data elements (ibid., 10.2.4) with `ItemsRequest.ofCombinations`, as
+      `DCQLQuery.toIso180137AnnexCDeviceRequest()` does
+    - Add `multiple` and `trustedAuthorities` to `RequestedCredential`: the DCQL `multiple`, and the certificates of
+      the authorities that certify accepted issuers, requested by their subject key identifiers (RFC 5280, 4.2.1.2) as
+      `trusted_authorities` of type `aki` (OpenID4VP 1.0, 6.1, 6.1.1). `RequestedCredential.Mdoc.toDocRequest()` sets
+      `uniqueDocSetRequired = !multiple`, always, and the same key identifiers as `issuerIdentifiers` (ISO/IEC DIS
+      18013-5:2026, 10.2.4). A trusted authority without a subject key identifier fails constructing the request. A
+      `RequestedCredential.VcJwt` has none, as the verifier keeps no certificate chain of a VC-JWT to check them. Add
+      `X509Certificate.subjectKeyIdentifier`
     - BREAKING: `CredentialPresentationRequestBuilder` holds a `RequestedPresentation` instead of
       `credentials: Collection<RequestOptionsCredential>`. It takes `RequestedCredential`s as vararg or collection,
       and `RequestOptionsCredential`s as vararg or with `fromRequestOptions(collection)`, converted with the new
@@ -209,8 +248,8 @@ available, claim alternatives, and credential sets, replacing the deprecated `Re
       building the request, instead of its Credential Query being dropped. `toIsoDeviceRetrievalRequest()` and
       `RequestOptionsCredential.toDocRequest()` request only the required data elements, as an ISO `ItemsRequest`
       marks none as optional, and fail for an mdoc without any, which an `ItemsRequest` requires (ISO/IEC
-      18013-5:2021, 8.3.2.1.2.1), and `toIsoDeviceRetrievalRequest()` also for other credentials than mdocs and for
-      alternative or optional credentials. `RequestOptionsCredential.toDocRequest()` accepts any credential scheme
+      18013-5:2021, 8.3.2.1.2.1), and `toIsoDeviceRetrievalRequest()` also for other credentials than mdocs.
+      `RequestOptionsCredential.toDocRequest()` accepts any credential scheme
       with an `isoDocType`, as the DCQL query does, not only an `IsoMdocCredentialScheme`
     - Deprecate `RequestOptionsCredential`, `RequestedAttributePaths`, the `CredentialPresentationRequestBuilder`
       constructor taking `RequestOptionsCredential`s, and `CredentialPresentationRequestBuilder.fromRequestOptions`.

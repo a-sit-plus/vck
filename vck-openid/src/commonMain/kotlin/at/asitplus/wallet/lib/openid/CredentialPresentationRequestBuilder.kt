@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLClaimsQuery
 import at.asitplus.openid.dcql.DCQLClaimsQueryIdentifier
@@ -21,6 +20,9 @@ import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.openid.dcql.DCQLTrustedAuthorityQueryEntry
+import at.asitplus.openid.dcql.DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.ClaimSelection
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.RequestedCredential
@@ -32,13 +34,14 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest.IsoDeviceRetrie
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.lib.data.SingleClaimReference
-import io.github.z4kn4fein.semver.Version
+import at.asitplus.wallet.lib.extensions.subjectKeyIdentifier
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.jvm.JvmStatic
 
 /**
  * Builds a [CredentialPresentationRequest] from the credentials of a [RequestedPresentation],
  * to be used in [OpenId4VpRequestOptions]: a DCQL query (OpenID4VP 1.0, 6) with [toDCQLRequest],
- * or an ISO `DeviceRequest` (ISO/IEC 18013-5:2021, 8.3.2.1.2.1) with [toIsoDeviceRetrievalRequest].
+ * or an ISO `DeviceRequest` (ISO/IEC DIS 18013-5:2026, 10.2) with [toIsoDeviceRetrievalRequest].
  */
 class CredentialPresentationRequestBuilder(
     val presentation: RequestedPresentation,
@@ -84,30 +87,12 @@ class CredentialPresentationRequestBuilder(
         DCQLCredentialQueryList(credentials.map { it.toQuery() }.toNonEmptyList())
 
     /**
-     * The ISO `DeviceRequest` of [presentation],
-     * with one `DocRequest` per credential, see [RequestedCredential.Mdoc.toDocRequest].
+     * The ISO `DeviceRequest` of [presentation], see [RequestedPresentation.toDeviceRequest]: converted directly, not
+     * from the DCQL query, so it keeps the purpose hints of the sets (ISO/IEC DIS 18013-5:2026, 10.2.5).
      *
-     * Fails for other credentials than ISO mdocs, and if not every credential is required, as a `DeviceRequest`
-     * requests every one of its `DocRequests` (ISO/IEC 18013-5:2021, 8.3.2.1.2.1), instead of silently requesting
-     * alternative or optional credentials.
+     * Fails for other credentials than ISO mdocs.
      */
-    fun toIsoDeviceRetrievalRequest(): IsoDeviceRetrieval {
-        require(presentation.requiresEveryCredential) {
-            "An ISO DeviceRequest requests every credential, but some are alternative or optional"
-        }
-        val docRequests = presentation.credentials.map {
-            require(it is RequestedCredential.Mdoc) { "An ISO DeviceRequest requests only mdocs, but not $it" }
-            it.toDocRequest()
-        }
-        return IsoDeviceRetrieval(
-            deviceRequest = DeviceRequest(
-                parsedVersion = Version(1, 0),
-                docRequests = docRequests.toTypedArray(),
-                deviceRequestInfo = null,
-                readerAuthAll = null,
-            )
-        )
-    }
+    fun toIsoDeviceRetrievalRequest(): IsoDeviceRetrieval = IsoDeviceRetrieval(presentation.toDeviceRequest())
 
     companion object {
         /** Requests every one of [credentials], see [RequestOptionsCredential.toRequestedCredential]. */
@@ -139,6 +124,8 @@ private fun RequestedCredential.SdJwt.toSdJwtQuery(
     meta = DCQLSdJwtCredentialMetadataAndValidityConstraints(vctValues = listOf(vct)),
     claims = queries.claims,
     claimSets = queries.claimSets,
+    multiple = multiple,
+    trustedAuthorities = toTrustedAuthorities(),
 )
 
 private fun RequestedCredential.VcJwt.toVcJwtQuery(
@@ -148,6 +135,7 @@ private fun RequestedCredential.VcJwt.toVcJwtQuery(
     meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(typeValues = nonEmptyListOf(listOf(type))),
     claims = queries.claims,
     claimSets = queries.claimSets,
+    multiple = multiple,
 )
 
 private fun RequestedCredential.Mdoc.toIsoMdocQuery(
@@ -157,7 +145,24 @@ private fun RequestedCredential.Mdoc.toIsoMdocQuery(
     meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(doctypeValue = docType),
     claims = queries.claims,
     claimSets = queries.claimSets,
+    multiple = multiple,
+    trustedAuthorities = toTrustedAuthorities(),
 )
+
+/**
+ * The `trusted_authorities` of type `aki` of [RequestedCredential.trustedAuthorities]: the subject key identifier of
+ * each, which the certificates it issues carry as their authority key identifier (RFC 5280, 4.2.1.2), "encoded as
+ * base64url" (OpenID4VP 1.0, 6.1.1), or none if there are none.
+ */
+private fun RequestedCredential.toTrustedAuthorities(): NonEmptyList<DCQLTrustedAuthorityQueryEntry>? =
+    if (trustedAuthorities.isEmpty()) null
+    else nonEmptyListOf(
+        DCQLTrustedAuthorityQueryEntryAuthorityKeyIdentifier(
+            values = trustedAuthorities
+                .map { requireNotNull(it.subjectKeyIdentifier).encodeToString(Base64UrlStrict) }
+                .toNonEmptyList()
+        )
+    )
 
 private fun ClaimSelection<JsonClaimReference>.toJsonClaimsQueries() =
     toClaimsQueries { claim, id -> DCQLJsonClaimsQuery(id = id, path = claim.path) }

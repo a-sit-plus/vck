@@ -1,9 +1,15 @@
 package at.asitplus.wallet.lib
 
+import at.asitplus.iso.IsoConstants
+import at.asitplus.iso.UseCase
 import at.asitplus.testballoon.matrix.matrixSuite
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
+import at.asitplus.wallet.mdl.MDL_DOCTYPE
+import at.asitplus.wallet.mdl.MDL_NAMESPACE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
@@ -14,8 +20,8 @@ val RequestedPresentationTest by matrixSuite {
         id = "pid"
     )
     val mdl = RequestedCredential.Mdoc(
-        docType = "org.iso.18013.5.1.mDL",
-        MdocClaimReference("org.iso.18013.5.1", "driving_privileges"),
+        docType = MDL_DOCTYPE,
+        MdocClaimReference(MDL_NAMESPACE, MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES),
         id = "mdl",
     )
     val loyalty = RequestedCredential.VcJwt(
@@ -96,6 +102,85 @@ val RequestedPresentationTest by matrixSuite {
                     RequestedPresentation(RequestedCredentialSet.oneOf(setOf(pid), setOf(otherPid)))
                 }
             }
+        }
+    }
+
+    "ISO DeviceRequest" - {
+        val photoId = RequestedCredential.Mdoc(
+            docType = "org.iso.23220.photoID.1",
+            MdocClaimReference("org.iso.23220.1", "portrait"),
+            id = "photoid",
+        )
+        val pidMdoc = RequestedCredential.Mdoc(
+            docType = "eu.europa.ec.eudi.pid.1",
+            MdocClaimReference("eu.europa.ec.eudi.pid.1", "age_over_18"),
+            id = "pidmdoc",
+        )
+
+        test("requiring every mdoc has no use cases, in version 1.0") {
+            val presentation = RequestedPresentation.allOf(mdl, photoId)
+
+            val deviceRequest = presentation.toDeviceRequest()
+
+            deviceRequest.apply {
+                parsedVersion shouldBe IsoConstants.VERSION_1_0
+                deviceRequestInfo shouldBe null
+                docRequests.map { it.itemsRequest.value.docType } shouldBe
+                        listOf(mdl.docType, photoId.docType)
+            }
+        }
+
+        test("alternative and optional mdocs are use cases with their purpose hints, in version 1.1") {
+            val presentation = RequestedPresentation(
+                RequestedCredentialSet(
+                    options = listOf(setOf(pidMdoc), setOf(photoId)),
+                    purposeHints = mapOf(UseCase.PURPOSE_CONTROLLER_ISO to UseCase.PURPOSE_AGE_VERIFICATION),
+                ),
+                RequestedCredentialSet.optional(setOf(mdl)),
+            )
+
+            val deviceRequest = presentation.toDeviceRequest()
+
+            deviceRequest.apply {
+                parsedVersion shouldBe IsoConstants.VERSION_1_1
+                docRequests.map { it.itemsRequest.value.docType } shouldBe
+                        listOf(pidMdoc.docType, photoId.docType, mdl.docType)
+                deviceRequestInfo.shouldNotBeNull().value.useCases shouldBe listOf(
+                    UseCase(
+                        mandatory = true,
+                        documentSets = listOf(listOf(0u), listOf(1u)),
+                        purposeHints = mapOf(UseCase.PURPOSE_CONTROLLER_ISO to UseCase.PURPOSE_AGE_VERIFICATION),
+                    ),
+                    UseCase(mandatory = false, documentSets = listOf(listOf(2u))),
+                )
+            }
+        }
+
+        test("purpose hints alone are a use case, in version 1.1") {
+            val presentation = RequestedPresentation(
+                RequestedCredentialSet(
+                    options = listOf(setOf(mdl)),
+                    purposeHints = mapOf(
+                        UseCase.PURPOSE_CONTROLLER_ISO to UseCase.PURPOSE_DRIVING_PRIVILEGE_VERIFICATION
+                    ),
+                )
+            )
+
+            val deviceRequest = presentation.toDeviceRequest()
+
+            deviceRequest.parsedVersion shouldBe IsoConstants.VERSION_1_1
+        }
+
+        test("other credentials than mdocs can not be requested") {
+            val presentation = RequestedPresentation.allOf(mdl, pid)
+
+            shouldThrow<IllegalArgumentException> { presentation.toDeviceRequest() }
+        }
+
+        test("an option contained in another one of its set can not be requested") {
+            val presentation = RequestedPresentation(RequestedCredentialSet.oneOf(setOf(pidMdoc, mdl), setOf(pidMdoc)))
+
+            shouldThrow<IllegalArgumentException> { presentation.toDeviceRequest() }
         }
     }
 }
