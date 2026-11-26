@@ -15,14 +15,21 @@ import io.github.z4kn4fein.semver.Version
  * A `DeviceRequest` requests every one of its `DocRequests`, each with the listed data elements and their
  * `IntentToRetain` (ISO/IEC 18013-5:2021, 8.3.2.1.2.1), and nothing more. A data element is requested once, as the
  * data elements are the keys of a map (`DataElements = {+ DataElement => IntentToRetain}`, ibid.), with the intent to
- * retain if any claims query for it has one. `claim_sets` with a single option request exactly the claims of that
- * option (OpenID4VP 1.0, 6.4.1), so those are requested.
+ * retain if any claims query for it has one.
+ *
+ * `claim_sets` request one of their options, in the order of the verifier's preference (OpenID4VP 1.0, 6.4.1), which
+ * an `ItemsRequest` can not express. If one option is contained in every other one, the verifier accepts it, and
+ * requesting exactly its claims asks for nothing the verifier does not accept, only for less than it prefers, so it is
+ * requested. E.g. for `[[given_name, portrait], [given_name]]`, as built for claims requested if available, only
+ * `given_name` is requested; a single option is requested as it is.
+ *
  * This fails for every query that requests something else,
  * instead of silently requesting more or other than the query does:
  *  - a credential query that is not an [DCQLIsoMdocCredentialQuery], or has no [DCQLIsoMdocCredentialQuery.claims]:
  *    DCQL's absent `claims` requests the claims that are mandatory to present (OpenID4VP 1.0, 6.4.1), which an
  *    `ItemsRequest` can not express
- *  - several claim combinations in `claim_sets`, of which the wallet presents one (OpenID4VP 1.0, 6.4.1)
+ *  - `claim_sets` none of whose options is contained in every other one, i.e. alternatives such as
+ *    `[[age_over_18], [birth_date]]`: requesting their common claims would ask for less than the verifier accepts
  *  - `credential_sets` other than required sets with a single option that together request every credential query,
  *    as other sets request alternative or optional credentials (OpenID4VP 1.0, 6.4.2)
  *  - expected claim `values` (OpenID4VP 1.0, 6.3), `multiple` credentials for one query, and `trusted_authorities`
@@ -72,8 +79,8 @@ private fun DCQLCredentialQuery.toDocRequest(): DocRequest {
 }
 
 /**
- * The claims queries of `claims`, or of the single option of `claim_sets`, which requests exactly those
- * (OpenID4VP 1.0, 6.4.1). Fails for several options, of which the wallet presents one, and without any claim.
+ * The claims queries of `claims`, or of the option of `claim_sets` that every other option contains, see
+ * [toIso180137AnnexCDeviceRequest]. Fails if there is no such option, or it has no claim.
  */
 private fun DCQLIsoMdocCredentialQuery.requestedClaims(): List<DCQLIsoMdocClaimsQuery> {
     val claims = requireNotNull(claims) {
@@ -81,10 +88,11 @@ private fun DCQLIsoMdocCredentialQuery.requestedClaims(): List<DCQLIsoMdocClaims
     }
     val sets = claimSets
         ?: return claims.toList()
-    require(sets.size == 1) {
-        "An ISO DeviceRequest can not express the claim combinations of $id"
-    }
-    val option = sets.single().toSet()
+    val options = sets.map { it.toSet() }
+    val option = options.firstOrNull { candidate -> options.all { it.containsAll(candidate) } }
+        ?: throw IllegalArgumentException(
+            "An ISO DeviceRequest can not express the claim combinations of $id, none is contained in all others"
+        )
     val requested = claims.filter { it.id in option }
     require(requested.isNotEmpty()) {
         "An ISO DeviceRequest requests at least one data element, but the claim combination of $id has none"

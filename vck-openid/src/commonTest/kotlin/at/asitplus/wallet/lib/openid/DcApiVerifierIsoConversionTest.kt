@@ -1,5 +1,8 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.dcapi.request.IsoMdocRequest
+import at.asitplus.iso.ItemsRequestList
+import at.asitplus.iso.SingleItemsRequest
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -16,6 +19,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 
 val DcApiVerifierIsoConversionTest by matrixSuite {
     val ageOver18 = MdocClaimReference("org.iso.18013.5.1", "age_over_18")
@@ -44,6 +48,20 @@ val DcApiVerifierIsoConversionTest by matrixSuite {
             it.storedEphemeralKeys.putKeys.shouldBeEmpty()
             it.storedAuthnRequests.putKeys.shouldBeEmpty()
             it.storedIsoMdocRequests.putKeys.shouldBeEmpty()
+        }
+
+        test("an mdoc with data elements if available is offered over both, ISO requesting the required ones") {
+            val request = RequestedCredential.Mdoc(
+                "org.iso.18013.5.1.mDL",
+                ClaimSelection.All(required = setOf(ageOver18), ifAvailable = setOf(birthDate)),
+            )
+
+            val result = it.createForBothProtocols(request)
+
+            result.isSuccess shouldBe true
+            it.storedAuthnRequests.putKeys.shouldNotBeEmpty()
+            it.storedIsoMdocRequest().deviceRequest.docRequests.single().itemsRequest.value.namespaces shouldBe
+                    mapOf("org.iso.18013.5.1" to ItemsRequestList(listOf(SingleItemsRequest("age_over_18", false))))
         }
     }
 }
@@ -75,6 +93,10 @@ private class StoreRecordingVerifier {
         DcApiCreationOptions.OpenId4VpUnsigned,
         DcApiCreationOptions.Iso180137AnnexC,
     )
+
+    /** The single ISO/IEC 18013-7 Annex C request stored. */
+    suspend fun storedIsoMdocRequest(): IsoMdocRequest =
+        storedIsoMdocRequests.get(storedIsoMdocRequests.putKeys.single()).shouldBeInstanceOf<IsoMdocRequest>()
 }
 
 /** A [MapStore] in memory that records the keys values are put for. */

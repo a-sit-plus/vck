@@ -102,6 +102,23 @@ val DCQLQueryToIsoDeviceRequestTest by matrixSuite {
             )
         }
 
+        test("of claim combinations, the one every other contains is requested, as for claims if available") {
+            val dcqlQuery = query(
+                mdocQuery(
+                    "mdl",
+                    element("family_name", id = "0"),
+                    element("portrait", id = "1"),
+                    claimSets = listOf(listOf("0", "1"), listOf("0")),
+                )
+            )
+
+            val deviceRequest = dcqlQuery.toIso180137AnnexCDeviceRequest()
+
+            deviceRequest.docRequests.single().itemsRequest.value.namespaces shouldBe mapOf(
+                namespace to ItemsRequestList(listOf(SingleItemsRequest("family_name", false)))
+            )
+        }
+
         test("a data element queried twice is requested once, retained if any of its queries retains it") {
             val retained = DCQLIsoMdocClaimsQuery(
                 path = DCQLClaimsPathPointer(namespace, "portrait"),
@@ -118,7 +135,7 @@ val DCQLQueryToIsoDeviceRequestTest by matrixSuite {
     }
 
     "rejected instead of flattened" - {
-        test("several claim combinations") {
+        test("alternative claim combinations, none contained in all others") {
             val dcqlQuery = query(
                 mdocQuery(
                     "mdl",
@@ -126,6 +143,14 @@ val DCQLQueryToIsoDeviceRequestTest by matrixSuite {
                     element("birth_date", id = "1"),
                     claimSets = listOf(listOf("0"), listOf("1")),
                 )
+            )
+
+            shouldThrow<IllegalArgumentException> { dcqlQuery.toIso180137AnnexCDeviceRequest() }
+        }
+
+        test("claim combinations whose option contained in all others has no claim") {
+            val dcqlQuery = query(
+                mdocQuery("mdl", element("portrait", id = "0"), claimSets = listOf(listOf("0"), listOf()))
             )
 
             shouldThrow<IllegalArgumentException> { dcqlQuery.toIso180137AnnexCDeviceRequest() }
