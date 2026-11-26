@@ -39,6 +39,11 @@ data class KeyAttestationChecks(
     val status: StatusValidation,
     /** A valid, unused server-provided `c_nonce`, where the issuer provides one. */
     val nonce: CheckOutcome,
+    /**
+     * `key_storage` and `user_authentication` meet the requirements of the issuer (`key_attestations_required`),
+     * not applicable without requirements.
+     */
+    val keyStorage: CheckOutcome = CheckOutcome.NotApplicable,
 ) : ValidationChecks
 
 /**

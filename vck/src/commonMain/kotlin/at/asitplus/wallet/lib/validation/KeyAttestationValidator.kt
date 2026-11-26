@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.catchingUnwrapped
+import at.asitplus.openid.KeyAttestationRequired
 import at.asitplus.openid.OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
@@ -52,8 +53,14 @@ class KeyAttestationValidator @JvmOverloads constructor(
      *    being how long the wallet provider maintains the status (EUDI TS3, 2.4.1);
      *  - `status`: `key_storage_status.status`, resolved only if the key attestation is valid otherwise
      *    (draft-ietf-oauth-status-list-21, 8.3), signed by an anchor of [walletProviderStatusAnchors];
-     *  - `nonce`: [nonce], as the protocol checks the `nonce` claim, e.g. against the `c_nonce` of the issuer.
+     *  - `nonce`: [nonce], as the protocol checks the `nonce` claim, e.g. against the `c_nonce` of the issuer;
+     *  - `keyStorage`: `key_storage` contains one of the values of `key_storage` of [requirements], and
+     *    `user_authentication` one of `user_authentication`, each of them only if [requirements] lists values, as
+     *    these are the values "accepted by the Credential Issuer" (OpenID4VCI 1.0, 12.2.4), which "SHOULD evaluate
+     *    these key attestations to ensure the cryptographic keys meet their security requirements" (D); not applicable
+     *    without requirements.
      */
+    @JvmOverloads
     suspend fun validate(
         attestation: JwsCompactTyped<KeyAttestationJwt>,
         policy: ValidationPolicy,
@@ -61,6 +68,7 @@ class KeyAttestationValidator @JvmOverloads constructor(
         embedded: Boolean,
         nonce: CheckOutcome,
         supportedAlgorithms: Collection<JwsAlgorithm.Signature>,
+        requirements: KeyAttestationRequired? = null,
     ): KeyAttestationValidationResult {
         val timeScope = TimeScope(evaluatedAt, policy.timeLeeway)
         val payload = attestation.payload
@@ -74,6 +82,7 @@ class KeyAttestationValidator @JvmOverloads constructor(
             timeliness = payload.timeliness(timeScope),
             status = StatusValidation(NotApplicable, emptyList(), NotApplicable),
             nonce = nonce,
+            keyStorage = payload.keyStorageOutcome(requirements),
         )
         val status = walletProviderStatus(
             status = payload.keyStorageStatus?.status,
@@ -107,6 +116,23 @@ class KeyAttestationValidator @JvmOverloads constructor(
         require(!payload.keyStorage.isNullOrEmpty()) { "key attestation contains no key_storage" }
         require(!payload.certification.isNullOrBlank()) { "key attestation contains no certification" }
         requireNotNull(payload.keyStorageStatus) { "key attestation contains no key_storage_status" }
+    }
+
+    private fun KeyAttestationJwt.keyStorageOutcome(requirements: KeyAttestationRequired?): CheckOutcome {
+        val acceptedStorage = requirements?.keyStorage
+        val acceptedAuthentication = requirements?.userAuthentication
+        if (acceptedStorage == null && acceptedAuthentication == null) return NotApplicable
+        fun Collection<String>?.accepted(accepted: Collection<String>?) =
+            accepted == null || orEmpty().any { it in accepted }
+        return when {
+            !keyStorage.accepted(acceptedStorage) ->
+                Failed(IllegalArgumentException("key_storage contains none of the accepted values"))
+
+            !userAuthentication.accepted(acceptedAuthentication) ->
+                Failed(IllegalArgumentException("user_authentication contains none of the accepted values"))
+
+            else -> Passed
+        }
     }
 
     private fun KeyAttestationJwt.timeliness(timeScope: TimeScope): CheckOutcome = with(timeScope) {

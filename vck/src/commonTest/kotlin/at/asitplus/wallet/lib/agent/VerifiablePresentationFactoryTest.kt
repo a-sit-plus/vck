@@ -11,6 +11,8 @@ import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemSpec
 import at.asitplus.openid.dcql.DCQLIsoMdocZkSystemType
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.testballoon.matrix.fixture
 import at.asitplus.testballoon.matrix.matrixSuite
@@ -49,6 +51,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
 import kotlin.random.Random
 
@@ -76,6 +79,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             val isoCredential = issueAndStoreIsoMdoc(holder, holderKeyMaterial, issuer)
             object {
                 val holder = holder
+                val holderKeyMaterial = holderKeyMaterial
                 val verifiablePresentationFactory = VerifiablePresentationFactory(holderKeyMaterial)
                 val sdJwtCredential = sdJwtCredential
                 val isoCredential = isoCredential
@@ -89,12 +93,15 @@ val VerifiablePresentationFactoryTest by matrixSuite {
             val salt = Random.nextBytes(16).encodeToString(Base64UrlStrict)
             val rawDisclosure = """["$salt", "family_name", "Musterfrau"]"""
                 .encodeToByteArray().encodeToString(Base64UrlStrict)
+            // Bound to the holder key, which signs the KB-JWT
+            val cnf = ConfirmationClaim(jsonWebKey = it.holderKeyMaterial.jsonWebKey)
             val issuerSignedJws = SignJwt<JsonObject>(EphemeralKeyWithoutCert(), JwsHeaderNone())(
                 JwsContentTypeConstants.SD_JWT,
                 buildJsonObject {
                     put("vct", "https://example.com/credentials/unknown")
                     put("_sd", buildJsonArray { add(rawDisclosure.hashDisclosure()) })
                     put("_sd_alg", "sha-256")
+                    put("cnf", joseCompliantSerializer.encodeToJsonElement(cnf))
                 },
                 JsonObject.serializer(),
             ).getOrThrow()
@@ -103,6 +110,7 @@ val VerifiablePresentationFactoryTest by matrixSuite {
                 vcSerialized = "${issuerSignedJws.jws}~$rawDisclosure~",
                 sdJwt = VerifiableCredentialSdJwt(
                     verifiableCredentialType = "https://example.com/credentials/unknown",
+                    confirmationClaim = cnf,
                 ),
                 disclosures = mapOf(
                     rawDisclosure to SelectiveDisclosureItem(

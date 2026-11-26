@@ -68,6 +68,48 @@ Release 10.0.0 (unreleased):
       the association of the WRPAC of an intermediary to one relying party (CIR (EU) 2025/848, Annex I, point 16, as
       amended by CIR (EU) 2026/1730), which ETSI TS 119 411-8 V1.1.1 defines no field for
 
+- Holder keys:
+    - Add `HolderKeyResolver` for resolving a credential's key, `HolderKeyResolver.single` for one-key holders, and
+      `StoreEntry.holderKey()` / `isHolderBound()` for identifying credential key binding. Keys come from an SD-JWT VC's
+      `cnf`, an mdoc's `deviceKey`, or a VC-JWT's `did:key` in `sub`.
+    - BREAKING: A VC-JWT whose `sub` is not a `did:key`, e.g. a JWK thumbprint, is not holder-bound in
+      `CredentialValidator` or DCQL matching. VCDM 1.1 defines `sub` as the credential subject identifier; VC-K derives
+      a key from it only when it is a `did:key`.
+    - `HolderAgent` and `VerifiablePresentationFactory` resolve and use the key bound to each credential. Add
+      `holderKeyResolver` constructors; deprecate `Holder.keyMaterial`, the single-key `HolderAgent` constructor, and
+      the fixed-key `VerifiablePresentationFactory` constructor. Presentations fail if the holder lacks a credential's
+      key or a VC-JWT presentation combines different keys.
+    - OpenID4VP permits presenting an SD-JWT VC without `cnf` and without a KB-JWT. SD-JWT VCs with `cnf` require a
+      KB-JWT, and presentation fails when its holder key cannot be read or resolved.
+    - BREAKING: OpenID4VP rejects transaction data that references a DCQL query without required holder binding;
+      `OpenId4VpRequestOptions` refuses to create such requests.
+    - OID4VCI proof creators obtain a key for each request, and `ProofCreator.createProof` returns the proofs with that
+      key. Received credentials are checked against their request's proof keys. Issuers that do not require binding can
+      store only credentials without a holder key. Key attestations cover exactly the proof keys supplied to a request.
+      Deprecate `CredentialValidationContext.expectedHolderKey` in favor of `expectedHolderKeys`; add
+      `KeyAttestationInput.keys`. New fields change `copy` and `componentN` for `CredentialValidationContext`,
+      `ReceivedCredential.Decoded`, `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and
+      `KeyAttestationInput`.
+    - Add `HolderAgent.storeCredentialBoundTo` and `prepareCredentialStorageBoundTo`, which take the keys a credential
+      has to be bound to, e.g. the proof keys of its request. Deprecate `storeCredentialWithReport` and
+      `prepareCredentialStorage`, which expect the key of a holder with one key and fail for a holder with a
+      `HolderKeyResolver`, as `storeCredential` does.
+    - Make `PreparedCredentialStorage.holderKey`, the key of the prepared credential, public.
+- Credential issuer:
+    - Reject a credential request whose `proofs` contains more than one proof type with `invalid_credential_request`,
+      as OpenID4VCI 1.0 requires exactly one proof type.
+    - Publish and evaluate key storage requirements: `ProofValidator` advertises `key_attestation_required`, and key
+      attestations must satisfy the configured `key_storage` and `user_authentication` requirements.
+    - BREAKING: `KeyAttestationChecks` gains a parameter, changing its `copy` and `componentN` functions.
+    - Publish and evaluate key storage requirements: `ProofValidator` gets `keyAttestationRequirements`, published as
+      `key_attestations_required` of both proof types when key attestations are required, and
+      `KeyAttestationValidator.validate` gets `requirements`, checked as the new `keyStorage` of
+      `KeyAttestationChecks`: the `key_storage` and `user_authentication` of a key attestation have to contain one of
+      the accepted values of each array the requirements list; a key attestation failing it is rejected with
+      `invalid_proof`
+    - BREAKING: `KeyAttestationChecks` is a data class with a new parameter, which changes its `copy` and `componentN`
+      functions
+
 Release 9.0.0:
 
 The new validation API (`CredentialValidator`, `RelyingPartyValidator`, `IssuerMetadataValidator`) reports every check

@@ -41,6 +41,7 @@ import at.asitplus.openid.SupportedCredentialFormatW3cVcJwt
 import at.asitplus.openid.SupportedCredentialFormatW3cVcJwtJsonLd
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.decodeFromQuery
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -50,6 +51,7 @@ import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
 import at.asitplus.wallet.lib.oidvci.OpenId4VciServer.CredentialResponse
+import at.asitplus.wallet.lib.openid.getUserSignatureCancellationException
 import at.asitplus.wallet.lib.validation.CredentialValidationInput
 import com.benasher44.uuid.uuid4
 import io.ktor.http.*
@@ -98,6 +100,11 @@ class OpenId4VciClient @JvmOverloads constructor(
          * values (Appendix D.2) the credential issuer accepts, `null` if it states none for this proof type.
          */
         val requirements: KeyAttestationRequired?,
+        /**
+         * The keys to attest, in order, the one signing a `jwt` proof first (TS3, 2.2.2.1); empty if the loader
+         * chooses them.
+         */
+        val keys: List<CryptoPublicKey> = emptyList(),
     )
 
     sealed interface CredentialRequest {
@@ -105,10 +112,27 @@ class OpenId4VciClient @JvmOverloads constructor(
         val credentialResponseEncryptionKeyId: String?
 
         /**
+         * The keys this request's proofs prove, which the issued credentials have to be bound to. Recorded at creation,
+         * as a proof may name its key by `kid` only; empty if unknown, e.g. for a parsed request.
+         */
+        val proofKeys: Set<CryptoPublicKey>
+
+        /**
+         * Whether the issued credentials have to be bound to a key: the configuration lists
+         * `cryptographic_binding_methods_supported` (OpenID4VCI 1.0, 12.2.4) or the request carries a proof. Otherwise
+         * they have to be bound to no key. `true` if unknown, e.g. for a parsed request.
+         */
+        val holderBindingRequired: Boolean
+
+        /**
          * Send [request] as JSON-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media
          * type `application/json` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JSON]).
          */
-        data class Plain(val request: CredentialRequestParameters) : CredentialRequest {
+        data class Plain @JvmOverloads constructor(
+            val request: CredentialRequestParameters,
+            override val proofKeys: Set<CryptoPublicKey> = emptySet(),
+            override val holderBindingRequired: Boolean = true,
+        ) : CredentialRequest {
             override val credentialResponseEncryptionKeyId: String?
                 get() = request.credentialResponseEncryption?.jsonWebKey?.keyId
         }
@@ -117,9 +141,11 @@ class OpenId4VciClient @JvmOverloads constructor(
          * Send [request] as JWE-serialized content to the server at [IssuerMetadata.credentialEndpointUrl] with media
          * type `application/jwt` (see [at.asitplus.wallet.lib.data.MediaTypes.Application.JWT]).
          */
-        data class Encrypted(
+        data class Encrypted @JvmOverloads constructor(
             val request: JweEncrypted,
             override val credentialResponseEncryptionKeyId: String? = null,
+            override val proofKeys: Set<CryptoPublicKey> = emptySet(),
+            override val holderBindingRequired: Boolean = true,
         ) : CredentialRequest
 
         companion object {
@@ -427,7 +453,7 @@ class OpenId4VciClient @JvmOverloads constructor(
         ).getOrThrow().map {
             it.withProofAndEncryption(metadata, clientNonce, clientId)
         }.map {
-            encryptionService.wrapCredentialRequest(it, metadata).getOrThrow()
+            it.wrap(metadata)
         }
     }
 
@@ -481,20 +507,41 @@ class OpenId4VciClient @JvmOverloads constructor(
         clientNonce: String? = null,
         clientId: String = defaultClientId,
     ): KmmResult<CredentialRequest> = catching {
-        encryptionService.wrapCredentialRequest(
-            request.withProofAndEncryption(metadata, clientNonce, clientId),
-            metadata
-        ).getOrThrow()
+        request.withProofAndEncryption(metadata, clientNonce, clientId).wrap(metadata)
     }
 
+    /** The [parameters] of a request with a proof of [proofKeys], before encryption. */
+    private class RequestWithProof(
+        val parameters: CredentialRequestParameters,
+        val proofKeys: Set<CryptoPublicKey>,
+        val holderBindingRequired: Boolean,
+    )
+
+    /**
+     * The parameters with a new proof and its key. If the configuration requires key binding but offers no proof
+     * types, the request goes without `proofs`, and its credentials can't be stored.
+     */
     private suspend fun PreparedCredentialRequest.withProofAndEncryption(
         metadata: IssuerMetadata,
         clientNonce: String?,
         clientId: String,
-    ): CredentialRequestParameters = credentialRequestParameters.copy(
-        proofs = createCredentialProof(metadata, credentialFormat, clientId, clientNonce),
-        credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
-    )
+    ): RequestWithProof {
+        val proof = createCredentialProof(metadata, credentialFormat, clientId, clientNonce)
+        // A proof is sent whenever proof types are listed (8.2), also without binding methods
+        val holderBindingRequired = credentialFormat.supportedBindingMethods != null || proof != null
+        return RequestWithProof(
+            parameters = credentialRequestParameters.copy(
+                proofs = proof?.proofs,
+                credentialResponseEncryption = encryptionService.credentialResponseEncryption(metadata)
+            ),
+            proofKeys = setOfNotNull(proof?.key),
+            holderBindingRequired = holderBindingRequired,
+        )
+    }
+
+    private suspend fun RequestWithProof.wrap(metadata: IssuerMetadata): CredentialRequest =
+        encryptionService.wrapCredentialRequest(parameters, metadata, proofKeys, holderBindingRequired)
+            .getOrThrow()
 
     /**
      * The proof of the first of [proofCreators] that creates one for [credentialFormat]: the request carries exactly
@@ -504,6 +551,9 @@ class OpenId4VciClient @JvmOverloads constructor(
      * Fails with the failure of the first creator if none creates a proof, although the issuer lists proof types,
      * because then `proofs` "MUST be present" (8.2). Without `proof_types_supported`, "the Wallet is not required to
      * supply proofs" (12.2.4), so there is none.
+     *
+     * Fails at once if a creator fails because the user cancelled the signature, e.g. unlocking the key: the next
+     * creator would create a proof the user has just declined, with a new key.
      */
     @Throws(Exception::class, CancellationException::class)
     internal suspend fun createCredentialProof(
@@ -511,17 +561,20 @@ class OpenId4VciClient @JvmOverloads constructor(
         credentialFormat: SupportedCredentialFormat,
         clientId: String,
         clientNonce: String?
-    ): CredentialRequestProofContainer? {
+    ): CreatedProof? {
         val failures = mutableListOf<Throwable>()
         proofCreators.forEach { creator ->
-            val result = creator.invoke(
+            val result = creator.createProof(
                 credentialIssuer = metadata.credentialIssuer,
                 credentialFormat = credentialFormat,
                 clientId = clientId,
-                clientNonce = clientNonce
+                clientNonce = clientNonce,
             )
             result.getOrNull()?.let { return it }
-            result.exceptionOrNull()?.let { failures += it }
+            result.exceptionOrNull()?.let { failure ->
+                failure.getUserSignatureCancellationException()?.let { throw it }
+                failures += failure
+            }
         }
         val requiredProofTypes = credentialFormat.supportedProofTypes?.keys
         if (requiredProofTypes.isNullOrEmpty())
@@ -568,7 +621,7 @@ class OpenId4VciClient @JvmOverloads constructor(
                 credential.credentialString?.toValidationInput(representation)
                     ?: throw IllegalArgumentException("Credential is not a string (OpenID4VCI 1.0, Appendix A)")
             }.fold(
-                onSuccess = { ReceivedCredential.Decoded(it) },
+                onSuccess = { ReceivedCredential.Decoded(it, request.proofKeys, request.holderBindingRequired) },
                 onFailure = { ReceivedCredential.Undecodable(it) },
             )
         }

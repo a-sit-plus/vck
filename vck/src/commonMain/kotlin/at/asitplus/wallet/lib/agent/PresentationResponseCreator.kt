@@ -67,8 +67,13 @@ internal class PresentationResponseCreator(
                     }
                     CreatePresentationResult.VcJws(credential.vcSerialized)
                 } else {
+                    // Presented without KB-JWT by the factory, so transaction data of other queries have nowhere to
+                    // go; the factory rejects those naming this query
+                    val unbound = credential is StoreEntry.SdJwt && !credential.isHolderBound()
                     verifiablePresentationFactory.createVerifiablePresentation(
                         request = request.copy(
+                            transactionData = if (unbound) request.transactionData.namingQuery(queryId)
+                            else request.transactionData,
                             qesApprovalTransactionData = listOfNotNull(approvals[queryId to submissionIndex]),
                         ),
                         credential = credential,
@@ -105,6 +110,12 @@ internal class PresentationResponseCreator(
         val selected = assignQesApprovals(candidates)
         return selected.mapValues { (_, approvalIndex) -> approvals[approvalIndex].first }
     }
+
+    /** Those of these transaction data that name [queryId] in their `credential_ids`, `null` if none. */
+    private fun List<TransactionDataBase64Url>?.namingQuery(
+        queryId: DCQLCredentialQueryIdentifier,
+    ): List<TransactionDataBase64Url>? =
+        orEmpty().filter { queryId.string in it.toTransactionData().credentialIds }.ifEmpty { null }
 
     private fun findQesApprovals(
         transactionData: List<TransactionDataBase64Url>?,

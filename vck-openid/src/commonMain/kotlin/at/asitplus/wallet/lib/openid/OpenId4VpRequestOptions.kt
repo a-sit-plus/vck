@@ -110,6 +110,13 @@ data class OpenId4VpRequestOptions(
             require(transactionIds == credentialIds) {
                 "TransactionIds must match the credentialIds"
             }
+            // Wallets reject transaction data for a query without holder binding (OpenID4VP 1.0, IETF SD-JWT VC,
+            // "Transaction Data"), so don't create such a request
+            if (presentationRequest is DCQLRequest) {
+                require(presentationRequest.dcqlQuery.credentials.all { it.requireCryptographicHolderBinding }) {
+                    "Transaction data require cryptographic holder binding of the credential queries they reference"
+                }
+            }
         }
         if (isAnyDcApi) {
             require(isDcql || isDeviceRetrieval) { "DC API only supports DCQL or DeviceRetrieval" }

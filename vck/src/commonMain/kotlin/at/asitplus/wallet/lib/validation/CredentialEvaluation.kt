@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.validation
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
@@ -36,19 +37,35 @@ internal sealed interface FormatEvaluation {
 }
 
 /**
- * Holder binding of a standalone credential: not applicable unless [this] requires the [expected] key, blocked
- * without an expected key, otherwise whether [isBoundTo] the expected key.
+ * Holder binding of a standalone credential that [isHolderBound], to [holderKey] (`null` if not holder-bound, or if its
+ * key can't be read, e.g. a `cnf` with a `kid`), per policy:
+ * - [HolderBindingPolicy.None]: not applicable;
+ * - [HolderBindingPolicy.RequireExpectedKey]: [holderKey] is an expected key of [context]; blocked without any;
+ * - [HolderBindingPolicy.RequireNoKey]: the credential is not holder-bound at all, also not to a key that can't be
+ *   read, as the holder could never present it with the proof of possession it needs.
  */
-internal inline fun HolderBindingPolicy.check(
-    expected: CryptoPublicKey?,
-    isBoundTo: (CryptoPublicKey) -> Boolean,
+internal fun HolderBindingPolicy.check(
+    context: CredentialValidationContext,
+    holderKey: CryptoPublicKey?,
+    isHolderBound: Boolean,
 ): CheckOutcome = when (this) {
     HolderBindingPolicy.None -> NotApplicable
-    HolderBindingPolicy.RequireExpectedKey -> when {
-        expected == null -> Blocked(IllegalStateException("No expected holder key to check the binding against"))
-        isBoundTo(expected) -> Passed
-        else -> Failed(IllegalArgumentException("The credential is not bound to the expected holder key"))
+    HolderBindingPolicy.RequireExpectedKey -> {
+        val expected = context.allExpectedHolderKeys
+        when {
+            expected.isEmpty() ->
+                Blocked(IllegalStateException("No expected holder key to check the binding against"))
+            // Compared cryptographically, as the key decoded from the credential may be encoded unlike the expected one
+            holderKey != null && expected.any { it.equalsCryptographically(holderKey) } -> Passed
+            holderKey == null && isHolderBound ->
+                Failed(IllegalArgumentException("The credential is bound to a holder key that can't be read"))
+            else -> Failed(IllegalArgumentException("The credential is not bound to an expected holder key"))
+        }
     }
+
+    HolderBindingPolicy.RequireNoKey ->
+        if (!isHolderBound) Passed
+        else Failed(IllegalArgumentException("The credential is bound to a holder key, but none was expected"))
 }
 
 /**

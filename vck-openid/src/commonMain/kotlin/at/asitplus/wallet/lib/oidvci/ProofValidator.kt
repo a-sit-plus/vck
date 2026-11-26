@@ -22,6 +22,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKey
 import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithKeyFun
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidCredentialRequest
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidNonce
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.InvalidProof
 import at.asitplus.wallet.lib.validation.CheckOutcome
@@ -77,6 +78,12 @@ class ProofValidator @JvmOverloads constructor(
      * are rejected.
      */
     private val keyAttestationValidator: KeyAttestationValidator = KeyAttestationValidator(),
+    /**
+     * The `key_attestations_required` of both proof types if [requireKeyAttestation] is set: published in
+     * [validProofTypes], and every key attestation has to meet its `key_storage` and `user_authentication`, see
+     * [KeyAttestationValidator.validate]. The default states no requirements.
+     */
+    private val keyAttestationRequirements: KeyAttestationRequired = KeyAttestationRequired(),
 ) {
 
     /**
@@ -95,11 +102,11 @@ class ProofValidator @JvmOverloads constructor(
     fun validProofTypes(): Map<String, CredentialRequestProofSupported> = if (requireKeyAttestation) mapOf(
         OpenIdConstants.ProofTypes.JWT to CredentialRequestProofSupported(
             supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-            keyAttestationRequired = KeyAttestationRequired()
+            keyAttestationRequired = keyAttestationRequirements
         ),
         OpenIdConstants.ProofTypes.ATTESTATION to CredentialRequestProofSupported(
             supportedSigningAlgorithms = supportedAlgorithms.map { it.identifier },
-            keyAttestationRequired = KeyAttestationRequired()
+            keyAttestationRequired = keyAttestationRequirements
         )
     ) else mapOf(
         OpenIdConstants.ProofTypes.JWT to CredentialRequestProofSupported(
@@ -138,7 +145,7 @@ class ProofValidator @JvmOverloads constructor(
      * (F.3). The nonces of all proofs are consumed only if every proof is accepted, so they are not usable again.
      * The clock is read once, all checks use that time.
      *
-     * Fails if [params] contains no proof, or a nonce has been used concurrently.
+     * Fails if [params] contains no proof, proofs of more than one proof type, or a nonce has been used concurrently.
      */
     @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateProofs(
@@ -147,6 +154,11 @@ class ProofValidator @JvmOverloads constructor(
     ): ProofsValidation {
         val evaluatedAt = clock.now()
         val container = params.proofs ?: throw InvalidProof("proof not contained in request")
+        // "The proofs parameter contains exactly one parameter named as the proof type" (OpenID4VCI 1.0, 8.2): a request
+        // with several is malformed, while its key proofs may all be valid (8.3.1.2)
+        if (container.jwt != null && container.attestation != null) {
+            throw InvalidCredentialRequest("proofs contains more than one proof type")
+        }
         val proofs = when {
             !container.jwt.isNullOrEmpty() -> container.jwt!!.map { validateJwtProof(it, policy, evaluatedAt) }
             !container.attestation.isNullOrEmpty() ->
@@ -293,6 +305,7 @@ class ProofValidator @JvmOverloads constructor(
             nonce = if (embedded && attestation.payload.nonce == null) NotApplicable
             else nonceOutcome(attestation.payload.nonce),
             supportedAlgorithms = supportedAlgorithms,
+            requirements = keyAttestationRequirements.takeIf { requireKeyAttestation },
         ),
     )
 
@@ -311,6 +324,7 @@ class ProofValidator @JvmOverloads constructor(
         timeliness = Blocked(),
         status = StatusValidation(claim = Blocked(), agreement = Blocked()),
         nonce = Blocked(),
+        keyStorage = Blocked(),
     )
 }
 
@@ -368,6 +382,9 @@ private fun ValidationReport.keyAttestationRejection(): CheckOutcome {
 
         checks.signature != Passed -> checks.signature.cause().wrap("key attestation not verified")
         checks.trust.outcome != Passed -> checks.trust.outcome.cause().wrap("key attestation not verified")
+        checks.keyStorage is Failed ->
+            (checks.keyStorage as Failed).throwable.let { Failed(InvalidProof(it.message, it)) }
+
         else -> checks.status.mechanisms.firstNotNullOfOrNull { it.outcome as? Failed }?.throwable
             .wrap("TokenStatus invalid")
     }

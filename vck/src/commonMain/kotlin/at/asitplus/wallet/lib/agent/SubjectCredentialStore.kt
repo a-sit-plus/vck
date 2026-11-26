@@ -9,6 +9,7 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.SupportedCredentialFormat
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -184,6 +185,28 @@ interface SubjectCredentialStore {
                     }
                 }
             }
+        }
+
+        /**
+         * Whether this credential is bound to a holder key: an SD-JWT VC with a `cnf` (SD-JWT VC, 2.2.2.3), every
+         * mdoc, as its MSO has a `deviceKey` (ETSI TS 119 472-1, EAA-6.5-01), and a VC-JWT with a `did:key` in its
+         * `sub`. Also if its [holderKey] can't be read.
+         */
+        fun isHolderBound(): Boolean = when (this) {
+            is Vc -> vc.isHolderBound()
+            is SdJwt -> sdJwt.isHolderBound()
+            is Iso -> true
+        }
+
+        /**
+         * The key this credential is bound to: the `cnf` key of an SD-JWT VC, the `deviceKey` of an mdoc, and the
+         * `did:key` in the `sub` of a VC-JWT. `null` if it is not holder-bound, see [isHolderBound], or if its key can't
+         * be read, e.g. a `cnf` with a `kid` instead of a `jwk`.
+         */
+        fun holderKey(): CryptoPublicKey? = when (this) {
+            is Vc -> vc.holderKey()
+            is SdJwt -> sdJwt.holderKey()
+            is Iso -> issuerSigned.issuerAuth.payload?.holderKey()
         }
 
         @Throws(IllegalArgumentException::class)
