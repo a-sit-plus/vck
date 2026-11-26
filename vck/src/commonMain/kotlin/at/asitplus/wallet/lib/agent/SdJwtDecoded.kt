@@ -1,11 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.IndexSegment
-import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment.NameSegment
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -64,9 +59,8 @@ class SdJwtDecoded internal constructor(
      */
     fun disclosuresFor(pointers: Collection<DCQLClaimsPathPointer>): Set<String> = pointers
         .flatMap { it.query(reconstructedJsonObject) }
-        .map { it.normalizedJsonPath.toDCQLClaimsPathPointer() }
         .flatMapTo(mutableSetOf()) { selected ->
-            disclosuresByPath.filterKeys { it.startsWith(selected) || selected.startsWith(it) }.values
+            disclosuresByPath.filterKeys { it.startsWith(selected.path) || selected.path.startsWith(it) }.values
         }
 
     override fun equals(other: Any?): Boolean = other is SdJwtDecoded &&
@@ -87,13 +81,3 @@ private fun SdJwtSigned.processDisclosures(): ProcessedDisclosures {
 
 private fun DCQLClaimsPathPointer.startsWith(prefix: DCQLClaimsPathPointer) =
     size >= prefix.size && subList(0, prefix.size) == prefix.toList()
-
-/** The concrete path of a claim selected by [DCQLClaimsPathPointer.query], until that returns claims path pointers. */
-internal fun NormalizedJsonPath.toDCQLClaimsPathPointer() = DCQLClaimsPathPointer(
-    map {
-        when (it) {
-            is NormalizedJsonPathSegment.NameSegment -> NameSegment(it.memberName)
-            is NormalizedJsonPathSegment.IndexSegment -> IndexSegment(it.index)
-        }
-    }.toNonEmptyList()
-)

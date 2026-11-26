@@ -1,12 +1,8 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.jsonpath.core.NodeListEntry
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.testballoon.matrix.matrixSuite
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -21,92 +17,38 @@ import kotlin.random.nextUInt
 
 val DCQLClaimsPathPointerSegmentTest by matrixSuite {
     "select" - {
-        "null" {
-            val selection = DCQLClaimsPathPointerSegment.NullSegment.query(
-                listOf(
-                    NodeListEntry(
-                        value = buildJsonArray {
-                            add(JsonPrimitive(0))
-                            add(JsonPrimitive(1))
-                            add(JsonPrimitive(2))
-                        },
-                        normalizedJsonPath = NormalizedJsonPath()
-                    )
-                )
-            )
+        val array = buildJsonArray {
+            add(JsonPrimitive(0))
+            add(JsonPrimitive(1))
+            add(JsonPrimitive(2))
+        }
+        "null selects each element at its index" {
+            val selection = DCQLClaimsPathPointer(null).query(array)
             selection shouldHaveSize 3
             selection.forEach {
-                it.normalizedJsonPath shouldHaveSize 1
-                val segment = it.normalizedJsonPath.first()
-                    .shouldBeInstanceOf<NormalizedJsonPathSegment.IndexSegment>()
-                segment.index.toInt() shouldBe it.value.jsonPrimitive.long
+                it.path shouldBe DCQLClaimsPathPointer(it.value.jsonPrimitive.long.toUInt())
             }
         }
         "string" - {
             val keys = listOf("0u", "1u", "2u")
-            val nodeList = listOf(
-                NodeListEntry(
-                    value = buildJsonObject {
-                        keys.forEach {
-                            put(it, JsonNull)
-                        }
-                    },
-                    normalizedJsonPath = NormalizedJsonPath()
-                )
-            )
-            data(keys) test {
-                val selection = DCQLClaimsPathPointerSegment.NameSegment(it)
-                    .query(nodeList)
-                selection shouldHaveSize 1
-                selection.first().run {
-                    normalizedJsonPath shouldHaveSize 1
-                    normalizedJsonPath.first()
-                        .shouldBeInstanceOf<NormalizedJsonPathSegment.NameSegment>()
-                        .memberName shouldBe it
-                    value shouldBe JsonNull
+            val credential = buildJsonObject {
+                keys.forEach {
+                    put(it, JsonNull)
                 }
+            }
+            data(keys) test {
+                DCQLClaimsPathPointer(it).query(credential).single() shouldBe
+                        DCQLSelectedClaim(DCQLClaimsPathPointer(it), JsonNull)
             }
         }
         "index" - {
-            val nodeList = listOf(
-                NodeListEntry(
-                    value = buildJsonArray {
-                        add(JsonPrimitive(0))
-                        add(JsonPrimitive(1))
-                        add(JsonPrimitive(2))
-                    },
-                    normalizedJsonPath = NormalizedJsonPath()
-                )
-            )
             listOf(0u, 1u, 2u).asData() test { index ->
-                val selection = DCQLClaimsPathPointerSegment.IndexSegment(index)
-                    .query(nodeList)
-                selection shouldHaveSize 1
-                selection.first().run {
-                    normalizedJsonPath shouldHaveSize 1
-                    normalizedJsonPath.first()
-                        .shouldBeInstanceOf<NormalizedJsonPathSegment.IndexSegment>()
-                        .index shouldBe index
-                    value.jsonPrimitive.long shouldBe index.toLong()
-                }
+                DCQLClaimsPathPointer(index).query(array).single() shouldBe
+                        DCQLSelectedClaim(DCQLClaimsPathPointer(index), JsonPrimitive(index.toLong()))
             }
         }
     }
     "serialization" - {
-        val selection = DCQLClaimsPathPointerSegment.NullSegment.query(
-            listOf(
-                NodeListEntry(
-                    value = buildJsonArray {
-                        add(JsonNull)
-                        add(JsonNull)
-                        add(JsonNull)
-                    },
-                    normalizedJsonPath = NormalizedJsonPath()
-                )
-            )
-        )
-        selection shouldHaveSize 3
-
         data(List(1 + Random.nextInt(10)) {
             when (Random.nextInt(3)) {
                 0 -> Base64.encode(Random.nextBytes(32))
