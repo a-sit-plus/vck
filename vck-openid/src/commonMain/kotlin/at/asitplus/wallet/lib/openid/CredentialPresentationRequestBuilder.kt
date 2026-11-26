@@ -22,7 +22,7 @@ import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest.DCQLRequest
-import at.asitplus.wallet.lib.toIsoMdocClaimPath
+import at.asitplus.wallet.lib.toVcJwtClaimPath
 
 /**
  * This is a helper class to build a [CredentialPresentationRequest] from a collection of [RequestOptionsCredential]
@@ -75,7 +75,7 @@ data class CredentialPresentationRequestBuilder(
             claims = nonOptionalAndOptionalRequestedAttributes()
                 .takeIf { it.isNotEmpty() } // requesting all claims if none are specified
                 ?.map { (attributePath, _) ->
-                    DCQLJsonClaimsQuery(path = attributePath)
+                    DCQLJsonClaimsQuery(path = attributePath.toVcJwtClaimPath())
                 }?.toNonEmptyList()
                 ?.let { DCQLClaimsQueryList(it) }
         )
@@ -102,12 +102,10 @@ data class CredentialPresentationRequestBuilder(
             meta = DCQLIsoMdocCredentialMetadataAndValidityConstraints(
                 doctypeValue = isoDocType
             ),
-            claims = nonOptionalAndOptionalRequestedAttributes()
+            claims = (requestedMdocClaims + requestedOptionalMdocClaims)
                 .takeIf { it.isNotEmpty() } // requesting all claims if none are specified
-                ?.map { (attributePath, _) ->
-                    DCQLIsoMdocClaimsQuery(
-                        path = attributePath.toIsoMdocClaimPath(credentialScheme)
-                    )
+                ?.map {
+                    DCQLIsoMdocClaimsQuery(path = DCQLClaimsPathPointer(it.namespace, it.claimName))
                 }?.toNonEmptyList()
                 ?.let { DCQLClaimsQueryList(it) }
         )

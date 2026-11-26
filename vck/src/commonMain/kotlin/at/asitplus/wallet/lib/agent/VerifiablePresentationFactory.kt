@@ -98,9 +98,9 @@ class VerifiablePresentationFactory(
         zkMetadata: ZkMetadata? = null
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
-            is StoreEntry.Vc -> if (disclosedAttributes !is AllClaimsMatchingResult) {
-                throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
-            } else createVcPresentation(
+            // A VC is presented as a whole, also if claims are requested: a presentation may contain claims that
+            // are not selectively disclosable in addition to the requested ones (OpenID4VP 1.0, 6.4.1)
+            is StoreEntry.Vc -> createVcPresentation(
                 request = request,
                 validCredentials = listOf(credential),
             )

@@ -345,7 +345,11 @@ sealed interface DCQLCredentialQuery {
             "Credential does not satisfy any combination of claims queries of credential query $id",
             failures.first(),
         ).apply { failures.drop(1).forEach(::addSuppressed) }
-        DCQLCredentialQueryMatchingResult.ClaimsQueryResults(successCombination)
+        // The claims decide only whether a credential without selective disclosure matches: it is presented as a
+        // whole, since for such formats "all claims are mandatory to present" (OpenID4VP 1.0, 6.4.1), so the result
+        // says so instead of listing only the requested claims
+        if (satisfiesSelectiveDisclosure) DCQLCredentialQueryMatchingResult.ClaimsQueryResults(successCombination)
+        else DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult
     }
 
     fun <DCQLCredentialQueryResponse: Any> checkSubmissionRequirements(

@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.data.IsoMdocCredentialScheme
 import at.asitplus.wallet.lib.data.SdJwtCredentialScheme
 import at.asitplus.wallet.lib.data.VcJwtCredentialScheme
 import at.asitplus.wallet.lib.data.isoQualifiedClaimDescriptions
+import at.asitplus.wallet.lib.data.vcJwtQualifiedClaimDescriptions
 import at.asitplus.wallet.lib.data.toCredentialScheme
 import at.asitplus.wallet.lib.validation.CheckOutcome.Blocked
 import at.asitplus.wallet.lib.validation.CheckOutcome.Failed
@@ -45,15 +46,19 @@ data class RequiredClaims(
 /**
  * The claims of the credential type [credentialIdentifier] that this scheme describes as `mandatory`, each with the
  * closest ancestor described as optional as its [RequiredClaim.condition]. For [ISO_MDOC], paths are qualified with
- * the ISO namespace, see [isoQualifiedClaimDescriptions].
+ * the ISO namespace, see [isoQualifiedClaimDescriptions], for [PLAIN_JWT] with `credentialSubject`, see
+ * [vcJwtQualifiedClaimDescriptions].
  */
 fun CredentialScheme.requiredClaims(
     credentialIdentifier: String,
     representation: CredentialRepresentation,
     source: String? = null,
 ): RequiredClaims {
-    val isIsoCredential = representation == ISO_MDOC && this is IsoMdocCredentialScheme
-    val descriptions = if (isIsoCredential) isoQualifiedClaimDescriptions else claimDescriptions
+    val descriptions = when {
+        representation == ISO_MDOC && this is IsoMdocCredentialScheme -> isoQualifiedClaimDescriptions
+        representation == PLAIN_JWT && this is VcJwtCredentialScheme -> vcJwtQualifiedClaimDescriptions
+        else -> claimDescriptions
+    }
     val optional = descriptions.filter { it.mandatory != true }.map { it.path }
     val claims = descriptions.filter { it.mandatory == true }.map { description ->
         RequiredClaim(
