@@ -70,7 +70,8 @@ class HolderAgent private constructor(
      * can not be resolved does not demote a credential. By default [credentialValidator].
      */
     @Deprecated(
-        "Use the constructor taking a holderKeyResolver; for a single key, use HolderKeyResolver.single(keyMaterial)"
+        "Use the constructor taking a holderKeyResolver, e.g. HolderKeyResolver.single(keyMaterial), and pass the " +
+                "expected holder keys when storing a credential: only this constructor expects its key by default"
     )
     @JvmOverloads
     constructor(
