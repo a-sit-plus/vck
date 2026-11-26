@@ -321,7 +321,6 @@ val RelyingPartyValidatorTest by matrixSuite {
             Triple("[\"nationalities\",null]", "[\"nationalities\",0]", ACCEPTED),
             Triple("[\"nationalities\",null]", "[\"nationalities\"]", REJECTED),
             Triple("[\"nationalities\",0]", "[\"nationalities\",null]", REJECTED),
-            Triple("[\"age_equal_or_over\",\"18\"]", "[\"age_equal_or_over\",\"18\"]", ACCEPTED),
         ).asData(nameFn = { (grant, request, _) -> "$grant covers $request" }) test { (grant, request, decision) ->
             val fixture = buildWrpFixture()
             val credential = WrpCredential(

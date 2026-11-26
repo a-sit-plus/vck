@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib
 import at.asitplus.iso.IsoConstants
 import at.asitplus.iso.UseCase
 import at.asitplus.testballoon.matrix.matrixSuite
+import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
+import at.asitplus.wallet.eupid.EuPidDataElements
 import at.asitplus.wallet.lib.data.JsonClaimReference
 import at.asitplus.wallet.lib.data.MdocClaimReference
 import at.asitplus.wallet.mdl.MDL_DOCTYPE
@@ -112,8 +114,8 @@ val RequestedPresentationTest by matrixSuite {
             id = "photoid",
         )
         val pidMdoc = RequestedCredential.Mdoc(
-            docType = "eu.europa.ec.eudi.pid.1",
-            MdocClaimReference("eu.europa.ec.eudi.pid.1", "age_over_18"),
+            docType = EU_PID_DOCTYPE,
+            MdocClaimReference(EU_PID_DOCTYPE, EuPidDataElements.FAMILY_NAME),
             id = "pidmdoc",
         )
 

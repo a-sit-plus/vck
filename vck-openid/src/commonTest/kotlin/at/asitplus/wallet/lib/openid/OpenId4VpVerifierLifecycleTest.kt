@@ -112,8 +112,8 @@ val OpenId4VpVerifierLifecycleTest by matrixSuite {
             creationOptions: DcApiCreationOptions = DcApiCreationOptions.OpenId4VpUnsigned,
         ): AuthenticationRequestParameters {
             verifier.createAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = presentationRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(presentationRequest),
                     responseMode = responseMode,
                     expectedOrigins = listOf(callingOrigin),
                     state = externalId,

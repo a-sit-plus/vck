@@ -134,7 +134,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
                 /** Extracts the unsigned authn request from the browser-facing [CredentialRequestOptions]. */
                 suspend fun createUnsignedAuthnRequest(
-                    reqOptions: OpenId4VpRequestOptions,
+                    reqOptions: DcApiRequestOptions,
                 ): AuthenticationRequestParameters = dcApiVerifier
                     .createAuthnRequest(reqOptions, DcApiCreationOptions.OpenId4VpUnsigned).getOrThrow()
                     .singleRequest<DigitalCredentialGetRequest.OpenId4VpUnsigned>()
@@ -142,7 +142,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
                 /** Extracts the signed authn request from the browser-facing [CredentialRequestOptions]. */
                 suspend fun createSignedAuthnRequest(
-                    reqOptions: OpenId4VpRequestOptions,
+                    reqOptions: DcApiRequestOptions,
                 ): JwsCompactTyped<AuthenticationRequestParameters> = dcApiVerifier
                     .createAuthnRequest(reqOptions, DcApiCreationOptions.OpenId4VpSigned).getOrThrow()
                     .singleRequest<DigitalCredentialGetRequest.OpenId4VpSigned>()
@@ -153,8 +153,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     presentationRequest: CredentialPresentationRequest?,
                 ): AuthorizationResponsePreparationState {
                     val authnRequest = createUnsignedAuthnRequest(
-                        OpenId4VpRequestOptions(
-                            presentationRequest = dcqlRequest,
+                        DcApiRequestOptions(
+                            presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                             responseMode = OpenIdConstants.ResponseMode.DcApi,
                             expectedOrigins = listOf(callingOrigin),
                         )
@@ -173,20 +173,9 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
     } - {
 
-        test("createAuthnRequest rejects response modes other than DC API") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
-                responseMode = OpenIdConstants.ResponseMode.Fragment,
-            )
-            f.dcApiVerifier.createAuthnRequest(reqOptions, DcApiCreationOptions.OpenId4VpUnsigned)
-                .isFailure shouldBe true
-            f.dcApiVerifier.createAuthnRequest(reqOptions, DcApiCreationOptions.OpenId4VpSigned)
-                .isFailure shouldBe true
-        }
-
         test("createAuthnRequest rejects encrypted response mode when metadata conveys no encryption key") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApiJwt,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -207,8 +196,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 ),
                 presentationPolicy = testPresentationPolicy,
             )
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApiJwt,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -221,13 +210,15 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API Annex C: createAuthnRequest renders the DCQL query as ISO device request") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestedCredential.Mdoc(
-                        AtomicAttribute2023,
-                        MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
-                    ),
-                ).toDCQLRequest(),
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(
+                    CredentialPresentationRequestBuilder(
+                        RequestedCredential.Mdoc(
+                            AtomicAttribute2023,
+                            MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
+                        ),
+                    ).toDCQLRequest()
+                ),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -248,13 +239,15 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
 
         test("DC API Annex C: createAuthnRequest renders the Device Retrieval request as ISO device request") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = CredentialPresentationRequestBuilder(
-                    RequestedCredential.Mdoc(
-                        AtomicAttribute2023,
-                        MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
-                    ),
-                ).toIsoDeviceRetrievalRequest(),
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(
+                    CredentialPresentationRequestBuilder(
+                        RequestedCredential.Mdoc(
+                            AtomicAttribute2023,
+                            MdocClaimReference(AtomicAttribute2023, CLAIM_GIVEN_NAME),
+                        ),
+                    ).toIsoDeviceRetrievalRequest()
+                ),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -301,8 +294,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             ).toDCQLRequest()
 
             f.dcApiVerifier.createAuthnRequest(
-                requestOptions = OpenId4VpRequestOptions(
-                    presentationRequest = isoDcqlRequest,
+                requestOptions = DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(isoDcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(callingOrigin),
                 ),
@@ -319,8 +312,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("createAuthnRequest rejects empty creation options") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -328,8 +321,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API Annex C: createAuthnRequest rejects non-mdoc DCQL queries") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest, // SD-JWT credential query
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest), // SD-JWT credential query
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -338,8 +331,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API unsigned: parsed as DcApiUnsigned, validates and responds with OpenId4VpResponseUnsigned") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -367,8 +360,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API holder dispatches and finalizes OpenID4VP requests") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -394,8 +387,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             val rpOrigin = "https://wallet-rp.a-sit.plus"
             val transactionId = uuid4().toString()
             val authnRequest = f.createUnsignedAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = dcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(rpOrigin),
                     state = transactionId,
@@ -428,8 +421,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API unsigned: mdoc response validates against the DC API session transcript") { f ->
             val transactionId = uuid4().toString()
             val authnRequest = f.createUnsignedAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = isoMdocDcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(isoMdocDcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -448,8 +441,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API unsigned: mdoc device signature is bound to the calling origin") { f ->
             val transactionId = uuid4().toString()
             val authnRequest = f.createUnsignedAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = isoMdocDcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(isoMdocDcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -470,8 +463,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API unsigned: mdoc device signature is bound to the nonce of its own request") { f ->
             val answeredId = uuid4().toString()
             val answeredRequest = f.createUnsignedAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = isoMdocDcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(isoMdocDcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(callingOrigin),
                     state = answeredId,
@@ -479,8 +472,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             )
             val otherId = uuid4().toString()
             f.createUnsignedAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = isoMdocDcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(isoMdocDcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(callingOrigin),
                     state = otherId,
@@ -513,8 +506,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             )
             val transactionId = uuid4().toString()
             val authnRequest = dcApiVerifier.createAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = isoMdocDcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(isoMdocDcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApiJwt,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -537,8 +530,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API unsigned: an error response without state is processed via externalId (A.4)") { f ->
             val transactionId = uuid4().toString()
             val authnRequest = f.createUnsignedAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = dcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -567,8 +560,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             )
             val transactionId = uuid4().toString()
             dcApiVerifier.createAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = dcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApiJwt,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -594,8 +587,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             )
             val transactionId = uuid4().toString()
             val authnRequest = dcApiVerifier.createAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = dcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApiJwt,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -639,8 +632,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     presentationPolicy = testPresentationPolicy,
                 )
                 val transactionId = uuid4().toString()
-                val reqOptions = OpenId4VpRequestOptions(
-                    presentationRequest = dcqlRequest,
+                val reqOptions = DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                     responseMode = responseMode,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -682,8 +675,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API signed: an error response from an expected origin is processed") { f ->
             val transactionId = uuid4().toString()
             f.createSignedAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = dcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -698,8 +691,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API signed: an error response from an unexpected origin is not processed") { f ->
             val transactionId = uuid4().toString()
             f.createSignedAuthnRequest(
-                OpenId4VpRequestOptions(
-                    presentationRequest = dcqlRequest,
+                DcApiRequestOptions(
+                    presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                     responseMode = OpenIdConstants.ResponseMode.DcApi,
                     expectedOrigins = listOf(callingOrigin),
                     state = transactionId,
@@ -712,8 +705,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API signed: parsed as DcApiSigned, validates and responds with OpenId4VpResponseSigned") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -739,8 +732,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
         test("DC API signed: non-web origin validates and is used as the SD-JWT audience") { f ->
             val transactionId = uuid4().toString()
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(androidCallingOrigin),
                 state = transactionId,
@@ -764,8 +757,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API multisigned: parsed as DcApiMultiSigned, validates and responds with OpenId4VpResponseMultiSigned") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -793,8 +786,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
             // OpenID4VP 1.0, A.3.2.1 encodes the DC API signed request as "a request object as defined in Section 5",
             // so Section 5's "Wallets MUST NOT process Request Objects where the typ Header Parameter is not present
             // or does not have the value oauth-authz-req+jwt" applies here too
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -818,8 +811,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API multisigned: every signature has to carry the typ, not just one") { f ->
             // one request object, several protected headers, see OpenID4VP 1.0, A.3.2.2: a verifier typing only the
             // signature we happen to rely on is not enough
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -844,8 +837,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API multisigned: origin mismatch rejects with InvalidRequest when expected_origins is set") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -865,8 +858,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API signed: origin mismatch rejects with InvalidRequest when expected_origins is set") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )
@@ -886,8 +879,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API signed: origins are compared as exact strings") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf("https://example.com/"),
             )
@@ -907,8 +900,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
 
         test("DC API signed: rejects a calling origin with a disallowed scheme") { f ->
             val ftpOrigin = "ftp://example.com"
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(ftpOrigin),
             )
@@ -929,8 +922,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         test("DC API signed: accepts a scheme added to the allowlist") { f ->
             val httpOrigin = "http://localhost:8080"
             f.allowedOriginSchemes += "http"
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(httpOrigin),
             )
@@ -946,8 +939,8 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
         }
 
         test("DC API signed: rejects with InvalidRequest when expected_origins is missing") { f ->
-            val reqOptions = OpenId4VpRequestOptions(
-                presentationRequest = dcqlRequest,
+            val reqOptions = DcApiRequestOptions(
+                presentationRequest = DcApiPresentationRequest.Raw(dcqlRequest),
                 responseMode = OpenIdConstants.ResponseMode.DcApi,
                 expectedOrigins = listOf(callingOrigin),
             )

@@ -450,12 +450,14 @@ private suspend fun dcapiFixture(
     )
     val presentationRequestBuilder = CredentialPresentationRequestBuilder(requestedCredentials)
     val isoRequest = verifier.createAuthnRequest(
-        OpenId4VpRequestOptions(
-            presentationRequest = presentationRequestBuilder.toIsoDeviceRetrievalRequest(),
+        DcApiRequestOptions(
+            presentationRequest = DcApiPresentationRequest.Raw(
+                presentationRequestBuilder.toIsoDeviceRetrievalRequest()
+            ),
             responseMode = OpenIdConstants.ResponseMode.DcApi,
             expectedOrigins = listOf(ORIGIN),
             state = STATE,
-            euWrprc = euWrprc,
+            registrationCertificate = euWrprc?.let { RelyingPartyRegistrationCertificate(cwt = it) },
         ),
         DcApiCreationOptions.Iso180137AnnexC,
     ).getOrThrow().digital.requests.single()
