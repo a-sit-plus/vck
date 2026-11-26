@@ -62,15 +62,17 @@ class WalletEncryptionService @JvmOverloads constructor(
         input: CredentialRequestParameters,
         metadata: IssuerMetadata,
         proofKeys: Set<CryptoPublicKey> = emptySet(),
+        holderBindingRequired: Boolean = true,
     ): KmmResult<OpenId4VciClient.CredentialRequest> = catching {
         if (metadata.shouldEncryptRequest(input)) {
             OpenId4VciClient.CredentialRequest.Encrypted(
                 request = encryptRequest(input, metadata).getOrThrow(),
                 credentialResponseEncryptionKeyId = input.credentialResponseEncryption?.jsonWebKey?.keyId,
                 proofKeys = proofKeys,
+                holderBindingRequired = holderBindingRequired,
             )
         } else {
-            OpenId4VciClient.CredentialRequest.Plain(input, proofKeys)
+            OpenId4VciClient.CredentialRequest.Plain(input, proofKeys, holderBindingRequired)
         }
     }
 

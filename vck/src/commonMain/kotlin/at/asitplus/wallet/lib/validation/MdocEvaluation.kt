@@ -51,7 +51,8 @@ internal suspend fun evaluateIssuerSigned(
         certificateChain = signature.certificateChain,
         semantics = expectedIdentifier(context.expectedCredentialIdentifier, listOf(mso.docType)),
         disclosedItems = validateIssuerSignedItems(issuerSigned, mso),
-        holderBinding = holderBinding.check(context, mso.holderKey()),
+        // Every mdoc is holder-bound, its MSO has a deviceKey (ETSI TS 119 472-1, EAA-6.5-01)
+        holderBinding = holderBinding.check(context, mso.holderKey(), isHolderBound = true),
         timeliness = mso.validityPeriod.timeliness(timeScope),
         status = mso.status?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.IsoMdoc(issuerSigned),

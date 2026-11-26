@@ -207,3 +207,50 @@ val ProofKeySupplierTest by matrixSuite {
         retry.proofKeys shouldNotContainAnyOf first.proofKeys
     }
 }
+
+/** Whether a credential configuration requires holder binding is recorded with the request and its credentials. */
+val HolderBindingRequiredTest by matrixSuite {
+
+    fun metadata(format: SupportedCredentialFormatSdJwt) = IssuerMetadata(
+        credentialIssuer = "https://issuer.example.com",
+        credentialEndpointUrl = "https://issuer.example.com/credential",
+        supportedCredentialConfigurations = mapOf("configuration" to format),
+    )
+    val client = OpenId4VciClient(proofCreators = listOf(JwtProofCreator(EphemeralKeyWithoutCert())))
+
+    test("a configuration with cryptographic_binding_methods_supported requires holder binding") {
+        val format = SupportedCredentialFormatSdJwt(
+            sdJwtVcType = "urn:example:credential",
+            supportedBindingMethods = setOf("jwk"),
+            supportedProofTypes = mapOf(ProofTypes.JWT to CredentialRequestProofSupported()),
+        )
+
+        client.createCredential(metadata(format), "configuration", "nonce").getOrThrow()
+            .holderBindingRequired shouldBe true
+    }
+
+    test("a configuration without cryptographic_binding_methods_supported requires none, and gets no proof") {
+        val format = SupportedCredentialFormatSdJwt(sdJwtVcType = "urn:example:credential")
+
+        val request = client.createCredential(metadata(format), "configuration", "nonce").getOrThrow()
+            .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
+
+        request.holderBindingRequired shouldBe false
+        request.request.proofs shouldBe null
+        request.proofKeys.shouldBeEmpty()
+    }
+
+    test("a configuration with proof types but without binding methods gets a proof and requires its key") {
+        val format = SupportedCredentialFormatSdJwt(
+            sdJwtVcType = "urn:example:credential",
+            supportedProofTypes = mapOf(ProofTypes.JWT to CredentialRequestProofSupported()),
+        )
+
+        val request = client.createCredential(metadata(format), "configuration", "nonce").getOrThrow()
+            .shouldBeInstanceOf<OpenId4VciClient.CredentialRequest.Plain>()
+
+        request.request.proofs.shouldNotBeNull()
+        request.holderBindingRequired shouldBe true
+        request.proofKeys.shouldHaveSize(1)
+    }
+}

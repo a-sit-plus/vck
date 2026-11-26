@@ -61,9 +61,10 @@ Release 10.0.0 (unreleased):
     - BREAKING: OpenID4VP rejects transaction data that references a DCQL query without required holder binding;
       `OpenId4VpRequestOptions` refuses to create such requests.
     - OID4VCI proof creators obtain a key for each request, and `ProofCreator.createProof` returns the proofs with that
-      key. Received credentials are checked against their request's proof keys. Deprecate
-      `CredentialValidationContext.expectedHolderKey` in favor of `expectedHolderKeys`; add `KeyAttestationInput.keys`.
-      New fields change `copy` and `componentN` for `CredentialValidationContext`, `ReceivedCredential.Decoded`,
+      key. Received credentials are checked against their request's proof keys. Issuers that do not require binding can
+      store only credentials without a holder key. Deprecate `CredentialValidationContext.expectedHolderKey` in favor
+      of `expectedHolderKeys`; add `KeyAttestationInput.keys`. New fields change `copy` and `componentN` for
+      `CredentialValidationContext`, `ReceivedCredential.Decoded`,
       `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and `KeyAttestationInput`.
     - `HolderAgent.storeCredentialWithReport` and `prepareCredentialStorage` of a `StoreCredentialInput` take
       `expectedHolderKeys`, as the overload of an encoded credential does. Without them, a holder with a

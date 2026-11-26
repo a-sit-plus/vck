@@ -350,8 +350,10 @@ a credential that only fails checks the policy may relax (`isIntactCredential`),
 - A received credential is validated once, by the `HolderAgent` that stores it, with its validator and bound to a
   proof key of its request (`expectedHolderKeys`, OpenID4VCI 1.0, 8.3): protocol clients only decrypt and decode it
   into a `ReceivedCredential`, and one that can not be decoded is prepared as rejected (`HolderAgent.rejectUndecodable`)
-  instead of failing its batch. The stored credential is the validated one,
-  e.g. the `IssuerSigned` decoded from the issuer's bytes, which keeps every signed byte.
+  instead of failing its batch. A credential whose issuer requires no key binding (OpenID4VCI 1.0, 12.2.4) is
+  validated under `HolderBindingPolicy.RequireNoKey`, which still runs and rejects every holder-bound credential. The
+  stored credential is the validated one, e.g. the `IssuerSigned` decoded from the issuer's bytes, which keeps every
+  signed byte.
 - Legacy entry points (`HolderAgent.storeCredential`, `ProofValidator.validateProofExtractSubjectPublicKeys`,
   `AttestationBasedClientAuthenticationService.authenticateClient`, `AuthorizationRequestValidator`, the legacy
   results of the OpenID4VP verifiers) delegate to the new validation under a compatibility policy or the configured

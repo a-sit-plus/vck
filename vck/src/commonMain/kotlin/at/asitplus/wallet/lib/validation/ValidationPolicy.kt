@@ -132,6 +132,14 @@ sealed interface HolderBindingPolicy {
      * check is blocked.
      */
     data object RequireExpectedKey : HolderBindingPolicy
+
+    /**
+     * The credential must not be bound to a key, e.g. when the issuer requires no key binding (OpenID4VCI 1.0, 12.2.4).
+     * Unlike [None], the check always runs: the holder could never present a credential bound to a key it doesn't have.
+     * A credential bound to a key that can't be read, e.g. an SD-JWT VC whose `cnf` has a `kid` instead of a `jwk`, is
+     * bound to a key as well (SD-JWT VC, 2.2.2.3), see `StoreEntry.isHolderBound`.
+     */
+    data object RequireNoKey : HolderBindingPolicy
 }
 
 /**

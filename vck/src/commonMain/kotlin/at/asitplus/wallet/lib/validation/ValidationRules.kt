@@ -430,6 +430,7 @@ private val HolderBindingPolicy.requirement: Requirement
     get() = when (this) {
         HolderBindingPolicy.None -> OPTIONAL
         HolderBindingPolicy.RequireExpectedKey -> REQUIRED
+        HolderBindingPolicy.RequireNoKey -> REQUIRED
     }
 
 /** The requirement on the timeliness of an artifact; the time of holder proofs is always required. */

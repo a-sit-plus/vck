@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.PreparedCredentialStorage
 import at.asitplus.wallet.lib.data.CredentialScheme
 import at.asitplus.wallet.lib.validation.CredentialValidationInput
+import at.asitplus.wallet.lib.validation.HolderBindingPolicy
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import kotlin.jvm.JvmOverloads
 
@@ -18,11 +19,13 @@ sealed interface ReceivedCredential {
 
     /**
      * A credential decoded from its encoding in the credential response (OpenID4VCI 1.0, Appendix A), with the
-     * [proofKeys] of the request it was issued for, see [OpenId4VciClient.CredentialRequest.proofKeys].
+     * [proofKeys] and [holderBindingRequired] of the request it was issued for, see
+     * [OpenId4VciClient.CredentialRequest].
      */
     data class Decoded @JvmOverloads constructor(
         val input: CredentialValidationInput,
         val proofKeys: Set<CryptoPublicKey> = emptySet(),
+        val holderBindingRequired: Boolean = true,
     ) : ReceivedCredential
 
     /**
@@ -34,8 +37,8 @@ sealed interface ReceivedCredential {
     /**
      * Validates this credential of the type of [scheme] for storage by [holder] under [policy], with [renewalInfo],
      * see [HolderAgent.prepareCredentialStorage], and stores nothing yet. It has to be bound to one of the
-     * [Decoded.proofKeys], if there are any. A credential that could not be decoded is prepared as rejected, so that
-     * it is reported like every other credential of a batch, but can never be stored.
+     * [Decoded.proofKeys], or to no key unless [Decoded.holderBindingRequired]. A credential that could not be decoded
+     * is prepared as rejected, so that it is reported like every other credential of a batch, but can never be stored.
      *
      * Fails if [scheme] does not support the representation of the credential.
      */
@@ -45,7 +48,16 @@ sealed interface ReceivedCredential {
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
     ): KmmResult<PreparedCredentialStorage> = when (this) {
-        is Decoded -> holder.prepareCredentialStorage(input, scheme, policy, renewalInfo, proofKeys)
+        is Decoded -> holder.prepareCredentialStorage(
+            input = input,
+            scheme = scheme,
+            policy = policy.copy(
+                holderBinding = if (holderBindingRequired) HolderBindingPolicy.RequireExpectedKey
+                else HolderBindingPolicy.RequireNoKey
+            ),
+            renewalInfo = renewalInfo,
+            expectedHolderKeys = proofKeys,
+        )
         is Undecodable -> KmmResult.success(holder.rejectUndecodable(cause, policy, renewalInfo))
     }
 }

@@ -4,6 +4,7 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.wallet.lib.agent.holderKey
+import at.asitplus.wallet.lib.agent.isHolderBound
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -52,7 +53,7 @@ internal suspend fun evaluateSdJwtVc(
             else Passed,
         ),
         disclosedItems = processed.items,
-        holderBinding = holderBinding.check(context, parsed.credential.holderKey()),
+        holderBinding = parsed.credential.let { holderBinding.check(context, it.holderKey(), it.isHolderBound()) },
         timeliness = parsed.credential.validityPeriod.timeliness(timeScope),
         status = parsed.credential.statusElement?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.SdJwtVc(

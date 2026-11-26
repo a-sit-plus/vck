@@ -156,7 +156,8 @@ class HolderAgent private constructor(
 
     /**
      * Validates [credential] under [policy], bound to the key of this holder whatever [ValidationPolicy.holderBinding]
-     * says, and of the type of its scheme, and stores it only if it is accepted, see [CredentialStorageResult].
+     * says, unless it is [HolderBindingPolicy.RequireNoKey], and of the type of its scheme, and stores it only if it is
+     * accepted, see [CredentialStorageResult].
      * A rejected credential is a successful result with its report; only persisting fails.
      *
      * The credential has to be bound to one of [expectedHolderKeys], see [prepareCredentialStorage].
@@ -290,7 +291,8 @@ class HolderAgent private constructor(
 
     /** The credential's key is still a key of this holder; it may have been deleted since it was prepared. */
     private suspend fun PreparedCredentialStorage.requireHolder() {
-        val key = requireNotNull(holderKey) { "The credential has not been prepared for a holder key" }
+        // Not holder-bound, which only HolderBindingPolicy.RequireNoKey accepts
+        val key = holderKey ?: return
         holderKeyResolver.resolve(key).getOrElse {
             throw IllegalArgumentException("The credential has been prepared for another holder", it)
         }
@@ -346,8 +348,11 @@ class HolderAgent private constructor(
         expectedHolderKeys = expectedHolderKeys.ifEmpty { setOfNotNull(singleKey?.publicKey) },
     )
 
-    /** A credential to store is bound to the key of this holder, whatever [ValidationPolicy.holderBinding] says. */
-    private fun ValidationPolicy.boundToHolder() = copy(holderBinding = HolderBindingPolicy.RequireExpectedKey)
+    /** A stored credential is bound to a key of this holder, or to none under [HolderBindingPolicy.RequireNoKey]. */
+    private fun ValidationPolicy.boundToHolder() = copy(
+        holderBinding = if (holderBinding == HolderBindingPolicy.RequireNoKey) HolderBindingPolicy.RequireNoKey
+        else HolderBindingPolicy.RequireExpectedKey
+    )
 
     private fun CredentialScheme.credentialIdentifier(input: CredentialValidationInput): String = when (input) {
         is CredentialValidationInput.VcJwt -> vcType
