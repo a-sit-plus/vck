@@ -49,8 +49,9 @@ Release 10.0.0 (unreleased):
     - Add `HolderKeyResolver` for resolving a credential's key, `HolderKeyResolver.single` for one-key holders, and
       `StoreEntry.holderKey()` / `isHolderBound()` for identifying credential key binding. Keys come from an SD-JWT VC's
       `cnf`, an mdoc's `deviceKey`, or a VC-JWT's `did:key` in `sub`.
-    - BREAKING: DCQL no longer treats a VC-JWT `sub` such as a JWK thumbprint as holder binding. VCDM 1.1 defines `sub`
-      as the credential subject identifier; VC-K derives a key from it only when it is a `did:key`.
+    - BREAKING: A VC-JWT whose `sub` is not a `did:key`, e.g. a JWK thumbprint, is not holder-bound in
+      `CredentialValidator` or DCQL matching. VCDM 1.1 defines `sub` as the credential subject identifier; VC-K derives
+      a key from it only when it is a `did:key`.
     - `HolderAgent` and `VerifiablePresentationFactory` resolve and use the key bound to each credential. Add
       `holderKeyResolver` constructors; deprecate `Holder.keyMaterial`, the single-key `HolderAgent` constructor, and
       the fixed-key `VerifiablePresentationFactory` constructor. Presentations fail if the holder lacks a credential's

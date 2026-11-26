@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.validation
 
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
-import at.asitplus.wallet.lib.agent.matchesIdentifier
+import at.asitplus.wallet.lib.agent.holderKey
 import at.asitplus.wallet.lib.agent.validation.TimeScope
 import at.asitplus.wallet.lib.agent.validation.vcJws.VcJwsContentSemanticsValidator
 import at.asitplus.wallet.lib.data.VcDataModelConstants
@@ -39,11 +39,7 @@ internal suspend fun evaluateVcJwt(
         certificateChain = signature.certificateChain,
         semantics = semanticsOf(vcJws.semantics(), expectedIdentifier(expected, types)),
         disclosedItems = emptyList(),
-        // Bound by `sub`, as the `did:key` or the JWK thumbprint of an expected key
-        holderBinding = holderBinding.check(
-            context,
-            vcJws.subject?.let { sub -> context.allExpectedHolderKeys.firstOrNull { it.matchesIdentifier(sub) } },
-        ),
+        holderBinding = holderBinding.check(context, vcJws.holderKey()),
         timeliness = vcJws.validityPeriod.timeliness(timeScope),
         status = vcJws.vc.credentialStatus?.let { TokenStatusInfo.from(it) },
         credential = ValidatedCredential.VcJwt(vcJws),

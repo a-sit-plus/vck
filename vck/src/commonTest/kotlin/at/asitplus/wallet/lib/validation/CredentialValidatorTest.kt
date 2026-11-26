@@ -316,10 +316,10 @@ val CredentialValidatorTest by matrixSuite {
                 .checks.holderBinding shouldBe Passed
         }
 
-        "the JWK thumbprint of an expected key passes" {
+        "the JWK thumbprint of an expected key is no key binding" {
             val issuance = issuance()
             issuance.validate(issuance.vcJwtFor(issuance.holderKey.jsonWebKey.jwkThumbprint), policy = integrityOnly)
-                .checks.holderBinding shouldBe Passed
+                .checks.holderBinding.shouldBeInstanceOf<Failed>()
         }
 
         "the did:key of another key fails" {
